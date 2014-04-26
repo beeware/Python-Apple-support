@@ -2,4 +2,4 @@
 *.swp
 src/*
 build/*
-.cache
+downloads/*
