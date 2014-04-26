@@ -1,7 +1,7 @@
 # iOS Build variables.
 SDKVER=$(xcodebuild -showsdks | fgrep "iphoneos" | tail -n 1 | awk '{print $2}')
 DEVROOT=$(xcode-select -print-path)/Platforms/iPhoneOS.platform/Developer
-IOSSDKROOT=$DEVROOT/SDKs/iPhoneOS$SDKVER.sdk
+IOSSDKROOT=$DEVROOT/SDKs/iPhoneOS$(SDKVER).sdk
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=2.7.1
