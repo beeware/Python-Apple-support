@@ -1,0 +1,459 @@
+--- old/libffi.xcodeproj/project.pbxproj	2014-04-26 11:35:08.000000000 +0800
++++ new/libffi.xcodeproj/project.pbxproj	2014-04-26 16:06:48.000000000 +0800
+@@ -6,36 +6,32 @@
+ 	objectVersion = 46;
+ 	objects = {
+ 
++/* Begin PBXAggregateTarget section */
++		603A9FAE190B6BA5004B62AE /* Framework */ = {
++			isa = PBXAggregateTarget;
++			buildConfigurationList = 603A9FAF190B6BA6004B62AE /* Build configuration list for PBXAggregateTarget "Framework" */;
++			buildPhases = (
++				603A9FB4190B6BD5004B62AE /* Assemble framework */,
++			);
++			dependencies = (
++				603A9FB3190B6BAF004B62AE /* PBXTargetDependency */,
++			);
++			name = Framework;
++			productName = Framework;
++		};
++/* End PBXAggregateTarget section */
++
+ /* Begin PBXBuildFile section */
+ 		6C43CBDC1534F76F00162364 /* ffi.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CBBD1534F76F00162364 /* ffi.c */; };
+ 		6C43CBDD1534F76F00162364 /* sysv.S in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CBBF1534F76F00162364 /* sysv.S */; };
+ 		6C43CBDE1534F76F00162364 /* trampoline.S in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CBC01534F76F00162364 /* trampoline.S */; };
+ 		6C43CBE61534F76F00162364 /* darwin.S in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CBC91534F76F00162364 /* darwin.S */; };
+ 		6C43CBE81534F76F00162364 /* ffi.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CBCB1534F76F00162364 /* ffi.c */; };
+-		6C43CC1F1534F77800162364 /* darwin.S in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC051534F77800162364 /* darwin.S */; };
+-		6C43CC201534F77800162364 /* darwin64.S in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC061534F77800162364 /* darwin64.S */; };
+-		6C43CC211534F77800162364 /* ffi.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC071534F77800162364 /* ffi.c */; };
+-		6C43CC221534F77800162364 /* ffi64.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC081534F77800162364 /* ffi64.c */; };
+ 		6C43CC2F1534F7BE00162364 /* closures.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC281534F7BE00162364 /* closures.c */; };
+-		6C43CC301534F7BE00162364 /* closures.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC281534F7BE00162364 /* closures.c */; };
+ 		6C43CC351534F7BE00162364 /* java_raw_api.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2B1534F7BE00162364 /* java_raw_api.c */; };
+-		6C43CC361534F7BE00162364 /* java_raw_api.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2B1534F7BE00162364 /* java_raw_api.c */; };
+ 		6C43CC371534F7BE00162364 /* prep_cif.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2C1534F7BE00162364 /* prep_cif.c */; };
+-		6C43CC381534F7BE00162364 /* prep_cif.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2C1534F7BE00162364 /* prep_cif.c */; };
+ 		6C43CC391534F7BE00162364 /* raw_api.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2D1534F7BE00162364 /* raw_api.c */; };
+-		6C43CC3A1534F7BE00162364 /* raw_api.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2D1534F7BE00162364 /* raw_api.c */; };
+ 		6C43CC3B1534F7BE00162364 /* types.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2E1534F7BE00162364 /* types.c */; };
+-		6C43CC3C1534F7BE00162364 /* types.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C43CC2E1534F7BE00162364 /* types.c */; };
+-		6C43CC971535032600162364 /* ffi.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC8D1535032600162364 /* ffi.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CC981535032600162364 /* ffi_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC8E1535032600162364 /* ffi_common.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CC991535032600162364 /* ffi_i386.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC8F1535032600162364 /* ffi_i386.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CC9A1535032600162364 /* ffi_x86_64.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC901535032600162364 /* ffi_x86_64.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CC9B1535032600162364 /* fficonfig.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC911535032600162364 /* fficonfig.h */; };
+-		6C43CC9C1535032600162364 /* fficonfig_i386.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC921535032600162364 /* fficonfig_i386.h */; };
+-		6C43CC9D1535032600162364 /* fficonfig_x86_64.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC931535032600162364 /* fficonfig_x86_64.h */; };
+-		6C43CC9E1535032600162364 /* ffitarget.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC941535032600162364 /* ffitarget.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CC9F1535032600162364 /* ffitarget_i386.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC951535032600162364 /* ffitarget_i386.h */; settings = {ATTRIBUTES = (Public, ); }; };
+-		6C43CCA01535032600162364 /* ffitarget_x86_64.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CC961535032600162364 /* ffitarget_x86_64.h */; settings = {ATTRIBUTES = (Public, ); }; };
+ 		6C43CCAD1535039600162364 /* ffi.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CCA21535039600162364 /* ffi.h */; settings = {ATTRIBUTES = (Public, ); }; };
+ 		6C43CCAE1535039600162364 /* ffi_armv7.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CCA31535039600162364 /* ffi_armv7.h */; settings = {ATTRIBUTES = (Public, ); }; };
+ 		6C43CCAF1535039600162364 /* ffi_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CCA41535039600162364 /* ffi_common.h */; settings = {ATTRIBUTES = (Public, ); }; };
+@@ -49,32 +45,27 @@
+ 		6C43CCB71535039600162364 /* ffitarget_i386.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C43CCAC1535039600162364 /* ffitarget_i386.h */; settings = {ATTRIBUTES = (Public, ); }; };
+ /* End PBXBuildFile section */
+ 
++/* Begin PBXContainerItemProxy section */
++		603A9FB2190B6BAF004B62AE /* PBXContainerItemProxy */ = {
++			isa = PBXContainerItemProxy;
++			containerPortal = F6B0839714721EE50031D8A1 /* Project object */;
++			proxyType = 1;
++			remoteGlobalIDString = F6F980B9147386130008F121;
++			remoteInfo = "libffi iOS";
++		};
++/* End PBXContainerItemProxy section */
++
+ /* Begin PBXFileReference section */
+-		6C43CB3D1534E9D100162364 /* libffi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libffi.a; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		6C43CBBD1534F76F00162364 /* ffi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ffi.c; sourceTree = "<group>"; };
+ 		6C43CBBF1534F76F00162364 /* sysv.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = sysv.S; sourceTree = "<group>"; };
+ 		6C43CBC01534F76F00162364 /* trampoline.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = trampoline.S; sourceTree = "<group>"; };
+ 		6C43CBC91534F76F00162364 /* darwin.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = darwin.S; sourceTree = "<group>"; };
+ 		6C43CBCB1534F76F00162364 /* ffi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ffi.c; sourceTree = "<group>"; };
+-		6C43CC051534F77800162364 /* darwin.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = darwin.S; sourceTree = "<group>"; };
+-		6C43CC061534F77800162364 /* darwin64.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = darwin64.S; sourceTree = "<group>"; };
+-		6C43CC071534F77800162364 /* ffi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ffi.c; sourceTree = "<group>"; };
+-		6C43CC081534F77800162364 /* ffi64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ffi64.c; sourceTree = "<group>"; };
+ 		6C43CC281534F7BE00162364 /* closures.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = closures.c; path = src/closures.c; sourceTree = SOURCE_ROOT; };
+ 		6C43CC2B1534F7BE00162364 /* java_raw_api.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = java_raw_api.c; path = src/java_raw_api.c; sourceTree = SOURCE_ROOT; };
+ 		6C43CC2C1534F7BE00162364 /* prep_cif.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = prep_cif.c; path = src/prep_cif.c; sourceTree = SOURCE_ROOT; };
+ 		6C43CC2D1534F7BE00162364 /* raw_api.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = raw_api.c; path = src/raw_api.c; sourceTree = SOURCE_ROOT; };
+ 		6C43CC2E1534F7BE00162364 /* types.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = types.c; path = src/types.c; sourceTree = SOURCE_ROOT; };
+-		6C43CC8D1535032600162364 /* ffi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi.h; sourceTree = "<group>"; };
+-		6C43CC8E1535032600162364 /* ffi_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi_common.h; sourceTree = "<group>"; };
+-		6C43CC8F1535032600162364 /* ffi_i386.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi_i386.h; sourceTree = "<group>"; };
+-		6C43CC901535032600162364 /* ffi_x86_64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi_x86_64.h; sourceTree = "<group>"; };
+-		6C43CC911535032600162364 /* fficonfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fficonfig.h; sourceTree = "<group>"; };
+-		6C43CC921535032600162364 /* fficonfig_i386.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fficonfig_i386.h; sourceTree = "<group>"; };
+-		6C43CC931535032600162364 /* fficonfig_x86_64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fficonfig_x86_64.h; sourceTree = "<group>"; };
+-		6C43CC941535032600162364 /* ffitarget.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffitarget.h; sourceTree = "<group>"; };
+-		6C43CC951535032600162364 /* ffitarget_i386.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffitarget_i386.h; sourceTree = "<group>"; };
+-		6C43CC961535032600162364 /* ffitarget_x86_64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffitarget_x86_64.h; sourceTree = "<group>"; };
+ 		6C43CCA21535039600162364 /* ffi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi.h; sourceTree = "<group>"; };
+ 		6C43CCA31535039600162364 /* ffi_armv7.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi_armv7.h; sourceTree = "<group>"; };
+ 		6C43CCA41535039600162364 /* ffi_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffi_common.h; sourceTree = "<group>"; };
+@@ -90,13 +81,6 @@
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFrameworksBuildPhase section */
+-		6C43CB3A1534E9D100162364 /* Frameworks */ = {
+-			isa = PBXFrameworksBuildPhase;
+-			buildActionMask = 2147483647;
+-			files = (
+-			);
+-			runOnlyForDeploymentPostprocessing = 0;
+-		};
+ 		F6F980B7147386130008F121 /* Frameworks */ = {
+ 			isa = PBXFrameworksBuildPhase;
+ 			buildActionMask = 2147483647;
+@@ -145,35 +129,6 @@
+ 			path = x86;
+ 			sourceTree = "<group>";
+ 		};
+-		6C43CBF01534F77800162364 /* OS X */ = {
+-			isa = PBXGroup;
+-			children = (
+-				6C43CC8C1535032600162364 /* include */,
+-				6C43CBFC1534F77800162364 /* src */,
+-			);
+-			name = "OS X";
+-			path = osx;
+-			sourceTree = "<group>";
+-		};
+-		6C43CBFC1534F77800162364 /* src */ = {
+-			isa = PBXGroup;
+-			children = (
+-				6C43CC041534F77800162364 /* x86 */,
+-			);
+-			path = src;
+-			sourceTree = "<group>";
+-		};
+-		6C43CC041534F77800162364 /* x86 */ = {
+-			isa = PBXGroup;
+-			children = (
+-				6C43CC051534F77800162364 /* darwin.S */,
+-				6C43CC061534F77800162364 /* darwin64.S */,
+-				6C43CC071534F77800162364 /* ffi.c */,
+-				6C43CC081534F77800162364 /* ffi64.c */,
+-			);
+-			path = x86;
+-			sourceTree = "<group>";
+-		};
+ 		6C43CC3D1534F7C400162364 /* src */ = {
+ 			isa = PBXGroup;
+ 			children = (
+@@ -187,23 +142,6 @@
+ 			path = ios;
+ 			sourceTree = "<group>";
+ 		};
+-		6C43CC8C1535032600162364 /* include */ = {
+-			isa = PBXGroup;
+-			children = (
+-				6C43CC8D1535032600162364 /* ffi.h */,
+-				6C43CC8E1535032600162364 /* ffi_common.h */,
+-				6C43CC8F1535032600162364 /* ffi_i386.h */,
+-				6C43CC901535032600162364 /* ffi_x86_64.h */,
+-				6C43CC911535032600162364 /* fficonfig.h */,
+-				6C43CC921535032600162364 /* fficonfig_i386.h */,
+-				6C43CC931535032600162364 /* fficonfig_x86_64.h */,
+-				6C43CC941535032600162364 /* ffitarget.h */,
+-				6C43CC951535032600162364 /* ffitarget_i386.h */,
+-				6C43CC961535032600162364 /* ffitarget_x86_64.h */,
+-			);
+-			path = include;
+-			sourceTree = "<group>";
+-		};
+ 		6C43CCA11535039600162364 /* include */ = {
+ 			isa = PBXGroup;
+ 			children = (
+@@ -227,7 +165,6 @@
+ 			children = (
+ 				6C43CC3D1534F7C400162364 /* src */,
+ 				6C43CBAF1534F76F00162364 /* iOS */,
+-				6C43CBF01534F77800162364 /* OS X */,
+ 				F6F980C6147386260008F121 /* Products */,
+ 			);
+ 			sourceTree = "<group>";
+@@ -236,7 +173,6 @@
+ 			isa = PBXGroup;
+ 			children = (
+ 				F6F980BA147386130008F121 /* libffi.a */,
+-				6C43CB3D1534E9D100162364 /* libffi.a */,
+ 			);
+ 			name = Products;
+ 			path = ../..;
+@@ -245,23 +181,6 @@
+ /* End PBXGroup section */
+ 
+ /* Begin PBXHeadersBuildPhase section */
+-		6C43CB3B1534E9D100162364 /* Headers */ = {
+-			isa = PBXHeadersBuildPhase;
+-			buildActionMask = 2147483647;
+-			files = (
+-				6C43CC971535032600162364 /* ffi.h in Headers */,
+-				6C43CC981535032600162364 /* ffi_common.h in Headers */,
+-				6C43CC991535032600162364 /* ffi_i386.h in Headers */,
+-				6C43CC9A1535032600162364 /* ffi_x86_64.h in Headers */,
+-				6C43CC9E1535032600162364 /* ffitarget.h in Headers */,
+-				6C43CC9F1535032600162364 /* ffitarget_i386.h in Headers */,
+-				6C43CCA01535032600162364 /* ffitarget_x86_64.h in Headers */,
+-				6C43CC9B1535032600162364 /* fficonfig.h in Headers */,
+-				6C43CC9C1535032600162364 /* fficonfig_i386.h in Headers */,
+-				6C43CC9D1535032600162364 /* fficonfig_x86_64.h in Headers */,
+-			);
+-			runOnlyForDeploymentPostprocessing = 0;
+-		};
+ 		F6F980B8147386130008F121 /* Headers */ = {
+ 			isa = PBXHeadersBuildPhase;
+ 			buildActionMask = 2147483647;
+@@ -283,24 +202,6 @@
+ /* End PBXHeadersBuildPhase section */
+ 
+ /* Begin PBXNativeTarget section */
+-		6C43CB3C1534E9D100162364 /* libffi OS X */ = {
+-			isa = PBXNativeTarget;
+-			buildConfigurationList = 6C43CB4A1534E9D100162364 /* Build configuration list for PBXNativeTarget "libffi OS X" */;
+-			buildPhases = (
+-				6C43CC401534FF3B00162364 /* Generate Source and Headers */,
+-				6C43CB391534E9D100162364 /* Sources */,
+-				6C43CB3A1534E9D100162364 /* Frameworks */,
+-				6C43CB3B1534E9D100162364 /* Headers */,
+-			);
+-			buildRules = (
+-			);
+-			dependencies = (
+-			);
+-			name = "libffi OS X";
+-			productName = "ffi OS X";
+-			productReference = 6C43CB3D1534E9D100162364 /* libffi.a */;
+-			productType = "com.apple.product-type.library.static";
+-		};
+ 		F6F980B9147386130008F121 /* libffi iOS */ = {
+ 			isa = PBXNativeTarget;
+ 			buildConfigurationList = F6F980C4147386130008F121 /* Build configuration list for PBXNativeTarget "libffi iOS" */;
+@@ -341,41 +242,41 @@
+ 			projectRoot = "";
+ 			targets = (
+ 				F6F980B9147386130008F121 /* libffi iOS */,
+-				6C43CB3C1534E9D100162364 /* libffi OS X */,
++				603A9FAE190B6BA5004B62AE /* Framework */,
+ 			);
+ 		};
+ /* End PBXProject section */
+ 
+ /* Begin PBXShellScriptBuildPhase section */
+-		6C43CC3E1534F8E200162364 /* Generate Trampoline */ = {
++		603A9FB4190B6BD5004B62AE /* Assemble framework */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+ 			);
+ 			inputPaths = (
+ 			);
+-			name = "Generate Trampoline";
++			name = "Assemble framework";
+ 			outputPaths = (
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+-			shellPath = /usr/bin/python;
+-			shellScript = "import subprocess\nimport re\nimport os\nimport errno\nimport sys\n\ndef main():\n    with open('src/arm/trampoline.S', 'w') as tramp_out:\n        p = subprocess.Popen(['bash', 'src/arm/gentramp.sh'], stdout=tramp_out)\n        p.wait()\n\nif __name__ == '__main__':\n    main()";
++			shellPath = /bin/sh;
++			shellScript = "set -e\nset +u\n# Avoid recursively calling this script.\nif [[ $SF_MASTER_SCRIPT_RUNNING ]]\nthen\nexit 0\nfi\nset -u\nexport SF_MASTER_SCRIPT_RUNNING=1\n\nSF_EXECUTABLE_NAME=\"${EXECUTABLE_PREFIX}${PRODUCT_NAME}.${EXECUTABLE_EXTENSION}\"\nSF_WRAPPER_NAME=\"${PRODUCT_NAME}.framework\"\n\n# The following conditionals come from\n# https://github.com/kstenerud/iOS-Universal-Framework\n\nif [[ \"$SDK_NAME\" =~ ([A-Za-z]+) ]]\nthen\nSF_SDK_PLATFORM=${BASH_REMATCH[1]}\nelse\necho \"Could not find platform name from SDK_NAME: $SDK_NAME\"\nexit 1\nfi\n\nif [[ \"$SDK_NAME\" =~ ([0-9]+.*$) ]]\nthen\nSF_SDK_VERSION=${BASH_REMATCH[1]}\nelse\necho \"Could not find sdk version from SDK_NAME: $SDK_NAME\"\nexit 1\nfi\n\nif [[ \"$SF_SDK_PLATFORM\" = \"iphoneos\" ]]\nthen\nSF_OTHER_PLATFORM=iphonesimulator\nARCH_FLAGS=\"-arch i386\"\nelse\nSF_OTHER_PLATFORM=iphoneos\nARCH_FLAGS=\"\"\nfi\n\nif [[ \"$BUILT_PRODUCTS_DIR\" =~ (.*)$SF_SDK_PLATFORM$ ]]\nthen\nSF_OTHER_BUILT_PRODUCTS_DIR=\"${BASH_REMATCH[1]}${SF_OTHER_PLATFORM}\"\nelse\necho \"Could not find platform name from build products directory: $BUILT_PRODUCTS_DIR\"\nexit 1\nfi\n\n# Build the other platform.\nxcrun xcodebuild -project \"${PROJECT_FILE_PATH}\" -target \"${TARGET_NAME}\" -configuration \"${CONFIGURATION}\" -sdk ${SF_OTHER_PLATFORM}${SF_SDK_VERSION} ${ARCH_FLAGS} BUILD_DIR=\"${BUILD_DIR}\" OBJROOT=\"${OBJROOT}\" BUILD_ROOT=\"${BUILD_ROOT}\" SYMROOT=\"${SYMROOT}\" $ACTION\n\n# define output folder environment variable\nUNIVERSAL_OUTPUTFOLDER=${BUILD_DIR}/${CONFIGURATION}-universal\n\n# create the output directories\nmkdir -p \"${UNIVERSAL_OUTPUTFOLDER}/${SF_WRAPPER_NAME}/Versions/${FRAMEWORK_VERSION}\"\n\n\n# Copy the headers into the framework directory\n# The -a ensures that the headers maintain the source modification date so that we don't constantly\n# cause propagating rebuilds of files that import these headers.\n/bin/cp -a \"${BUILT_PRODUCTS_DIR}/Headers\" \"${UNIVERSAL_OUTPUTFOLDER}/${SF_WRAPPER_NAME}/Versions/${FRAMEWORK_VERSION}/Headers\"\n\n# Copy the products to the universal folder.\n\n# Smash the two static libraries into one fat binary and store it in the .framework\nxcrun lipo -create -output \"${UNIVERSAL_OUTPUTFOLDER}/${SF_WRAPPER_NAME}/Versions/${FRAMEWORK_VERSION}/${SF_EXECUTABLE_NAME}\" \"${SF_OTHER_BUILT_PRODUCTS_DIR}/${SF_EXECUTABLE_NAME}\" \"${BUILT_PRODUCTS_DIR}/${SF_EXECUTABLE_NAME}\"\n\n# Link the \"Current\" version to \"${FRAMEWORK_VERSION}\"\npushd \"${UNIVERSAL_OUTPUTFOLDER}/${SF_WRAPPER_NAME}/Versions\"\n/bin/ln -sfh \"${FRAMEWORK_VERSION}\" Current\npopd\n\n# Link the top level lib and header directories.\npushd \"${UNIVERSAL_OUTPUTFOLDER}/${SF_WRAPPER_NAME}\"\n/bin/ln -sfh Versions/Current/Headers Headers\n/bin/ln -sfh \"Versions/Current/${EXECUTABLE_PREFIX}${PRODUCT_NAME}.${EXECUTABLE_EXTENSION}\" \"${EXECUTABLE_PREFIX}${PRODUCT_NAME}.${EXECUTABLE_EXTENSION}\"\npopd";
+ 		};
+-		6C43CC3F1534FF1B00162364 /* Generate Source and Headers */ = {
++		6C43CC3E1534F8E200162364 /* Generate Trampoline */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+ 			);
+ 			inputPaths = (
+ 			);
+-			name = "Generate Source and Headers";
++			name = "Generate Trampoline";
+ 			outputPaths = (
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+-			shellPath = /bin/sh;
+-			shellScript = "/usr/bin/python generate-ios-source-and-headers.py";
++			shellPath = /usr/bin/python;
++			shellScript = "import subprocess\nimport re\nimport os\nimport errno\nimport sys\n\ndef main():\n    with open('src/arm/trampoline.S', 'w') as tramp_out:\n        p = subprocess.Popen(['bash', 'src/arm/gentramp.sh'], stdout=tramp_out)\n        p.wait()\n\nif __name__ == '__main__':\n    main()";
+ 		};
+-		6C43CC401534FF3B00162364 /* Generate Source and Headers */ = {
++		6C43CC3F1534FF1B00162364 /* Generate Source and Headers */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+@@ -387,27 +288,11 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 			shellPath = /bin/sh;
+-			shellScript = "/usr/bin/python generate-osx-source-and-headers.py";
++			shellScript = "/usr/bin/python generate-ios-source-and-headers.py";
+ 		};
+ /* End PBXShellScriptBuildPhase section */
+ 
+ /* Begin PBXSourcesBuildPhase section */
+-		6C43CB391534E9D100162364 /* Sources */ = {
+-			isa = PBXSourcesBuildPhase;
+-			buildActionMask = 2147483647;
+-			files = (
+-				6C43CC1F1534F77800162364 /* darwin.S in Sources */,
+-				6C43CC201534F77800162364 /* darwin64.S in Sources */,
+-				6C43CC211534F77800162364 /* ffi.c in Sources */,
+-				6C43CC221534F77800162364 /* ffi64.c in Sources */,
+-				6C43CC301534F7BE00162364 /* closures.c in Sources */,
+-				6C43CC361534F7BE00162364 /* java_raw_api.c in Sources */,
+-				6C43CC381534F7BE00162364 /* prep_cif.c in Sources */,
+-				6C43CC3A1534F7BE00162364 /* raw_api.c in Sources */,
+-				6C43CC3C1534F7BE00162364 /* types.c in Sources */,
+-			);
+-			runOnlyForDeploymentPostprocessing = 0;
+-		};
+ 		F6F980B6147386130008F121 /* Sources */ = {
+ 			isa = PBXSourcesBuildPhase;
+ 			buildActionMask = 2147483647;
+@@ -427,44 +312,30 @@
+ 		};
+ /* End PBXSourcesBuildPhase section */
+ 
++/* Begin PBXTargetDependency section */
++		603A9FB3190B6BAF004B62AE /* PBXTargetDependency */ = {
++			isa = PBXTargetDependency;
++			target = F6F980B9147386130008F121 /* libffi iOS */;
++			targetProxy = 603A9FB2190B6BAF004B62AE /* PBXContainerItemProxy */;
++		};
++/* End PBXTargetDependency section */
++
+ /* Begin XCBuildConfiguration section */
+-		6C43CB4B1534E9D100162364 /* Debug */ = {
++		603A9FB0190B6BA6004B62AE /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+-				DSTROOT = /tmp/ffi.dst;
+-				FRAMEWORK_SEARCH_PATHS = (
+-					"$(inherited)",
+-					"\"$(SYSTEM_APPS_DIR)/Xcode.app/Contents/Developer/Library/Frameworks\"",
+-				);
+-				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+-				ONLY_ACTIVE_ARCH = YES;
++				EXECUTABLE_EXTENSION = a;
++				EXECUTABLE_PREFIX = lib;
+ 				PRODUCT_NAME = ffi;
+-				SDKROOT = macosx;
+ 			};
+ 			name = Debug;
+ 		};
+-		6C43CB4C1534E9D100162364 /* Release */ = {
++		603A9FB1190B6BA6004B62AE /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+-				DSTROOT = /tmp/ffi.dst;
+-				FRAMEWORK_SEARCH_PATHS = (
+-					"$(inherited)",
+-					"\"$(SYSTEM_APPS_DIR)/Xcode.app/Contents/Developer/Library/Frameworks\"",
+-				);
+-				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+-				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+-				MACOSX_DEPLOYMENT_TARGET = 10.6;
++				EXECUTABLE_EXTENSION = a;
++				EXECUTABLE_PREFIX = lib;
+ 				PRODUCT_NAME = ffi;
+-				SDKROOT = macosx;
+ 			};
+ 			name = Release;
+ 		};
+@@ -474,6 +345,8 @@
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+ 				COPY_PHASE_STRIP = NO;
++				DEAD_CODE_STRIPPING = NO;
++				FRAMEWORK_VERSION = 3.0.13;
+ 				GCC_C_LANGUAGE_STANDARD = gnu99;
+ 				GCC_DYNAMIC_NO_PIC = NO;
+ 				GCC_OPTIMIZATION_LEVEL = 0;
+@@ -487,7 +360,9 @@
+ 				GCC_WARN_UNUSED_VALUE = NO;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				HEADER_SEARCH_PATHS = ios/include;
++				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+ 				SDKROOT = iphoneos;
++				STRIP_STYLE = "non-global";
+ 			};
+ 			name = Debug;
+ 		};
+@@ -496,7 +371,9 @@
+ 			buildSettings = {
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+-				COPY_PHASE_STRIP = YES;
++				COPY_PHASE_STRIP = NO;
++				DEAD_CODE_STRIPPING = NO;
++				FRAMEWORK_VERSION = 3.0.13;
+ 				GCC_C_LANGUAGE_STANDARD = gnu99;
+ 				GCC_PREPROCESSOR_DEFINITIONS = "";
+ 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
+@@ -504,7 +381,9 @@
+ 				GCC_WARN_UNUSED_VALUE = NO;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				HEADER_SEARCH_PATHS = ios/include;
++				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+ 				SDKROOT = iphoneos;
++				STRIP_STYLE = "non-global";
+ 				VALIDATE_PRODUCT = YES;
+ 			};
+ 			name = Release;
+@@ -517,11 +396,13 @@
+ 					armv7,
+ 				);
+ 				DSTROOT = /tmp/ffi.dst;
++				FRAMEWORK_VERSION = 3.0.13;
+ 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+ 				GCC_THUMB_SUPPORT = NO;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
+ 				OTHER_LDFLAGS = "-ObjC";
+ 				PRODUCT_NAME = ffi;
++				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+ 				SKIP_INSTALL = YES;
+ 			};
+ 			name = Debug;
+@@ -534,11 +415,13 @@
+ 					armv7,
+ 				);
+ 				DSTROOT = /tmp/ffi.dst;
++				FRAMEWORK_VERSION = 3.0.13;
+ 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+ 				GCC_THUMB_SUPPORT = NO;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
+ 				OTHER_LDFLAGS = "-ObjC";
+ 				PRODUCT_NAME = ffi;
++				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+ 				SKIP_INSTALL = YES;
+ 			};
+ 			name = Release;
+@@ -546,11 +429,11 @@
+ /* End XCBuildConfiguration section */
+ 
+ /* Begin XCConfigurationList section */
+-		6C43CB4A1534E9D100162364 /* Build configuration list for PBXNativeTarget "libffi OS X" */ = {
++		603A9FAF190B6BA6004B62AE /* Build configuration list for PBXAggregateTarget "Framework" */ = {
+ 			isa = XCConfigurationList;
+ 			buildConfigurations = (
+-				6C43CB4B1534E9D100162364 /* Debug */,
+-				6C43CB4C1534E9D100162364 /* Release */,
++				603A9FB0190B6BA6004B62AE /* Debug */,
++				603A9FB1190B6BA6004B62AE /* Release */,
+ 			);
+ 			defaultConfigurationIsVisible = 0;
+ 			defaultConfigurationName = Release;

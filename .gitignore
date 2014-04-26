@@ -1,0 +1,5 @@
+*.swo
+*.swp
+src/*
+build/*
+.cache
