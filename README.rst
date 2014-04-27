@@ -2,7 +2,8 @@ Python.framework
 ================
 
 This is a meta-package for building a version of Python that can be embedded
-into an iOS project.
+into an iOS project. It works by downloading, patching, and *then* building
+a static libPython.a, and packaging it in iOS Framework format.
 
 Quickstart
 ----------
