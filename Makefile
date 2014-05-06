@@ -133,10 +133,23 @@ build/python/ios-simulator/Python: src/Python-$(PYTHON_VERSION)/build
 	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
 	# cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
 	# Clean up build directory
+	cd build/python/ios-simulator/lib/python2.7 && rm config/libpython2.7.a config/python.o config/config.c.in config/makesetup
 	cd build/python/ios-simulator/lib/python2.7 && rm -rf *test* lib* wsgiref bsddb curses idlelib hotshot
 	cd build/python/ios-simulator/lib/python2.7 && find . -iname '*.pyc' | xargs rm
 	cd build/python/ios-simulator/lib/python2.7 && find . -iname '*.py' | xargs rm
 	cd build/python/ios-simulator/lib && rm -rf pkgconfig
+	# Pack libraries into .zip file
+	cd build/python/ios-simulator/lib/python2.7 && mv config ..
+	cd build/python/ios-simulator/lib/python2.7 && mv site-packages ..
+	cd build/python/ios-simulator/lib/python2.7 && zip -r ../python27.zip *
+	cd build/python/ios-simulator/lib/python2.7 && rm -rf *
+	cd build/python/ios-simulator/lib/python2.7 && mv ../config .
+	cd build/python/ios-simulator/lib/python2.7 && mv ../site-packages .
+	# Move all headers except for pyconfig.h into a Headers directory
+	mkdir -p build/python/ios-simulator/Headers
+	cd build/python/ios-simulator/Headers && mv ../include/python2.7/* .
+	cd build/python/ios-simulator/Headers && mv pyconfig.h ../include/python2.7
+
 
 build/python/ios-armv7/Python: src/Python-$(PYTHON_VERSION)/build
 	# Apply extra patches for iPhone build
@@ -161,26 +174,39 @@ build/python/ios-armv7/Python: src/Python-$(PYTHON_VERSION)/build
 	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
 	# cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
 	# Clean up build directory
+	cd build/python/ios-armv7/lib/python2.7 && rm config/libpython2.7.a config/python.o config/config.c.in config/makesetup
 	cd build/python/ios-armv7/lib/python2.7 && rm -rf *test* lib* wsgiref bsddb curses idlelib hotshot
 	cd build/python/ios-armv7/lib/python2.7 && find . -iname '*.pyc' | xargs rm
 	cd build/python/ios-armv7/lib/python2.7 && find . -iname '*.py' | xargs rm
 	cd build/python/ios-armv7/lib && rm -rf pkgconfig
+	# Pack libraries into .zip file
+	cd build/python/ios-armv7/lib/python2.7 && mv config ..
+	cd build/python/ios-armv7/lib/python2.7 && mv site-packages ..
+	cd build/python/ios-armv7/lib/python2.7 && zip -r ../python27.zip *
+	cd build/python/ios-armv7/lib/python2.7 && rm -rf *
+	cd build/python/ios-armv7/lib/python2.7 && mv ../config .
+	cd build/python/ios-armv7/lib/python2.7 && mv ../site-packages .
+	# Move all headers except for pyconfig.h into a Headers directory
+	mkdir -p build/python/ios-simulator/Headers
+	cd build/python/ios-simulator/Headers && mv ../include/python2.7/* .
+	cd build/python/ios-simulator/Headers && mv pyconfig.h ../include/python2.7
 
 build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7/Python
 	# Create the framework directory from the compiled resrouces
 	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/
 	cd build/Python.framework/Versions && ln -fs $(basename $(PYTHON_VERSION)) Current
-	# Use the include and .pyo files from the simulator build.
-	cp -r build/python/ios-simulator/include/python$(basename $(PYTHON_VERSION)) build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Headers
+	# Copy the headers from the simulator
+	cp -r build/python/ios-simulator/Headers build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Headers
 	cd build/Python.framework && ln -fs Versions/Current/Headers
-	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources
-	cp -r build/python/ios-simulator/lib build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/lib
-	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python2.7
-	cp -r build/python/ios-simulator/include/python2.7/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python2.7/pyconfig.h
-	cd build/Python.framework && ln -fs Versions/Current/Resources
 	# Build a fat library with all targets included.
 	xcrun lipo -create -output build/Python.framework/Versions/Current/Python build/python/ios-simulator/Python build/python/ios-armv7/Python
 	cd build/Python.framework && ln -fs Versions/Current/Python
+	# Clean up simulator dir
+	rm -rf build/python/ios-simulator/bin
+	rm -rf build/python/ios-simulator/Python
+	# Clean up armv7 dir
+	rm -rf build/python/ios-armv7/bin
+	rm -rf build/python/ios-armv7/Python
 
 env:
 	# PYTHON_VERSION $(PYTHON_VERSION)
