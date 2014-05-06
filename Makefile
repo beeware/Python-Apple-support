@@ -1,24 +1,25 @@
 PROJECTDIR=$(shell pwd)
 
 # iOS Build variables.
-SDKDESCRIPTION=$(shell xcodebuild -showsdks | fgrep "iphoneos" | tail -n 1)
-SDKVER=$(word 2, $(SDKDESCRIPTION))
-DEVROOT=$(shell xcode-select -print-path)/Platforms/iPhoneOS.platform/Developer
-IOSSDKROOT=$(DEVROOT)/SDKs/iPhoneOS$(SDKVER).sdk
-
 OSX_SDK_ROOT=$(shell xcrun --sdk macosx --show-sdk-path)
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=2.7.1
 FFI_VERSION=3.0.13
 
-# ARM build flags
-ARM_CC=$(shell xcrun -find -sdk iphoneos clang)
-ARM_AR=$(shell xcrun -find -sdk iphoneos ar)
-ARM_LD=$(shell xcrun -find -sdk iphoneos ld)
+# IPHONE build commands and flags
+IPHONE_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
+IPHONE_CC=$(shell xcrun -find -sdk iphoneos clang)
+IPHONE_LD=$(shell xcrun -find -sdk iphoneos ld)
+IPHONE_CFLAGS=-arch armv7 -pipe -no-cpp-precomp -isysroot $(IPHONE_SDK_ROOT) -miphoneos-version-min=4.0
+IPHONE_LDFLAGS=-arch armv7 -isysroot $(IPHONE_SDK_ROOT) -miphoneos-version-min=4.0
 
-ARM_CFLAGS=-arch armv7 -pipe -no-cpp-precomp -isysroot $(IOSSDKROOT) -miphoneos-version-min=$(SDKVER)
-ARM_LDFLAGS=-arch armv7 -isysroot $(IOSSDKROOT) -miphoneos-version-min=$(SDKVER)
+# IPHONESIMULATOR build commands and flags
+IPHONESIMULATOR_SDK_ROOT=$(shell xcrun --sdk iphonesimulator --show-sdk-path)
+IPHONESIMULATOR_CC=$(shell xcrun -find -sdk iphonesimulator clang)
+IPHONESIMULATOR_LD=$(shell xcrun -find -sdk iphonesimulator ld)
+IPHONESIMULATOR_CFLAGS=-arch i386 -pipe -no-cpp-precomp -isysroot $(IPHONESIMULATOR_SDK_ROOT) -miphoneos-version-min=4.0
+IPHONESIMULATOR_LDFLAGS=-arch i386 -isysroot $(IPHONESIMULATOR_SDK_ROOT) -miphoneos-version-min=4.0
 
 
 all: working-dirs build/ffi.framework build/Python.framework
@@ -80,6 +81,7 @@ build/ffi.framework: src/libffi-$(FFI_VERSION)
 clean-Python:
 	rm -rf src/Python-$(PYTHON_VERSION)
 	rm -rf build/Python.framework
+	rm -rf build/python
 
 # Down original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tar.bz2:
@@ -92,60 +94,105 @@ src/Python-$(PYTHON_VERSION): downloads/Python-$(PYTHON_VERSION).tar.bz2
 
 # Patch Python source with iOS patches
 # Produce a dummy "patches-applied" file to mark that this has happened.
-src/Python-$(PYTHON_VERSION)/build_simulator: src/Python-$(PYTHON_VERSION)
+src/Python-$(PYTHON_VERSION)/build: src/Python-$(PYTHON_VERSION)
 	# Apply patches
 	cp patch/Python/$(PYTHON_VERSION)/ModulesSetup src/Python-$(PYTHON_VERSION)/Modules/Setup.local
 	cp patch/Python/$(PYTHON_VERSION)/_scproxy.py src/Python-$(PYTHON_VERSION)/Lib/_scproxy.py
 	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/dynload.patch
 	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/ssize-t-max.patch
 	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/static-_sqlite3.patch
-	# Configure and make the x86 (simulator) build
-	cd src/Python-$(PYTHON_VERSION) && ./configure CC="clang -Qunused-arguments -fcolor-diagnostics" LDFLAGS="-lsqlite3 -L../../build/ffi.framework" CFLAGS="-I../../build/ffi.framework/Headers --sysroot=$(OSX_SDK_ROOT)" --prefix=$(PROJECTDIR)/src/Python-$(PYTHON_VERSION)/build_simulator
-	cd src/Python-$(PYTHON_VERSION) && make -j4 python.exe Parser/pgen libpython$(basename $(PYTHON_VERSION)).a install
-	# Create the framework directory from the compiled resrouces
-	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/
-	cd build/Python.framework/Versions && ln -fs $(basename $(PYTHON_VERSION)) Current
-	cp -r src/Python-$(PYTHON_VERSION)/build_simulator/include/python$(basename $(PYTHON_VERSION)) build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Headers
-	cd build/Python.framework && ln -fs Versions/Current/Headers
-	cp -r src/Python-$(PYTHON_VERSION)/build_simulator/lib/python$(basename $(PYTHON_VERSION)) build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources
-	cd build/Python.framework && ln -fs Versions/Current/Resources
-	# Temporarily move the x86 library into the framework dir to protect it from distclean
-	mv src/Python-$(PYTHON_VERSION)/libpython$(basename $(PYTHON_VERSION)).a build/Python.framework
-	# Clean out all the x86 build data
+	# Configure and make the local build, providing compiled resources.
+	# cd src/Python-$(PYTHON_VERSION) && ./configure CC="clang -Qunused-arguments -fcolor-diagnostics" LDFLAGS="-lsqlite3 -L../../build/ffi.framework" CFLAGS="-I../../build/ffi.framework/Headers --sysroot=$(OSX_SDK_ROOT)" --prefix=$(PROJECTDIR)/src/Python-$(PYTHON_VERSION)/build
+	cd src/Python-$(PYTHON_VERSION) && ./configure CC="clang -Qunused-arguments -fcolor-diagnostics" LDFLAGS="-lsqlite3" CFLAGS="--sysroot=$(OSX_SDK_ROOT)" --prefix=$(PROJECTDIR)/src/Python-$(PYTHON_VERSION)/build
+	cd src/Python-$(PYTHON_VERSION) && make -j4 python.exe Parser/pgen
+	cd src/Python-$(PYTHON_VERSION) && mv python.exe hostpython
+	cd src/Python-$(PYTHON_VERSION) && mv Parser/pgen Parser/hostpgen
+	# # Clean out all the build data
 	cd src/Python-$(PYTHON_VERSION) && make distclean
-	# Restore the x86 library
-	mv build/Python.framework/libpython$(basename $(PYTHON_VERSION)).a src/Python-$(PYTHON_VERSION)/build_simulator
 
-src/Python-$(PYTHON_VERSION)/build_iphone: src/Python-$(PYTHON_VERSION)/build_simulator
-	# Apply extra patches for iOS native build
+build/python/ios-simulator/Python: src/Python-$(PYTHON_VERSION)/build
+	# Apply extra patches for iOS simulator build
 	cp patch/Python/$(PYTHON_VERSION)/ModulesSetup src/Python-$(PYTHON_VERSION)/Modules/Setup.local
 	cat patch/Python/$(PYTHON_VERSION)/ModulesSetup.mobile >> src/Python-$(PYTHON_VERSION)/Modules/Setup.local
 	cp patch/Python/$(PYTHON_VERSION)/_scproxy.py src/Python-$(PYTHON_VERSION)/Lib/_scproxy.py
-	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/xcompile.patch
-	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/setuppath.patch
-	# Configure and build iOS library
-	cd src/Python-$(PYTHON_VERSION) && ./configure CC="$(ARM_CC)" LD="$(ARM_LD)" CFLAGS="$(ARM_CFLAGS) -I../../build/ffi.framework/Headers" LDFLAGS="$(ARM_LDFLAGS) -L../../build/ffi.framework/ -lsqlite3 -undefined dynamic_lookup" --without-pymalloc --disable-toolbox-glue --host=armv7-apple-darwin --prefix=/python --without-doc-strings
-	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
-	cd src/Python-$(PYTHON_VERSION) && patch -p1 -N < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
-	cd src/Python-$(PYTHON_VERSION) && make -j4 libpython$(basename $(PYTHON_VERSION)).a
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/xcompile.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/setuppath.patch
+	# Configure and build Simulator library
+	cd src/Python-$(PYTHON_VERSION) && ./configure CC="$(IPHONESIMULATOR_CC)" LD="$(IPHONESIMULATOR_LD)" CFLAGS="$(IPHONESIMULATOR_CFLAGS) -I../../build/ffi.framework/Headers" LDFLAGS="$(IPHONESIMULATOR_LDFLAGS) -L../../build/ffi.framework/ -lsqlite3 -undefined dynamic_lookup" --without-pymalloc --disable-toolbox-glue --prefix=/python --without-doc-strings
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
+	mkdir -p build/python/ios-simulator
+	cd src/Python-$(PYTHON_VERSION) && make altbininstall libinstall inclinstall libainstall HOSTPYTHON=./hostpython CROSS_COMPILE_TARGET=yes prefix="../../build/python/ios-simulator"
+	# Relocate and rename the libpython binary
+	cd build/python/ios-simulator/lib && mv libpython$(basename $(PYTHON_VERSION)).a ../Python
+	# Clean out all the build data
+	cd src/Python-$(PYTHON_VERSION) && make distclean
+	# Reverse the source patches.
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/xcompile.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/setuppath.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
+	# cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
+	# Clean up build directory
+	cd build/python/ios-simulator/lib/python2.7 && rm -rf *test* lib* wsgiref bsddb curses idlelib hotshot
+	cd build/python/ios-simulator/lib/python2.7 && find . -iname '*.pyc' | xargs rm
+	cd build/python/ios-simulator/lib/python2.7 && find . -iname '*.py' | xargs rm
+	cd build/python/ios-simulator/lib && rm -rf pkgconfig
 
-build/Python.framework: src/Python-$(PYTHON_VERSION)/build_iphone
-	xcrun lipo -create -output build/Python.framework/Versions/Current/libpython.a src/Python-$(PYTHON_VERSION)/build_simulator/libpython$(basename $(PYTHON_VERSION)).a src/Python-$(PYTHON_VERSION)/libpython$(basename $(PYTHON_VERSION)).a
-	cd build/Python.framework && ln -fs Versions/Current/libpython.a
+build/python/ios-armv7/Python: src/Python-$(PYTHON_VERSION)/build
+	# Apply extra patches for iPhone build
+	cp patch/Python/$(PYTHON_VERSION)/ModulesSetup src/Python-$(PYTHON_VERSION)/Modules/Setup.local
+	cat patch/Python/$(PYTHON_VERSION)/ModulesSetup.mobile >> src/Python-$(PYTHON_VERSION)/Modules/Setup.local
+	cp patch/Python/$(PYTHON_VERSION)/_scproxy.py src/Python-$(PYTHON_VERSION)/Lib/_scproxy.py
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/xcompile.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/setuppath.patch
+	# Configure and build iPhone library
+	cd src/Python-$(PYTHON_VERSION) && ./configure CC="$(IPHONE_CC)" LD="$(IPHONE_LD)" CFLAGS="$(IPHONE_CFLAGS) -I../../build/ffi.framework/Headers" LDFLAGS="$(IPHONE_LDFLAGS) -L../../build/ffi.framework/ -lsqlite3 -undefined dynamic_lookup" --without-pymalloc --disable-toolbox-glue --host=armv7-apple-darwin --prefix=/python --without-doc-strings
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
+	mkdir -p build/python/ios-armv7
+	cd src/Python-$(PYTHON_VERSION) && make altbininstall libinstall inclinstall libainstall HOSTPYTHON=./hostpython CROSS_COMPILE_TARGET=yes prefix="../../build/python/ios-armv7"
+	# Relocate and rename the libpython binary
+	cd build/python/ios-armv7/lib && mv libpython$(basename $(PYTHON_VERSION)).a ../Python
+	# Clean out all the build data
+	cd src/Python-$(PYTHON_VERSION) && make distclean
+	# Reverse the source patches.
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/xcompile.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/setuppath.patch
+	cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/ctypes_duplicate.patch
+	# cd src/Python-$(PYTHON_VERSION) && patch -p1 -R < ../../patch/Python/$(PYTHON_VERSION)/pyconfig.patch
+	# Clean up build directory
+	cd build/python/ios-armv7/lib/python2.7 && rm -rf *test* lib* wsgiref bsddb curses idlelib hotshot
+	cd build/python/ios-armv7/lib/python2.7 && find . -iname '*.pyc' | xargs rm
+	cd build/python/ios-armv7/lib/python2.7 && find . -iname '*.py' | xargs rm
+	cd build/python/ios-armv7/lib && rm -rf pkgconfig
+
+build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7/Python
+	# Create the framework directory from the compiled resrouces
+	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/
+	cd build/Python.framework/Versions && ln -fs $(basename $(PYTHON_VERSION)) Current
+	# Use the include and .pyo files from the simulator build.
+	cp -r build/python/ios-simulator/include/python$(basename $(PYTHON_VERSION)) build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Headers
+	cd build/Python.framework && ln -fs Versions/Current/Headers
+	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources
+	cp -r build/python/ios-simulator/lib build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/lib
+	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python2.7
+	cp -r build/python/ios-simulator/include/python2.7/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python2.7/pyconfig.h
+	cd build/Python.framework && ln -fs Versions/Current/Resources
+	# Build a fat library with all targets included.
+	xcrun lipo -create -output build/Python.framework/Versions/Current/Python build/python/ios-simulator/Python build/python/ios-armv7/Python
+	cd build/Python.framework && ln -fs Versions/Current/Python
 
 env:
-	echo "SDKDESCRIPTION" $(SDKDESCRIPTION)
-	echo "SDKVER" $(SDKVER)
-	echo "DEVROOT" $(DEVROOT)
-	echo "IOSSDKROOT" $(IOSSDKROOT)
-	echo "OSX_SDK_ROOT" $(OSX_SDK_ROOT)
-	echo "PYTHON_VERSION" $(PYTHON_VERSION)
-	echo "FFI_VERSION" $(FFI_VERSION)
-	echo "ARM_CC" $(ARM_CC)
-	echo "ARM_AR" $(ARM_AR)
-	echo "ARM_LD" $(ARM_LD)
-	echo "ARM_CFLAGS" $(ARM_CFLAGS)
-	echo "ARM_LDFLAGS" $(ARM_LDFLAGS)
-
-
-# build/Python.framework: src/Python-$(PYTHON_VERSION)/hostpython
+	# PYTHON_VERSION $(PYTHON_VERSION)
+	# FFI_VERSION $(FFI_VERSION)
+	# OSX_SDK_ROOT $(OSX_SDK_ROOT)
+	# IPHONE_SDK_ROOT $(IPHONE_SDK_ROOT)
+	# IPHONE_CC $(IPHONE_CC)
+	# IPHONE_LD $(IPHONE_LD)
+	# IPHONE_CFLAGS $(IPHONE_CFLAGS)
+	# IPHONE_LDFLAGS $(IPHONE_LDFLAGS)
+	# IPHONESIMULATOR_SDK_ROOT $(IPHONESIMULATOR_SDK_ROOT)
+	# IPHONESIMULATOR_CC $(IPHONESIMULATOR_CC)
+	# IPHONESIMULATOR_LD $(IPHONESIMULATOR_LD)
+	# IPHONESIMULATOR_CFLAGS $(IPHONESIMULATOR_CFLAGS)
+	# IPHONESIMULATOR_LDFLAGS $(IPHONESIMULATOR_LDFLAGS)

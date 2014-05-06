@@ -1,6 +1,6 @@
---- Python2.7-old/Modules/_ctypes/cfield.c	2010-05-09 16:46:46.000000000 +0200
-+++ Python2.7-new/Modules/_ctypes/cfield.c	2013-08-27 00:21:15.000000000 +0200
-@@ -1747,24 +1747,6 @@
+--- Python-2.7-old/Modules/_ctypes/cfield.c	2010-05-09 22:46:46.000000000 +0800
++++ Python-2.7-new/Modules/_ctypes/cfield.c	2014-04-27 16:06:06.000000000 +0800
+@@ -1747,31 +1747,4 @@
  } ffi_type;
  */
  
@@ -22,13 +22,13 @@
 -ffi_type ffi_type_float = { sizeof(float), FLOAT_ALIGN, FFI_TYPE_FLOAT };
 -ffi_type ffi_type_double = { sizeof(double), DOUBLE_ALIGN, FFI_TYPE_DOUBLE };
 -
- #ifdef ffi_type_longdouble
- #undef ffi_type_longdouble
- #endif
-@@ -1772,6 +1754,4 @@
- ffi_type ffi_type_longdouble = { sizeof(long double), LONGDOUBLE_ALIGN,
-                                  FFI_TYPE_LONGDOUBLE };
- 
+-#ifdef ffi_type_longdouble
+-#undef ffi_type_longdouble
+-#endif
+-  /* This is already defined on OSX */
+-ffi_type ffi_type_longdouble = { sizeof(long double), LONGDOUBLE_ALIGN,
+-                                 FFI_TYPE_LONGDOUBLE };
+-
 -ffi_type ffi_type_pointer = { sizeof(void *), VOID_P_ALIGN, FFI_TYPE_POINTER };
 -
  /*---------------- EOF ----------------*/

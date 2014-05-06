@@ -27,9 +27,9 @@ Acknowledgements
 This work draws on the groundwork provided by `Kivy's iOS packaging tools.`_
 
 The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
-`Ray Wenderlich's`_ tutorials.
+`Ernesto García's`_ tutorials.
 
 .. _Kivy's iOS packaging tools.: https://github.com/kivy/kivy-ios
 
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
-.. _Ray Wenderlich's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
+.. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
