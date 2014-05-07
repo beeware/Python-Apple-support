@@ -52,7 +52,7 @@ working-dirs: download src build
 ###########################################################################
 
 # Clean the libffi project
-clean-libffi:
+clean-ffi:
 	rm -rf src/libffi-$(FFI_VERSION)
 	rm -rf build/ffi.framework
 
