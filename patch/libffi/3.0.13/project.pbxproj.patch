@@ -1,5 +1,5 @@
 --- old/libffi.xcodeproj/project.pbxproj	2013-03-16 19:19:39.000000000 +0800
-+++ new/libffi.xcodeproj/project.pbxproj	2014-05-07 08:45:46.000000000 +0800
++++ new/libffi.xcodeproj/project.pbxproj	2014-05-07 20:39:11.000000000 +0800
 @@ -6,36 +6,32 @@
  	objectVersion = 46;
  	objects = {
@@ -414,35 +414,49 @@
  				VALIDATE_PRODUCT = YES;
  			};
  			name = Release;
-@@ -517,11 +396,13 @@
- 					armv7,
- 				);
+@@ -512,16 +391,15 @@
+ 		F6F980C2147386130008F121 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+-				ARCHS = (
+-					armv6,
+-					armv7,
+-				);
++				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
  				DSTROOT = /tmp/ffi.dst;
 +				FRAMEWORK_VERSION = 3.0.13;
  				GCC_PRECOMPILE_PREFIX_HEADER = YES;
  				GCC_THUMB_SUPPORT = NO;
- 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
+-				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
  				OTHER_LDFLAGS = "-ObjC";
  				PRODUCT_NAME = ffi;
 +				PUBLIC_HEADERS_FOLDER_PATH = Headers;
  				SKIP_INSTALL = YES;
  			};
  			name = Debug;
-@@ -534,11 +415,13 @@
- 					armv7,
- 				);
+@@ -529,16 +407,15 @@
+ 		F6F980C3147386130008F121 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+-				ARCHS = (
+-					armv6,
+-					armv7,
+-				);
++				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
  				DSTROOT = /tmp/ffi.dst;
 +				FRAMEWORK_VERSION = 3.0.13;
  				GCC_PRECOMPILE_PREFIX_HEADER = YES;
  				GCC_THUMB_SUPPORT = NO;
- 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
+-				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
  				OTHER_LDFLAGS = "-ObjC";
  				PRODUCT_NAME = ffi;
 +				PUBLIC_HEADERS_FOLDER_PATH = Headers;
  				SKIP_INSTALL = YES;
  			};
  			name = Release;
-@@ -546,11 +429,11 @@
+@@ -546,11 +423,11 @@
  /* End XCBuildConfiguration section */
  
  /* Begin XCConfigurationList section */
