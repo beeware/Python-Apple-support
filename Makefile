@@ -4,8 +4,8 @@ PROJECTDIR=$(shell pwd)
 OSX_SDK_ROOT=$(shell xcrun --sdk macosx --show-sdk-path)
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=2.7.1
 FFI_VERSION=3.0.13
+PYTHON_VERSION=2.7.1
 
 # IPHONE build commands and flags
 IPHONE_ARMV7_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
@@ -91,12 +91,12 @@ clean-Python:
 	rm -rf build/python
 
 # Down original Python source code archive.
-downloads/Python-$(PYTHON_VERSION).tar.bz2:
-	curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tar.bz2 > downloads/Python-$(PYTHON_VERSION).tar.bz2
+downloads/Python-$(PYTHON_VERSION).tgz:
+	curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz
 
 # Unpack Python source archive into src working directory
-src/Python-$(PYTHON_VERSION): downloads/Python-$(PYTHON_VERSION).tar.bz2
-	tar xvf downloads/Python-$(PYTHON_VERSION).tar.bz2
+src/Python-$(PYTHON_VERSION): downloads/Python-$(PYTHON_VERSION).tgz
+	tar xvf downloads/Python-$(PYTHON_VERSION).tgz
 	mv Python-$(PYTHON_VERSION) src
 
 # Patch Python source with iOS patches
@@ -251,9 +251,9 @@ build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7
 	cd build/Python.framework && ln -fs Versions/Current/Resources
 	# Copy the pyconfig headers from the builds, and install the fat header.
 	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python$(basename $(PYTHON_VERSION))
-	cp build/python/ios-simulator/include/python$(basename $(PYTHON_VERSION))/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/pyconfig-simulator.h
-	cp build/python/ios-armv7/include/python$(basename $(PYTHON_VERSION))/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/pyconfig-armv7.h
-	cp patch/Python/$(PYTHON_VERSION)/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include
+	cp build/python/ios-simulator/include/python$(basename $(PYTHON_VERSION))/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python$(basename $(PYTHON_VERSION))/pyconfig-simulator.h
+	cp build/python/ios-armv7/include/python$(basename $(PYTHON_VERSION))/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python$(basename $(PYTHON_VERSION))/pyconfig-armv7.h
+	cp patch/Python/$(PYTHON_VERSION)/pyconfig.h build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/Resources/include/python$(basename $(PYTHON_VERSION))/
 	# Build a fat library with all targets included.
 	xcrun lipo -create -output build/Python.framework/Versions/Current/Python build/python/ios-simulator/Python build/python/ios-armv7/Python build/python/ios-armv7s/Python
 	cd build/Python.framework && ln -fs Versions/Current/Python
@@ -264,11 +264,19 @@ env:
 	# PYTHON_VERSION $(PYTHON_VERSION)
 	# FFI_VERSION $(FFI_VERSION)
 	# OSX_SDK_ROOT $(OSX_SDK_ROOT)
+
 	# IPHONE_ARMV7_SDK_ROOT $(IPHONE_ARMV7_SDK_ROOT)
 	# IPHONE_ARMV7_CC $(IPHONE_ARMV7_CC)
 	# IPHONE_ARMV7_LD $(IPHONE_ARMV7_LD)
 	# IPHONE_ARMV7_CFLAGS $(IPHONE_ARMV7_CFLAGS)
 	# IPHONE_ARMV7_LDFLAGS $(IPHONE_ARMV7_LDFLAGS)
+
+	# IPHONE_ARMV7S_SDK_ROOT $(IPHONE_ARMV7S_SDK_ROOT)
+	# IPHONE_ARMV7S_CC $(IPHONE_ARMV7S_CC)
+	# IPHONE_ARMV7S_LD $(IPHONE_ARMV7S_LD)
+	# IPHONE_ARMV7S_CFLAGS $(IPHONE_ARMV7S_CFLAGS)
+	# IPHONE_ARMV7S_LDFLAGS $(IPHONE_ARMV7S_LDFLAGS)
+
 	# IPHONE_SIMULATOR_SDK_ROOT $(IPHONE_SIMULATOR_SDK_ROOT)
 	# IPHONE_SIMULATOR_CC $(IPHONE_SIMULATOR_CC)
 	# IPHONE_SIMULATOR_LD $(IPHONE_SIMULATOR_LD)
