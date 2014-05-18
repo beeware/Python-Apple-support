@@ -2,11 +2,10 @@ Python.framework
 ================
 
 This is a meta-package for building a version of Python that can be embedded
-into an iOS project, and a cookiecutter template for such a project.
+into an iOS project.
 
-It works by downloading, patching, and building a static
-libffi.a and libPython.a, and packaging them both in fat-binary iOS Framework
-format.
+It works by downloading, patching, and building a fat binary static libffi.a
+and libPython.a, and packaging them both in iOS Framework format.
 
 The binaries support the `$(ARCHS_STANDARD_32_BIT)` set - that is, armv7 and
 armv7s. This should enable the code to run on iPhone 3GS, 4, 4s, 5 and 5s.
