@@ -35,6 +35,10 @@ repository.
 Quickstart
 ----------
 
+Pre-built versions of the frameworks can be `downloaded`_, and added to
+your iOS project.
+
+Alternatively, to build
 Download/clone this repository, and then in the root directory, run:
 
     $ make
@@ -48,6 +52,8 @@ This should:
 The build products will be in the `build` directory. You'll need to add
 **all** these frameworks (not just Python.framework) to your project.
 
+.. downloaded:
+
 Acknowledgements
 ----------------
 
@@ -57,6 +63,5 @@ The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
 `Ernesto García's`_ tutorials.
 
 .. _Kivy's iOS packaging tools.: https://github.com/kivy/kivy-ios
-
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
 .. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
