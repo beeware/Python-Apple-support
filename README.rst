@@ -38,8 +38,8 @@ Quickstart
 Pre-built versions of the frameworks can be `downloaded`_, and added to
 your iOS project.
 
-Alternatively, to build
-Download/clone this repository, and then in the root directory, run:
+Alternatively, to build the frameworks on your own, download/clone this
+repository, and then in the root directory, and run:
 
     $ make
 
