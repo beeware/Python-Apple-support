@@ -7,26 +7,26 @@ into an iOS project.
 It works by downloading, patching, and building a fat binary static libffi.a
 and libPython.a, and packaging them both in iOS Framework format.
 
-The binaries support the `$(ARCHS_STANDARD_32_BIT)` set - that is, armv7 and
+The binaries support the ``$(ARCHS_STANDARD_32_BIT)`` set - that is, armv7 and
 armv7s. This should enable the code to run on:
 
-    * iPhone
-        - iPhone 3GS,
-        - iPhone 4
-        - iPhone 4s
-        - iPhone 5
-        - iPhone 5s
-    * iPad
-        - iPad 2
-        - iPad (3rd gen)
-        - iPad (4th gen)
-        - iPad Air
-    * iPad Mini
-        - iPad Mini (1st gen)
-        - iPad Mini (2nd gen)
-    * iPod Touch
-        - iPod Touch (4th gen)
-        - iPod Touch (5th gen)
+* iPhone
+  - iPhone 3GS,
+  - iPhone 4
+  - iPhone 4s
+  - iPhone 5
+  - iPhone 5s
+* iPad
+  - iPad 2
+  - iPad (3rd gen)
+  - iPad (4th gen)
+  - iPad Air
+* iPad Mini
+  - iPad Mini (1st gen)
+  - iPad Mini (2nd gen)
+* iPod Touch
+  - iPod Touch (4th gen)
+  - iPod Touch (5th gen)
 
 This repository branch builds a packaged version of **Python 2.7.1**.
 Other Python versions are available by cloning other branches of the main
