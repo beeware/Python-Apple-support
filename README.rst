@@ -52,7 +52,7 @@ This should:
 The build products will be in the `build` directory. You'll need to add
 **all** these frameworks (not just Python.framework) to your project.
 
-.. downloaded:
+.. downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b1/Python-2.7.1-iOS-support.b1.tar.gz
 
 Acknowledgements
 ----------------
