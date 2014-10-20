@@ -7,6 +7,10 @@ into an iOS project.
 It works by downloading, patching, and building a fat binary static libffi.a
 and libPython.a, and packaging them both in iOS Framework format.
 
+The ``site-packages`` has the `Rubicon Objective-C`_ library pre-installed.
+This library enables you to have direct access to the iOS system libraries
+from within the Python environment.
+
 The binaries support the ``$(ARCHS_STANDARD_32_BIT)`` set - that is, armv7 and
 armv7s. This should enable the code to run on:
 
@@ -52,7 +56,13 @@ This should:
 The build products will be in the `build` directory. You'll need to add
 **all** these frameworks (not just Python.framework) to your project.
 
-.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b1/Python-2.7.1-iOS-support.b1.tar.gz
+.. note:: Xcode version compatibility
+
+   At this time, the libraries only compile work with Xcode 5.1.1 and
+   earlier. See `this ticket`_ for details of a workaround if you need
+   to have Xcode 6 installed on your machine.
+
+.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b2/Python-2.7.1-iOS-support.b2.tar.gz
 
 Acknowledgements
 ----------------
@@ -65,3 +75,5 @@ The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
 .. _Kivy's iOS packaging tools.: https://github.com/kivy/kivy-ios
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
 .. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
+.. _Rubicon Objective-C: http://github.com/pybee/rubicon-objc
+.. _this ticket: https://github.com/pybee/Python-iOS-template/issues/3

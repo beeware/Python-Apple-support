@@ -6,6 +6,7 @@ OSX_SDK_ROOT=$(shell xcrun --sdk macosx --show-sdk-path)
 # Version of packages that will be compiled by this meta-package
 FFI_VERSION=3.0.13
 PYTHON_VERSION=2.7.1
+RUBICON_VERSION=0.1.2
 
 # IPHONE build commands and flags
 IPHONE_ARMV7_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
@@ -79,6 +80,23 @@ build/ffi.framework: src/libffi-$(FFI_VERSION)
 	cd src/libffi-$(FFI_VERSION) && python generate-ios-source-and-headers.py
 	cd src/libffi-$(FFI_VERSION) && xcodebuild -project libffi.xcodeproj -target "Framework" -configuration Release -sdk iphoneos$(SDKVER) OTHER_CFLAGS="-no-integrated-as"
 	cp -a src/libffi-$(FFI_VERSION)/build/Release-universal/ffi.framework build
+
+###########################################################################
+# rubicon-objc
+###########################################################################
+
+# Clean the libffi project
+clean-rubicon-objc:
+	rm -rf src/rubicon-objc-$(RUBICON_VERSION)
+
+# Down original librubicon-objc source code archive.
+downloads/rubicon-objc-$(RUBICON_VERSION).tar.gz:
+	curl -L https://github.com/pybee/rubicon-objc/archive/v$(RUBICON_VERSION).tar.gz > downloads/rubicon-objc-$(RUBICON_VERSION).tar.gz
+
+# Unpack rubicon-objc source archive into src working directory
+src/rubicon-objc-$(RUBICON_VERSION): downloads/rubicon-objc-$(RUBICON_VERSION).tar.gz
+	tar xvf downloads/rubicon-objc-$(RUBICON_VERSION).tar.gz
+	mv rubicon-objc-$(RUBICON_VERSION) src
 
 ###########################################################################
 # Python
@@ -234,7 +252,7 @@ build/python/ios-armv7s/Python: src/Python-$(PYTHON_VERSION)/build
 	cd build/python/ios-armv7s/Headers && mv ../include/python$(basename $(PYTHON_VERSION))/* .
 	cd build/python/ios-armv7s/Headers && mv pyconfig.h ../include/python$(basename $(PYTHON_VERSION))
 
-build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7/Python build/python/ios-armv7s/Python
+build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7/Python build/python/ios-armv7s/Python src/rubicon-objc-$(RUBICON_VERSION)
 	# Create the framework directory from the compiled resrouces
 	mkdir -p build/Python.framework/Versions/$(basename $(PYTHON_VERSION))/
 	cd build/Python.framework/Versions && ln -fs $(basename $(PYTHON_VERSION)) Current
@@ -253,6 +271,8 @@ build/Python.framework: build/python/ios-simulator/Python build/python/ios-armv7
 	# Build a fat library with all targets included.
 	xcrun lipo -create -output build/Python.framework/Versions/Current/Python build/python/ios-simulator/Python build/python/ios-armv7/Python build/python/ios-armv7s/Python
 	cd build/Python.framework && ln -fs Versions/Current/Python
+	# Install Rubicon into site packages.
+	cd src && cp -r rubicon-objc-$(RUBICON_VERSION)/rubicon ../build/Python.framework/Resources/lib/python$(basename $(PYTHON_VERSION))/site-packages/
 	# Clean up temporary build dirs
 	rm -rf build/python
 
