@@ -12,22 +12,22 @@ RUBICON_VERSION=0.1.2
 IPHONE_ARMV7_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
 IPHONE_ARMV7_CC=$(shell xcrun -find -sdk iphoneos clang)
 IPHONE_ARMV7_LD=$(shell xcrun -find -sdk iphoneos ld)
-IPHONE_ARMV7_CFLAGS=-arch armv7 -pipe -no-cpp-precomp -isysroot $(IPHONE_ARMV7_SDK_ROOT) -miphoneos-version-min=5.1.1
-IPHONE_ARMV7_LDFLAGS=-arch armv7 -isysroot $(IPHONE_ARMV7_SDK_ROOT) -miphoneos-version-min=5.1.1
+IPHONE_ARMV7_CFLAGS=-arch armv7 -pipe -no-cpp-precomp -isysroot $(IPHONE_ARMV7_SDK_ROOT) -miphoneos-version-min=6.0
+IPHONE_ARMV7_LDFLAGS=-arch armv7 -isysroot $(IPHONE_ARMV7_SDK_ROOT) -miphoneos-version-min=6.0
 
 # IPHONE build commands and flags
 IPHONE_ARMV7S_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
 IPHONE_ARMV7S_CC=$(shell xcrun -find -sdk iphoneos clang)
 IPHONE_ARMV7S_LD=$(shell xcrun -find -sdk iphoneos ld)
-IPHONE_ARMV7S_CFLAGS=-arch armv7s -pipe -no-cpp-precomp -isysroot $(IPHONE_ARMV7S_SDK_ROOT) -miphoneos-version-min=5.1.1
-IPHONE_ARMV7S_LDFLAGS=-arch armv7s -isysroot $(IPHONE_ARMV7S_SDK_ROOT) -miphoneos-version-min=5.1.1
+IPHONE_ARMV7S_CFLAGS=-arch armv7s -pipe -no-cpp-precomp -isysroot $(IPHONE_ARMV7S_SDK_ROOT) -miphoneos-version-min=6.0
+IPHONE_ARMV7S_LDFLAGS=-arch armv7s -isysroot $(IPHONE_ARMV7S_SDK_ROOT) -miphoneos-version-min=6.0
 
 # IPHONE_SIMULATOR build commands and flags
 IPHONE_SIMULATOR_SDK_ROOT=$(shell xcrun --sdk iphonesimulator --show-sdk-path)
 IPHONE_SIMULATOR_CC=$(shell xcrun -find -sdk iphonesimulator clang)
 IPHONE_SIMULATOR_LD=$(shell xcrun -find -sdk iphonesimulator ld)
-IPHONE_SIMULATOR_CFLAGS=-arch i386 -pipe -no-cpp-precomp -isysroot $(IPHONE_SIMULATOR_SDK_ROOT) -miphoneos-version-min=5.1.1
-IPHONE_SIMULATOR_LDFLAGS=-arch i386 -isysroot $(IPHONE_SIMULATOR_SDK_ROOT) -miphoneos-version-min=5.1.1
+IPHONE_SIMULATOR_CFLAGS=-arch i386 -pipe -no-cpp-precomp -isysroot $(IPHONE_SIMULATOR_SDK_ROOT) -miphoneos-version-min=6.0
+IPHONE_SIMULATOR_LDFLAGS=-arch i386 -isysroot $(IPHONE_SIMULATOR_SDK_ROOT) -miphoneos-version-min=6.0
 
 
 all: working-dirs build/ffi.framework build/Python.framework
@@ -77,6 +77,8 @@ src/libffi-$(FFI_VERSION): downloads/libffi-$(FFI_VERSION).tar.gz
 build/ffi.framework: src/libffi-$(FFI_VERSION)
 	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/ffi-sysv.S.patch
 	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/project.pbxproj.patch
+	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/build-ios.sh.patch
+	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/generate-ios-source-and-headers.py.patch
 	cd src/libffi-$(FFI_VERSION) && python generate-ios-source-and-headers.py
 	cd src/libffi-$(FFI_VERSION) && xcodebuild -project libffi.xcodeproj -target "Framework" -configuration Release -sdk iphoneos$(SDKVER) OTHER_CFLAGS="-no-integrated-as"
 	cp -a src/libffi-$(FFI_VERSION)/build/Release-universal/ffi.framework build

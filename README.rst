@@ -56,13 +56,7 @@ This should:
 The build products will be in the `build` directory. You'll need to add
 **all** these frameworks (not just Python.framework) to your project.
 
-.. note:: Xcode version compatibility
-
-   At this time, the libraries only compile work with Xcode 5.1.1 and
-   earlier. See `this ticket`_ for details of a workaround if you need
-   to have Xcode 6 installed on your machine.
-
-.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b2/Python-2.7.1-iOS-support.b2.tar.gz
+.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b3/Python-2.7.1-iOS-support.b3.tar.gz
 
 Acknowledgements
 ----------------
@@ -76,4 +70,3 @@ The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
 .. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
 .. _Rubicon Objective-C: http://github.com/pybee/rubicon-objc
-.. _this ticket: https://github.com/pybee/Python-iOS-template/issues/3
