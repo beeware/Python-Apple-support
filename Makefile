@@ -4,8 +4,8 @@ PROJECTDIR=$(shell pwd)
 OSX_SDK_ROOT=$(shell xcrun --sdk macosx --show-sdk-path)
 
 # Version of packages that will be compiled by this meta-package
-FFI_VERSION=3.0.13
-PYTHON_VERSION=2.7.1
+FFI_VERSION=3.1
+PYTHON_VERSION=3.4.2
 RUBICON_VERSION=0.1.2
 
 # IPHONE build commands and flags
@@ -30,7 +30,8 @@ IPHONE_SIMULATOR_CFLAGS=-arch i386 -pipe -no-cpp-precomp -isysroot $(IPHONE_SIMU
 IPHONE_SIMULATOR_LDFLAGS=-arch i386 -isysroot $(IPHONE_SIMULATOR_SDK_ROOT) -miphoneos-version-min=6.0
 
 
-all: working-dirs build/ffi.framework build/Python.framework
+#all: working-dirs build/ffi.framework build/Python.framework
+all: working-dirs build/ffi.framework
 
 # Clean all builds
 clean:
@@ -75,13 +76,23 @@ src/libffi-$(FFI_VERSION): downloads/libffi-$(FFI_VERSION).tar.gz
 
 # Patch and build the framework
 build/ffi.framework: src/libffi-$(FFI_VERSION)
-	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/ffi-sysv.S.patch
-	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/project.pbxproj.patch
-	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/build-ios.sh.patch
-	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/generate-ios-source-and-headers.py.patch
-	cd src/libffi-$(FFI_VERSION) && python generate-ios-source-and-headers.py
-	cd src/libffi-$(FFI_VERSION) && xcodebuild -project libffi.xcodeproj -target "Framework" -configuration Release -sdk iphoneos$(SDKVER) OTHER_CFLAGS="-no-integrated-as"
-	cp -a src/libffi-$(FFI_VERSION)/build/Release-universal/ffi.framework build
+	cd src/libffi-$(FFI_VERSION) && patch -p1 -N < ../../patch/libffi/generate-darwin-source-and-headers.py.patch
+	cd src/libffi-$(FFI_VERSION) && python generate-darwin-source-and-headers.py --only-ios
+	# Build all required targets.
+	cd src/libffi-$(FFI_VERSION)/build_iphoneos-armv7 && make
+	cd src/libffi-$(FFI_VERSION)/build_iphoneos-arm64 && make
+	cd src/libffi-$(FFI_VERSION)/build_iphonesimulator-i386 && make
+	cd src/libffi-$(FFI_VERSION)/build_iphonesimulator-x86_64 && make
+	# Copy the headers into a single directory
+	mkdir -p build/ffi.framework/Versions/${FFI_VERSION}/Headers
+	cp src/libffi-$(FFI_VERSION)/darwin_common/include/* build/ffi.framework/Versions/${FFI_VERSION}/Headers
+	cp src/libffi-$(FFI_VERSION)/darwin_ios/include/* build/ffi.framework/Versions/${FFI_VERSION}/Headers
+	# Make the fat binary
+	xcrun lipo -create -output build/ffi.framework/Versions/$(FFI_VERSION)/ffi src/libffi-$(FFI_VERSION)/build_iphoneos-arm64/.libs/libffi.a src/libffi-$(FFI_VERSION)/build_iphoneos-armv7/.libs/libffi.a src/libffi-$(FFI_VERSION)/build_iphonesimulator-i386/.libs/libffi.a src/libffi-$(FFI_VERSION)/build_iphonesimulator-x86_64/.libs/libffi.a
+	# Link the Current, Headers and binary.
+	cd build/ffi.framework/Versions && ln -si ${FFI_VERSION} Current
+	cd build/ffi.framework && ln -si Versions/Current/Headers
+	cd build/ffi.framework && ln -si Versions/Current/ffi
 
 ###########################################################################
 # rubicon-objc

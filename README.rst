@@ -32,7 +32,7 @@ armv7s. This should enable the code to run on:
     - iPod Touch (4th gen)
     - iPod Touch (5th gen)
 
-This repository branch builds a packaged version of **Python 2.7.1**.
+This repository branch builds a packaged version of **Python 3.4.2**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -56,7 +56,7 @@ This should:
 The build products will be in the `build` directory. You'll need to add
 **all** these frameworks (not just Python.framework) to your project.
 
-.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/2.7.1-b3/Python-2.7.1-iOS-support.b3.tar.gz
+.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b1/Python-3.4.2-iOS-support.b1.tar.gz
 
 Acknowledgements
 ----------------
