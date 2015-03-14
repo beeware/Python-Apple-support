@@ -11,20 +11,21 @@ The ``site-packages`` has the `Rubicon Objective-C`_ library pre-installed.
 This library enables you to have direct access to the iOS system libraries
 from within the Python environment.
 
-The binaries support the ``$(ARCHS_STANDARD_32_BIT)`` set - that is, armv7 and
-armv7s. This should enable the code to run on:
+The binaries support the ``$(ARCHS_STANDARD)`` set - that is, armv7 and
+arm64. This should enable the code to run on:
 
 * iPhone
-    - iPhone 3GS,
-    - iPhone 4
     - iPhone 4s
     - iPhone 5
     - iPhone 5s
+    - iPhone 6
+    - iPhone 6 Plus
 * iPad
     - iPad 2
     - iPad (3rd gen)
     - iPad (4th gen)
     - iPad Air
+    - iPad retina
 * iPad Mini
     - iPad Mini (1st gen)
     - iPad Mini (2nd gen)
@@ -53,8 +54,7 @@ This should:
 2. Patch them as required for iOS compatibility
 3. Build the packages as iOS frameworks.
 
-The build products will be in the `build` directory. You'll need to add
-**all** these frameworks (not just Python.framework) to your project.
+The build products will be in the `build` directory.
 
 .. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b1/Python-3.4.2-iOS-support.b1.tar.gz
 
