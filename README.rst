@@ -7,10 +7,6 @@ into an iOS project.
 It works by downloading, patching, and building a fat binary OpenSSL and
 Python, and packaging them both in iOS Framework format.
 
-The ``site-packages`` has the `Rubicon Objective-C`_ library pre-installed.
-This library enables you to have direct access to the iOS system libraries
-from within the Python environment.
-
 The binaries support the ``$(ARCHS_STANDARD)`` set - that is, armv7 and
 arm64. This should enable the code to run on:
 
@@ -66,4 +62,3 @@ The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
 
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
 .. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
-.. _Rubicon Objective-C: http://github.com/pybee/rubicon-objc
