@@ -13056,8 +13056,8 @@ diff -Nru orig/Lib/webbrowser.py modified/Lib/webbrowser.py
  # platform are, allow user to override them with the BROWSER variable.
 diff -Nru orig/Modules/Setup.embedded modified/Modules/Setup.embedded
 --- orig/Modules/Setup.embedded	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Modules/Setup.embedded	2015-04-27 14:10:46.000000000 +0800
-@@ -0,0 +1,82 @@
++++ modified/Modules/Setup.embedded	2015-06-28 15:00:41.000000000 +0800
+@@ -0,0 +1,91 @@
 +#####################################################################
 +# Static compilation instructions for all binary modules.
 +#####################################################################
@@ -13107,6 +13107,16 @@ diff -Nru orig/Modules/Setup.embedded modified/Modules/Setup.embedded
 +    -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
 +resource resource.c
 +select selectmodule.c
++_sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 \
++    _sqlite/cache.c \
++    _sqlite/connection.c \
++    _sqlite/cursor.c \
++    _sqlite/microprotocols.c \
++    _sqlite/module.c \
++    _sqlite/prepare_protocol.c \
++    _sqlite/row.c \
++    _sqlite/statement.c \
++    _sqlite/util.c
 +syslog syslogmodule.c
 +termios termios.c
 +time timemodule.c
@@ -13130,7 +13140,6 @@ diff -Nru orig/Modules/Setup.embedded modified/Modules/Setup.embedded
 +#_dbm _dbmmodule.c
 +#_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
 +#_lzma
-+#_sqlite3
 +#_ssl _ssl.c \
 +#   -I$(SSL)/include -I$(SSL)/include/openssl \
 +#   -L$(SSL)/lib -lssl -lcrypto
@@ -38763,7 +38772,7 @@ diff -Nru orig/Modules/_ctypes/libffi_ios_aarch64/raw_api.c modified/Modules/_ct
 +#endif /* !FFI_NO_RAW_API */
 diff -Nru orig/Modules/makesetup modified/Modules/makesetup
 --- orig/Modules/makesetup	2015-02-03 19:49:04.000000000 +0800
-+++ modified/Modules/makesetup	2015-04-27 13:32:33.000000000 +0800
++++ modified/Modules/makesetup	2015-06-28 14:39:04.000000000 +0800
 @@ -128,7 +128,7 @@
  
  		# Output DEFS in reverse order so first definition overrides
@@ -38773,7 +38782,22 @@ diff -Nru orig/Modules/makesetup modified/Modules/makesetup
  		'include '*)	DEFS="$line$NL$DEFS"; continue;;
  		'*noobjects*')
  			case $noobjects in
-@@ -176,6 +176,7 @@
+@@ -156,9 +156,12 @@
+ 			esac
+ 			case $arg in
+ 			-framework)	libs="$libs $arg"; skip=libs;
+-				        # OSX/OSXS/Darwin framework link cmd
++				        # OSX/iOS/Darwin framework
+ 					;;
+-			-[IDUCfF]*)	cpps="$cpps $arg";;
++			-F*)	libs="$libs $arg"; skip=libs;
++				        # OSX/iOS/Darwin framework directory
++					;;
++			-[IDUCf]*)	cpps="$cpps $arg";;
+ 			-Xcompiler)	skip=cpps;;
+ 			-Xlinker)	libs="$libs $arg"; skip=libs;;
+ 			-rpath)		libs="$libs $arg"; skip=libs;;
+@@ -176,6 +179,7 @@
  			*.c++)		srcs="$srcs $arg";;
  			*.cxx)		srcs="$srcs $arg";;
  			*.cpp)		srcs="$srcs $arg";;
@@ -38781,7 +38805,7 @@ diff -Nru orig/Modules/makesetup modified/Modules/makesetup
  			\$*)		libs="$libs $arg"
  					cpps="$cpps $arg";;
  			*.*)		echo 1>&2 "bad word $arg in $line"
-@@ -205,6 +206,7 @@
+@@ -205,6 +209,7 @@
  			*.C)   obj=`basename $src .C`.o; cc='$(CXX)';;
  			*.cxx) obj=`basename $src .cxx`.o; cc='$(CXX)';;
  			*.cpp) obj=`basename $src .cpp`.o; cc='$(CXX)';;
@@ -38789,7 +38813,7 @@ diff -Nru orig/Modules/makesetup modified/Modules/makesetup
  			*.m)   obj=`basename $src .m`.o; cc='$(CC)';; # Obj-C
  			*)     continue;;
  			esac
-@@ -266,7 +268,7 @@
+@@ -266,7 +271,7 @@
  	*)  sed -e "
  		1i$NL/* Generated automatically from $config by makesetup. */
  		/MARKER 1/i$NL$EXTDECLS
@@ -47846,7 +47870,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch modified/Tools/iOS-te
 \ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/main.m
 --- orig/Tools/iOS-test/iOS-test/main.m	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test/main.m	2015-05-04 13:59:48.000000000 +0800
++++ modified/Tools/iOS-test/iOS-test/main.m	2015-06-27 21:42:56.000000000 +0800
 @@ -0,0 +1,119 @@
 +//
 +//  main.m
@@ -47898,7 +47922,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/m
 +        char *test_args[] = {
 +            "-j", "1",
 +            "-u", "all,-audio,-curses,-largefile,-subprocess,-gui",
-+            "-v",
++//            "-v",
 +            "-W",
 +//            "test_bytes",  // ctypes related; PyBytes_FromFormat
 +//            "test_ctypes",  // DL loading?
@@ -47911,8 +47935,8 @@ diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/m
 +
 +//            "test_httpservers",  //  # desktop
 +//            "test_logging",  // # desktop
-+//            "test_mailcap",  //  # desktop
-+//            "test_socket",  // # desktop
++//            "test_nntplib", // #desktop
++            "test_socket",  // # desktop
 +//            "test_socketserver",  // # desktop
 +//            "test_warnings",  // # desktop
 +        };
@@ -48549,8 +48573,8 @@ diff -Nru orig/configure.ac modified/configure.ac
  echo "creating Makefile" >&AS_MESSAGE_FD
 diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 --- orig/iOS/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/Makefile	2015-05-04 15:40:56.000000000 +0800
-@@ -0,0 +1,229 @@
++++ modified/iOS/Makefile	2015-06-28 13:59:34.000000000 +0800
+@@ -0,0 +1,230 @@
 +# This is a "Meta-makefile" for building an iOS-compatible Python.framework.
 +# It invokes the base makefile multiple times, once for each hardware platform
 +# that needs to be supported; then it combines the products into a single "fat"
@@ -48730,8 +48754,9 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +	# The only headers that change between versions is pyconfig.h; copy each supported version...
 +	cp build/ios-simulator-i386/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-i386.h
 +	cp build/ios-simulator-x86_64/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-x86_64.h
++	# ARMv7 and ARMv7S headers are the same; don't copy this one.
++	# cp build/ios-armv7s/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-armv7s.h
 +	cp build/ios-armv7/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-armv7.h
-+	cp build/ios-armv7s/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-armv7s.h
 +	cp build/ios-arm64/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-arm64.h
 +	# ... and then copy in a master pyconfig.h to unify them all.
 +	cp include/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig.h
@@ -48782,8 +48807,8 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +	cd $(FRAMEWORK_DIR) && ln -fs Versions/Current/Python
 diff -Nru orig/iOS/README modified/iOS/README
 --- orig/iOS/README	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/README	2015-05-04 14:36:22.000000000 +0800
-@@ -0,0 +1,131 @@
++++ modified/iOS/README	2015-05-05 08:38:46.000000000 +0800
+@@ -0,0 +1,165 @@
 +====================
 +Python on iOS README
 +====================
@@ -48805,25 +48830,59 @@ diff -Nru orig/iOS/README modified/iOS/README
 +it will use XCode utilities to identify the location of compilers,
 +resource directories, and so on.
 +
-+The build process will configure and build Python 4 times, producing:
++The build process will configure and build Python 6 times, producing:
 +
 +    * A "host" version of Python
 +    * A version of Python compiled for the x86-64 iOS Simulator
-+    * A version of Python compiled for ARMv7 iOS devices
++    * A version of Python compiled for the i386 iOS Simulator
 +    * A version of Python compiled for ARM64 iOS devices
++    * A version of Python compiled for ARMv7s iOS devices
++    * A version of Python compiled for ARMv7 iOS devices
 +
 +Build products will be "installed" into iOS/build. The built products will
 +then be combined into a single "fat" ``Python.framework`` that can be added to
 +an XCode project. The resulting framework will be located in the root
 +directory of the Python source tree.
 +
-+A ``make clean`` target also exists to clean out all build products.
++A ``make clean`` target also exists to clean out all build products;
++``make distclean`` will clean out all user-specific files from the test and
++sample projects.
++
++Test instructions
++-----------------
++
++The ``Tools`` directory contains an ``iOS-Test`` project that enables you to
++run  the Python regression test suite. When you run ``make`` in the iOS
++directory,  a copy of ``Python.framework`` will also be installed into this
++test project.
++
++To run the test project, load the project into XCode, and run (either on a
++device or in the simulator). The test suite takes around 20 minutes to run on
++an iPhone5S.
++
++.. note:: If you run the test project in debug mode, the XCode debugger will
++   stop whenever a signal is raised. The Python regression test suite checks
++   a number of signal handlers, and the test suite will stop mid-execution
++   when this occurs.
++
++   To disable this signal handling, set a breakpoint at the start of
++   ``main.c``; when execution stops at the breakpoint, run the following
++   commands in the debugger (at the ``(lldb)`` prompt in the console log
++   window)::
++
++       process handle SIGPIPE -n true -p true -s false
++       process handle SIGINT -n true -p true -s false
++       process handle SIGXFSZ -n true -p true -s false
++       process handle SIGUSR1 -n true -p true -s false
++       process handle SIGUSR2 -n true -p true -s false
++
++   Unfortunately, this has to be done every time the test suite is executed.
 +
 +iOS-specific details
 +====================
 +
-+* ``import sys; sys.platform`` will report as "ios", regardless of whether you are on
-+  a simulator or a real platform.
++* ``import sys; sys.platform`` will report as "ios", regardless of whether you
++  are on a simulator or a real platform.
 +
 +* ``import platform; platform.machine()`` will return the device identifier.
 +  For example, an iPhone 5S will return "iPhone6,2"
@@ -48849,7 +48908,7 @@ diff -Nru orig/iOS/README modified/iOS/README
 +   - ``wsgiref``
 +
 +* Due to limitations in using dynamic loading on iOS, binary Python modules must be
-+  statically-linked into the exectuable. The framework package produced by the iOS
++  statically-linked into the executable. The framework package produced by the iOS
 +  ``make install`` statically links all the supported standard library modules.
 +  If you have a third-party Python binary module, you'll need to incorporate the
 +  source files for that module into the sources for your own app.
@@ -49600,7 +49659,7 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +}
 diff -Nru orig/iOS/include/pyconfig.h modified/iOS/include/pyconfig.h
 --- orig/iOS/include/pyconfig.h	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/include/pyconfig.h	2015-03-14 21:42:14.000000000 +0800
++++ modified/iOS/include/pyconfig.h	2015-05-05 08:36:22.000000000 +0800
 @@ -0,0 +1,15 @@
 +#ifdef __arm__
 +#include "pyconfig-armv7.h"
