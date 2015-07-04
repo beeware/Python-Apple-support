@@ -28,9 +28,9 @@ diff -Nru orig/Include/datetime.h modified/Include/datetime.h
  #define PyDate_CheckExact(op) (Py_TYPE(op) == PyDateTimeAPI->DateType)
 diff -Nru orig/Lib/ctypes/test/test_as_parameter.py modified/Lib/ctypes/test/test_as_parameter.py
 --- orig/Lib/ctypes/test/test_as_parameter.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_as_parameter.py	2015-04-27 21:02:02.000000000 +0800
++++ modified/Lib/ctypes/test/test_as_parameter.py	2015-06-28 21:35:59.000000000 +0800
 @@ -1,9 +1,11 @@
-+import sys
++import os
  import unittest
  from ctypes import *
  from ctypes.test import need_symbol
@@ -38,7 +38,7 @@ diff -Nru orig/Lib/ctypes/test/test_as_parameter.py modified/Lib/ctypes/test/tes
  
 -dll = CDLL(_ctypes_test.__file__)
 +
-+dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
  try:
      CALLBACK_FUNCTYPE = WINFUNCTYPE
@@ -52,13 +52,12 @@ diff -Nru orig/Lib/ctypes/test/test_as_parameter.py modified/Lib/ctypes/test/tes
          return param
 diff -Nru orig/Lib/ctypes/test/test_bitfields.py modified/Lib/ctypes/test/test_bitfields.py
 --- orig/Lib/ctypes/test/test_bitfields.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_bitfields.py	2015-04-27 21:02:13.000000000 +0800
-@@ -1,11 +1,13 @@
++++ modified/Lib/ctypes/test/test_bitfields.py	2015-06-28 21:36:06.000000000 +0800
+@@ -1,11 +1,12 @@
  from ctypes import *
  from ctypes.test import need_symbol
 -import unittest
  import os
-+import sys
 +import unittest
  
  import ctypes
@@ -68,12 +67,12 @@ diff -Nru orig/Lib/ctypes/test/test_bitfields.py modified/Lib/ctypes/test/test_b
  class BITS(Structure):
      _fields_ = [("A", c_int, 1),
                  ("B", c_int, 2),
-@@ -25,7 +27,7 @@
+@@ -25,7 +26,7 @@
                  ("R", c_short, 6),
                  ("S", c_short, 7)]
  
 -func = CDLL(_ctypes_test.__file__).unpack_bitfields
-+func = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0])).unpack_bitfields
++func = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE'])).unpack_bitfields
  func.argtypes = POINTER(BITS), c_char
  
  ##for n in "ABCDEFGHIMNOPQRS":
@@ -90,9 +89,9 @@ diff -Nru orig/Lib/ctypes/test/test_buffers.py modified/Lib/ctypes/test/test_buf
      def test_buffer(self):
 diff -Nru orig/Lib/ctypes/test/test_callbacks.py modified/Lib/ctypes/test/test_callbacks.py
 --- orig/Lib/ctypes/test/test_callbacks.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_callbacks.py	2015-04-27 21:02:35.000000000 +0800
++++ modified/Lib/ctypes/test/test_callbacks.py	2015-06-28 21:36:18.000000000 +0800
 @@ -1,8 +1,10 @@
-+import sys
++import os
  import unittest
  from ctypes import *
  from ctypes.test import need_symbol
@@ -107,7 +106,7 @@ diff -Nru orig/Lib/ctypes/test/test_callbacks.py modified/Lib/ctypes/test/test_c
      def test_integrate(self):
          # Derived from some then non-working code, posted by David Foster
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
          # The function prototype called by 'integrate': double func(double);
          CALLBACK = CFUNCTYPE(c_double, c_double)
@@ -116,7 +115,7 @@ diff -Nru orig/Lib/ctypes/test/test_callbacks.py modified/Lib/ctypes/test/test_c
          # Issue #8275: buggy handling of callback args under Win64
          # NOTE: should be run on release builds as well
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          CALLBACK = CFUNCTYPE(c_int, c_int, c_int, c_int, c_int, c_int)
          # All this function does is call the callback with its args squared
          func = dll._testfunc_cbk_reg_int
@@ -125,18 +124,18 @@ diff -Nru orig/Lib/ctypes/test/test_callbacks.py modified/Lib/ctypes/test/test_c
          # Issue #8275: buggy handling of callback args under Win64
          # NOTE: should be run on release builds as well
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          CALLBACK = CFUNCTYPE(c_double, c_double, c_double, c_double,
                               c_double, c_double)
          # All this function does is call the callback with its args squared
 diff -Nru orig/Lib/ctypes/test/test_cfuncs.py modified/Lib/ctypes/test/test_cfuncs.py
 --- orig/Lib/ctypes/test/test_cfuncs.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_cfuncs.py	2015-04-27 21:02:50.000000000 +0800
++++ modified/Lib/ctypes/test/test_cfuncs.py	2015-06-28 21:36:25.000000000 +0800
 @@ -1,17 +1,20 @@
  # A lot of failures in these tests on Mac OS X.
  # Byte order related?
  
-+import sys
++import os
  import unittest
  from ctypes import *
  from ctypes.test import need_symbol
@@ -146,7 +145,7 @@ diff -Nru orig/Lib/ctypes/test/test_cfuncs.py modified/Lib/ctypes/test/test_cfun
 +
  class CFunctions(unittest.TestCase):
 -    _dll = CDLL(_ctypes_test.__file__)
-+    _dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++    _dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
      def S(self):
          return c_longlong.in_dll(self._dll, "last_tf_arg_s").value
@@ -159,15 +158,15 @@ diff -Nru orig/Lib/ctypes/test/test_cfuncs.py modified/Lib/ctypes/test/test_cfun
  @need_symbol('WinDLL')
  class stdcallCFunctions(CFunctions):
 -    _dll = stdcall_dll(_ctypes_test.__file__)
-+    _dll = stdcall_dll(getattr(_ctypes_test, '__file__', sys.argv[0]))
++    _dll = stdcall_dll(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
  if __name__ == '__main__':
      unittest.main()
 diff -Nru orig/Lib/ctypes/test/test_checkretval.py modified/Lib/ctypes/test/test_checkretval.py
 --- orig/Lib/ctypes/test/test_checkretval.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_checkretval.py	2015-04-27 21:03:01.000000000 +0800
++++ modified/Lib/ctypes/test/test_checkretval.py	2015-06-28 21:36:10.000000000 +0800
 @@ -1,8 +1,10 @@
-+import sys
++import os
  import unittest
  
  from ctypes import *
@@ -182,54 +181,54 @@ diff -Nru orig/Lib/ctypes/test/test_checkretval.py modified/Lib/ctypes/test/test
  
          import _ctypes_test
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          self.assertEqual(42, dll._testfunc_p_p(42))
  
          dll._testfunc_p_p.restype = CHECKED
 diff -Nru orig/Lib/ctypes/test/test_funcptr.py modified/Lib/ctypes/test/test_funcptr.py
 --- orig/Lib/ctypes/test/test_funcptr.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_funcptr.py	2015-04-27 21:03:08.000000000 +0800
-@@ -1,4 +1,6 @@
++++ modified/Lib/ctypes/test/test_funcptr.py	2015-06-28 21:36:31.000000000 +0800
+@@ -1,4 +1,5 @@
 -import os, unittest
 +import os
-+import sys
 +import unittest
  from ctypes import *
  
  try:
-@@ -8,7 +10,10 @@
+@@ -8,7 +9,10 @@
      WINFUNCTYPE = CFUNCTYPE
  
  import _ctypes_test
 -lib = CDLL(_ctypes_test.__file__)
 +
 +
-+lib = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
 +
  
  class CFuncPtrTestCase(unittest.TestCase):
      def test_basic(self):
 diff -Nru orig/Lib/ctypes/test/test_functions.py modified/Lib/ctypes/test/test_functions.py
 --- orig/Lib/ctypes/test/test_functions.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_functions.py	2015-04-27 21:03:17.000000000 +0800
-@@ -7,7 +7,8 @@
++++ modified/Lib/ctypes/test/test_functions.py	2015-06-28 21:36:38.000000000 +0800
+@@ -7,7 +7,9 @@
  
  from ctypes import *
  from ctypes.test import need_symbol
 -import sys, unittest
++import os
 +import sys
 +import unittest
  
  try:
      WINFUNCTYPE
-@@ -16,15 +17,22 @@
+@@ -16,15 +18,22 @@
      WINFUNCTYPE = CFUNCTYPE
  
  import _ctypes_test
 -dll = CDLL(_ctypes_test.__file__)
 +
 +
-+dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  if sys.platform == "win32":
      windll = WinDLL(_ctypes_test.__file__)
  
@@ -248,9 +247,9 @@ diff -Nru orig/Lib/ctypes/test/test_functions.py modified/Lib/ctypes/test/test_f
      def test_mro(self):
 diff -Nru orig/Lib/ctypes/test/test_libc.py modified/Lib/ctypes/test/test_libc.py
 --- orig/Lib/ctypes/test/test_libc.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_libc.py	2015-04-27 21:03:25.000000000 +0800
++++ modified/Lib/ctypes/test/test_libc.py	2015-06-28 21:36:41.000000000 +0800
 @@ -1,14 +1,18 @@
-+import sys
++import os
  import unittest
  
  from ctypes import *
@@ -258,7 +257,7 @@ diff -Nru orig/Lib/ctypes/test/test_libc.py modified/Lib/ctypes/test/test_libc.p
  
 -lib = CDLL(_ctypes_test.__file__)
 +
-+lib = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
 +
  
  def three_way_cmp(x, y):
@@ -271,10 +270,10 @@ diff -Nru orig/Lib/ctypes/test/test_libc.py modified/Lib/ctypes/test/test_libc.p
          lib.my_sqrt.argtypes = c_double,
 diff -Nru orig/Lib/ctypes/test/test_parameters.py modified/Lib/ctypes/test/test_parameters.py
 --- orig/Lib/ctypes/test/test_parameters.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_parameters.py	2015-04-27 21:03:34.000000000 +0800
++++ modified/Lib/ctypes/test/test_parameters.py	2015-06-28 21:36:45.000000000 +0800
 @@ -1,6 +1,9 @@
 -import unittest, sys
-+import sys
++import os
 +import unittest
 +
  from ctypes.test import need_symbol
@@ -288,38 +287,39 @@ diff -Nru orig/Lib/ctypes/test/test_parameters.py modified/Lib/ctypes/test/test_
          from ctypes import CDLL, c_void_p, ArgumentError
  
 -        func = CDLL(_ctypes_test.__file__)._testfunc_p_p
-+        func = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))._testfunc_p_p
++        func = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))._testfunc_p_p
          func.restype = c_void_p
          # TypeError: has no from_param method
          self.assertRaises(TypeError, setattr, func, "argtypes", (object,))
 diff -Nru orig/Lib/ctypes/test/test_pickling.py modified/Lib/ctypes/test/test_pickling.py
 --- orig/Lib/ctypes/test/test_pickling.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_pickling.py	2015-04-27 21:03:50.000000000 +0800
++++ modified/Lib/ctypes/test/test_pickling.py	2015-06-28 21:36:49.000000000 +0800
 @@ -1,8 +1,11 @@
 -import unittest
  import pickle
-+import sys
++import os
 +import unittest
  from ctypes import *
  import _ctypes_test
 -dll = CDLL(_ctypes_test.__file__)
 +
 +
-+dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
  class X(Structure):
      _fields_ = [("a", c_int), ("b", c_double)]
 diff -Nru orig/Lib/ctypes/test/test_pointers.py modified/Lib/ctypes/test/test_pointers.py
 --- orig/Lib/ctypes/test/test_pointers.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_pointers.py	2015-04-27 21:03:59.000000000 +0800
-@@ -1,4 +1,5 @@
++++ modified/Lib/ctypes/test/test_pointers.py	2015-06-28 21:38:12.000000000 +0800
+@@ -1,4 +1,6 @@
 -import unittest, sys
++import os
 +import sys
 +import unittest
  
  from ctypes import *
  import _ctypes_test
-@@ -8,6 +9,7 @@
+@@ -8,6 +10,7 @@
  python_types = [int, int, int, int, int, int,
                  int, int, int, int, float, float]
  
@@ -327,47 +327,47 @@ diff -Nru orig/Lib/ctypes/test/test_pointers.py modified/Lib/ctypes/test/test_po
  class PointersTestCase(unittest.TestCase):
  
      def test_pointer_crash(self):
-@@ -20,7 +22,7 @@
+@@ -20,7 +23,7 @@
          self.assertRaises(TypeError, A, c_ulong(33))
  
      def test_pass_pointers(self):
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          func = dll._testfunc_p_p
          func.restype = c_long
  
-@@ -35,7 +37,7 @@
+@@ -35,7 +38,7 @@
          self.assertEqual(res[0], 12345678)
  
      def test_change_pointers(self):
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          func = dll._testfunc_p_p
  
          i = c_int(87654)
-@@ -70,7 +72,7 @@
+@@ -70,7 +73,7 @@
              return 0
          callback = PROTOTYPE(func)
  
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          # This function expects a function pointer,
          # and calls this with an integer pointer as parameter.
          # The int pointer points to a table containing the numbers 1..10
-@@ -135,7 +137,7 @@
+@@ -135,7 +138,7 @@
  
      def test_charpp(self):
          """Test that a character pointer-to-pointer is correctly passed"""
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          func = dll._testfunc_c_p_p
          func.restype = c_char_p
          argv = (c_char_p * 2)()
 diff -Nru orig/Lib/ctypes/test/test_prototypes.py modified/Lib/ctypes/test/test_prototypes.py
 --- orig/Lib/ctypes/test/test_prototypes.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_prototypes.py	2015-04-27 21:04:08.000000000 +0800
++++ modified/Lib/ctypes/test/test_prototypes.py	2015-06-28 21:37:34.000000000 +0800
 @@ -1,6 +1,7 @@
-+import sys
++import os
 +import unittest
  from ctypes import *
  from ctypes.test import need_symbol
@@ -382,19 +382,19 @@ diff -Nru orig/Lib/ctypes/test/test_prototypes.py modified/Lib/ctypes/test/test_
 -testdll = CDLL(_ctypes_test.__file__)
 +
 +
-+testdll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++testdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
  # Return machine address `a` as a (possibly long) non-negative integer.
  # Starting with Python 2.5, id(anything) is always non-negative, and
 diff -Nru orig/Lib/ctypes/test/test_refcounts.py modified/Lib/ctypes/test/test_refcounts.py
 --- orig/Lib/ctypes/test/test_refcounts.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_refcounts.py	2015-04-27 21:04:22.000000000 +0800
++++ modified/Lib/ctypes/test/test_refcounts.py	2015-06-28 21:37:38.000000000 +0800
 @@ -1,13 +1,17 @@
 -import unittest
 -from test import support
  import ctypes
  import gc
-+import sys
++import os
 +import unittest
 +from test import support
  
@@ -405,16 +405,16 @@ diff -Nru orig/Lib/ctypes/test/test_refcounts.py modified/Lib/ctypes/test/test_r
 -dll = ctypes.CDLL(_ctypes_test.__file__)
 +
 +
-+dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
 +
  
  class RefcountTestCase(unittest.TestCase):
  
 diff -Nru orig/Lib/ctypes/test/test_returnfuncptrs.py modified/Lib/ctypes/test/test_returnfuncptrs.py
 --- orig/Lib/ctypes/test/test_returnfuncptrs.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_returnfuncptrs.py	2015-04-27 21:04:34.000000000 +0800
++++ modified/Lib/ctypes/test/test_returnfuncptrs.py	2015-06-28 21:37:45.000000000 +0800
 @@ -1,15 +1,16 @@
-+import sys
++import os
  import unittest
  from ctypes import *
 -import os
@@ -428,7 +428,7 @@ diff -Nru orig/Lib/ctypes/test/test_returnfuncptrs.py modified/Lib/ctypes/test/t
          # The _ctypes_test shared lib/dll exports quite some functions for testing.
          # The get_strchr function returns a *pointer* to the C strchr function.
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          get_strchr = dll.get_strchr
          get_strchr.restype = CFUNCTYPE(c_char_p, c_char_p, c_char)
          strchr = get_strchr()
@@ -437,7 +437,7 @@ diff -Nru orig/Lib/ctypes/test/test_returnfuncptrs.py modified/Lib/ctypes/test/t
  
      def test_without_prototype(self):
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          get_strchr = dll.get_strchr
          # the default 'c_int' would not work on systems where sizeof(int) != sizeof(void *)
          get_strchr.restype = c_void_p
@@ -446,7 +446,7 @@ diff -Nru orig/Lib/ctypes/test/test_returnfuncptrs.py modified/Lib/ctypes/test/t
  
      def test_from_dll(self):
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          # _CFuncPtr instances are now callable with a tuple argument
          # which denotes a function name and a dll:
          strchr = CFUNCTYPE(c_char_p, c_char_p, c_char)(("my_strchr", dll))
@@ -455,22 +455,22 @@ diff -Nru orig/Lib/ctypes/test/test_returnfuncptrs.py modified/Lib/ctypes/test/t
                      return "my_strchr"
                  if key == 1:
 -                    return CDLL(_ctypes_test.__file__)
-+                    return CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++                    return CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
                  raise IndexError
  
          # _CFuncPtr instances are now callable with a tuple argument
          # which denotes a function name and a dll:
          strchr = CFUNCTYPE(c_char_p, c_char_p, c_char)(
 -                BadSequence(("my_strchr", CDLL(_ctypes_test.__file__))))
-+                BadSequence(("my_strchr", CDLL(getattr(_ctypes_test, '__file__', sys.argv[0])))))
++                BadSequence(("my_strchr", CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE'])))))
          self.assertTrue(strchr(b"abcdef", b"b"), "bcdef")
          self.assertEqual(strchr(b"abcdef", b"x"), None)
          self.assertRaises(ArgumentError, strchr, b"abcdef", 3.0)
 diff -Nru orig/Lib/ctypes/test/test_slicing.py modified/Lib/ctypes/test/test_slicing.py
 --- orig/Lib/ctypes/test/test_slicing.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_slicing.py	2015-04-27 21:04:43.000000000 +0800
++++ modified/Lib/ctypes/test/test_slicing.py	2015-06-28 21:37:52.000000000 +0800
 @@ -1,3 +1,4 @@
-+import sys
++import os
  import unittest
  from ctypes import *
  from ctypes.test import need_symbol
@@ -479,7 +479,7 @@ diff -Nru orig/Lib/ctypes/test/test_slicing.py modified/Lib/ctypes/test/test_sli
          s = b"abcdefghijklmnopqrstuvwxyz"
  
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          dll.my_strdup.restype = POINTER(c_char)
          dll.my_free.restype = None
          res = dll.my_strdup(s)
@@ -488,7 +488,7 @@ diff -Nru orig/Lib/ctypes/test/test_slicing.py modified/Lib/ctypes/test/test_sli
  
      def test_char_ptr_with_free(self):
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          s = b"abcdefghijklmnopqrstuvwxyz"
  
          class allocated_c_char_p(c_char_p):
@@ -497,15 +497,15 @@ diff -Nru orig/Lib/ctypes/test/test_slicing.py modified/Lib/ctypes/test/test_sli
          s = "abcdefghijklmnopqrstuvwxyz\0"
  
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          dll.my_wcsdup.restype = POINTER(c_wchar)
          dll.my_wcsdup.argtypes = POINTER(c_wchar),
          dll.my_free.restype = None
 diff -Nru orig/Lib/ctypes/test/test_stringptr.py modified/Lib/ctypes/test/test_stringptr.py
 --- orig/Lib/ctypes/test/test_stringptr.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_stringptr.py	2015-04-27 21:04:57.000000000 +0800
++++ modified/Lib/ctypes/test/test_stringptr.py	2015-06-28 21:37:55.000000000 +0800
 @@ -1,10 +1,12 @@
-+import sys
++import os
  import unittest
  from test import support
  from ctypes import *
@@ -514,15 +514,15 @@ diff -Nru orig/Lib/ctypes/test/test_stringptr.py modified/Lib/ctypes/test/test_s
  
 -lib = CDLL(_ctypes_test.__file__)
 +
-+lib = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
  class StringPtrTestCase(unittest.TestCase):
  
 diff -Nru orig/Lib/ctypes/test/test_unicode.py modified/Lib/ctypes/test/test_unicode.py
 --- orig/Lib/ctypes/test/test_unicode.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_unicode.py	2015-04-27 21:05:06.000000000 +0800
++++ modified/Lib/ctypes/test/test_unicode.py	2015-06-28 21:37:59.000000000 +0800
 @@ -1,13 +1,15 @@
-+import sys
++import os
  import unittest
  import ctypes
  from ctypes.test import need_symbol
@@ -534,7 +534,7 @@ diff -Nru orig/Lib/ctypes/test/test_unicode.py modified/Lib/ctypes/test/test_uni
  class UnicodeTestCase(unittest.TestCase):
      def test_wcslen(self):
 -        dll = ctypes.CDLL(_ctypes_test.__file__)
-+        dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          wcslen = dll.my_wcslen
          wcslen.argtypes = [ctypes.c_wchar_p]
  
@@ -543,18 +543,19 @@ diff -Nru orig/Lib/ctypes/test/test_unicode.py modified/Lib/ctypes/test/test_uni
          self.assertEqual(buf[6:5:-1], "")
  
 -func = ctypes.CDLL(_ctypes_test.__file__)._testfunc_p_p
-+func = ctypes.CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))._testfunc_p_p
++func = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))._testfunc_p_p
  
  class StringTestCase(UnicodeTestCase):
      def setUp(self):
 diff -Nru orig/Lib/ctypes/test/test_values.py modified/Lib/ctypes/test/test_values.py
 --- orig/Lib/ctypes/test/test_values.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_values.py	2015-04-27 21:05:16.000000000 +0800
-@@ -2,18 +2,19 @@
++++ modified/Lib/ctypes/test/test_values.py	2015-06-28 21:38:03.000000000 +0800
+@@ -2,18 +2,20 @@
  A testcase which accesses *values* in a dll.
  """
  
 -import unittest
++import os
  import sys
 +import unittest
  from ctypes import *
@@ -568,38 +569,42 @@ diff -Nru orig/Lib/ctypes/test/test_values.py modified/Lib/ctypes/test/test_valu
          # This test checks and changes an integer stored inside the
          # _ctypes_test dll/shared lib.
 -        ctdll = CDLL(_ctypes_test.__file__)
-+        ctdll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        ctdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          an_integer = c_int.in_dll(ctdll, "an_integer")
          x = an_integer.value
          self.assertEqual(x, ctdll.get_an_integer())
-@@ -25,7 +26,7 @@
+@@ -25,9 +27,10 @@
          self.assertEqual(x, ctdll.get_an_integer())
  
      def test_undefined(self):
 -        ctdll = CDLL(_ctypes_test.__file__)
-+        ctdll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        ctdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
          self.assertRaises(ValueError, c_int.in_dll, ctdll, "Undefined_Symbol")
  
++
  @unittest.skipUnless(sys.platform == 'win32', 'Windows-specific test')
+ class Win_ValuesTestCase(unittest.TestCase):
+     """This test only works when python itself is a dll/shared library"""
 diff -Nru orig/Lib/ctypes/test/test_win32.py modified/Lib/ctypes/test/test_win32.py
 --- orig/Lib/ctypes/test/test_win32.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/ctypes/test/test_win32.py	2015-04-27 21:05:21.000000000 +0800
-@@ -1,7 +1,8 @@
++++ modified/Lib/ctypes/test/test_win32.py	2015-06-28 21:38:08.000000000 +0800
+@@ -1,7 +1,9 @@
  # Windows specific tests
  
  from ctypes import *
 -import unittest, sys
++import os
 +import sys
 +import unittest
  from test import support
  
  import _ctypes_test
-@@ -109,7 +110,7 @@
+@@ -109,7 +111,7 @@
                          ("right", c_long),
                          ("bottom", c_long)]
  
 -        dll = CDLL(_ctypes_test.__file__)
-+        dll = CDLL(getattr(_ctypes_test, '__file__', sys.argv[0]))
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
  
          pt = POINT(10, 10)
          rect = RECT(0, 0, 20, 20)
@@ -823,7 +828,7 @@ diff -Nru orig/Lib/importlib/_bootstrap.py modified/Lib/importlib/_bootstrap.py
  def _make_relax_case():
 diff -Nru orig/Lib/plat-ios/IN.py modified/Lib/plat-ios/IN.py
 --- orig/Lib/plat-ios/IN.py	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Lib/plat-ios/IN.py	2015-04-26 09:30:37.000000000 +0800
++++ modified/Lib/plat-ios/IN.py	2015-07-04 14:09:06.000000000 +0800
 @@ -0,0 +1,8269 @@
 +# Generated by h2py from /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.3.sdk/usr/include/netinet/in.h
 +
@@ -832,11 +837,11 @@ diff -Nru orig/Lib/plat-ios/IN.py modified/Lib/plat-ios/IN.py
 +# Included from sys/_types.h
 +
 +# Included from sys/cdefs.h
-+def __P(protos): return protos		 
++def __P(protos): return protos
 +
 +def __STRING(x): return #x
 +
-+def __P(protos): return ()		 
++def __P(protos): return ()
 +
 +def __STRING(x): return "x"
 +
@@ -858,7 +863,7 @@ diff -Nru orig/Lib/plat-ios/IN.py modified/Lib/plat-ios/IN.py
 +
 +def __PROJECT_VERSION(s): return __IDSTRING(project_version,s)
 +
-+def __FBSDID(s): return 
++def __FBSDID(s): return
 +
 +__DARWIN_ONLY_64_BIT_INO_T = 1
 +__DARWIN_ONLY_UNIX_CONFORMANCE = 1
@@ -959,7 +964,7 @@ diff -Nru orig/Lib/plat-ios/IN.py modified/Lib/plat-ios/IN.py
 +# Included from sys/_posix_availability.h
 +def __POSIX_C_DEPRECATED(ver): return ___POSIX_C_DEPRECATED_STARTING_##ver
 +
-+__DARWIN_C_ANSI = 010000
++__DARWIN_C_ANSI = 10000
 +__DARWIN_C_FULL = 900000
 +__DARWIN_C_LEVEL = __DARWIN_C_ANSI
 +__DARWIN_C_LEVEL = _POSIX_C_SOURCE
@@ -9122,9 +9127,22 @@ diff -Nru orig/Lib/platform.py modified/Lib/platform.py
          # XXX Others too ?
          return default
      target = _follow_symlinks(target)
+diff -Nru orig/Lib/site.py modified/Lib/site.py
+--- orig/Lib/site.py	2015-02-03 19:49:03.000000000 +0800
++++ modified/Lib/site.py	2015-07-04 21:19:43.000000000 +0800
+@@ -266,6 +266,9 @@
+         if get_config_var('PYTHONFRAMEWORK'):
+             USER_SITE = get_path('purelib', 'osx_framework_user')
+             return USER_SITE
++    elif sys.platform == 'ios':
++        USER_SITE = get_path('purelib', 'ios')
++        return USER_SITE
+ 
+     USER_SITE = get_path('purelib', '%s_user' % os.name)
+     return USER_SITE
 diff -Nru orig/Lib/subprocess.py modified/Lib/subprocess.py
 --- orig/Lib/subprocess.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/subprocess.py	2015-04-30 07:50:40.000000000 +0800
++++ modified/Lib/subprocess.py	2015-06-28 20:16:04.000000000 +0800
 @@ -423,1268 +423,1269 @@
      else:
          _PopenSelector = selectors.SelectSelector
@@ -11579,6 +11597,46 @@ diff -Nru orig/Lib/subprocess.py modified/Lib/subprocess.py
 +                """Kill the process with SIGKILL
 +                """
 +                self.send_signal(signal.SIGKILL)
+diff -Nru orig/Lib/sysconfig.py modified/Lib/sysconfig.py
+--- orig/Lib/sysconfig.py	2015-02-03 19:49:03.000000000 +0800
++++ modified/Lib/sysconfig.py	2015-07-04 21:18:58.000000000 +0800
+@@ -78,6 +78,15 @@
+         'scripts': '{userbase}/bin',
+         'data': '{userbase}',
+         },
++    'ios': {
++        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'include': '{installed_base}/include',
++        'scripts': '{installed_base}/bin',
++        'data': '{installed_base}/Resources',
++        },
+     }
+ 
+ _SCHEME_KEYS = ('stdlib', 'platstdlib', 'purelib', 'platlib', 'include',
+@@ -181,6 +190,8 @@
+     if os.name == 'posix':
+         # the default scheme for posix is posix_prefix
+         return 'posix_prefix'
++    elif sys.platform == 'ios':
++        return 'ios'
+     return os.name
+ 
+ 
+@@ -205,6 +216,11 @@
+             else:
+                 return joinuser("~", "Library", framework, "%d.%d" %
+                                 sys.version_info[:2])
++    elif sys.platform == 'ios':
++        if env_base:
++            return env_base
++        else:
++            return _BASE_PREFIX
+ 
+     if env_base:
+         return env_base
 diff -Nru orig/Lib/test/__main__.py modified/Lib/test/__main__.py
 --- orig/Lib/test/__main__.py	2015-02-03 19:49:03.000000000 +0800
 +++ modified/Lib/test/__main__.py	2015-05-04 07:57:38.000000000 +0800
@@ -12009,8 +12067,16 @@ diff -Nru orig/Lib/test/test_getpass.py modified/Lib/test/test_getpass.py
  
 diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.py
 --- orig/Lib/test/test_httpservers.py	2015-02-03 19:49:03.000000000 +0800
-+++ modified/Lib/test/test_httpservers.py	2015-04-28 10:16:55.000000000 +0800
-@@ -277,11 +277,11 @@
++++ modified/Lib/test/test_httpservers.py	2015-06-28 20:16:12.000000000 +0800
+@@ -16,6 +16,7 @@
+ import urllib.parse
+ import html
+ import http.client
++import subprocess
+ import tempfile
+ from io import BytesIO
+ 
+@@ -277,11 +278,11 @@
          with open(os.path.join(self.tempdir, filename), 'wb') as f:
              f.write(support.TESTFN_UNDECODABLE)
          response = self.request(self.tempdir_name + '/')
@@ -12024,7 +12090,15 @@ diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.p
                      filename = name
                      break
          body = self.check_status_and_reason(response, 200)
-@@ -550,6 +550,7 @@
+@@ -362,6 +363,7 @@
+ 
+ @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0,
+         "This test can't be run reliably as root (issue #13308).")
++@unittest.skipUnless(hasattr(subprocess, 'Popen'), "test requires subprocess.Popen()")
+ class CGIHTTPServerTestCase(BaseTestCase):
+     class request_handler(NoLogRequestHandler, CGIHTTPRequestHandler):
+         pass
+@@ -550,6 +552,7 @@
      def log_message(self, format, *args):
          pass
  
@@ -12032,7 +12106,7 @@ diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.p
  class RejectingSocketlessRequestHandler(SocketlessRequestHandler):
      def handle_expect_100(self):
          self.send_error(417)
-@@ -580,7 +581,7 @@
+@@ -580,7 +583,7 @@
  
      HTTPResponseMatch = re.compile(b'HTTP/1.[0-9]+ 200 OK')
  
@@ -12041,7 +12115,7 @@ diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.p
          self.handler = SocketlessRequestHandler()
  
      def send_typical_request(self, message):
-@@ -731,6 +732,7 @@
+@@ -731,6 +734,7 @@
          self.assertEqual(result[0], b'HTTP/1.1 400 Line too long\r\n')
          self.assertFalse(self.handler.get_called)
  
@@ -12061,6 +12135,17 @@ diff -Nru orig/Lib/test/test_imp.py modified/Lib/test/test_imp.py
                             'imp.load_dynamic() required')(meth)
  
  
+diff -Nru orig/Lib/test/test_import.py modified/Lib/test/test_import.py
+--- orig/Lib/test/test_import.py	2015-02-03 19:49:03.000000000 +0800
++++ modified/Lib/test/test_import.py	2015-07-04 22:52:30.000000000 +0800
+@@ -280,6 +280,7 @@
+             """))
+         script_helper.assert_python_ok(testfn)
+ 
++    @skip_if_dont_write_bytecode
+     def test_timestamp_overflow(self):
+         # A modification timestamp larger than 2**32 should not be a problem
+         # when importing a module (issue #11235).
 diff -Nru orig/Lib/test/test_importlib/extension/test_finder.py modified/Lib/test/test_importlib/extension/test_finder.py
 --- orig/Lib/test/test_importlib/extension/test_finder.py	2015-02-03 19:49:03.000000000 +0800
 +++ modified/Lib/test/test_importlib/extension/test_finder.py	2015-04-30 22:06:18.000000000 +0800
@@ -12165,6 +12250,46 @@ diff -Nru orig/Lib/test/test_keyword.py modified/Lib/test/test_keyword.py
      def _generate_keywords(self, grammar_file, target_keyword_py_file):
          proc = subprocess.Popen([sys.executable,
                                   KEYWORD_FILE,
+diff -Nru orig/Lib/test/test_logging.py modified/Lib/test/test_logging.py
+--- orig/Lib/test/test_logging.py	2015-02-03 19:49:04.000000000 +0800
++++ modified/Lib/test/test_logging.py	2015-07-04 22:52:40.000000000 +0800
+@@ -1460,9 +1460,20 @@
+     # just need a name - file can't be present, or we'll get an
+     # 'address already in use' error.
+     os.remove(fn)
++    # Check the size of the socket file name. If it exceeds 108
++    # characters (UNIX_PATH_MAX), it can't be used as a UNIX socket.
++    # In this case, fall back to a path constructed somewhere that
++    # is known to be short.
++    if len(fn) > 108:
++        fd, fn = tempfile.mkstemp(prefix='test_logging_', suffix='.sock', dir='/tmp')
++        os.close(fd)
++        # just need a name - file can't be present, or we'll get an
++        # 'address already in use' error.
++        os.remove(fn)
+     return fn
+ 
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(threading, 'Threading required for this test.')
+ class UnixSocketHandlerTest(SocketHandlerTest):
+ 
+@@ -1535,6 +1546,7 @@
+         self.assertEqual(self.log_output, "spam\neggs\n")
+ 
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(threading, 'Threading required for this test.')
+ class UnixDatagramHandlerTest(DatagramHandlerTest):
+ 
+@@ -1610,6 +1622,7 @@
+         self.assertEqual(self.log_output, b'<11>h\xc3\xa4m-sp\xc3\xa4m')
+ 
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(threading, 'Threading required for this test.')
+ class UnixSysLogHandlerTest(SysLogHandlerTest):
+ 
 diff -Nru orig/Lib/test/test_mailcap.py modified/Lib/test/test_mailcap.py
 --- orig/Lib/test/test_mailcap.py	2015-02-03 19:49:04.000000000 +0800
 +++ modified/Lib/test/test_mailcap.py	2015-05-04 14:35:55.000000000 +0800
@@ -12584,7 +12709,7 @@ diff -Nru orig/Lib/test/test_select.py modified/Lib/test/test_select.py
          p = os.popen(cmd, 'r')
 diff -Nru orig/Lib/test/test_shutil.py modified/Lib/test/test_shutil.py
 --- orig/Lib/test/test_shutil.py	2015-02-03 19:49:04.000000000 +0800
-+++ modified/Lib/test/test_shutil.py	2015-05-04 14:44:01.000000000 +0800
++++ modified/Lib/test/test_shutil.py	2015-07-04 22:52:47.000000000 +0800
 @@ -48,6 +48,7 @@
  except ImportError:
      ZIP_SUPPORT = find_executable('zip')
@@ -12593,7 +12718,15 @@ diff -Nru orig/Lib/test/test_shutil.py modified/Lib/test/test_shutil.py
  def _fake_rename(*args, **kwargs):
      # Pretend the destination path is on a different filesystem.
      raise OSError(getattr(errno, 'EXDEV', 18), "Invalid cross-device link")
-@@ -1741,6 +1742,7 @@
+@@ -1318,6 +1319,7 @@
+         self.assertEqual(['foo'], os.listdir(rv))
+ 
+ 
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't support other executables.")
+ class TestWhich(unittest.TestCase):
+ 
+     def setUp(self):
+@@ -1741,6 +1743,7 @@
          self.assertEqual(size.lines, 888)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -12614,7 +12747,7 @@ diff -Nru orig/Lib/test/test_signal.py modified/Lib/test/test_signal.py
          # test-running process from all the signals. It then
 diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
 --- orig/Lib/test/test_site.py	2015-02-03 19:49:04.000000000 +0800
-+++ modified/Lib/test/test_site.py	2015-05-04 14:44:06.000000000 +0800
++++ modified/Lib/test/test_site.py	2015-07-04 21:21:33.000000000 +0800
 @@ -31,6 +31,7 @@
      os.makedirs(site.USER_SITE)
      site.addsitedir(site.USER_SITE)
@@ -12631,6 +12764,15 @@ diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
      def test_s_option(self):
          usersite = site.USER_SITE
          self.assertIn(usersite, sys.path)
+@@ -231,7 +233,7 @@
+         dirs = site.getsitepackages()
+ 
+         if (sys.platform == "darwin" and
+-            sysconfig.get_config_var("PYTHONFRAMEWORK")):
++                sysconfig.get_config_var("PYTHONFRAMEWORK")):
+             # OS X framework builds
+             site.PREFIXES = ['Python.framework']
+             dirs = site.getsitepackages()
 @@ -322,6 +324,7 @@
          """Restore sys.path"""
          sys.path[:] = self.sys_path
@@ -12647,6 +12789,158 @@ diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
      def test_startup_imports(self):
          # This tests checks which modules are loaded by Python when it
          # initially starts upon startup.
+diff -Nru orig/Lib/test/test_socket.py modified/Lib/test/test_socket.py
+--- orig/Lib/test/test_socket.py	2015-02-03 19:49:04.000000000 +0800
++++ modified/Lib/test/test_socket.py	2015-07-04 22:53:12.000000000 +0800
+@@ -530,6 +530,7 @@
+         sock.bind(path)
+         self.addCleanup(support.unlink, path)
+ 
++
+ class UnixStreamBase(UnixSocketTestBase):
+     """Base class for Unix-domain SOCK_STREAM tests."""
+ 
+@@ -774,8 +775,7 @@
+             self.fail("Error testing host resolution mechanisms. (fqdn: %s, all: %s)" % (fqhn, repr(all_host_names)))
+ 
+     def test_host_resolution(self):
+-        for addr in ['0.1.1.~1', '1+.1.1.1', '::1q', '::1::2',
+-                     '1:1:1:1:1:1:1:1:1']:
++        for addr in ['0.1.1.~1', '1+.1.1.1']:
+             self.assertRaises(OSError, socket.gethostbyname, addr)
+             self.assertRaises(OSError, socket.gethostbyaddr, addr)
+ 
+@@ -787,6 +787,12 @@
+         for host in [support.HOST]:
+             self.assertIn(host, socket.gethostbyaddr(host)[2])
+ 
++    @unittest.skipUnless(socket.has_ipv6, "test needs IPv6 support")
++    def test_host_resolution_ipv6(self):
++        for addr in ['::1q', '::1::2', '1:1:1:1:1:1:1:1:1']:
++            self.assertRaises(OSError, socket.gethostbyname, addr)
++            self.assertRaises(OSError, socket.gethostbyaddr, addr)
++
+     @unittest.skipUnless(hasattr(socket, 'sethostname'), "test needs socket.sethostname()")
+     @unittest.skipUnless(hasattr(socket, 'gethostname'), "test needs socket.gethostname()")
+     def test_sethostname(self):
+@@ -1286,7 +1292,7 @@
+         # these should all be successful
+         socket.gethostbyname('испытание.python.org')
+         socket.gethostbyname_ex('испытание.python.org')
+-        socket.getaddrinfo('испытание.python.org',0,socket.AF_UNSPEC,socket.SOCK_STREAM)
++        socket.getaddrinfo('испытание.python.org', 0, socket.AF_UNSPEC, socket.SOCK_STREAM)
+         # this may not work if the forward lookup choses the IPv6 address, as that doesn't
+         # have a reverse entry yet
+         # socket.gethostbyaddr('испытание.python.org')
+@@ -2727,7 +2733,7 @@
+     def _testFDPassCMSG_LEN(self):
+         self.createAndSendFDs(1)
+ 
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", "ios"), "skipping, see issue #12958")
+     @requireAttrs(socket, "CMSG_SPACE")
+     def testFDPassSeparate(self):
+         # Pass two FDs in two separate arrays.  Arrays may be combined
+@@ -2737,7 +2743,7 @@
+                              maxcmsgs=2)
+ 
+     @testFDPassSeparate.client_skip
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", "ios"), "skipping, see issue #12958")
+     def _testFDPassSeparate(self):
+         fd0, fd1 = self.newFDs(2)
+         self.assertEqual(
+@@ -2749,7 +2755,7 @@
+                                           array.array("i", [fd1]))]),
+             len(MSG))
+ 
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", "ios"), "skipping, see issue #12958")
+     @requireAttrs(socket, "CMSG_SPACE")
+     def testFDPassSeparateMinSpace(self):
+         # Pass two FDs in two separate arrays, receiving them into the
+@@ -2761,7 +2767,7 @@
+                              maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
+ 
+     @testFDPassSeparateMinSpace.client_skip
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", "ios"), "skipping, see issue #12958")
+     def _testFDPassSeparateMinSpace(self):
+         fd0, fd1 = self.newFDs(2)
+         self.assertEqual(
+@@ -3532,12 +3538,14 @@
+ 
+ @requireAttrs(socket.socket, "sendmsg")
+ @requireAttrs(socket, "AF_UNIX")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(thread, 'Threading required for this test.')
+ class SendmsgUnixStreamTest(SendmsgStreamTests, SendrecvmsgUnixStreamTestBase):
+     pass
+ 
+ @requireAttrs(socket.socket, "recvmsg")
+ @requireAttrs(socket, "AF_UNIX")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(thread, 'Threading required for this test.')
+ class RecvmsgUnixStreamTest(RecvmsgTests, RecvmsgGenericStreamTests,
+                             SendrecvmsgUnixStreamTestBase):
+@@ -3545,6 +3553,7 @@
+ 
+ @requireAttrs(socket.socket, "recvmsg_into")
+ @requireAttrs(socket, "AF_UNIX")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(thread, 'Threading required for this test.')
+ class RecvmsgIntoUnixStreamTest(RecvmsgIntoTests, RecvmsgGenericStreamTests,
+                                 SendrecvmsgUnixStreamTestBase):
+@@ -3552,12 +3561,14 @@
+ 
+ @requireAttrs(socket.socket, "sendmsg", "recvmsg")
+ @requireAttrs(socket, "AF_UNIX", "SOL_SOCKET", "SCM_RIGHTS")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(thread, 'Threading required for this test.')
+ class RecvmsgSCMRightsStreamTest(SCMRightsTest, SendrecvmsgUnixStreamTestBase):
+     pass
+ 
+ @requireAttrs(socket.socket, "sendmsg", "recvmsg_into")
+ @requireAttrs(socket, "AF_UNIX", "SOL_SOCKET", "SCM_RIGHTS")
++@unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+ @unittest.skipUnless(thread, 'Threading required for this test.')
+ class RecvmsgIntoSCMRightsStreamTest(RecvmsgIntoMixin, SCMRightsTest,
+                                      SendrecvmsgUnixStreamTestBase):
+diff -Nru orig/Lib/test/test_socketserver.py modified/Lib/test/test_socketserver.py
+--- orig/Lib/test/test_socketserver.py	2015-02-03 19:49:04.000000000 +0800
++++ modified/Lib/test/test_socketserver.py	2015-07-04 22:53:26.000000000 +0800
+@@ -8,7 +8,7 @@
+ import select
+ import signal
+ import socket
+-import select
++import sys
+ import errno
+ import tempfile
+ import unittest
+@@ -32,6 +32,7 @@
+ HAVE_FORKING = hasattr(os, "fork")
+ requires_forking = unittest.skipUnless(HAVE_FORKING, 'requires forking')
+ 
++
+ def signal_alarm(n):
+     """Call signal.alarm when it exists (i.e. not on Windows)."""
+     if hasattr(signal, 'alarm'):
+@@ -186,12 +187,14 @@
+                             self.stream_examine)
+ 
+     @requires_unix_sockets
++    @unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+     def test_UnixStreamServer(self):
+         self.run_server(socketserver.UnixStreamServer,
+                         socketserver.StreamRequestHandler,
+                         self.stream_examine)
+ 
+     @requires_unix_sockets
++    @unittest.skipIf(sys.platform == 'ios', "iOS doesn't fully support UNIX sockets.")
+     def test_ThreadingUnixStreamServer(self):
+         self.run_server(socketserver.ThreadingUnixStreamServer,
+                         socketserver.StreamRequestHandler,
 diff -Nru orig/Lib/test/test_source_encoding.py modified/Lib/test/test_source_encoding.py
 --- orig/Lib/test/test_source_encoding.py	2015-02-03 19:49:04.000000000 +0800
 +++ modified/Lib/test/test_source_encoding.py	2015-05-04 14:44:09.000000000 +0800
@@ -12737,7 +13031,7 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
          self.assertEqual(os.path.abspath(sys.executable), sys.executable)
 diff -Nru orig/Lib/test/test_sysconfig.py modified/Lib/test/test_sysconfig.py
 --- orig/Lib/test/test_sysconfig.py	2015-02-03 19:49:04.000000000 +0800
-+++ modified/Lib/test/test_sysconfig.py	2015-05-04 14:44:23.000000000 +0800
++++ modified/Lib/test/test_sysconfig.py	2015-07-04 22:53:33.000000000 +0800
 @@ -15,6 +15,7 @@
                         get_scheme_names, get_config_var, _main)
  import _osx_support
@@ -12746,7 +13040,13 @@ diff -Nru orig/Lib/test/test_sysconfig.py modified/Lib/test/test_sysconfig.py
  class TestSysConfig(unittest.TestCase):
  
      def setUp(self):
-@@ -239,6 +240,7 @@
+@@ -234,11 +235,12 @@
+         self.assertTrue(os.path.isfile(config_h), config_h)
+ 
+     def test_get_scheme_names(self):
+-        wanted = ('nt', 'nt_user', 'osx_framework_user',
++        wanted = ('ios', 'nt', 'nt_user', 'osx_framework_user',
+                   'posix_home', 'posix_prefix', 'posix_user')
          self.assertEqual(get_scheme_names(), wanted)
  
      @skip_unless_symlink
@@ -12970,6 +13270,25 @@ diff -Nru orig/Lib/test/test_webbrowser.py modified/Lib/test/test_webbrowser.py
  
  URL = 'http://www.example.com'
  CMD_NAME = 'test'
+diff -Nru orig/Lib/test/test_zipfile.py modified/Lib/test/test_zipfile.py
+--- orig/Lib/test/test_zipfile.py	2015-02-03 19:49:04.000000000 +0800
++++ modified/Lib/test/test_zipfile.py	2015-07-04 22:53:46.000000000 +0800
+@@ -583,6 +583,7 @@
+         if name + 'o' not in namelist:
+             self.assertIn(name + 'c', namelist)
+ 
++    @unittest.skipIf(sys.dont_write_bytecode, "Test requires ability to write bytecode")
+     def test_write_pyfile(self):
+         with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+             fn = __file__
+@@ -625,6 +626,7 @@
+             self.assertCompiledIn('email/__init__.py', names)
+             self.assertCompiledIn('email/mime/text.py', names)
+ 
++    @unittest.skipIf(sys.dont_write_bytecode, "Test requires ability to write bytecode")
+     def test_write_filtered_python_package(self):
+         import test
+         packagedir = os.path.dirname(test.__file__)
 diff -Nru orig/Lib/unittest/test/test_break.py modified/Lib/unittest/test/test_break.py
 --- orig/Lib/unittest/test/test_break.py	2015-02-03 19:49:04.000000000 +0800
 +++ modified/Lib/unittest/test/test_break.py	2015-04-27 09:20:54.000000000 +0800
@@ -47672,6 +47991,20 @@ diff -Nru orig/Python/marshal.c modified/Python/marshal.c
  
  #define TYPE_NULL               '0'
 Binary files orig/Tools/iOS-test/.DS_Store and modified/Tools/iOS-test/.DS_Store differ
+diff -Nru orig/Tools/iOS-test/app/iOS-test/main.py modified/Tools/iOS-test/app/iOS-test/main.py
+--- orig/Tools/iOS-test/app/iOS-test/main.py	1970-01-01 08:00:00.000000000 +0800
++++ modified/Tools/iOS-test/app/iOS-test/main.py	2015-07-04 21:31:30.000000000 +0800
+@@ -0,0 +1,10 @@
++from datetime import datetime
++from test import regrtest
++
++regrtest.start = datetime.now()
++print("START:", regrtest.start)
++regrtest.main_in_temp_cwd()
++regrtest.end = datetime.now()
++print("END:", regrtest.end)
++print("Duration:", regrtest.end - regrtest.start)
++
 diff -Nru orig/Tools/iOS-test/app_packages/README modified/Tools/iOS-test/app_packages/README
 --- orig/Tools/iOS-test/app_packages/README	1970-01-01 08:00:00.000000000 +0800
 +++ modified/Tools/iOS-test/app_packages/README	2015-04-26 21:28:31.000000000 +0800
@@ -47680,8 +48013,8 @@ diff -Nru orig/Tools/iOS-test/app_packages/README modified/Tools/iOS-test/app_pa
 \ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Contents.json modified/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Contents.json
 --- orig/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Contents.json	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Contents.json	2015-04-26 21:28:31.000000000 +0800
-@@ -0,0 +1,53 @@
++++ modified/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Contents.json	2015-07-04 17:34:59.000000000 +0800
+@@ -0,0 +1,58 @@
 +{
 +  "images" : [
 +    {
@@ -47698,6 +48031,11 @@ diff -Nru orig/Tools/iOS-test/iOS-test/Images.xcassets/AppIcon.appiconset/Conten
 +      "idiom" : "iphone",
 +      "size" : "60x60",
 +      "scale" : "2x"
++    },
++    {
++      "idiom" : "iphone",
++      "size" : "60x60",
++      "scale" : "3x"
 +    },
 +    {
 +      "idiom" : "ipad",
@@ -47799,7 +48137,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test/en.lproj/InfoPlist.strings modified/Tools
 +/* Localized versions of Info.plist keys */
 diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Info.plist modified/Tools/iOS-test/iOS-test/iOS-test-Info.plist
 --- orig/Tools/iOS-test/iOS-test/iOS-test-Info.plist	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test/iOS-test-Info.plist	2015-04-26 21:28:31.000000000 +0800
++++ modified/Tools/iOS-test/iOS-test/iOS-test-Info.plist	2015-07-04 17:34:56.000000000 +0800
 @@ -0,0 +1,45 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -47812,7 +48150,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Info.plist modified/Tools/iOS-te
 +	<key>CFBundleExecutable</key>
 +	<string>${EXECUTABLE_NAME}</string>
 +	<key>CFBundleIdentifier</key>
-+	<string>com.python.${PRODUCT_NAME:rfc1034identifier}</string>
++	<string>org.python.$(PRODUCT_NAME:rfc1034identifier)</string>
 +	<key>CFBundleInfoDictionaryVersion</key>
 +	<string>6.0</string>
 +	<key>CFBundleName</key>
@@ -47846,7 +48184,6 @@ diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Info.plist modified/Tools/iOS-te
 +	</array>
 +</dict>
 +</plist>
-\ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch modified/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch
 --- orig/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch	1970-01-01 08:00:00.000000000 +0800
 +++ modified/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch	2015-04-26 21:28:31.000000000 +0800
@@ -47870,16 +48207,11 @@ diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch modified/Tools/iOS-te
 \ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/main.m
 --- orig/Tools/iOS-test/iOS-test/main.m	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test/main.m	2015-06-27 21:42:56.000000000 +0800
-@@ -0,0 +1,119 @@
++++ modified/Tools/iOS-test/iOS-test/main.m	2015-07-04 23:12:23.000000000 +0800
+@@ -0,0 +1,125 @@
 +//
 +//  main.m
 +//  A main module for starting Python projects under iOS.
-+//
-+//  Copyright (c) 2014 Russell Keith-Magee.
-+//  Released under the terms of the BSD license.
-+//  Based on an intial file provided as part of the Kivy project
-+//  Copyright (c) 2014 Russell Keith-Magee.
 +//
 +
 +#import <Foundation/Foundation.h>
@@ -47890,24 +48222,37 @@ diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/m
 +int main(int argc, char *argv[]) {
 +    int ret = 0;
 +    unsigned int i;
-+    NSString *python_path;
-+    wchar_t* python_home;
++    NSString *tmp_path;
++    NSString *exe;
++    NSString *python_home;
++    wchar_t *wpython_home;
++    const char* main_script;
 +    wchar_t** python_argv;
 +    @autoreleasepool {
-+        
-+        NSString * resourcePath = [[NSBundle mainBundle] resourcePath];
-+        
-+        putenv("PYTHONNOUSERSITE=1");
-+        
-+        python_path = [NSString stringWithFormat:@"PYTHONPATH=%@/src:%@/app_packages",
-+                                 resourcePath, resourcePath, nil];
-+        NSLog(@"%s", [python_path UTF8String]);
-+        putenv((char *)[python_path UTF8String]);
 +
-+        NSLog(@"PythonHome is: %s", [resourcePath UTF8String]);
-+        python_home = _Py_char2wchar([resourcePath cStringUsingEncoding:NSUTF8StringEncoding], NULL);
-+        Py_SetPythonHome(python_home);
-+        
++        NSString * resourcePath = [[NSBundle mainBundle] resourcePath];
++
++        // Special environment to avoid writing bytecode because 
++        // the process will not have write attribute on the device.
++        putenv("PYTHONDONTWRITEBYTECODE=1");
++
++        python_home = [NSString stringWithFormat:@"%@/Library/Python.framework/Resources", resourcePath, nil];
++        NSLog(@"PythonHome is: %@", python_home);
++        wpython_home = _Py_char2wchar([python_home UTF8String], NULL);
++        Py_SetPythonHome(wpython_home);
++
++        // iOS provides a specific directory for temp files.
++        tmp_path = [NSString stringWithFormat:@"TMP=%@/tmp", resourcePath, nil];
++        putenv((char *)[tmp_path UTF8String]);
++
++        // Since iOS doesn't allow dynamic linking, we have to know
++        // the name of the executable so that we can find the ctypes
++        // test objects. However, sys.argv[0] will be updated to
++        // reflect the script name; the TEST_EXECUTABLE environment
++        // variable provides the mechanism for specifying the filename.
++        exe = [NSString stringWithFormat:@"TEST_EXECUTABLE=%s", argv[0], nil];
++        putenv((char *)[exe UTF8String]);
++
 +        NSLog(@"Initializing Python runtime...");
 +        Py_Initialize();
 +
@@ -47923,50 +48268,47 @@ diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/m
 +            "-j", "1",
 +            "-u", "all,-audio,-curses,-largefile,-subprocess,-gui",
 +//            "-v",
-+            "-W",
++//            "-W",
 +//            "test_bytes",  // ctypes related; PyBytes_FromFormat
 +//            "test_ctypes",  // DL loading?
-+//            "test_pydoc",  // .pyc file not being generated?
-+//            "test_shutil",  // mkdir
-+//            "test_site",  // mkdir
 +//            "test_threading",  // ctypes related; missing symbol PyThreadState_SetAsyncExc
 +//            "test_unicode",  // # ctypes related; PyUnicode_FromFormat
-+//            "test_zipfile",  // mkdir
-+
-+//            "test_httpservers",  //  # desktop
-+//            "test_logging",  // # desktop
-+//            "test_nntplib", // #desktop
-+            "test_socket",  // # desktop
-+//            "test_socketserver",  // # desktop
-+//            "test_warnings",  // # desktop
 +        };
 +
-+        int n_test_args = sizeof(test_args) / sizeof (*test_args) + 1;
++        // Set the name of the main script
++        main_script = [
++            [[NSBundle mainBundle] pathForResource:@"Library/Application Support/org.python.iOS-test/app/iOS-test/main"
++                                            ofType:@"py"] cStringUsingEncoding:NSUTF8StringEncoding];
 +        
++        if (main_script == NULL) {
++            NSLog(@"Unable to locate app/iOS-test/main.py file");
++            exit(-1);
++        }
++        
++        // Construct argv for the interpreter
++        int n_test_args = sizeof(test_args) / sizeof (*test_args) + 1;
++
 +        python_argv = PyMem_RawMalloc(sizeof(wchar_t*) * n_test_args);
-+        python_argv[0] = _Py_char2wchar(argv[0], NULL);
-+        for (int i = 1; i < n_test_args; i++) {
++        python_argv[0] = _Py_char2wchar(main_script, NULL);
++        for (i = 1; i < n_test_args; i++) {
 +            python_argv[i] = _Py_char2wchar(test_args[i-1], NULL);
 +        }
 +
 +        PySys_SetArgv(n_test_args, python_argv);
-+        
++
 +        // If other modules are using thread, we need to initialize them before.
 +        PyEval_InitThreads();
-+        
-+        // Search and start main.py
-+        const char * prog = [
-+                             [[NSBundle mainBundle] pathForResource:@"src/iOS-test/main"
-+                                                             ofType:@"py"] cStringUsingEncoding:NSUTF8StringEncoding];
-+        NSLog(@"Running %s", prog);
-+        
++
++        // Start the main.py script
++        NSLog(@"Running %s", main_script);
++
 +        @try {
-+            FILE* fd = fopen(prog, "r");
++            FILE* fd = fopen(main_script, "r");
 +            if (fd == NULL) {
 +                ret = 1;
 +                NSLog(@"Unable to open main.py, abort.");
 +            } else {
-+                ret = PyRun_SimpleFileEx(fd, prog, 1);
++                ret = PyRun_SimpleFileEx(fd, main_script, 1);
 +                if (ret != 0) {
 +                    NSLog(@"Application quit abnormally!");
 +                }
@@ -47978,24 +48320,25 @@ diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/m
 +        @finally {
 +            Py_Finalize();
 +        }
-+        
-+        PyMem_RawFree(python_home);
++
++        PyMem_RawFree(wpython_home);
 +        if (python_argv) {
-+            for (i = 0; i < argc; i++)
++            for (i = 0; i < argc; i++) {
 +                PyMem_RawFree(python_argv[i]);
++            }
 +            PyMem_RawFree(python_argv);
 +        }
 +        NSLog(@"Leaving");
 +    }
-+    
++
 +    exit(ret);
 +    return ret;
 +}
 \ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj
 --- orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj	2015-04-26 21:31:37.000000000 +0800
-@@ -0,0 +1,369 @@
++++ modified/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj	2015-07-04 21:28:49.000000000 +0800
+@@ -0,0 +1,353 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -48015,8 +48358,6 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +		60796F201919174D00A9926B /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F1F1919174D00A9926B /* libsqlite3.dylib */; };
 +		60796F2C1919C70800A9926B /* Python.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F2B1919C70800A9926B /* Python.framework */; };
 +		60796F39191CDBBA00A9926B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F38191CDBBA00A9926B /* CoreFoundation.framework */; };
-+		60F0BABE191FC83F006EC268 /* src in Resources */ = {isa = PBXBuildFile; fileRef = 60F0BABD191FC83F006EC268 /* src */; };
-+		60F0BAC0191FC868006EC268 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 60F0BABF191FC868006EC268 /* app_packages */; };
 +/* End PBXBuildFile section */
 +
 +/* Begin PBXFileReference section */
@@ -48032,10 +48373,8 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +		60796F1819190FBB00A9926B /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
 +		60796F1F1919174D00A9926B /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
 +		60796F2B1919C70800A9926B /* Python.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Python.framework; sourceTree = "<group>"; };
-+		60796F34191A76C400A9926B /* include */ = {isa = PBXFileReference; lastKnownFileType = folder; name = include; path = Python.framework/Resources/include; sourceTree = "<group>"; };
-+		60796F35191A76C400A9926B /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = Python.framework/Resources/lib; sourceTree = "<group>"; };
 +		60796F38191CDBBA00A9926B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
-+		60F0BABD191FC83F006EC268 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = SOURCE_ROOT; };
++		60DBD4B01B47DEF700068095 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = SOURCE_ROOT; };
 +		60F0BABF191FC868006EC268 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = SOURCE_ROOT; };
 +/* End PBXFileReference section */
 +
@@ -48060,7 +48399,6 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +		60796ED919190F4100A9926B = {
 +			isa = PBXGroup;
 +			children = (
-+				60796F1A19190FEB00A9926B /* Python */,
 +				60796EEB19190F4100A9926B /* iOS-test */,
 +				60796EE419190F4100A9926B /* Frameworks */,
 +				60796EE319190F4100A9926B /* Products */,
@@ -48092,8 +48430,8 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +		60796EEB19190F4100A9926B /* iOS-test */ = {
 +			isa = PBXGroup;
 +			children = (
++				60DBD4B01B47DEF700068095 /* app */,
 +				60F0BABF191FC868006EC268 /* app_packages */,
-+				60F0BABD191FC83F006EC268 /* src */,
 +				60796EF719190F4100A9926B /* Images.xcassets */,
 +				60796EEC19190F4100A9926B /* Supporting Files */,
 +			);
@@ -48109,15 +48447,6 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +				60796EF319190F4100A9926B /* iOS-test-Prefix.pch */,
 +			);
 +			name = "Supporting Files";
-+			sourceTree = "<group>";
-+		};
-+		60796F1A19190FEB00A9926B /* Python */ = {
-+			isa = PBXGroup;
-+			children = (
-+				60796F34191A76C400A9926B /* include */,
-+				60796F35191A76C400A9926B /* lib */,
-+			);
-+			name = Python;
 +			sourceTree = "<group>";
 +		};
 +/* End PBXGroup section */
@@ -48173,10 +48502,8 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +			isa = PBXResourcesBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				60F0BABE191FC83F006EC268 /* src in Resources */,
 +				60796EF019190F4100A9926B /* InfoPlist.strings in Resources */,
 +				60796EF819190F4100A9926B /* Images.xcassets in Resources */,
-+				60F0BAC0191FC868006EC268 /* app_packages in Resources */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -48195,7 +48522,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
-+			shellScript = "rsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/lib $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/include $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app_packages $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\n";
++			shellScript = "mkdir -p $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nmkdir -p $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Application\\ Support/org.python.$PROJECT_NAME\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/lib $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/include $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Application\\ Support/org.python.$PROJECT_NAME\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app_packages/ $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources/lib/python`readlink $PROJECT_DIR/Python.framework/Versions/Current`/site-packages/\n";
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
@@ -48365,20 +48692,6 @@ diff -Nru orig/Tools/iOS-test/iOS-test.xcodeproj/project.pbxproj modified/Tools/
 +	};
 +	rootObject = 60796EDA19190F4100A9926B /* Project object */;
 +}
-diff -Nru orig/Tools/iOS-test/src/iOS-test/main.py modified/Tools/iOS-test/src/iOS-test/main.py
---- orig/Tools/iOS-test/src/iOS-test/main.py	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/src/iOS-test/main.py	2015-05-04 13:49:31.000000000 +0800
-@@ -0,0 +1,10 @@
-+from datetime import datetime
-+from test import regrtest
-+
-+regrtest.start = datetime.now()
-+print("START:", regrtest.start)
-+regrtest.main_in_temp_cwd()
-+regrtest.end = datetime.now()
-+print("END:", regrtest.end)
-+print("Duration:", regrtest.end - regrtest.start)
-+
 diff -Nru orig/config.sub modified/config.sub
 --- orig/config.sub	2015-02-03 19:49:02.000000000 +0800
 +++ modified/config.sub	2015-02-15 08:25:31.000000000 +0800
@@ -48573,8 +48886,8 @@ diff -Nru orig/configure.ac modified/configure.ac
  echo "creating Makefile" >&AS_MESSAGE_FD
 diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 --- orig/iOS/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/Makefile	2015-06-28 13:59:34.000000000 +0800
-@@ -0,0 +1,230 @@
++++ modified/iOS/Makefile	2015-07-04 13:38:21.000000000 +0800
+@@ -0,0 +1,248 @@
 +# This is a "Meta-makefile" for building an iOS-compatible Python.framework.
 +# It invokes the base makefile multiple times, once for each hardware platform
 +# that needs to be supported; then it combines the products into a single "fat"
@@ -48641,10 +48954,15 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +	cd .. && ./configure --prefix=$(IOS_DIR)/build/host --without-ensurepip
 +	cd .. && make
 +	cd .. && make install
++	# Now pack away all the built artefacts so that the top level distclean doesn't touch them
++	cd build && tar zcvf host.tar.gz host && rm -rf host
 +
 +build/ios-simulator-i386.tar.gz: build/host/bin/python$(PYTHON_VERSION)
 +	# Configure and build Simulator library
 +	if test -f ../Makefile; then cd .. && make distclean; fi
++	# Restore host Python
++	cd build && tar zxvf host.tar.gz
++	# Configure and build target Python
 +	cd .. && \
 +		PATH=$(IOS_DIR)/build/host/bin:$(PATH) ./configure \
 +			--host=i386-apple-ios --build=$(BUILD_OS_ID) \
@@ -48660,6 +48978,9 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +build/ios-simulator-x86_64.tar.gz: build/host/bin/python$(PYTHON_VERSION)
 +	# Configure and build Simulator library
 +	if test -f ../Makefile; then cd .. && make distclean; fi
++	# Restore host Python
++	cd build && tar zxvf host.tar.gz
++	# Configure and build target Python
 +	cd .. && \
 +		PATH=$(IOS_DIR)/build/host/bin:$(PATH) ./configure \
 +			--host=x86_64-apple-ios --build=$(BUILD_OS_ID) \
@@ -48675,6 +48996,9 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +build/ios-armv7.tar.gz: build/host/bin/python$(PYTHON_VERSION)
 +	# Configure and build ARMv7 library
 +	if test -f ../Makefile; then cd .. && make distclean; fi
++	# Restore host Python
++	cd build && tar zxvf host.tar.gz
++	# Configure and build target Python
 +	cd .. && \
 +		PATH=$(IOS_DIR)/build/host/bin:$(PATH) ./configure \
 +			--host=armv7-apple-ios --build=$(BUILD_OS_ID) \
@@ -48690,6 +49014,9 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +build/ios-armv7s.tar.gz: build/host/bin/python$(PYTHON_VERSION)
 +	# Configure and build ARMv7s library
 +	if test -f ../Makefile; then cd .. && make distclean; fi
++	# Restore host Python
++	cd build && tar zxvf host.tar.gz
++	# Configure and build target Python
 +	cd .. && \
 +		PATH=$(IOS_DIR)/build/host/bin:$(PATH) ./configure \
 +			--host=armv7s-apple-ios --build=$(BUILD_OS_ID) \
@@ -48705,6 +49032,9 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +build/ios-arm64.tar.gz: build/host/bin/python$(PYTHON_VERSION)
 +	# Configure and build ARM64 library
 +	if test -f ../Makefile; then cd .. && make distclean; fi
++	# Restore host Python
++	cd build && tar zxvf host.tar.gz
++	# Configure and build target Python
 +	cd .. && \
 +		PATH=$(IOS_DIR)/build/host/bin:$(PATH) ./configure \
 +			--host=aarch64-apple-ios --build=$(BUILD_OS_ID) \
@@ -48786,6 +49116,7 @@ diff -Nru orig/iOS/Makefile modified/iOS/Makefile
 +		cd $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/lib/python$(PYTHON_VERSION); \
 +		rm -rf *test* lib* bsddb curses ensurepip hotshot idlelib tkinter turtledemo wsgiref \
 +			config-$(PYTHON_VERSION) ctypes/test distutils/tests site-packages sqlite3/test; \
++		find . -name "*.pyc" -exec rm -rf {} \; ; \
 +		zip -r ../python$(subst .,,$(PYTHON_VERSION)).zip *; \
 +		rm -rf *; \
 +	fi
@@ -49109,8 +49440,8 @@ diff -Nru orig/iOS/XCode-sample/sample/en.lproj/InfoPlist.strings modified/iOS/X
 +/* Localized versions of Info.plist keys */
 diff -Nru orig/iOS/XCode-sample/sample/main.m modified/iOS/XCode-sample/sample/main.m
 --- orig/iOS/XCode-sample/sample/main.m	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/XCode-sample/sample/main.m	2015-03-14 22:34:08.000000000 +0800
-@@ -0,0 +1,97 @@
++++ modified/iOS/XCode-sample/sample/main.m	2015-07-04 23:12:05.000000000 +0800
+@@ -0,0 +1,112 @@
 +//
 +//  main.m
 +//  A main module for starting Python projects under iOS.
@@ -49124,59 +49455,73 @@ diff -Nru orig/iOS/XCode-sample/sample/main.m modified/iOS/XCode-sample/sample/m
 +int main(int argc, char *argv[]) {
 +    int ret = 0;
 +    unsigned int i;
-+    wchar_t* python_home;
++    NSString *tmp_path;
++    NSString *python_home;
++    wchar_t *wpython_home;
++    const char* main_script;
 +    wchar_t** python_argv;
++
 +    @autoreleasepool {
-+        
++
 +        NSString * resourcePath = [[NSBundle mainBundle] resourcePath];
-+        
-+        // Special environment to prefer .pyo, and don't write bytecode if .py are found
-+        // because the process will not have write attribute on the device.
-+        putenv("PYTHONOPTIMIZE=2");
++
++        // Special environment to prefer .pyo; also, don't write bytecode
++        // because the process will not have write permissions on the device.
++        putenv("PYTHONOPTIMIZE=1");
 +        putenv("PYTHONDONTWRITEBYTECODE=1");
-+        putenv("PYTHONNOUSERSITE=1");
-+        
-+        NSString *python_path = [NSString stringWithFormat:@"PYTHONPATH=%@/src:%@/app_packages",
-+                                 resourcePath, resourcePath, nil];
-+        putenv((char *)[python_path UTF8String]);
-+        // putenv("PYTHONVERBOSE=1");
-+        
-+        NSLog(@"PythonHome is: %s", [resourcePath UTF8String]);
-+        python_home = _Py_char2wchar([resourcePath cStringUsingEncoding:NSUTF8StringEncoding], NULL);
-+        Py_SetPythonHome(python_home);
-+        
++
++        python_home = [NSString stringWithFormat:@"%@/Library/Python.framework/Resources", resourcePath, nil];
++        NSLog(@"PythonHome is: %@", python_home);
++        wpython_home = _Py_char2wchar([python_home UTF8String], NULL);
++        Py_SetPythonHome(wpython_home);
++
++        // iOS provides a specific directory for temp files.
++        tmp_path = [NSString stringWithFormat:@"TMP=%@/tmp", resourcePath, nil];
++        putenv((char *)[tmp_path UTF8String]);
++
 +        NSLog(@"Initializing Python runtime");
 +        Py_Initialize();
-+        
++
++        // Set the name of the main script
++        main_script = [
++            [[NSBundle mainBundle] pathForResource:@"Library/Application Support/org.python.sample/app/sample/main"
++                                            ofType:@"py"] cStringUsingEncoding:NSUTF8StringEncoding];
++
++        if (main_script == NULL) {
++            NSLog(@"Unable to locate app/sample/main.py file");
++            exit(-1);
++        }
++
++        // Construct argv for the interpreter
 +        python_argv = PyMem_RawMalloc(sizeof(wchar_t*) * argc);
-+        for (i = 0; i < argc; i++) {
++
++        python_argv[0] = _Py_char2wchar(main_script, NULL);
++        for (i = 1; i < argc; i++) {
 +            python_argv[i] = _Py_char2wchar(argv[i], NULL);
 +        }
++
 +        PySys_SetArgv(argc, python_argv);
-+        
-+        // If other modules are using thread, we need to initialize them before.
++
++        // If other modules are using threads, we need to initialize them.
 +        PyEval_InitThreads();
-+        
-+        // Search and start main.py
-+        const char * prog = [
-+                             [[NSBundle mainBundle] pathForResource:@"app/sample/main"
-+                                                             ofType:@"py"] cStringUsingEncoding:NSUTF8StringEncoding];
-+        NSLog(@"Running %s", prog);
-+        
++
++        // Start the main.py script
++        NSLog(@"Running %s", main_script);
++
 +        @try {
-+            FILE* fd = fopen(prog, "r");
++            FILE* fd = fopen(main_script, "r");
 +            if (fd == NULL) {
 +                ret = 1;
 +                NSLog(@"Unable to open main.py, abort.");
 +            } else {
-+                ret = PyRun_SimpleFileEx(fd, prog, 1);
++                ret = PyRun_SimpleFileEx(fd, main_script, 1);
 +                if (ret != 0) {
 +                    NSLog(@"Application quit abnormally!");
 +                } else {
 +                    // In a normal iOS application, the following line is what
 +                    // actually runs the application. It requires that the
 +                    // Objective-C runtime environment has a class named
-+                    // "PythonAppDelegate". This sample project doesn't define
++                    // "PythonAppDelegate". This project doesn't define
 +                    // one, because Objective-C bridging isn't something
 +                    // Python does out of the box. You'll need to use
 +                    // a library like Rubicon-ObjC [1], Pyobjus [2] or
@@ -49184,8 +49529,8 @@ diff -Nru orig/iOS/XCode-sample/sample/main.m modified/iOS/XCode-sample/sample/m
 +                    // [1] http://pybee.org/rubicon
 +                    // [2] http://pyobjus.readthedocs.org/
 +                    // [3] https://pythonhosted.org/pyobjc/
-+                    
-+                    // UIApplicationMain(argc, argv, nil, @"PythonAppDelegate");
++
++                    UIApplicationMain(argc, argv, nil, @"PythonAppDelegate");
 +                }
 +            }
 +        }
@@ -49195,16 +49540,17 @@ diff -Nru orig/iOS/XCode-sample/sample/main.m modified/iOS/XCode-sample/sample/m
 +        @finally {
 +            Py_Finalize();
 +        }
-+        
-+    error:
++
++        PyMem_RawFree(wpython_home);
 +        if (python_argv) {
-+            for (i = 0; i < argc; i++)
++            for (i = 0; i < argc; i++) {
 +                PyMem_RawFree(python_argv[i]);
++            }
 +            PyMem_RawFree(python_argv);
 +        }
 +        NSLog(@"Leaving");
 +    }
-+    
++
 +    exit(ret);
 +    return ret;
 +}
@@ -49282,8 +49628,8 @@ diff -Nru orig/iOS/XCode-sample/sample/sample-Prefix.pch modified/iOS/XCode-samp
 \ No newline at end of file
 diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XCode-sample/sample.xcodeproj/project.pbxproj
 --- orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj	1970-01-01 08:00:00.000000000 +0800
-+++ modified/iOS/XCode-sample/sample.xcodeproj/project.pbxproj	2015-03-14 22:03:22.000000000 +0800
-@@ -0,0 +1,373 @@
++++ modified/iOS/XCode-sample/sample.xcodeproj/project.pbxproj	2015-07-04 23:17:10.000000000 +0800
+@@ -0,0 +1,353 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -49293,7 +49639,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +	objects = {
 +
 +/* Begin PBXBuildFile section */
-+		605737FC1AB4772A00F05C6F /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 60796F35191A76C400A9926B /* lib */; };
 +		60796EE619190F4100A9926B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796EE519190F4100A9926B /* Foundation.framework */; };
 +		60796EE819190F4100A9926B /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796EE719190F4100A9926B /* CoreGraphics.framework */; };
 +		60796EEA19190F4100A9926B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796EE919190F4100A9926B /* UIKit.framework */; };
@@ -49304,8 +49649,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796F201919174D00A9926B /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F1F1919174D00A9926B /* libsqlite3.dylib */; };
 +		60796F2C1919C70800A9926B /* Python.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F2B1919C70800A9926B /* Python.framework */; };
 +		60796F39191CDBBA00A9926B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60796F38191CDBBA00A9926B /* CoreFoundation.framework */; };
-+		60F0BABE191FC83F006EC268 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 60F0BABD191FC83F006EC268 /* app */; };
-+		60F0BAC0191FC868006EC268 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 60F0BABF191FC868006EC268 /* app_packages */; };
 +/* End PBXBuildFile section */
 +
 +/* Begin PBXFileReference section */
@@ -49321,7 +49664,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796F1819190FBB00A9926B /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
 +		60796F1F1919174D00A9926B /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
 +		60796F2B1919C70800A9926B /* Python.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Python.framework; sourceTree = "<group>"; };
-+		60796F35191A76C400A9926B /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = Python.framework/Resources/lib; sourceTree = "<group>"; };
 +		60796F38191CDBBA00A9926B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 +		60F0BABD191FC83F006EC268 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = SOURCE_ROOT; };
 +		60F0BABF191FC868006EC268 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = SOURCE_ROOT; };
@@ -49348,7 +49690,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796ED919190F4100A9926B = {
 +			isa = PBXGroup;
 +			children = (
-+				60796F1A19190FEB00A9926B /* Python */,
 +				60796EEB19190F4100A9926B /* sample */,
 +				60796EE419190F4100A9926B /* Frameworks */,
 +				60796EE319190F4100A9926B /* Products */,
@@ -49368,10 +49709,10 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			children = (
 +				60796F1F1919174D00A9926B /* libsqlite3.dylib */,
 +				60796F1819190FBB00A9926B /* libz.dylib */,
-+				60796F2B1919C70800A9926B /* Python.framework */,
-+				60796EE519190F4100A9926B /* Foundation.framework */,
 +				60796F38191CDBBA00A9926B /* CoreFoundation.framework */,
 +				60796EE719190F4100A9926B /* CoreGraphics.framework */,
++				60796EE519190F4100A9926B /* Foundation.framework */,
++				60796F2B1919C70800A9926B /* Python.framework */,
 +				60796EE919190F4100A9926B /* UIKit.framework */,
 +			);
 +			name = Frameworks;
@@ -49380,8 +49721,8 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796EEB19190F4100A9926B /* sample */ = {
 +			isa = PBXGroup;
 +			children = (
-+				60F0BABF191FC868006EC268 /* app_packages */,
 +				60F0BABD191FC83F006EC268 /* app */,
++				60F0BABF191FC868006EC268 /* app_packages */,
 +				60796EF719190F4100A9926B /* Images.xcassets */,
 +				60796EEC19190F4100A9926B /* Supporting Files */,
 +			);
@@ -49397,14 +49738,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +				60796EF319190F4100A9926B /* sample-Prefix.pch */,
 +			);
 +			name = "Supporting Files";
-+			sourceTree = "<group>";
-+		};
-+		60796F1A19190FEB00A9926B /* Python */ = {
-+			isa = PBXGroup;
-+			children = (
-+				60796F35191A76C400A9926B /* lib */,
-+			);
-+			name = Python;
 +			sourceTree = "<group>";
 +		};
 +/* End PBXGroup section */
@@ -49435,7 +49768,7 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			isa = PBXProject;
 +			attributes = {
 +				CLASSPREFIX = Py;
-+				LastUpgradeCheck = 0510;
++				LastUpgradeCheck = 0630;
 +				ORGANIZATIONNAME = "Example Corp";
 +			};
 +			buildConfigurationList = 60796EDD19190F4100A9926B /* Build configuration list for PBXProject "sample" */;
@@ -49460,11 +49793,8 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			isa = PBXResourcesBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				60F0BABE191FC83F006EC268 /* app in Resources */,
-+				605737FC1AB4772A00F05C6F /* lib in Resources */,
 +				60796EF019190F4100A9926B /* InfoPlist.strings in Resources */,
 +				60796EF819190F4100A9926B /* Images.xcassets in Resources */,
-+				60F0BAC0191FC868006EC268 /* app_packages in Resources */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -49483,7 +49813,7 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
-+			shellScript = "rsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/lib $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/include $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app_packages $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH\n";
++			shellScript = "mkdir -p $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nmkdir -p $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Application\\ Support/org.python.$PROJECT_NAME\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/lib $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/Python.framework/Resources/include $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Application\\ Support/org.python.$PROJECT_NAME\nrsync -pvtrL --exclude .hg --exclude .svn --exclude .git $PROJECT_DIR/app_packages/ $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/Python.framework/Resources/lib/python`readlink $PROJECT_DIR/Python.framework/Versions/Current`/site-packages/\n";
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
@@ -49514,7 +49844,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			isa = XCBuildConfiguration;
 +			buildSettings = {
 +				ALWAYS_SEARCH_USER_PATHS = NO;
-+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 +				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 +				CLANG_CXX_LIBRARY = "libc++";
 +				CLANG_ENABLE_MODULES = YES;
@@ -49554,7 +49883,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +			isa = XCBuildConfiguration;
 +			buildSettings = {
 +				ALWAYS_SEARCH_USER_PATHS = NO;
-+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 +				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 +				CLANG_CXX_LIBRARY = "libc++";
 +				CLANG_ENABLE_MODULES = YES;
@@ -49587,7 +49915,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796F0F19190F4100A9926B /* Debug */ = {
 +			isa = XCBuildConfiguration;
 +			buildSettings = {
-+				ARCHS = "$(ARCHS_STANDARD)";
 +				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 +				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 +				FRAMEWORK_SEARCH_PATHS = (
@@ -49611,7 +49938,6 @@ diff -Nru orig/iOS/XCode-sample/sample.xcodeproj/project.pbxproj modified/iOS/XC
 +		60796F1019190F4100A9926B /* Release */ = {
 +			isa = XCBuildConfiguration;
 +			buildSettings = {
-+				ARCHS = "$(ARCHS_STANDARD)";
 +				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 +				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 +				FRAMEWORK_SEARCH_PATHS = (
