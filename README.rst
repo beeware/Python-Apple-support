@@ -52,7 +52,7 @@ This should:
 
 The build products will be in the `build` directory.
 
-.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b1/Python-3.4.2-iOS-support.b1.tar.gz
+.. _downloaded: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b2/Python-3.4.2-iOS-support.b2.tar.gz
 
 Acknowledgements
 ----------------

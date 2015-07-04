@@ -1,6 +1,6 @@
 PROJECTDIR=$(shell pwd)
 
-BUILD_NUMBER=1
+BUILD_NUMBER=2
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=3.4.2
@@ -263,4 +263,4 @@ build/Python-$(PYTHON_VERSION)/Python.framework: build downloads/Python-$(PYTHON
 	cd build/Python-$(PYTHON_VERSION)/iOS && make
 
 dist/Python.framework: dist build/Python-$(PYTHON_VERSION)/Python.framework
-	cd dist && cp -r ../build/Python-$(PYTHON_VERSION)/Python.framework .
+	cd dist && mv ../build/Python-$(PYTHON_VERSION)/Python.framework .
