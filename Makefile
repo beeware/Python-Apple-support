@@ -1,10 +1,13 @@
 PROJECTDIR=$(shell pwd)
 
-BUILD_NUMBER=2
+BUILD_NUMBER=3
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=3.4.2
-OPENSSL_VERSION=1.0.2c
+
+OPENSSL_VERSION_NUMBER=1.0.2
+OPENSSL_REVISION=d
+OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 # 32 bit iOS Simulator build commands and flags
 IOS_SIMULATOR_SDK_ROOT=$(shell xcrun --sdk iphonesimulator --show-sdk-path)
@@ -66,7 +69,8 @@ clean-OpenSSL:
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz: downloads
-	curl -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz > downloads/openssl-$(OPENSSL_VERSION).tgz
+	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
+	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 
 build/OpenSSL/ios-simulator-i386/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
 	# Unpack sources
@@ -250,7 +254,7 @@ clean-Python:
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz: downloads
-	curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz
+	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
 # build/Python-$(PYTHON_VERSION)/Python.framework: build dist/OpenSSL.framework downloads/Python-$(PYTHON_VERSION).tgz
 build/Python-$(PYTHON_VERSION)/Python.framework: build downloads/Python-$(PYTHON_VERSION).tgz
