@@ -19,15 +19,15 @@ IOS_SIMULATOR_64_CC=$(shell xcrun -find -sdk iphonesimulator clang) -arch x86_64
 
 # iOS ARMV7 build commands and flags
 IOS_ARMV7_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARMV7_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7 --sysroot=$(IOS_ARMV7_SDK_ROOT) -miphoneos-version-min=7.0
+IOS_ARMV7_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7 -fembed-bitcode --sysroot=$(IOS_ARMV7_SDK_ROOT) -miphoneos-version-min=7.0
 
 # iOS ARMV7S build commands and flags
 IOS_ARMV7S_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARMV7S_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7s --sysroot=$(IOS_ARMV7S_SDK_ROOT) -miphoneos-version-min=7.0
+IOS_ARMV7S_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7s -fembed-bitcode --sysroot=$(IOS_ARMV7S_SDK_ROOT) -miphoneos-version-min=7.0
 
 # iOS ARM64 build commands and flags
 IOS_ARM64_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARM64_CC=$(shell xcrun -find -sdk iphoneos clang) -arch arm64 --sysroot=$(IOS_ARM64_SDK_ROOT) -miphoneos-version-min=7.0
+IOS_ARM64_CC=$(shell xcrun -find -sdk iphoneos clang) -arch arm64 -fembed-bitcode --sysroot=$(IOS_ARM64_SDK_ROOT) -miphoneos-version-min=7.0
 
 
 all: Python-$(PYTHON_VERSION)-iOS-support.b$(BUILD_NUMBER).tar.gz
