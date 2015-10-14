@@ -1,10 +1,9 @@
 This is a fork of https://github.com/pybee/Python-iOS-support/ that contains
 Python.framework WIP for tvOS and watchOS.
 
-In the meantime only OpenSSL.framework can be built for tvOS or watchOS:
-
-::
+In the meantime only OpenSSL.framework can be built for tvOS or watchOS::
   make dist/tvOS/OpenSSL.framework
+
   make dist/watchOS/OpenSSL.framework
 
 Python iOS Support
