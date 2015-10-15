@@ -3,8 +3,9 @@ Python.framework WIP for tvOS and watchOS.
 
 In the meantime only OpenSSL.framework can be built for tvOS or watchOS:
 
-- make dist/tvOS/OpenSSL.framework
-- make dist/watchOS/OpenSSL.framework
+- make OpenSSL.framework-iOS
+- make OpenSSL.framework-tvOS
+- make OpenSSL.framework-watchOS
 
 Python iOS Support
 ==================
