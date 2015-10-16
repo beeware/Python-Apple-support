@@ -47,6 +47,9 @@ CFLAGS-watchOS=		-mwatchos-version-min=2.0
 CFLAGS-watchos.armv7k=	-fembed-bitcode
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
+# override machine for arm64
+MACHINE-arm64=		aarch64
+
 all: $(foreach os,$(OS),all-$(os))
 
 # Clean all builds
@@ -93,7 +96,7 @@ PYTHON_DIR-host=	build/Python-$(PYTHON_VERSION)-host
 Python-host: $(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
 
 # Unpack host Python
-$(PYTHON_DIR-host)/configure: downloads/Python-$(PYTHON_VERSION).tgz
+$(PYTHON_DIR-host)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
 	# Unpack host Python
 	mkdir -p $(PYTHON_DIR-host)
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $(PYTHON_DIR-host)
@@ -113,6 +116,11 @@ $(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER): $(PYTHON_DIR-host)/Makefile
 # - $2 - OS
 define build-target
 ARCH-$1=	$$(subst .,,$$(suffix $1))
+ifdef MACHINE-$$(ARCH-$1)
+MACHINE-$1=	$$(MACHINE-$$(ARCH-$1))
+else
+MACHINE-$1=	$$(ARCH-$1)
+endif
 SDK-$1=		$$(basename $1)
 
 SDK_ROOT-$1=	$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
@@ -121,6 +129,7 @@ CC-$1=		xcrun --sdk $$(SDK-$1) clang\
 
 OPENSSL_DIR-$1=	build/$2/openssl-$(OPENSSL_VERSION)-$1
 PYTHON_DIR-$1=	build/$2/Python-$(PYTHON_VERSION)-$1
+pyconfig.h-$1=	pyconfig-$$(ARCH-$1).h
 
 # Unpack OpenSSL
 $$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
@@ -167,7 +176,7 @@ endif
 	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
-		--host=$$(ARCH-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		--host=$$(MACHINE-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
@@ -178,12 +187,24 @@ $$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: $$(PYTHON_DIR-$1)/Makefile 
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) make all install
 
+build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/pyconfig.h
+	cp $$^ $$@
+
 # Dump vars (for test)
 vars-$1:
 	@echo "ARCH-$1: $$(ARCH-$1)"
+	@echo "MACHINE-$1: $$(MACHINE-$1)"
 	@echo "SDK-$1: $$(SDK-$1)"
 	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
 	@echo "CC-$1: $$(CC-$1)"
+endef
+
+#
+# Install target pyconfig.h
+# Parameters:
+# - $1 - target
+# - $2 - framework directory
+define install-target-pyconfig
 endef
 
 #
@@ -193,34 +214,36 @@ endef
 define build
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
+OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
+PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
+PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
+
 all-$1: Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
 
-Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: build/$1/OpenSSL.framework build/$1/Python.framework
-	tar zcvf $$@ -C build/$1 Python.framework OpenSSL.framework
+Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+	tar zcvf $$@ -C build/$1 $$(notdir $$^)
 
-OpenSSL.framework-$1: build/$1/OpenSSL.framework
+OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
 
 # Build OpenSSL.framework
-build/$1/OpenSSL.framework: build/$1/libssl.a build/$1/libcrypto.a
+$$(OPENSSL_FRAMEWORK-$1): build/$1/libssl.a build/$1/libcrypto.a
 	# Create framework directory structure
-	mkdir -p build/$1/OpenSSL.framework/Versions/$(OPENSSL_VERSION)
-	ln -fs $(OPENSSL_VERSION) build/$1/OpenSSL.framework/Versions/Current
+	mkdir -p $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)
 
 	# Copy the headers (use the version from the simulator because reasons)
-	cp -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include build/$1/OpenSSL.framework/Versions/Current/Headers
-
-	# Link the current Headers to the top level
-	ln -fs Versions/Current/Headers build/$1/OpenSSL.framework
+	cp -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/Headers
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o build/$1/OpenSSL.framework/Versions/Current/OpenSSL $$^
+		-o $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/OpenSSL $$^
 
-	# Link the fat Library to the top level
-	ln -fs Versions/Current/OpenSSL build/$1/OpenSSL.framework
+	# Create symlinks
+	ln -fs $(OPENSSL_VERSION) $$(OPENSSL_FRAMEWORK-$1)/Versions/Current
+	ln -fs Versions/Current/Headers $$(OPENSSL_FRAMEWORK-$1)
+	ln -fs Versions/Current/OpenSSL $$(OPENSSL_FRAMEWORK-$1)
 
 build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libssl.a)
 	mkdir -p build/$1
@@ -230,73 +253,47 @@ build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target)
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
 
-Python.framework-$1: build/$1/Python.framework
+Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
 
 # Build Python.framework
-build/$1/Python.framework: build/$1/libpython$(PYTHON_VER).a
+$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
+	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+
+	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
+	cp -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+	cp $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+	cp $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+
+	# Copy Python.h and pyconfig.h into the resources include directory
+	cp -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+	cp -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+
+	# Copy the standard library from the simulator build
+ifneq ($(TEST),)
+	cp -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
+	# Remove the pieces of the resources directory that aren't needed:
+	rm -f $$(PYTHON_RESOURCES-$1)/lib/libpython$(PYTHON_VER).a
+	rm -rf $$(PYTHON_RESOURCES-$1)/lib/pkgconfig
+else
+	mkdir -p $$(PYTHON_RESOURCES-$1)/lib
+	cd $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib/python$(PYTHON_VER) && \
+		zip -x@$(PROJECT_DIR)/python-lib-exclude.lst -r $(PROJECT_DIR)/$$(PYTHON_RESOURCES-$1)/lib/python$(subst .,,$(PYTHON_VER)) *
+endif
+
+	# Copy fat library
+	cp $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Python
+
+	# Create symlinks
+	ln -fs $(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Versions/Current
+	ln -fs Versions/Current/Headers $$(PYTHON_FRAMEWORK-$1)
+	ln -fs Versions/Current/Resources $$(PYTHON_FRAMEWORK-$1)
+	ln -fs Versions/Current/Python $$(PYTHON_FRAMEWORK-$1)
 
 # Build libpython fat library
 build/$1/libpython$(PYTHON_VER).a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER).a)
+	# Create a fat binary for the libPython library
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
-
 endef
 
 $(foreach os,$(OS),$(eval $(call build,$(os))))
-
-_framework:
-	# Create the framework directory and set it as the current version
-	mkdir -p $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/
-	cd $(FRAMEWORK_DIR)/Versions && ln -fs $(PYTHON_VERSION) Current
-
-	# Copy the headers. The headers are the same for every platform, except for pyconfig.h;
-	# use the x86_64 simulator build because reasons.
-	cp -r build/ios-simulator-x86_64/include/python$(PYTHON_VERSION) $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers
-
-	# The only headers that change between versions is pyconfig.h; copy each supported version...
-	cp build/ios-simulator-i386/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-i386.h
-	cp build/ios-simulator-x86_64/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-x86_64.h
-	# ARMv7 and ARMv7S headers are the same; don't copy this one.
-	# cp build/ios-armv7s/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-armv7s.h
-	cp build/ios-armv7/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-armv7.h
-	cp build/ios-arm64/include/python$(PYTHON_VERSION)/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig-arm64.h
-	# ... and then copy in a master pyconfig.h to unify them all.
-	cp include/pyconfig.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig.h
-
-	# Link the current Headers to the top level
-	cd $(FRAMEWORK_DIR) && ln -fs Versions/Current/Headers
-
-	# Copy the standard library from the simulator build. Again, the
-	# pure Python standard library is the same on every platform;
-	# use the simulator version because reasons.
-	mkdir -p $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources
-	cp -r build/ios-simulator-x86_64/lib $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources
-
-	# Copy Python.h and pyconfig.h into the resources include directory
-	mkdir -p $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/include/python$(PYTHON_VERSION)
-	cp -r $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/pyconfig*.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/include/python$(PYTHON_VERSION)
-	cp -r $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Headers/Python.h $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/include/python$(PYTHON_VERSION)
-
-	# Remove the pieces of the resources directory that aren't needed:
-	# libpython.a isn't needed in the lib directory
-	rm -f $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/lib/libpython$(PYTHON_VERSION).a
-	# pkgconfig isn't needed on the device
-	rm -rf $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/lib/pkgconfig
-
-ifneq ($(TEST),)
-	# Do the pruning and compression.
-	cd $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Resources/lib/python$(PYTHON_VERSION);
-	rm -rf *test* lib* bsddb curses ensurepip hotshot idlelib tkinter turtledemo wsgiref \
-		config-$(PYTHON_VERSION) ctypes/test distutils/tests site-packages sqlite3/test; \
-	find . -name "*.pyc" -exec rm -rf {} \;
-	zip -r ../python$(subst .,,$(PYTHON_VER)).zip *;
-endif
-
-	# Link the current Resources to the top level
-	cd $(FRAMEWORK_DIR) && ln -fs Versions/Current/Resources
-
-	# Create a fat binary for the libPython library
-	cp libpython.a $(FRAMEWORK_DIR)/Versions/$(PYTHON_VERSION)/Python
-
-	# Link the current Python library to the top level
-	cd $(FRAMEWORK_DIR) && ln -fs Versions/Current/Python
