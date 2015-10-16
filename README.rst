@@ -77,4 +77,4 @@ The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
 `Ernesto García's`_ tutorials.
 
 .. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
-.. _Ernesto García1G's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
+.. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
