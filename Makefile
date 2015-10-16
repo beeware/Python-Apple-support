@@ -54,7 +54,7 @@ all: $(foreach os,$(OS),all-$(os))
 
 # Clean all builds
 clean:
-	rm -rf build $(foreach os,$(OS),Python-$(PYTHON_VERSION)-$(os)-support.b$(BUILD_NUMBER).tar.gz)
+	rm -rf build Python-$(PYTHON_VERSION)-*-support.b$(BUILD_NUMBER).tar.gz
 
 # Full clean - includes all downloaded products
 distclean: clean
@@ -70,7 +70,9 @@ downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/Python-$(PYTHON_VE
 
 # Clean the OpenSSL project
 clean-OpenSSL:
-	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* build/*/OpenSSL.framework
+	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
+		build/*/libssl.a build/*/libcrypto.a \
+		build/*/OpenSSL.framework
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
@@ -84,7 +86,9 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 
 # Clean the Python project
 clean-Python:
-	rm -rf build/*/Python-$(PYTHON_VERSION)-* build/*/Python.framework
+	rm -rf build/Python-$(PYTHON_VERSION)-host build/*/Python-$(PYTHON_VERSION)-* \
+		build/*/libpython$(PYTHON_VER).a build/*/pyconfig-*.h \
+		build/*/Python.framework
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
