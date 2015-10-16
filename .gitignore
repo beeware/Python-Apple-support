@@ -5,4 +5,4 @@ archive/*
 build/*
 downloads/*
 diff/*
-Python-*-*-support.*.tar.gz
+dist/*
