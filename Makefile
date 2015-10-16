@@ -54,7 +54,7 @@ all: $(foreach os,$(OS),all-$(os))
 
 # Clean all builds
 clean:
-	rm -rf build Python-$(PYTHON_VERSION)-*-support.b$(BUILD_NUMBER).tar.gz
+	rm -rf build dist
 
 # Full clean - includes all downloaded products
 distclean: clean
@@ -222,12 +222,13 @@ OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
 PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
 PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
-all-$1: Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
+all-$1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
 
-Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+	mkdir dist
 	tar zcvf $$@ -C build/$1 $$(notdir $$^)
 
 OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
