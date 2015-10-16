@@ -1,8 +1,8 @@
-This is a fork of https://github.com/pybee/Python-iOS-support/ that adds
-tvOS and watchOS builds.
+Makefile glue for Python for iOS, tvOS and watchOS.
 
 Useful targets:
 
+* all                           - build all
 * all-iOS			- build everything for iOS
 * all-tvOS			- build everything for tvOS
 * all-watchOS			- build everything for watchOS
