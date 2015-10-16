@@ -76,7 +76,7 @@ clean-OpenSSL:
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
-	mkdir downloads
+	mkdir -p downloads
 	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 
@@ -92,7 +92,7 @@ clean-Python:
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
-	mkdir downloads
+	mkdir -p downloads
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
 PYTHON_DIR-host=	build/Python-$(PYTHON_VERSION)-host
@@ -228,7 +228,7 @@ clean-$1:
 	rm -rf build/$1
 
 dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
-	mkdir dist
+	mkdir -p dist
 	tar zcvf $$@ -C build/$1 $$(notdir $$^)
 
 OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
