@@ -2,16 +2,17 @@ This is a fork of https://github.com/pybee/Python-iOS-support/ that adds
 tvOS and watchOS builds.
 
 Useful targets:
-- all-iOS			- build everything for iOS
-- all-tvOS			- build everything for tvOS
-- all-watchOS			- build everything for watchOS
-- OpenSSL.framework-iOS	        - build OpenSSL.framework for iOS
-- OpenSSL.framework-tvOS	- build OpenSSL.framework for tvOS
-- OpenSSL.framework-watchOS	- build OpenSSL.framework for watchOS
-- Python.framework-iOS	        - build Python.framework for iOS
-- Python.framework-tvOS	        - build Python.framework for tvOS
-- Python.framework-watchOS	- build Python.framework for watchOS
-- Python-host			- build host python
+
+* all-iOS			- build everything for iOS
+* all-tvOS			- build everything for tvOS
+* all-watchOS			- build everything for watchOS
+* OpenSSL.framework-iOS	        - build OpenSSL.framework for iOS
+* OpenSSL.framework-tvOS	- build OpenSSL.framework for tvOS
+* OpenSSL.framework-watchOS	- build OpenSSL.framework for watchOS
+* Python.framework-iOS	        - build Python.framework for iOS
+* Python.framework-tvOS	        - build Python.framework for tvOS
+* Python.framework-watchOS	- build Python.framework for watchOS
+* Python-host			- build host python
 
 Python iOS Support
 ==================
