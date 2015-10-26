@@ -96,8 +96,9 @@ downloads/Python-$(PYTHON_VERSION).tgz:
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
 PYTHON_DIR-host=	build/Python-$(PYTHON_VERSION)-host
+PYTHON_HOST=		$(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
 
-Python-host: $(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
+Python-host: $(PYTHON_HOST)
 
 # Unpack host Python
 $(PYTHON_DIR-host)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
@@ -167,7 +168,7 @@ $$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/M
 		make all
 
 # Unpack Python
-$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz Python-host
+$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST)
 	# Unpack target Python
 	mkdir -p $$(PYTHON_DIR-$1)
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
