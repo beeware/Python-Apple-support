@@ -149,7 +149,7 @@ ifeq ($$(findstring iphone,$$(SDK-$1)),)
 	# Patch apps/speed.c to not use fork() since it's not available on tvOS
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/speed.c
 	# Patch Configure to build for tvOS or watchOS, not iOS
-	LANG=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
+	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
 endif
 	# Configure the build
 	cd $$(OPENSSL_DIR-$1) && \
