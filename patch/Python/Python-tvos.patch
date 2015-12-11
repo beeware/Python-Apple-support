@@ -31,6 +31,25 @@
          /*
 --- a/Modules/posixmodule.c	2015-10-16 03:34:01.000000000 +0600
 +++ b/Modules/posixmodule.c	2015-10-16 03:35:46.000000000 +0600
+@@ -1197,7 +1197,9 @@
+ #include <crt_externs.h>
+ static char **environ;
+ #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
++#if !defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) && !defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
+ extern char **environ;
++#endif
+ #endif /* !_MSC_VER */
+ 
+ static PyObject *
+@@ -1248,7 +1250,7 @@
+         Py_DECREF(k);
+         Py_DECREF(v);
+     }
+-#else
++#elif !defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) && !defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
+     if (environ == NULL)
+         return d;
+     /* This part ignores errors */
 @@ -4463,7 +4463,12 @@
  
      command = PyBytes_AsString(command_obj);
