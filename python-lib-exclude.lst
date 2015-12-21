@@ -1,0 +1,16 @@
+bsddb/*
+config-*/*
+ctypes/test/*
+curses/*
+distutils/tests
+ensurepip/*
+hotshot/*
+idlelib/*
+lib*/*
+site-packages/*
+sqlite3/test
+*test*/*
+tkinter/*
+turtledemo/*
+wsgiref/*
+*.pyc
