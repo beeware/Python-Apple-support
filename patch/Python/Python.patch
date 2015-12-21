@@ -30904,6 +30904,38 @@ diff -Nru orig/Modules/_ctypes/libffi_ios/x86/unix64_x86_64.S modified/Modules/_
 +
 +#endif
 \ No newline at end of file
+diff -Nru orig/Modules/_posixsubprocess.c modified/Modules/_posixsubprocess.c
+--- orig/Modules/_posixsubprocess.c	2015-02-03 19:49:04.000000000 +0800
++++ modified/Modules/_posixsubprocess.c	2015-12-21 13:03:32.000000000 +0800
+@@ -479,11 +479,15 @@
+     saved_errno = 0;
+     for (i = 0; exec_array[i] != NULL; ++i) {
+         const char *executable = exec_array[i];
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++	errno = ENOTSUP;
++#else
+         if (envp) {
+             execve(executable, argv, envp);
+         } else {
+             execv(executable, argv);
+         }
++#endif
+         if (errno != ENOENT && errno != ENOTDIR && saved_errno == 0) {
+             saved_errno = errno;
+         }
+@@ -646,7 +650,12 @@
+         cwd_obj2 = NULL;
+     }
+ 
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++    pid = -1;
++    errno = ENOTSUP;
++#else
+     pid = fork();
++#endif
+     if (pid == 0) {
+         /* Child process */
+         /*
 diff -Nru orig/Modules/makesetup modified/Modules/makesetup
 --- orig/Modules/makesetup	2015-02-03 19:49:04.000000000 +0800
 +++ modified/Modules/makesetup	2015-06-28 14:39:04.000000000 +0800
@@ -30989,7 +31021,7 @@ diff -Nru orig/Modules/mathmodule.c modified/Modules/mathmodule.c
      r = hypot(x, y);
 diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
 --- orig/Modules/posixmodule.c	2015-02-03 19:49:04.000000000 +0800
-+++ modified/Modules/posixmodule.c	2015-05-04 12:44:34.000000000 +0800
++++ modified/Modules/posixmodule.c	2015-12-21 13:03:32.000000000 +0800
 @@ -20,6 +20,8 @@
  #  pragma weak statvfs
  #  pragma weak fstatvfs
@@ -31023,6 +31055,38 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
  
  /*[clinic input]
  module os
+@@ -1178,7 +1197,9 @@
+ #include <crt_externs.h>
+ static char **environ;
+ #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
++#if !defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) && !defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
+ extern char **environ;
++#endif
+ #endif /* !_MSC_VER */
+ 
+ static PyObject *
+@@ -1229,7 +1250,7 @@
+         Py_DECREF(k);
+         Py_DECREF(v);
+     }
+-#else
++#elif !defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) && !defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
+     if (environ == NULL)
+         return d;
+     /* This part ignores errors */
+@@ -4444,7 +4465,12 @@
+ 
+     command = PyBytes_AsString(command_obj);
+     Py_BEGIN_ALLOW_THREADS
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++    sts = -1;
++    errno = ENOTSUP;
++#else
+     sts = system(command);
++#endif
+     Py_END_ALLOW_THREADS
+     Py_DECREF(command_obj);
+ #endif
 diff -Nru orig/Modules/pwdmodule.c modified/Modules/pwdmodule.c
 --- orig/Modules/pwdmodule.c	2015-02-03 19:49:04.000000000 +0800
 +++ modified/Modules/pwdmodule.c	2015-05-02 23:37:06.000000000 +0800

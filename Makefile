@@ -1,56 +1,56 @@
 #
 # Useful targets:
-# - all-iOS			- build everything for iOS
-# - all-tvOS			- build everything for tvOS
-# - all-watchOS			- build everything for watchOS
-# - OpenSSL.framework-iOS	- build OpenSSL.framework for iOS
-# - OpenSSL.framework-tvOS	- build OpenSSL.framework for tvOS
-# - OpenSSL.framework-watchOS	- build OpenSSL.framework for watchOS
-# - Python.framework-iOS	- build Python.framework for iOS
-# - Python.framework-tvOS	- build Python.framework for tvOS
-# - Python.framework-watchOS	- build Python.framework for watchOS
-# - Python-host			- build host python
+# - all                         - build everything
+# - iOS                         - build everything for iOS
+# - tvOS                        - build everything for tvOS
+# - watchOS                     - build everything for watchOS
+# - OpenSSL.framework-iOS       - build OpenSSL.framework for iOS
+# - OpenSSL.framework-tvOS      - build OpenSSL.framework for tvOS
+# - OpenSSL.framework-watchOS   - build OpenSSL.framework for watchOS
+# - Python.framework-iOS        - build Python.framework for iOS
+# - Python.framework-tvOS       - build Python.framework for tvOS
+# - Python.framework-watchOS    - build Python.framework for watchOS
+# - Python-host                 - build host python
 
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=3
+BUILD_NUMBER=4
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=	3.4.2
+PYTHON_VERSION=3.4.2
 PYTHON_VER=	$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=d
+OPENSSL_REVISION=e
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 # Supported OS
 OS=	iOS tvOS watchOS
 
 # iOS targets
-TARGETS-iOS=		iphonesimulator.x86_64 iphonesimulator.i386\
-			iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
-CFLAGS-iOS=		-miphoneos-version-min=7.0
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.i386 iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
+CFLAGS-iOS=-miphoneos-version-min=7.0
 CFLAGS-iphoneos.armv7=	-fembed-bitcode
 CFLAGS-iphoneos.armv7s=	-fembed-bitcode
 CFLAGS-iphoneos.arm64=	-fembed-bitcode
 
 # tvOS targets
-TARGETS-tvOS=		appletvsimulator.x86_64 appletvos.arm64
-CFLAGS-tvOS=		-mtvos-version-min=9.0
+TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
+CFLAGS-tvOS=-mtvos-version-min=9.0
 CFLAGS-appletvos.arm64=	-fembed-bitcode
 PYTHON_CONFIGURE-tvOS=	ac_cv_func_sigaltstack=no
 
 # watchOS targets
-TARGETS-watchOS=	watchsimulator.i386 watchos.armv7k
-CFLAGS-watchOS=		-mwatchos-version-min=2.0
+TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
+CFLAGS-watchOS=-mwatchos-version-min=2.0
 CFLAGS-watchos.armv7k=	-fembed-bitcode
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # override machine for arm64
-MACHINE-arm64=		aarch64
+MACHINE-arm64=aarch64
 
-all: $(foreach os,$(OS),all-$(os))
+all: $(foreach os,$(OS),$(os))
 
 # Clean all builds
 clean:
@@ -95,8 +95,8 @@ downloads/Python-$(PYTHON_VERSION).tgz:
 	mkdir -p downloads
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
-PYTHON_DIR-host=	build/Python-$(PYTHON_VERSION)-host
-PYTHON_HOST=		$(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
+PYTHON_DIR-host=build/Python-$(PYTHON_VERSION)-host
+PYTHON_HOST=$(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
 
 Python-host: $(PYTHON_HOST)
 
@@ -174,9 +174,6 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$1) && patch -p1 <$(PROJECT_DIR)/patch/Python/Python.patch
-ifeq ($$(findstring iphone,$$(SDK-$1)),)
-	cd $$(PYTHON_DIR-$1) && patch -p1 <$(PROJECT_DIR)/patch/Python/Python-tvos.patch
-endif
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
 	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
@@ -223,7 +220,7 @@ OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
 PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
 PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
-all-$1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
+$1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
@@ -283,7 +280,7 @@ ifneq ($(TEST),)
 else
 	mkdir -p $$(PYTHON_RESOURCES-$1)/lib
 	cd $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib/python$(PYTHON_VER) && \
-		zip -x@$(PROJECT_DIR)/python-lib-exclude.lst -r $(PROJECT_DIR)/$$(PYTHON_RESOURCES-$1)/lib/python$(subst .,,$(PYTHON_VER)) *
+		zip -x@$(PROJECT_DIR)/patch/Python/lib-exclude.lst -r $(PROJECT_DIR)/$$(PYTHON_RESOURCES-$1)/lib/python$(subst .,,$(PYTHON_VER)) *
 endif
 
 	# Copy fat library
