@@ -39,7 +39,7 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/row.c \
     _sqlite/statement.c \
     _sqlite/util.c
-_ssl _ssl.c -I$(srcdir)/../../dist/OpenSSL.framework/Headers -framework OpenSSL -F$(srcdir)/../../dist -DUSE_SSL
+_ssl _ssl.c -I$(srcdir)/../OpenSSL.framework/Headers -framework OpenSSL -F$(srcdir)/.. -DUSE_SSL
 _struct _struct.c
 array arraymodule.c
 audioop audioop.c

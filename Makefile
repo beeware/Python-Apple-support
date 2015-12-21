@@ -1,60 +1,66 @@
-PROJECTDIR=$(shell pwd)
+#
+# Useful targets:
+# - all-iOS			- build everything for iOS
+# - all-tvOS			- build everything for tvOS
+# - all-watchOS			- build everything for watchOS
+# - OpenSSL.framework-iOS	- build OpenSSL.framework for iOS
+# - OpenSSL.framework-tvOS	- build OpenSSL.framework for tvOS
+# - OpenSSL.framework-watchOS	- build OpenSSL.framework for watchOS
+# - Python.framework-iOS	- build Python.framework for iOS
+# - Python.framework-tvOS	- build Python.framework for tvOS
+# - Python.framework-watchOS	- build Python.framework for watchOS
+# - Python-host			- build host python
+
+# Current director
+PROJECT_DIR=$(shell pwd)
 
 BUILD_NUMBER=3
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.4.2
+PYTHON_VERSION=	3.4.2
+PYTHON_VER=	$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
 OPENSSL_REVISION=d
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
-# 32 bit iOS Simulator build commands and flags
-IOS_SIMULATOR_SDK_ROOT=$(shell xcrun --sdk iphonesimulator --show-sdk-path)
-IOS_SIMULATOR_CC=$(shell xcrun -find -sdk iphonesimulator clang) -arch i386 --sysroot=$(IOS_SIMULATOR_SDK_ROOT) -miphoneos-version-min=7.0
+# Supported OS
+OS=	iOS tvOS watchOS
 
-# 64 bit iOS Simulator build commands and flags
-IOS_SIMULATOR_64_SDK_ROOT=$(shell xcrun --sdk iphonesimulator --show-sdk-path)
-IOS_SIMULATOR_64_CC=$(shell xcrun -find -sdk iphonesimulator clang) -arch x86_64 --sysroot=$(IOS_SIMULATOR_64_SDK_ROOT) -miphoneos-version-min=7.0
+# iOS targets
+TARGETS-iOS=		iphonesimulator.x86_64 iphonesimulator.i386\
+			iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
+CFLAGS-iOS=		-miphoneos-version-min=7.0
+CFLAGS-iphoneos.armv7=	-fembed-bitcode
+CFLAGS-iphoneos.armv7s=	-fembed-bitcode
+CFLAGS-iphoneos.arm64=	-fembed-bitcode
 
-# iOS ARMV7 build commands and flags
-IOS_ARMV7_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARMV7_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7 --sysroot=$(IOS_ARMV7_SDK_ROOT) -miphoneos-version-min=7.0
+# tvOS targets
+TARGETS-tvOS=		appletvsimulator.x86_64 appletvos.arm64
+CFLAGS-tvOS=		-mtvos-version-min=9.0
+CFLAGS-appletvos.arm64=	-fembed-bitcode
+PYTHON_CONFIGURE-tvOS=	ac_cv_func_sigaltstack=no
 
-# iOS ARMV7S build commands and flags
-IOS_ARMV7S_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARMV7S_CC=$(shell xcrun -find -sdk iphoneos clang) -arch armv7s --sysroot=$(IOS_ARMV7S_SDK_ROOT) -miphoneos-version-min=7.0
+# watchOS targets
+TARGETS-watchOS=	watchsimulator.i386 watchos.armv7k
+CFLAGS-watchOS=		-mwatchos-version-min=2.0
+CFLAGS-watchos.armv7k=	-fembed-bitcode
+PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
-# iOS ARM64 build commands and flags
-IOS_ARM64_SDK_ROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-IOS_ARM64_CC=$(shell xcrun -find -sdk iphoneos clang) -arch arm64 --sysroot=$(IOS_ARM64_SDK_ROOT) -miphoneos-version-min=7.0
+# override machine for arm64
+MACHINE-arm64=		aarch64
 
-
-all: Python-$(PYTHON_VERSION)-iOS-support.b$(BUILD_NUMBER).tar.gz
+all: $(foreach os,$(OS),all-$(os))
 
 # Clean all builds
 clean:
-	rm -rf build dist Python-$(PYTHON_VERSION)-iOS-support.b$(BUILD_NUMBER).tar.gz
+	rm -rf build dist
 
 # Full clean - includes all downloaded products
 distclean: clean
 	rm -rf downloads
 
-Python-$(PYTHON_VERSION)-iOS-support.b$(BUILD_NUMBER).tar.gz: dist/OpenSSL.framework dist/Python.framework
-	cd dist && tar zcvf ../Python-$(PYTHON_VERSION)-iOS-support.b$(BUILD_NUMBER).tar.gz Python.framework OpenSSL.framework
-
-###########################################################################
-# Working directories
-###########################################################################
-
-downloads:
-	mkdir -p downloads
-
-build:
-	mkdir -p build
-
-dist:
-	mkdir -p dist
+downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
 
 ###########################################################################
 # OpenSSL
@@ -64,183 +70,15 @@ dist:
 
 # Clean the OpenSSL project
 clean-OpenSSL:
-	rm -rf build/openssl-$(OPENSSL_VERSION)
-	rm -rf dist/OpenSSL.framework
+	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
+		build/*/libssl.a build/*/libcrypto.a \
+		build/*/OpenSSL.framework
 
 # Download original OpenSSL source code archive.
-downloads/openssl-$(OPENSSL_VERSION).tgz: downloads
+downloads/openssl-$(OPENSSL_VERSION).tgz:
+	mkdir -p downloads
 	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
-
-build/OpenSSL/ios-simulator-i386/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/openssl-$(OPENSSL_VERSION).tgz
-	cd build && mv openssl-$(OPENSSL_VERSION) ios-simulator-i386
-	mkdir -p build/OpenSSL
-	cd build && mv ios-simulator-i386 OpenSSL
-	# Tweak the Makefile to include sysroot and iOS minimum version
-	cd build/OpenSSL/ios-simulator-i386 && \
-		sed -ie "s!^CFLAG=!CFLAG=-isysroot $(IOS_SIMULATOR_SDK_ROOT) -arch i386 -miphoneos-version-min=7.0 !" Makefile
-	# Configure the build
-	cd build/OpenSSL/ios-simulator-i386 && \
-		CC="$(IOS_SIMULATOR_CC)" \
-		CROSS_TOP="$(dir $(IOS_SIMULATOR_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_SIMULATOR_SDK_ROOT))" \
-		./Configure iphoneos-cross --openssldir=$(PROJECTDIR)/build/OpenSSL/ios-simulator-i386
-	# Make the build
-	cd build/OpenSSL/ios-simulator-i386 && \
-		CC="$(IOS_SIMULATOR_CC)" \
-		CROSS_TOP="$(dir $(IOS_SIMULATOR_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_SIMULATOR_SDK_ROOT))" \
-		make all
-
-build/OpenSSL/ios-simulator-x86_64/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/openssl-$(OPENSSL_VERSION).tgz
-	cd build && mv openssl-$(OPENSSL_VERSION) ios-simulator-x86_64
-	mkdir -p build/OpenSSL
-	cd build && mv ios-simulator-x86_64 OpenSSL
-	# Tweak the Makefile to include sysroot and iOS minimum version
-	cd build/OpenSSL/ios-simulator-x86_64 && \
-		sed -ie "s!^CFLAG=!CFLAG=-isysroot $(IOS_SIMULATOR_64_SDK_ROOT) -arch x86_64 -miphoneos-version-min=7.0 !" Makefile
-	# Configure the build
-	cd build/OpenSSL/ios-simulator-x86_64 && \
-		CC="$(IOS_SIMULATOR_64_CC)" \
-		CROSS_TOP="$(dir $(IOS_SIMULATOR_64_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_SIMULATOR_64_SDK_ROOT))" \
-		./Configure darwin64-x86_64-cc --openssldir=$(PROJECTDIR)/build/OpenSSL/ios-simulator-x86_64
-	# Make the build
-	cd build/OpenSSL/ios-simulator-x86_64 && \
-		CC="$(IOS_SIMULATOR_64_CC)" \
-		CROSS_TOP="$(dir $(IOS_SIMULATOR_64_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_SIMULATOR_64_SDK_ROOT))" \
-		make all
-
-build/OpenSSL/ios-armv7/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/openssl-$(OPENSSL_VERSION).tgz
-	cd build && mv openssl-$(OPENSSL_VERSION) ios-armv7
-	mkdir -p build/OpenSSL
-	cd build && mv ios-armv7 OpenSSL
-	# Tweak the Makefile to include sysroot and iOS minimum version
-	cd build/OpenSSL/ios-armv7 && \
-		sed -ie "s!^CFLAG=!CFLAG=-isysroot $(IOS_ARMV7_SDK_ROOT) -arch armv7 -miphoneos-version-min=7.0 !" Makefile
-	# Tweak ui_openssl.c
-	cd build/OpenSSL/ios-armv7 && \
-		sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" crypto/ui/ui_openssl.c
-	# Configure the build
-	cd build/OpenSSL/ios-armv7 && \
-		CC="$(IOS_ARMV7_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARMV7_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARMV7_SDK_ROOT))" \
-		./Configure iphoneos-cross --openssldir=$(PROJECTDIR)/build/OpenSSL/ios-armv7
-	# Make the build
-	cd build/OpenSSL/ios-armv7 && \
-		CC="$(IOS_ARMV7_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARMV7_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARMV7_SDK_ROOT))" \
-		make all
-
-build/OpenSSL/ios-armv7s/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/openssl-$(OPENSSL_VERSION).tgz
-	cd build && mv openssl-$(OPENSSL_VERSION) ios-armv7s
-	mkdir -p build/OpenSSL
-	cd build && mv ios-armv7s OpenSSL
-	# Tweak the Makefile to include sysroot and iOS minimum version
-	cd build/OpenSSL/ios-armv7s && \
-		sed -ie "s!^CFLAG=!CFLAG=-isysroot $(IOS_ARMV7S_SDK_ROOT) -arch armv7s -miphoneos-version-min=7.0 !" Makefile
-	# Tweak ui_openssl.c
-	cd build/OpenSSL/ios-armv7s && \
-		sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" crypto/ui/ui_openssl.c
-	# Configure the build
-	cd build/OpenSSL/ios-armv7s && \
-		CC="$(IOS_ARMV7S_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARMV7S_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARMV7S_SDK_ROOT))" \
-		./Configure iphoneos-cross --openssldir=$(PROJECTDIR)/build/OpenSSL/ios-armv7s
-	# Make the build
-	cd build/OpenSSL/ios-armv7s && \
-		CC="$(IOS_ARMV7S_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARMV7S_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARMV7S_SDK_ROOT))" \
-		make all
-
-build/OpenSSL/ios-arm64/libssl.a: build downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/openssl-$(OPENSSL_VERSION).tgz
-	cd build && mv openssl-$(OPENSSL_VERSION) ios-arm64
-	mkdir -p build/OpenSSL
-	cd build && mv ios-arm64 OpenSSL
-	# Tweak the Makefile to include sysroot and iOS minimum version
-	cd build/OpenSSL/ios-arm64 && \
-		sed -ie "s!^CFLAG=!CFLAG=-isysroot $(IOS_ARM64_SDK_ROOT) -arch arm64 -miphoneos-version-min=7.0 !" Makefile
-	# Tweak ui_openssl.c
-	cd build/OpenSSL/ios-arm64 && \
-		sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" crypto/ui/ui_openssl.c
-	# Configure the build
-	cd build/OpenSSL/ios-arm64 && \
-		CC="$(IOS_ARM64_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARM64_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARM64_SDK_ROOT))" \
-		./Configure iphoneos-cross --openssldir=$(PROJECTDIR)/build/OpenSSL/ios-arm64
-	# Make the build
-	cd build/OpenSSL/ios-arm64 && \
-		CC="$(IOS_ARM64_CC)" \
-		CROSS_TOP="$(dir $(IOS_ARM64_SDK_ROOT)).." \
-		CROSS_SDK="$(notdir $(IOS_ARM64_SDK_ROOT))" \
-		make all
-
-build/OpenSSL/libssl.a: \
-			build/OpenSSL/ios-simulator-i386/libssl.a \
-			build/OpenSSL/ios-simulator-x86_64/libssl.a \
-			build/OpenSSL/ios-armv7/libssl.a \
-			build/OpenSSL/ios-armv7s/libssl.a \
-			build/OpenSSL/ios-arm64/libssl.a
-	cd build/OpenSSL && \
-		lipo -create \
-			ios-simulator-i386/libssl.a \
-			ios-simulator-x86_64/libssl.a \
-			ios-armv7/libssl.a \
-			ios-armv7s/libssl.a \
-			ios-arm64/libssl.a \
-			-output libssl.a
-
-build/OpenSSL/libcrypto.a: \
-			build/OpenSSL/ios-simulator-i386/libssl.a \
-			build/OpenSSL/ios-simulator-x86_64/libssl.a \
-			build/OpenSSL/ios-armv7/libssl.a \
-			build/OpenSSL/ios-armv7s/libssl.a \
-			build/OpenSSL/ios-arm64/libssl.a
-	cd build/OpenSSL && \
-		lipo -create \
-			ios-simulator-i386/libcrypto.a \
-			ios-simulator-x86_64/libcrypto.a \
-			ios-armv7/libcrypto.a \
-			ios-armv7s/libcrypto.a \
-			ios-arm64/libcrypto.a \
-			-output libcrypto.a
-
-dist/OpenSSL.framework: dist build/OpenSSL/libssl.a build/OpenSSL/libcrypto.a
-	# Create framework directory structure
-	cd dist && mkdir -p OpenSSL.framework
-	cd dist && mkdir -p OpenSSL.framework/Versions/$(OPENSSL_VERSION)/
-	cd dist/OpenSSL.framework/Versions && ln -fs $(OPENSSL_VERSION) Current
-
-	# Copy the headers (use the version from the x86_64 simulator because reasons)
-	cp -r build/OpenSSL/ios-simulator-x86_64/include dist/OpenSSL.framework/Versions/Current/Headers
-
-	# Link the current Headers to the top level
-	cd dist/OpenSSL.framework && ln -fs Versions/Current/Headers
-
-	# Create the fat library
-	libtool -no_warning_for_no_symbols -static \
-		-o dist/OpenSSL.framework/Versions/Current/OpenSSL \
-		build/OpenSSL/libcrypto.a \
-		build/OpenSSL/libssl.a
-
-	# Link the fat Library to the top level
-	cd dist/OpenSSL.framework && ln -fs Versions/Current/OpenSSL
 
 ###########################################################################
 # Python
@@ -248,23 +86,220 @@ dist/OpenSSL.framework: dist build/OpenSSL/libssl.a build/OpenSSL/libcrypto.a
 
 # Clean the Python project
 clean-Python:
-	rm -rf build/Python-$(PYTHON_VERSION)
-	rm -rf build/python
-	rm -rf dist/Python.framework
+	rm -rf build/Python-$(PYTHON_VERSION)-host build/*/Python-$(PYTHON_VERSION)-* \
+		build/*/libpython$(PYTHON_VER).a build/*/pyconfig-*.h \
+		build/*/Python.framework
 
 # Download original Python source code archive.
-downloads/Python-$(PYTHON_VERSION).tgz: downloads
+downloads/Python-$(PYTHON_VERSION).tgz:
+	mkdir -p downloads
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
-# build/Python-$(PYTHON_VERSION)/Python.framework: build dist/OpenSSL.framework downloads/Python-$(PYTHON_VERSION).tgz
-build/Python-$(PYTHON_VERSION)/Python.framework: build downloads/Python-$(PYTHON_VERSION).tgz
-	# Unpack sources
-	cd build && tar zxf ../downloads/Python-$(PYTHON_VERSION).tgz
-	# Apply patches
-	cd build/Python-$(PYTHON_VERSION) && patch -p1 < ../../patch/Python/Python.patch
-	cd build/Python-$(PYTHON_VERSION) && cp ../../patch/Python/Setup.embedded Modules/Setup.embedded
-	# Configure and make the build
-	cd build/Python-$(PYTHON_VERSION)/iOS && make
+PYTHON_DIR-host=	build/Python-$(PYTHON_VERSION)-host
+PYTHON_HOST=		$(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER)
 
-dist/Python.framework: dist build/Python-$(PYTHON_VERSION)/Python.framework
-	cd dist && mv ../build/Python-$(PYTHON_VERSION)/Python.framework .
+Python-host: $(PYTHON_HOST)
+
+# Unpack host Python
+$(PYTHON_DIR-host)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
+	# Unpack host Python
+	mkdir -p $(PYTHON_DIR-host)
+	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $(PYTHON_DIR-host)
+	# Configure host Python
+	cd $(PYTHON_DIR-host) && ./configure --prefix=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist --without-ensurepip
+
+# Build host Python
+$(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER): $(PYTHON_DIR-host)/Makefile
+	# Build host Python
+	make -C $(PYTHON_DIR-host) all install
+
+#
+# Build for specified target (from $(TARGETS))
+#
+# Parameters:
+# - $1 - target
+# - $2 - OS
+define build-target
+ARCH-$1=	$$(subst .,,$$(suffix $1))
+ifdef MACHINE-$$(ARCH-$1)
+MACHINE-$1=	$$(MACHINE-$$(ARCH-$1))
+else
+MACHINE-$1=	$$(ARCH-$1)
+endif
+SDK-$1=		$$(basename $1)
+
+SDK_ROOT-$1=	$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
+CC-$1=		xcrun --sdk $$(SDK-$1) clang\
+		-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+
+OPENSSL_DIR-$1=	build/$2/openssl-$(OPENSSL_VERSION)-$1
+PYTHON_DIR-$1=	build/$2/Python-$(PYTHON_VERSION)-$1
+pyconfig.h-$1=	pyconfig-$$(ARCH-$1).h
+
+# Unpack OpenSSL
+$$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
+	# Unpack sources
+	mkdir -p $$(OPENSSL_DIR-$1)
+	tar zxf downloads/openssl-$(OPENSSL_VERSION).tgz --strip-components 1 -C $$(OPENSSL_DIR-$1)
+ifeq ($$(findstring simulator,$$(SDK-$1)),)
+	# Tweak ui_openssl.c
+	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_DIR-$1)/crypto/ui/ui_openssl.c
+endif
+ifeq ($$(findstring iphone,$$(SDK-$1)),)
+	# Patch apps/speed.c to not use fork() since it's not available on tvOS
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/speed.c
+	# Patch Configure to build for tvOS or watchOS, not iOS
+	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
+endif
+	# Configure the build
+	cd $$(OPENSSL_DIR-$1) && \
+		CC="$$(CC-$1)" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
+		./Configure iphoneos-cross no-asm --openssldir=$(PROJECT_DIR)/$$(OPENSSL_DIR-$1)
+
+# Build OpenSSL
+$$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/Makefile
+	# Make the build
+	cd $$(OPENSSL_DIR-$1) && \
+		CC="$$(CC-$1)" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
+		make all
+
+# Unpack Python
+$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST)
+	# Unpack target Python
+	mkdir -p $$(PYTHON_DIR-$1)
+	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
+	# Apply target Python patches
+	cd $$(PYTHON_DIR-$1) && patch -p1 <$(PROJECT_DIR)/patch/Python/Python.patch
+ifeq ($$(findstring iphone,$$(SDK-$1)),)
+	cd $$(PYTHON_DIR-$1) && patch -p1 <$(PROJECT_DIR)/patch/Python/Python-tvos.patch
+endif
+	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
+	# Configure target Python
+	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
+		CC="$$(CC-$1)" LD="$$(CC-$1)" \
+		--host=$$(MACHINE-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
+		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
+		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
+		$$(PYTHON_CONFIGURE-$2)
+
+# Build Python
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: $$(PYTHON_DIR-$1)/Makefile build/$2/OpenSSL.framework
+	# Build target Python
+	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) make all install
+
+build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/pyconfig.h
+	cp -f $$^ $$@
+
+# Dump vars (for test)
+vars-$1:
+	@echo "ARCH-$1: $$(ARCH-$1)"
+	@echo "MACHINE-$1: $$(MACHINE-$1)"
+	@echo "SDK-$1: $$(SDK-$1)"
+	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
+	@echo "CC-$1: $$(CC-$1)"
+endef
+
+#
+# Install target pyconfig.h
+# Parameters:
+# - $1 - target
+# - $2 - framework directory
+define install-target-pyconfig
+endef
+
+#
+# Build for specified OS (from $(OS))
+# Parameters:
+# - $1 - OS
+define build
+$$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
+
+OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
+PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
+PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
+
+all-$1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
+
+clean-$1:
+	rm -rf build/$1
+
+dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+	mkdir -p dist
+	tar zcvf $$@ -C build/$1 $$(notdir $$^)
+
+OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
+
+# Build OpenSSL.framework
+$$(OPENSSL_FRAMEWORK-$1): build/$1/libssl.a build/$1/libcrypto.a
+	# Create framework directory structure
+	mkdir -p $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)
+
+	# Copy the headers (use the version from the simulator because reasons)
+	cp -f -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/Headers
+
+	# Create the fat library
+	xcrun libtool -no_warning_for_no_symbols -static \
+		-o $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/OpenSSL $$^
+
+	# Create symlinks
+	ln -fs $(OPENSSL_VERSION) $$(OPENSSL_FRAMEWORK-$1)/Versions/Current
+	ln -fs Versions/Current/Headers $$(OPENSSL_FRAMEWORK-$1)
+	ln -fs Versions/Current/OpenSSL $$(OPENSSL_FRAMEWORK-$1)
+
+build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libssl.a)
+	mkdir -p build/$1
+	xcrun lipo -create -output $$@ $$^
+
+build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libcrypto.a)
+	mkdir -p build/$1
+	xcrun lipo -create -output $$@ $$^
+
+Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
+
+# Build Python.framework
+$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
+	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+
+	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+	cp -f $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+
+	# Copy Python.h and pyconfig.h into the resources include directory
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+
+	# Copy the standard library from the simulator build
+ifneq ($(TEST),)
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
+	# Remove the pieces of the resources directory that aren't needed:
+	rm -f $$(PYTHON_RESOURCES-$1)/lib/libpython$(PYTHON_VER).a
+	rm -rf $$(PYTHON_RESOURCES-$1)/lib/pkgconfig
+else
+	mkdir -p $$(PYTHON_RESOURCES-$1)/lib
+	cd $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib/python$(PYTHON_VER) && \
+		zip -x@$(PROJECT_DIR)/python-lib-exclude.lst -r $(PROJECT_DIR)/$$(PYTHON_RESOURCES-$1)/lib/python$(subst .,,$(PYTHON_VER)) *
+endif
+
+	# Copy fat library
+	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Python
+
+	# Create symlinks
+	ln -fs $(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Versions/Current
+	ln -fs Versions/Current/Headers $$(PYTHON_FRAMEWORK-$1)
+	ln -fs Versions/Current/Resources $$(PYTHON_FRAMEWORK-$1)
+	ln -fs Versions/Current/Python $$(PYTHON_FRAMEWORK-$1)
+
+# Build libpython fat library
+build/$1/libpython$(PYTHON_VER).a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER).a)
+	# Create a fat binary for the libPython library
+	mkdir -p build/$1
+	xcrun lipo -create -output $$@ $$^
+endef
+
+$(foreach os,$(OS),$(eval $(call build,$(os))))
