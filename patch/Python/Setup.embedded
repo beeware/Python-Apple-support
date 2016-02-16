@@ -60,7 +60,6 @@ resource resource.c
 select selectmodule.c
 syslog syslogmodule.c
 termios termios.c
-time timemodule.c
 unicodedata unicodedata.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
