@@ -15,14 +15,14 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=4
+BUILD_NUMBER=1
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.4.2
+PYTHON_VERSION=3.5.1
 PYTHON_VER=	$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=e
+OPENSSL_REVISION=f
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 # Supported OS
@@ -175,6 +175,8 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$1) && patch -p1 <$(PROJECT_DIR)/patch/Python/Python.patch
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
+	# Copy in the host _freeze_importlib
+	cp $(PYTHON_DIR-host)/Programs/_freeze_importlib $$(PYTHON_DIR-$1)/iOS/_freeze_importlib
 	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
