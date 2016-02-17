@@ -29037,7 +29037,7 @@ diff -Nru orig/Modules/mathmodule.c modified/Modules/mathmodule.c
      r = hypot(x, y);
 diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
 --- orig/Modules/posixmodule.c	2015-12-07 09:39:10.000000000 +0800
-+++ modified/Modules/posixmodule.c	2016-02-17 09:05:04.000000000 +0800
++++ modified/Modules/posixmodule.c	2016-02-17 14:14:22.000000000 +0800
 @@ -20,6 +20,8 @@
  #  pragma weak statvfs
  #  pragma weak fstatvfs
@@ -29047,15 +29047,30 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
  #endif /* __APPLE__ */
  
  #define PY_SSIZE_T_CLEAN
-@@ -175,7 +177,6 @@
+@@ -175,6 +177,22 @@
  #endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
--
++// tvOS and watchOS don't provide a number of important POSIX functions.
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++#  undef HAVE_EXECV
++#  undef HAVE_FORK
++#  undef HAVE_FORK1
++#  undef HAVE_FORKPTY
++#  undef HAVE_GETGROUPS
++#  undef HAVE_SCHED_H
++#  undef HAVE_SENDFILE
++#  undef HAVE_SETPRIORITY
++#  undef HAVE_SPAWNV
++#  undef HAVE_WAIT
++#  undef HAVE_WAIT3
++#  undef HAVE_WAIT4
++#  undef HAVE_WAITPID
++#endif /* TVOS || WATCHOS */
+ 
  /*[clinic input]
  # one of the few times we lie about this name!
- module os
-@@ -1127,7 +1128,9 @@
+@@ -1127,7 +1145,9 @@
  #include <crt_externs.h>
  static char **environ;
  #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
@@ -29065,7 +29080,7 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1178,7 +1181,7 @@
+@@ -1178,7 +1198,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -29074,7 +29089,7 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
      if (environ == NULL)
          return d;
      /* This part ignores errors */
-@@ -4285,7 +4288,12 @@
+@@ -4285,7 +4305,12 @@
      long result;
      char *bytes = PyBytes_AsString(command);
      Py_BEGIN_ALLOW_THREADS
@@ -29170,7 +29185,7 @@ diff -Nru orig/Objects/bytesobject.c modified/Objects/bytesobject.c
                  n++;
 diff -Nru orig/Python/importlib_external.h modified/Python/importlib_external.h
 --- orig/Python/importlib_external.h	2015-12-07 09:39:11.000000000 +0800
-+++ modified/Python/importlib_external.h	2016-02-17 10:08:14.000000000 +0800
++++ modified/Python/importlib_external.h	2016-02-17 12:30:41.000000000 +0800
 @@ -2,52 +2,52 @@
  const unsigned char _Py_M__importlib_external[] = {
      99,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
