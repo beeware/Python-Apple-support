@@ -19,7 +19,7 @@ _elementtree _elementtree.c \
 _heapq _heapqmodule.c
 _json _json.c
 _lsprof _lsprof.o rotatingtree.c
-# _lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../xz/lib -llzma
+_lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../xz/lib -llzma
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
 _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c

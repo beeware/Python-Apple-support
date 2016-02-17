@@ -57,8 +57,9 @@ CFLAGS-watchOS=-mwatchos-version-min=2.0
 CFLAGS-watchos.armv7k=  -fembed-bitcode
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
-# override machine for arm64
-MACHINE-arm64=aarch64
+# override machine types for arm64
+MACHINE_DETAILED-arm64=aarch64
+MACHINE_SIMPLE-arm64=arm
 
 all: $(foreach os,$(OS),$(os))
 
@@ -160,16 +161,22 @@ $(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER): $(PYTHON_DIR-host)/Makefile
 # - $2 - OS
 define build-target
 ARCH-$1=	$$(subst .,,$$(suffix $1))
-ifdef MACHINE-$$(ARCH-$1)
-MACHINE-$1= $$(MACHINE-$$(ARCH-$1))
+ifdef MACHINE_DETAILED-$$(ARCH-$1)
+MACHINE_DETAILED-$1= $$(MACHINE_DETAILED-$$(ARCH-$1))
 else
-MACHINE-$1= $$(ARCH-$1)
+MACHINE_DETAILED-$1= $$(ARCH-$1)
+endif
+ifdef MACHINE_SIMPLE-$$(ARCH-$1)
+MACHINE_SIMPLE-$1= $$(MACHINE_SIMPLE-$$(ARCH-$1))
+else
+MACHINE_SIMPLE-$1= $$(ARCH-$1)
 endif
 SDK-$1=	 $$(basename $1)
 
 SDK_ROOT-$1=	$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
-CC-$1=	  xcrun --sdk $$(SDK-$1) clang\
-		-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+CC-$1= 			xcrun --sdk $$(SDK-$1) clang\
+					-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+LDFLAGS-$1=		-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
 OPENSSL_DIR-$1= build/$2/openssl-$(OPENSSL_VERSION)-$1
 BZIP2_DIR-$1= 	build/$2/bzip2-$(BZIP2_VERSION)-$1
@@ -230,7 +237,9 @@ $$(XZ_DIR-$1)/Makefile: downloads/xz-$(XZ_VERSION).tgz
 	# Configure the build
 	cd $$(XZ_DIR-$1) && ./configure \
 		CC="$$(CC-$1)" \
-		--host=$$(MACHINE-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		LDFLAGS="$$(LDFLAGS-$1)" \
+		--disable-shared --enable-static \
+		--host=$$(MACHINE_SIMPLE-$1)-apple-darwin \
 		--prefix=$(PROJECT_DIR)/build/$2/xz
 
 # Build XZ
@@ -250,14 +259,14 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
-		--host=$$(MACHINE-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		--host=$$(MACHINE_DETAILED-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
 		$$(PYTHON_CONFIGURE-$2)
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: $$(PYTHON_DIR-$1)/Makefile build/$2/OpenSSL.framework build/$2/bzip2/lib/libbz2.a
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: $$(PYTHON_DIR-$1)/Makefile build/$2/OpenSSL.framework build/$2/bzip2/lib/libbz2.a build/$2/xz/lib/liblzma.a
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) make all install
 
@@ -267,7 +276,7 @@ build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/p
 # Dump vars (for test)
 vars-$1:
 	@echo "ARCH-$1: $$(ARCH-$1)"
-	@echo "MACHINE-$1: $$(MACHINE-$1)"
+	@echo "MACHINE_DETAILED-$1: $$(MACHINE_DETAILED-$1)"
 	@echo "SDK-$1: $$(SDK-$1)"
 	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
 	@echo "CC-$1: $$(CC-$1)"
