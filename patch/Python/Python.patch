@@ -1,3 +1,35 @@
+diff -Nru orig/Doc/library/os.rst modified/Doc/library/os.rst
+--- orig/Doc/library/os.rst	2015-12-07 09:39:07.000000000 +0800
++++ modified/Doc/library/os.rst	2016-02-17 12:02:58.000000000 +0800
+@@ -2743,6 +2743,13 @@
+    Python signal handler registered for :const:`SIGABRT` with
+    :func:`signal.signal`.
+ 
++.. data:: allows_subprocesses
++
++   Boolean that describes whether subprocesses can be by the operating system.
++   Some platforms (e.g., iOS mobile devices) *implement* calls like
++   :func:`execv` and :func:`spawnv`, but will raise errors or break if
++   called. Calls to create subprocesses should only be invoked if
++   :data:`os.allows_subprocesses` is `True`.
+ 
+ .. function:: execl(path, arg0, arg1, ...)
+               execle(path, arg0, arg1, ..., env)
+diff -Nru orig/Doc/library/subprocess.rst modified/Doc/library/subprocess.rst
+--- orig/Doc/library/subprocess.rst	2015-12-07 09:39:07.000000000 +0800
++++ modified/Doc/library/subprocess.rst	2016-02-17 12:01:30.000000000 +0800
+@@ -21,6 +21,11 @@
+ 
+    :pep:`324` -- PEP proposing the subprocess module
+ 
++:mod:`subprocess` can only be used on platforms that support subprocess
++creation. Some platforms (especially mobile platforms) may not support
++subprocesses; if :data:`os.allows_subprocesses` is `False`, any calls in
++this module that request a subprocess be created will raise a
++:exc:`RuntimeError`.
+ 
+ Using the :mod:`subprocess` Module
+ ----------------------------------
 diff -Nru orig/Include/datetime.h modified/Include/datetime.h
 --- orig/Include/datetime.h	2015-12-07 09:39:07.000000000 +0800
 +++ modified/Include/datetime.h	2016-02-14 10:29:10.000000000 +0800
@@ -622,12 +654,12 @@ diff -Nru orig/Lib/ctypes/util.py modified/Lib/ctypes/util.py
          possible = ['lib%s.dylib' % name,
 diff -Nru orig/Lib/distutils/tests/test_build_ext.py modified/Lib/distutils/tests/test_build_ext.py
 --- orig/Lib/distutils/tests/test_build_ext.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_build_ext.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_build_ext.py	2016-02-17 12:02:50.000000000 +0800
 @@ -40,6 +40,7 @@
      def build_ext(self, *args, **kwargs):
          return build_ext(*args, **kwargs)
  
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_build_ext(self):
          global ALREADY_TESTED
          copy_xxmodule_c(self.tmp_dir)
@@ -635,29 +667,29 @@ diff -Nru orig/Lib/distutils/tests/test_build_ext.py modified/Lib/distutils/test
          cmd.run()
          self.assertEqual(cmd.compiler, 'unix')
  
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_get_outputs(self):
          tmp_dir = self.mkdtemp()
          c_file = os.path.join(tmp_dir, 'foo.c')
 diff -Nru orig/Lib/distutils/tests/test_build_py.py modified/Lib/distutils/tests/test_build_py.py
 --- orig/Lib/distutils/tests/test_build_py.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_build_py.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_build_py.py	2016-02-17 12:02:38.000000000 +0800
 @@ -106,6 +106,7 @@
                           ['boiledeggs.%s.pyc' % sys.implementation.cache_tag])
  
      @unittest.skipIf(sys.dont_write_bytecode, 'byte-compile disabled')
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_byte_compile_optimized(self):
          project_dir, dist = self.create_dist(py_modules=['boiledeggs'])
          os.chdir(project_dir)
 diff -Nru orig/Lib/distutils/tests/test_config_cmd.py modified/Lib/distutils/tests/test_config_cmd.py
 --- orig/Lib/distutils/tests/test_config_cmd.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_config_cmd.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_config_cmd.py	2016-02-17 09:45:32.000000000 +0800
 @@ -38,6 +38,7 @@
          self.assertEqual(len(self._logs), numlines+1)
  
      @unittest.skipIf(sys.platform == 'win32', "can't test on Windows")
-+    @unittest.skipUnless(hasattr(os, 'fork'), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_search_cpp(self):
          pkg_dir, dist = self.create_dist()
          cmd = config(dist)
@@ -709,29 +741,29 @@ diff -Nru orig/Lib/distutils/tests/test_cygwinccompiler.py modified/Lib/distutil
  
 diff -Nru orig/Lib/distutils/tests/test_install.py modified/Lib/distutils/tests/test_install.py
 --- orig/Lib/distutils/tests/test_install.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_install.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_install.py	2016-02-17 12:02:31.000000000 +0800
 @@ -195,6 +195,7 @@
                      'UNKNOWN-0.0.0-py%s.%s.egg-info' % sys.version_info[:2]]
          self.assertEqual(found, expected)
  
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_record_extensions(self):
          install_dir = self.mkdtemp()
          project_dir, dist = self.create_dist(ext_modules=[
 diff -Nru orig/Lib/distutils/tests/test_install_lib.py modified/Lib/distutils/tests/test_install_lib.py
 --- orig/Lib/distutils/tests/test_install_lib.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_install_lib.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_install_lib.py	2016-02-17 12:02:19.000000000 +0800
 @@ -35,6 +35,7 @@
          self.assertEqual(cmd.optimize, 2)
  
      @unittest.skipIf(sys.dont_write_bytecode, 'byte-compile disabled')
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_byte_compile(self):
          project_dir, dist = self.create_dist()
          os.chdir(project_dir)
 diff -Nru orig/Lib/distutils/tests/test_spawn.py modified/Lib/distutils/tests/test_spawn.py
 --- orig/Lib/distutils/tests/test_spawn.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_spawn.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_spawn.py	2016-02-17 12:02:10.000000000 +0800
 @@ -1,14 +1,14 @@
  """Tests for distutils.spawn."""
  import unittest
@@ -757,7 +789,7 @@ diff -Nru orig/Lib/distutils/tests/test_spawn.py modified/Lib/distutils/tests/te
 -
 -    @unittest.skipUnless(os.name in ('nt', 'posix'),
 -                         'Runs only under posix or nt')
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_spawn(self):
          tmpdir = self.mkdtemp()
  
@@ -771,7 +803,7 @@ diff -Nru orig/Lib/distutils/tests/test_spawn.py modified/Lib/distutils/tests/te
  
 diff -Nru orig/Lib/distutils/tests/test_sysconfig.py modified/Lib/distutils/tests/test_sysconfig.py
 --- orig/Lib/distutils/tests/test_sysconfig.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_sysconfig.py	2016-02-16 16:58:16.000000000 +0800
++++ modified/Lib/distutils/tests/test_sysconfig.py	2016-02-17 10:15:12.000000000 +0800
 @@ -11,6 +11,7 @@
  from distutils.tests import support
  from test.support import TESTFN, run_unittest, check_warnings
@@ -784,13 +816,13 @@ diff -Nru orig/Lib/distutils/tests/test_sysconfig.py modified/Lib/distutils/test
          self.assertIsNotNone(vars['SO'])
          self.assertEqual(vars['SO'], vars['EXT_SUFFIX'])
  
-+    @unittest.skipUnless(subprocess.supported, "test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_customize_compiler_before_get_config_vars(self):
          # Issue #21923: test that a Distribution compiler
          # instance can be called without an explicit call to
 diff -Nru orig/Lib/distutils/tests/test_util.py modified/Lib/distutils/tests/test_util.py
 --- orig/Lib/distutils/tests/test_util.py	2015-12-07 09:39:07.000000000 +0800
-+++ modified/Lib/distutils/tests/test_util.py	2016-02-14 10:29:10.000000000 +0800
++++ modified/Lib/distutils/tests/test_util.py	2016-02-17 12:02:04.000000000 +0800
 @@ -10,12 +10,13 @@
                              check_environ, split_quoted, strtobool,
                              rfc822_escape, byte_compile,
@@ -810,7 +842,7 @@ diff -Nru orig/Lib/distutils/tests/test_util.py modified/Lib/distutils/tests/tes
  
          # XXX platforms to be covered: mac
  
-+    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork')), "distutils cannot spawn child processes")
++    @unittest.skipUnless(os.name == 'nt' or (os.name == 'posix' and hasattr(os, 'fork') and os.allows_subprocesses), "distutils cannot spawn child processes")
      def test_check_environ(self):
          util._environ_checked = 0
          if 'HOME' in os.environ:
@@ -826,6 +858,40 @@ diff -Nru orig/Lib/importlib/_bootstrap_external.py modified/Lib/importlib/_boot
  
  
  def _make_relax_case():
+diff -Nru orig/Lib/os.py modified/Lib/os.py
+--- orig/Lib/os.py	2015-12-07 09:39:08.000000000 +0800
++++ modified/Lib/os.py	2016-02-17 09:09:10.000000000 +0800
+@@ -32,7 +32,7 @@
+ __all__ = ["altsep", "curdir", "pardir", "sep", "pathsep", "linesep",
+            "defpath", "name", "path", "devnull", "SEEK_SET", "SEEK_CUR",
+            "SEEK_END", "fsencode", "fsdecode", "get_exec_path", "fdopen",
+-           "popen", "extsep"]
++           "popen", "extsep", "allows_subprocesses"]
+ 
+ def _exists(name):
+     return name in globals()
+@@ -115,7 +115,6 @@
+ 
+ del _names
+ 
+-
+ if _exists("_have_functions"):
+     _globals = globals()
+     def _add(str, fn):
+@@ -837,6 +836,13 @@
+ fsencode, fsdecode = _fscodec()
+ del _fscodec
+ 
++
++if sys.platform == "ios":
++    allows_subprocesses = False
++else:
++    allows_subprocesses = False
++
++
+ # Supply spawn*() (probably only for Unix)
+ if _exists("fork") and not _exists("spawnv") and _exists("execv"):
+ 
 diff -Nru orig/Lib/plat-ios/IN.py modified/Lib/plat-ios/IN.py
 --- orig/Lib/plat-ios/IN.py	1970-01-01 08:00:00.000000000 +0800
 +++ modified/Lib/plat-ios/IN.py	2016-02-14 10:29:10.000000000 +0800
@@ -9142,33 +9208,8 @@ diff -Nru orig/Lib/site.py modified/Lib/site.py
      return USER_SITE
 diff -Nru orig/Lib/subprocess.py modified/Lib/subprocess.py
 --- orig/Lib/subprocess.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/subprocess.py	2016-02-16 16:25:00.000000000 +0800
-@@ -357,6 +357,7 @@
- 
- import sys
- _mswindows = (sys.platform == "win32")
-+_ios = (sys.platform == "ios")
- 
- import io
- import os
-@@ -455,10 +456,15 @@
-     else:
-         _PopenSelector = selectors.SelectSelector
- 
-+if _ios:
-+    # iOS doesn't support subprocesses.
-+    supported = False
-+else:
-+    supported = True
- 
- __all__ = ["Popen", "PIPE", "STDOUT", "call", "check_call", "getstatusoutput",
-            "getoutput", "check_output", "run", "CalledProcessError", "DEVNULL",
--           "SubprocessError", "TimeoutExpired", "CompletedProcess"]
-+           "SubprocessError", "TimeoutExpired", "CompletedProcess", "supported"]
-            # NOTE: We intentionally exclude list2cmdline as it is
-            # considered an internal implementation detail.  issue10838.
- 
-@@ -515,7 +521,6 @@
++++ modified/Lib/subprocess.py	2016-02-17 09:17:39.000000000 +0800
+@@ -515,7 +515,6 @@
  STDOUT = -2
  DEVNULL = -3
  
@@ -9176,17 +9217,17 @@ diff -Nru orig/Lib/subprocess.py modified/Lib/subprocess.py
  # XXX This function is only used by multiprocessing and the test suite,
  # but it's here so that it can be imported when Python is compiled without
  # threads.
-@@ -842,6 +847,9 @@
+@@ -842,6 +841,9 @@
                   restore_signals=True, start_new_session=False,
                   pass_fds=()):
          """Create new Popen instance."""
-+        if not supported:
-+            raise RuntimeError("subprocesses are not supported on this platform.")
++        if not os.allows_subprocesses:
++            raise RuntimeError("Subprocesses are not supported on this platform.")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1560,7 +1568,7 @@
+@@ -1560,7 +1562,7 @@
                  raise SubprocessError("Unknown child exit status!")
  
  
@@ -9195,7 +9236,7 @@ diff -Nru orig/Lib/subprocess.py modified/Lib/subprocess.py
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1569,6 +1577,8 @@
+@@ -1569,6 +1571,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -9329,7 +9370,7 @@ diff -Nru orig/Lib/test/support/__init__.py modified/Lib/test/support/__init__.p
          b'\xff'.decode(TESTFN_ENCODING)
 diff -Nru orig/Lib/test/support/script_helper.py modified/Lib/test/support/script_helper.py
 --- orig/Lib/test/support/script_helper.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/support/script_helper.py	2016-02-16 15:51:58.000000000 +0800
++++ modified/Lib/test/support/script_helper.py	2016-02-17 09:41:41.000000000 +0800
 @@ -11,6 +11,7 @@
  import py_compile
  import contextlib
@@ -9343,7 +9384,7 @@ diff -Nru orig/Lib/test/support/script_helper.py modified/Lib/test/support/scrip
  __cached_interp_requires_environment = None
  
 +
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.check_call()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  def interpreter_requires_environment():
      """
      Returns True if our sys.executable interpreter requires environment
@@ -9352,7 +9393,7 @@ diff -Nru orig/Lib/test/support/script_helper.py modified/Lib/test/support/scrip
      return _PythonRunResult(rc, out, err), cmd_line
  
 +
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  def _assert_python(expected_success, *args, **env_vars):
      res, cmd_line = run_python_until_end(*args, **env_vars)
      if (res.rc and expected_success) or (not res.rc and not expected_success):
@@ -9361,13 +9402,13 @@ diff -Nru orig/Lib/test/support/script_helper.py modified/Lib/test/support/scrip
      return _assert_python(False, *args, **env_vars)
  
 +
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  def spawn_python(*args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kw):
      """Run a Python subprocess with the given arguments.
  
 diff -Nru orig/Lib/test/test_asyncio/test_events.py modified/Lib/test/test_asyncio/test_events.py
 --- orig/Lib/test/test_asyncio/test_events.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_asyncio/test_events.py	2016-02-16 17:30:31.000000000 +0800
++++ modified/Lib/test/test_asyncio/test_events.py	2016-02-17 10:15:11.000000000 +0800
 @@ -435,6 +435,7 @@
              self._basetest_sock_client_ops(httpd, sock)
  
@@ -9436,13 +9477,13 @@ diff -Nru orig/Lib/test/test_asyncio/test_events.py modified/Lib/test/test_async
              self.loop.add_signal_handler(signal.SIGTERM, func)
  
  
-+@unittest.skipUnless(subprocess.supported, "test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class SubprocessTestsMixin:
  
      def check_terminated(self, returncode):
 diff -Nru orig/Lib/test/test_asyncio/test_streams.py modified/Lib/test/test_asyncio/test_streams.py
 --- orig/Lib/test/test_asyncio/test_streams.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_asyncio/test_streams.py	2016-02-16 17:28:52.000000000 +0800
++++ modified/Lib/test/test_asyncio/test_streams.py	2016-02-17 09:41:39.000000000 +0800
 @@ -4,6 +4,7 @@
  import os
  import queue
@@ -9487,30 +9528,29 @@ diff -Nru orig/Lib/test/test_asyncio/test_streams.py modified/Lib/test/test_asyn
              self.assertEqual(msg, b"hello world!\n")
  
      @unittest.skipIf(sys.platform == 'win32', "Don't have pipes")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_read_all_from_pipe_reader(self):
          # See asyncio issue 168.  This test is derived from the example
          # subprocess_attach_read_pipe.py, but we configure the
 diff -Nru orig/Lib/test/test_asyncio/test_subprocess.py modified/Lib/test/test_asyncio/test_subprocess.py
 --- orig/Lib/test/test_asyncio/test_subprocess.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_asyncio/test_subprocess.py	2016-02-16 17:22:17.000000000 +0800
-@@ -1,4 +1,5 @@
++++ modified/Lib/test/test_asyncio/test_subprocess.py	2016-02-17 09:37:30.000000000 +0800
+@@ -1,3 +1,4 @@
++import os
  import signal
-+import subprocess as sp
  import sys
  import unittest
- import warnings
 @@ -75,6 +76,7 @@
          transport.close()
  
  
-+@unittest.skipUnless(sp.supported, '"Test requires subprocess.Popen()')
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class SubprocessMixin:
  
      def test_stdin_stdout(self):
 diff -Nru orig/Lib/test/test_asyncio/test_unix_events.py modified/Lib/test/test_asyncio/test_unix_events.py
 --- orig/Lib/test/test_asyncio/test_unix_events.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_asyncio/test_unix_events.py	2016-02-16 17:22:13.000000000 +0800
++++ modified/Lib/test/test_asyncio/test_unix_events.py	2016-02-17 10:15:42.000000000 +0800
 @@ -230,6 +230,7 @@
  
  @unittest.skipUnless(hasattr(socket, 'AF_UNIX'),
@@ -9523,38 +9563,30 @@ diff -Nru orig/Lib/test/test_asyncio/test_unix_events.py modified/Lib/test/test_
                                         ))
  
  
-+@unittest.skipUnless(hasattr(os, 'waitpid'), 'os.waitpid() is required')
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class ChildWatcherTestsMixin:
  
      ignore_warnings = mock.patch.object(log.logger, "warning")
 diff -Nru orig/Lib/test/test_base64.py modified/Lib/test/test_base64.py
 --- orig/Lib/test/test_base64.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_base64.py	2016-02-16 15:50:14.000000000 +0800
-@@ -3,6 +3,7 @@
- import base64
- import binascii
- import os
-+import subprocess
- from array import array
- from test.support import script_helper
- 
-@@ -619,7 +620,7 @@
++++ modified/Lib/test/test_base64.py	2016-02-17 09:41:37.000000000 +0800
+@@ -619,7 +619,7 @@
      def test_ErrorHeritage(self):
          self.assertTrue(issubclass(binascii.Error, ValueError))
  
 -
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class TestMain(unittest.TestCase):
      def tearDown(self):
          if os.path.exists(support.TESTFN):
 diff -Nru orig/Lib/test/test_capi.py modified/Lib/test/test_capi.py
 --- orig/Lib/test/test_capi.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_capi.py	2016-02-16 15:50:14.000000000 +0800
++++ modified/Lib/test/test_capi.py	2016-02-17 09:41:32.000000000 +0800
 @@ -49,6 +49,7 @@
          self.assertRaises(AttributeError, setattr, inst.testfunction, "attribute", "test")
  
      @unittest.skipUnless(threading, 'Threading required for this test.')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_no_FatalError_infinite_loop(self):
          with support.SuppressCrashReport():
              p = subprocess.Popen([sys.executable, "-c",
@@ -9568,12 +9600,12 @@ diff -Nru orig/Lib/test/test_capi.py modified/Lib/test/test_capi.py
  
 diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
 --- orig/Lib/test/test_cmd_line.py	2015-12-07 09:39:08.000000000 +0800
-+++ modified/Lib/test/test_cmd_line.py	2016-02-16 15:50:13.000000000 +0800
++++ modified/Lib/test/test_cmd_line.py	2016-02-17 09:41:27.000000000 +0800
 @@ -57,6 +57,7 @@
          rc, out, err = assert_python_ok('-vv')
          self.assertNotIn(b'stack overflow', err)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_xoptions(self):
          def get_xoptions(*args):
              # use subprocess module directly because test.support.script_helper adds
@@ -9581,7 +9613,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
          opts = get_xoptions('-Xa', '-Xb=c,d=e')
          self.assertEqual(opts, {'a': True, 'b': 'c,d=e'})
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_showrefcount(self):
          def run_python(*args):
              # this is similar to assert_python_ok but doesn't strip
@@ -9589,7 +9621,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
      # arguments as unicode (using wmain() instead of main()).
      @unittest.skipIf(sys.platform == 'win32',
                       'Windows has a native unicode API')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_undecodable_code(self):
          undecodable = b"\xff"
          env = os.environ.copy()
@@ -9597,7 +9629,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
          )
          check_output(text)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_unbuffered_output(self):
          # Test expected operation of the '-u' switch
          for stream in ('stdout', 'stderr'):
@@ -9605,7 +9637,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
          # for empty and unset PYTHONPATH
          self.assertEqual(out1, out2)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_displayhook_unencodable(self):
          for encoding in ('ascii', 'latin-1', 'utf-8'):
              # We are testing a PYTHON environment variable here, so we can't
@@ -9613,7 +9645,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
              escaped = repr(text).encode(encoding, 'backslashreplace')
              self.assertIn(escaped, data)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def check_input(self, code, expected):
          with tempfile.NamedTemporaryFile("wb+") as stdin:
              sep = os.linesep.encode('ASCII')
@@ -9621,7 +9653,7 @@ diff -Nru orig/Lib/test/test_cmd_line.py modified/Lib/test/test_cmd_line.py
      # Issue #7111: Python should work without standard streams
  
      @unittest.skipIf(os.name != 'posix', "test needs POSIX semantics")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def _test_no_stdio(self, streams):
          code = """if 1:
              import os, sys
@@ -9640,12 +9672,12 @@ diff -Nru orig/Lib/test/test_compileall.py modified/Lib/test/test_compileall.py
              compileall.compile_dir(self.directory, workers=-1)
 diff -Nru orig/Lib/test/test_concurrent_futures.py modified/Lib/test/test_concurrent_futures.py
 --- orig/Lib/test/test_concurrent_futures.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_concurrent_futures.py	2016-02-16 17:06:07.000000000 +0800
++++ modified/Lib/test/test_concurrent_futures.py	2016-02-17 09:48:08.000000000 +0800
 @@ -91,6 +91,7 @@
      executor_type = futures.ThreadPoolExecutor
  
  
-+@unittest.skipUnless(hasattr(os, 'fork'), 'os.fork() does not exist on this platform')
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class ProcessPoolMixin(ExecutorMixin):
      executor_type = futures.ProcessPoolExecutor
  
@@ -9668,18 +9700,18 @@ diff -Nru orig/Lib/test/test_doctest.py modified/Lib/test/test_doctest.py
  
 diff -Nru orig/Lib/test/test_eintr.py modified/Lib/test/test_eintr.py
 --- orig/Lib/test/test_eintr.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_eintr.py	2016-02-16 15:50:13.000000000 +0800
++++ modified/Lib/test/test_eintr.py	2016-02-17 09:41:22.000000000 +0800
 @@ -9,6 +9,7 @@
  
  
  @unittest.skipUnless(os.name == "posix", "only supported on Unix")
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class EINTRTests(unittest.TestCase):
  
      @unittest.skipUnless(hasattr(signal, "setitimer"), "requires setitimer()")
 diff -Nru orig/Lib/test/test_faulthandler.py modified/Lib/test/test_faulthandler.py
 --- orig/Lib/test/test_faulthandler.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_faulthandler.py	2016-02-16 15:50:12.000000000 +0800
++++ modified/Lib/test/test_faulthandler.py	2016-02-17 09:41:16.000000000 +0800
 @@ -24,6 +24,7 @@
  
  TIMEOUT = 0.5
@@ -9708,7 +9740,7 @@ diff -Nru orig/Lib/test/test_faulthandler.py modified/Lib/test/test_faulthandler
          finally:
              sys.stderr = orig_stderr
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_disabled_by_default(self):
          # By default, the module should be disabled
          code = "import faulthandler; print(faulthandler.is_enabled())"
@@ -9716,7 +9748,7 @@ diff -Nru orig/Lib/test/test_faulthandler.py modified/Lib/test/test_faulthandler
          output = subprocess.check_output(args, env=env)
          self.assertEqual(output.rstrip(), b"False")
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_sys_xoptions(self):
          # Test python -X faulthandler
          code = "import faulthandler; print(faulthandler.is_enabled())"
@@ -9724,7 +9756,7 @@ diff -Nru orig/Lib/test/test_faulthandler.py modified/Lib/test/test_faulthandler
          output = subprocess.check_output(args, env=env)
          self.assertEqual(output.rstrip(), b"True")
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_env_var(self):
          # empty env var
          code = "import faulthandler; print(faulthandler.is_enabled())"
@@ -9758,30 +9790,38 @@ diff -Nru orig/Lib/test/test_fcntl.py modified/Lib/test/test_fcntl.py
      def setUp(self):
 diff -Nru orig/Lib/test/test_file_eintr.py modified/Lib/test/test_file_eintr.py
 --- orig/Lib/test/test_file_eintr.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_file_eintr.py	2016-02-16 15:50:11.000000000 +0800
++++ modified/Lib/test/test_file_eintr.py	2016-02-17 09:41:13.000000000 +0800
 @@ -69,6 +69,7 @@
          self.fail('Error from IO process %s:\nSTDOUT:\n%sSTDERR:\n%s\n' %
                    (why, stdout.decode(), stderr.decode()))
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def _test_reading(self, data_to_write, read_and_verify_code):
          """Generic buffered read method test harness to validate EINTR behavior.
  
 diff -Nru orig/Lib/test/test_gc.py modified/Lib/test/test_gc.py
 --- orig/Lib/test/test_gc.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_gc.py	2016-02-16 15:50:11.000000000 +0800
-@@ -650,6 +650,8 @@
++++ modified/Lib/test/test_gc.py	2016-02-17 09:41:09.000000000 +0800
+@@ -4,6 +4,7 @@
+                             temp_dir)
+ from test.support.script_helper import assert_python_ok, make_script
+ 
++import os
+ import sys
+ import time
+ import gc
+@@ -650,6 +651,8 @@
              del x
              gc.set_debug(%s)
          """
 +
-+        @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++        @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
          def run_command(code):
              p = subprocess.Popen([sys.executable, "-Wd", "-c", code],
                  stdout=subprocess.PIPE,
 diff -Nru orig/Lib/test/test_gdb.py modified/Lib/test/test_gdb.py
 --- orig/Lib/test/test_gdb.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_gdb.py	2016-02-16 16:48:39.000000000 +0800
++++ modified/Lib/test/test_gdb.py	2016-02-17 09:37:53.000000000 +0800
 @@ -5,7 +5,6 @@
  
  import os
@@ -9803,7 +9843,7 @@ diff -Nru orig/Lib/test/test_gdb.py modified/Lib/test/test_gdb.py
          # errors that manifest this way too.
          raise unittest.SkipTest("Couldn't find gdb on the path")
 +    except RuntimeError:
-+        raise unittest.SkipTest("subprocess module doesn't provide Popen()")
++        raise unittest.SkipTest('Test requires support for subprocesses.')
  
      # Regex to parse:
      # 'GNU gdb (GDB; SUSE Linux Enterprise 12) 7.7\n' -> 7.7
@@ -9827,7 +9867,7 @@ diff -Nru orig/Lib/test/test_getpass.py modified/Lib/test/test_getpass.py
  
 diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.py
 --- orig/Lib/test/test_httpservers.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_httpservers.py	2016-02-16 15:50:10.000000000 +0800
++++ modified/Lib/test/test_httpservers.py	2016-02-17 09:40:47.000000000 +0800
 @@ -16,6 +16,7 @@
  import urllib.parse
  import html
@@ -9854,7 +9894,7 @@ diff -Nru orig/Lib/test/test_httpservers.py modified/Lib/test/test_httpservers.p
  
  @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0,
          "This test can't be run reliably as root (issue #13308).")
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class CGIHTTPServerTestCase(BaseTestCase):
      class request_handler(NoLogRequestHandler, CGIHTTPRequestHandler):
          pass
@@ -9965,7 +10005,7 @@ diff -Nru orig/Lib/test/test_io.py modified/Lib/test/test_io.py
  
 diff -Nru orig/Lib/test/test_json/test_tool.py modified/Lib/test/test_json/test_tool.py
 --- orig/Lib/test/test_json/test_tool.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_json/test_tool.py	2016-02-16 15:50:09.000000000 +0800
++++ modified/Lib/test/test_json/test_tool.py	2016-02-17 09:40:44.000000000 +0800
 @@ -7,6 +7,7 @@
  from test.support.script_helper import assert_python_ok
  
@@ -9978,18 +10018,18 @@ diff -Nru orig/Lib/test/test_json/test_tool.py modified/Lib/test/test_json/test_
      ]
      """)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_stdin_stdout(self):
          with subprocess.Popen(
                  (sys.executable, '-m', 'json.tool'),
 diff -Nru orig/Lib/test/test_keyword.py modified/Lib/test/test_keyword.py
 --- orig/Lib/test/test_keyword.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_keyword.py	2016-02-16 15:50:08.000000000 +0800
++++ modified/Lib/test/test_keyword.py	2016-02-17 09:40:38.000000000 +0800
 @@ -46,6 +46,7 @@
              fp.writelines(lines[:lines.index(b"#--start keywords--" + nl) + 1])
              fp.writelines(lines[lines.index(b"#--end keywords--" + nl):])
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def _generate_keywords(self, grammar_file, target_keyword_py_file):
          proc = subprocess.Popen([sys.executable,
                                   KEYWORD_FILE,
@@ -10091,13 +10131,13 @@ diff -Nru orig/Lib/test/test_mmap.py modified/Lib/test/test_mmap.py
          f = open(TESTFN, 'w+b')
 diff -Nru orig/Lib/test/test_multiprocessing_fork.py modified/Lib/test/test_multiprocessing_fork.py
 --- orig/Lib/test/test_multiprocessing_fork.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_multiprocessing_fork.py	2016-02-16 19:53:54.000000000 +0800
++++ modified/Lib/test/test_multiprocessing_fork.py	2016-02-17 09:38:08.000000000 +0800
 @@ -1,7 +1,13 @@
-+import subprocess
++import os
  import unittest
 +
-+if not subprocess.supported:
-+    raise unittest.SkipTest("subprocess module doesn't provide Popen()")
++if not os.allows_subprocesses:
++    raise unittest.SkipTest('Test requires support for subprocesses.')
 +
  import test._test_multiprocessing
  
@@ -10108,13 +10148,13 @@ diff -Nru orig/Lib/test/test_multiprocessing_fork.py modified/Lib/test/test_mult
      unittest.main()
 diff -Nru orig/Lib/test/test_multiprocessing_forkserver.py modified/Lib/test/test_multiprocessing_forkserver.py
 --- orig/Lib/test/test_multiprocessing_forkserver.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_multiprocessing_forkserver.py	2016-02-16 19:53:21.000000000 +0800
++++ modified/Lib/test/test_multiprocessing_forkserver.py	2016-02-17 09:37:46.000000000 +0800
 @@ -1,7 +1,13 @@
-+import subprocess
++import os
  import unittest
 +
-+if not subprocess.supported:
-+    raise unittest.SkipTest("subprocess module doesn't provide Popen()")
++if not os.allows_subprocesses:
++    raise unittest.SkipTest('Test requires support for subprocesses.')
 +
  import test._test_multiprocessing
  
@@ -10125,13 +10165,13 @@ diff -Nru orig/Lib/test/test_multiprocessing_forkserver.py modified/Lib/test/tes
      unittest.main()
 diff -Nru orig/Lib/test/test_multiprocessing_spawn.py modified/Lib/test/test_multiprocessing_spawn.py
 --- orig/Lib/test/test_multiprocessing_spawn.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_multiprocessing_spawn.py	2016-02-16 19:53:43.000000000 +0800
++++ modified/Lib/test/test_multiprocessing_spawn.py	2016-02-17 09:37:41.000000000 +0800
 @@ -1,7 +1,13 @@
-+import subprocess
++import os
  import unittest
 +
-+if not subprocess.supported:
-+    raise unittest.SkipTest("subprocess module doesn't provide Popen()")
++if not os.allows_subprocesses:
++    raise unittest.SkipTest('Test requires support for subprocesses.')
 +
  import test._test_multiprocessing
  
@@ -10142,12 +10182,12 @@ diff -Nru orig/Lib/test/test_multiprocessing_spawn.py modified/Lib/test/test_mul
      unittest.main()
 diff -Nru orig/Lib/test/test_os.py modified/Lib/test/test_os.py
 --- orig/Lib/test/test_os.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_os.py	2016-02-16 15:50:07.000000000 +0800
++++ modified/Lib/test/test_os.py	2016-02-17 09:51:58.000000000 +0800
 @@ -657,6 +657,7 @@
  
      # Bug 1110478
      @unittest.skipUnless(os.path.exists('/bin/sh'), 'requires /bin/sh')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_update2(self):
          os.environ.clear()
          os.environ.update(HELLO="World")
@@ -10155,91 +10195,101 @@ diff -Nru orig/Lib/test/test_os.py modified/Lib/test/test_os.py
              self.assertEqual(value, "World")
  
      @unittest.skipUnless(os.path.exists('/bin/sh'), 'requires /bin/sh')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_os_popen_iter(self):
          with os.popen(
              "/bin/sh -c 'echo \"line1\nline2\nline3\"'") as popen:
-@@ -1343,6 +1345,7 @@
+@@ -1343,6 +1345,8 @@
          os.execve = orig_execve
          os.defpath = orig_defpath
  
 +@unittest.skipUnless(hasattr(os, 'execv'), "os module doesn't provide execvpe()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class ExecTests(unittest.TestCase):
      @unittest.skipIf(USING_LINUXTHREADS,
                       "avoid triggering a linuxthreads bug: see issue #4970")
-@@ -1604,6 +1607,7 @@
+@@ -1604,6 +1608,7 @@
          self.assertRaises(OverflowError, os.setreuid, 0, 1<<32)
  
      @unittest.skipUnless(hasattr(os, 'setreuid'), 'test needs os.setreuid()')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_setreuid_neg1(self):
          # Needs to accept -1.  We run this in a subprocess to avoid
          # altering the test runner's process state (issue8045).
-@@ -1612,6 +1616,7 @@
+@@ -1612,6 +1617,7 @@
                  'import os,sys;os.setreuid(-1,-1);sys.exit(0)'])
  
      @unittest.skipUnless(hasattr(os, 'setregid'), 'test needs os.setregid()')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_setregid(self):
          if os.getuid() != 0 and not HAVE_WHEEL_GROUP:
              self.assertRaises(OSError, os.setregid, 0, 0)
-@@ -1619,6 +1624,7 @@
+@@ -1619,6 +1625,7 @@
          self.assertRaises(OverflowError, os.setregid, 0, 1<<32)
  
      @unittest.skipUnless(hasattr(os, 'setregid'), 'test needs os.setregid()')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_setregid_neg1(self):
          # Needs to accept -1.  We run this in a subprocess to avoid
          # altering the test runner's process state (issue8045).
-@@ -2075,6 +2081,7 @@
+@@ -2075,6 +2082,7 @@
  
  class PidTests(unittest.TestCase):
      @unittest.skipUnless(hasattr(os, 'getppid'), "test needs os.getppid")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_getppid(self):
          p = subprocess.Popen([sys.executable, '-c',
                                'import os; print(os.getppid())'],
-@@ -2083,6 +2090,8 @@
+@@ -2083,6 +2091,9 @@
          # We are the parent of our subprocess
          self.assertEqual(int(stdout), os.getpid())
  
 +    @unittest.skipUnless(hasattr(os, 'spawnv'), "test needs os.spawnv")
 +    @unittest.skipUnless(hasattr(os, 'waitpid'), "test needs os.waitpid")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_waitpid(self):
          args = [sys.executable, '-c', 'pass']
          pid = os.spawnv(os.P_NOWAIT, args[0], args)
-@@ -2548,6 +2557,7 @@
+@@ -2548,6 +2559,7 @@
          self.assertGreaterEqual(size.columns, 0)
          self.assertGreaterEqual(size.lines, 0)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_stty_match(self):
          """Check if stty returns the same results
  
 diff -Nru orig/Lib/test/test_pdb.py modified/Lib/test/test_pdb.py
 --- orig/Lib/test/test_pdb.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_pdb.py	2016-02-16 15:50:07.000000000 +0800
-@@ -914,6 +914,7 @@
++++ modified/Lib/test/test_pdb.py	2016-02-17 09:40:08.000000000 +0800
+@@ -1,6 +1,7 @@
+ # A test suite for pdb; not very comprehensive at the moment.
+ 
+ import doctest
++import os
+ import pdb
+ import sys
+ import types
+@@ -914,6 +915,7 @@
  
  class PdbTestCase(unittest.TestCase):
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def run_pdb(self, script, commands):
          """Run 'script' lines with pdb and the pdb 'commands'."""
          filename = 'main.py'
-@@ -962,6 +963,7 @@
+@@ -962,6 +964,7 @@
              ('bar', 4),
          )
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_issue7964(self):
          # open the file as binary so we can force \r\n newline
          with open(support.TESTFN, 'wb') as f:
-@@ -1013,6 +1015,7 @@
+@@ -1013,6 +1016,7 @@
              any('main.py(5)foo()->None' in l for l in stdout.splitlines()),
              'Fail to step into the caller after a return')
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_issue13210(self):
          # invoking "continue" on a non-main thread triggered an exception
          # inside signal.signal
@@ -10309,7 +10359,7 @@ diff -Nru orig/Lib/test/test_pipes.py modified/Lib/test/test_pipes.py
          for f in (TESTFN, TESTFN2):
 diff -Nru orig/Lib/test/test_platform.py modified/Lib/test/test_platform.py
 --- orig/Lib/test/test_platform.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_platform.py	2016-02-16 15:50:06.000000000 +0800
++++ modified/Lib/test/test_platform.py	2016-02-17 09:39:54.000000000 +0800
 @@ -9,11 +9,13 @@
  
  from test import support
@@ -10320,7 +10370,7 @@ diff -Nru orig/Lib/test/test_platform.py modified/Lib/test/test_platform.py
          res = platform.architecture()
  
      @support.skip_unless_symlink
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_architecture_via_symlink(self): # issue3762
          # On Windows, the EXE needs to know where pythonXY.dll is at so we have
          # to add the directory to the path.
@@ -10345,13 +10395,13 @@ diff -Nru orig/Lib/test/test_platform.py modified/Lib/test/test_platform.py
              ):
              self.assertEqual(platform._parse_release_file(input), output)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_popen(self):
          mswindows = (sys.platform == "win32")
  
 diff -Nru orig/Lib/test/test_poll.py modified/Lib/test/test_poll.py
 --- orig/Lib/test/test_poll.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_poll.py	2016-02-16 15:50:05.000000000 +0800
++++ modified/Lib/test/test_poll.py	2016-02-17 09:39:49.000000000 +0800
 @@ -25,6 +25,7 @@
              match.append(fd)
      return match
@@ -10364,34 +10414,33 @@ diff -Nru orig/Lib/test/test_poll.py modified/Lib/test/test_poll.py
      # Another test case for poll().  This is copied from the test case for
      # select(), modified to use poll() instead.
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_poll2(self):
          cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
          proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
 diff -Nru orig/Lib/test/test_popen.py modified/Lib/test/test_popen.py
 --- orig/Lib/test/test_popen.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_popen.py	2016-02-16 15:50:04.000000000 +0800
-@@ -5,7 +5,9 @@
++++ modified/Lib/test/test_popen.py	2016-02-17 09:39:36.000000000 +0800
+@@ -5,7 +5,8 @@
  
  import unittest
  from test import support
 -import os, sys
 +import os
-+import subprocess
 +import sys
  
  # Test that command-lines get down as we expect.
  # To do this we execute:
-@@ -16,6 +18,8 @@
+@@ -16,6 +17,8 @@
  if ' ' in python:
      python = '"' + python + '"'     # quote embedded space for cmdline
  
 +
-+@unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++@unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
  class PopenTest(unittest.TestCase):
  
      def _do_test_commandline(self, cmdline, expected):
-@@ -23,7 +27,7 @@
+@@ -23,7 +26,7 @@
          cmd = cmd % (python, cmdline)
          with os.popen(cmd) as p:
              data = p.read()
@@ -10402,18 +10451,16 @@ diff -Nru orig/Lib/test/test_popen.py modified/Lib/test/test_popen.py
      def test_popen(self):
 diff -Nru orig/Lib/test/test_posix.py modified/Lib/test/test_posix.py
 --- orig/Lib/test/test_posix.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_posix.py	2016-02-16 15:50:04.000000000 +0800
-@@ -11,8 +11,8 @@
++++ modified/Lib/test/test_posix.py	2016-02-17 11:00:48.000000000 +0800
+@@ -11,7 +11,6 @@
  import os
  import platform
  import pwd
 -import shutil
  import stat
-+import subprocess
  import tempfile
  import unittest
- import warnings
-@@ -20,6 +20,7 @@
+@@ -20,6 +19,7 @@
  _DUMMY_SYMLINK = os.path.join(tempfile.gettempdir(),
                                support.TESTFN + '-dummy-symlink')
  
@@ -10421,50 +10468,99 @@ diff -Nru orig/Lib/test/test_posix.py modified/Lib/test/test_posix.py
  class PosixTester(unittest.TestCase):
  
      def setUp(self):
-@@ -529,9 +530,10 @@
+@@ -40,17 +40,24 @@
+     def testNoArgFunctions(self):
+         # test posix functions which take no arguments and have
+         # no side-effects which we need to cleanup (e.g., fork, wait, abort)
+-        NO_ARG_FUNCTIONS = [ "ctermid", "getcwd", "getcwdb", "uname",
+-                             "times", "getloadavg",
+-                             "getegid", "geteuid", "getgid", "getgroups",
+-                             "getpid", "getpgrp", "getppid", "getuid", "sync",
+-                           ]
++        NO_ARG_FUNCTIONS = [
++            "ctermid", "getcwd", "getcwdb", "uname",
++            "times", "getloadavg",
++            "getegid", "geteuid", "getgid",
++            "getpid", "getpgrp", "getppid", "getuid", "sync",
++        ]
++
++        if sys.platform != 'ios':
++            NO_ARG_FUNCTIONS.append("getgroups")
+ 
+         for name in NO_ARG_FUNCTIONS:
+             posix_func = getattr(posix, name, None)
+             if posix_func is not None:
+-                posix_func()
+-                self.assertRaises(TypeError, posix_func, 1)
++                try:
++                    posix_func()
++                    self.assertRaises(TypeError, posix_func, 1)
++                except Exception as e:
++                    self.fail('Problem invoking %s: %s' % (name, e))
+ 
+     @unittest.skipUnless(hasattr(posix, 'getresuid'),
+                          'test needs posix.getresuid()')
+@@ -529,9 +536,10 @@
              check_stat(uid, gid)
              self.assertRaises(OSError, chown_func, first_param, 0, -1)
              check_stat(uid, gid)
 -            if 0 not in os.getgroups():
 -                self.assertRaises(OSError, chown_func, first_param, -1, 0)
 -                check_stat(uid, gid)
-+            if hasattr(os, 'getgroups'):
++            if hasattr(os, 'getgroups') and sys.platform != 'ios':
 +                if 0 not in os.getgroups():
 +                    self.assertRaises(OSError, chown_func, first_param, -1, 0)
 +                    check_stat(uid, gid)
          # test illegal types
          for t in str, float:
              self.assertRaises(TypeError, chown_func, first_param, t(uid), gid)
-@@ -791,8 +793,8 @@
+@@ -791,8 +799,8 @@
          group = pwd.getpwuid(os.getuid())[3]
          self.assertIn(group, posix.getgrouplist(user, group))
  
 -
      @unittest.skipUnless(hasattr(os, 'getegid'), "test needs os.getegid()")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_getgroups(self):
          with os.popen('id -G 2>/dev/null') as idg:
              groups = idg.read().strip()
+@@ -1040,7 +1048,7 @@
+         self.assertIsInstance(hi, int)
+         self.assertGreaterEqual(hi, lo)
+         # OSX evidently just returns 15 without checking the argument.
+-        if sys.platform != "darwin":
++        if sys.platform not in("darwin", "ios"):
+             self.assertRaises(OSError, posix.sched_get_priority_min, -23)
+             self.assertRaises(OSError, posix.sched_get_priority_max, -23)
+ 
+@@ -1212,6 +1220,7 @@
+         open(fn, 'wb').close()
+         self.assertRaises(ValueError, os.stat, fn_with_NUL)
+ 
++
+ class PosixGroupsTester(unittest.TestCase):
+ 
+     def setUp(self):
 diff -Nru orig/Lib/test/test_pty.py modified/Lib/test/test_pty.py
 --- orig/Lib/test/test_pty.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_pty.py	2016-02-14 10:29:41.000000000 +0800
++++ modified/Lib/test/test_pty.py	2016-02-17 09:52:41.000000000 +0800
 @@ -111,7 +111,7 @@
          os.close(slave_fd)
          os.close(master_fd)
  
 -
-+    @unittest.skipUnless(hasattr(os, 'fork'), "test requires os.fork()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_fork(self):
          debug("calling pty.fork()")
          pid, master_fd = pty.fork()
 diff -Nru orig/Lib/test/test_quopri.py modified/Lib/test/test_quopri.py
 --- orig/Lib/test/test_quopri.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_quopri.py	2016-02-16 15:50:03.000000000 +0800
++++ modified/Lib/test/test_quopri.py	2016-02-17 09:39:28.000000000 +0800
 @@ -180,6 +180,7 @@
          for p, e in self.HSTRINGS:
              self.assertEqual(quopri.decodestring(e, header=True), p)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_scriptencode(self):
          (p, e) = self.STRINGS[-1]
          process = subprocess.Popen([sys.executable, "-mquopri"],
@@ -10472,62 +10568,64 @@ diff -Nru orig/Lib/test/test_quopri.py modified/Lib/test/test_quopri.py
              self.assertEqual(cout[i], e[i])
          self.assertEqual(cout, e)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_scriptdecode(self):
          (p, e) = self.STRINGS[-1]
          process = subprocess.Popen([sys.executable, "-mquopri", "-d"],
 diff -Nru orig/Lib/test/test_script_helper.py modified/Lib/test/test_script_helper.py
 --- orig/Lib/test/test_script_helper.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_script_helper.py	2016-02-16 15:51:53.000000000 +0800
-@@ -34,6 +34,7 @@
++++ modified/Lib/test/test_script_helper.py	2016-02-17 09:38:53.000000000 +0800
+@@ -1,5 +1,6 @@
+ """Unittests for test.support.script_helper.  Who tests the test helper?"""
+ 
++import os
+ import subprocess
+ import sys
+ from test.support import script_helper
+@@ -34,6 +35,7 @@
          self.assertIn('import sys; sys.exit(0)', error_msg,
                        msg='unexpected command line.')
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @mock.patch('subprocess.Popen')
      def test_assert_python_isolated_when_env_not_required(self, mock_popen):
          with mock.patch.object(script_helper,
-@@ -52,6 +53,7 @@
+@@ -52,6 +54,7 @@
              self.assertIn('-I', popen_command)
              self.assertNotIn('-E', popen_command)  # -I overrides this
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @mock.patch('subprocess.Popen')
      def test_assert_python_not_isolated_when_env_is_required(self, mock_popen):
          """Ensure that -I is not passed when the environment is required."""
-@@ -81,6 +83,7 @@
+@@ -81,6 +84,7 @@
          # Reset the private cached state.
          script_helper.__dict__['__cached_interp_requires_environment'] = None
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.check_call()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @mock.patch('subprocess.check_call')
      def test_interpreter_requires_environment_true(self, mock_check_call):
          mock_check_call.side_effect = subprocess.CalledProcessError('', '')
-@@ -88,6 +91,7 @@
+@@ -88,6 +92,7 @@
          self.assertTrue(script_helper.interpreter_requires_environment())
          self.assertEqual(1, mock_check_call.call_count)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.check_call()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @mock.patch('subprocess.check_call')
      def test_interpreter_requires_environment_false(self, mock_check_call):
          # The mocked subprocess.check_call fakes a no-error process.
-@@ -95,6 +99,7 @@
+@@ -95,6 +100,7 @@
          self.assertFalse(script_helper.interpreter_requires_environment())
          self.assertEqual(1, mock_check_call.call_count)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.check_call()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @mock.patch('subprocess.check_call')
      def test_interpreter_requires_environment_details(self, mock_check_call):
          script_helper.interpreter_requires_environment()
 diff -Nru orig/Lib/test/test_select.py modified/Lib/test/test_select.py
 --- orig/Lib/test/test_select.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_select.py	2016-02-16 15:50:01.000000000 +0800
-@@ -1,11 +1,13 @@
- import errno
- import os
- import select
-+import subprocess
- import sys
++++ modified/Lib/test/test_select.py	2016-02-17 09:38:45.000000000 +0800
+@@ -5,7 +5,8 @@
  import unittest
  from test import support
  
@@ -10537,17 +10635,17 @@ diff -Nru orig/Lib/test/test_select.py modified/Lib/test/test_select.py
                   "can't easily test on this system")
  class SelectTestCase(unittest.TestCase):
  
-@@ -44,6 +46,7 @@
+@@ -44,6 +45,7 @@
          self.assertIsNot(r, x)
          self.assertIsNot(w, x)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_select(self):
          cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
          p = os.popen(cmd, 'r')
 diff -Nru orig/Lib/test/test_shutil.py modified/Lib/test/test_shutil.py
 --- orig/Lib/test/test_shutil.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_shutil.py	2016-02-16 15:50:01.000000000 +0800
++++ modified/Lib/test/test_shutil.py	2016-02-17 09:38:37.000000000 +0800
 @@ -51,6 +51,7 @@
  except ImportError:
      ZIP_SUPPORT = shutil.which('zip')
@@ -10568,24 +10666,24 @@ diff -Nru orig/Lib/test/test_shutil.py modified/Lib/test/test_shutil.py
          self.assertEqual(size.lines, 888)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_stty_match(self):
          """Check if stty returns the same results ignoring env
  
 diff -Nru orig/Lib/test/test_signal.py modified/Lib/test/test_signal.py
 --- orig/Lib/test/test_signal.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_signal.py	2016-02-16 15:50:00.000000000 +0800
++++ modified/Lib/test/test_signal.py	2016-02-17 09:38:33.000000000 +0800
 @@ -158,6 +158,7 @@
      @unittest.skipIf(sys.platform=='freebsd6',
          'inter process signals not reliable (do not mix well with threading) '
          'on freebsd6')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_main(self):
          # This function spawns a child process to insulate the main
          # test-running process from all the signals. It then
 diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
 --- orig/Lib/test/test_site.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_site.py	2016-02-16 15:49:59.000000000 +0800
++++ modified/Lib/test/test_site.py	2016-02-17 09:38:29.000000000 +0800
 @@ -31,6 +31,7 @@
      os.makedirs(site.USER_SITE)
      site.addsitedir(site.USER_SITE)
@@ -10598,7 +10696,7 @@ diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
  
      @unittest.skipUnless(site.ENABLE_USER_SITE, "requires access to PEP 370 "
                            "user-site (site.ENABLE_USER_SITE)")
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_s_option(self):
          usersite = site.USER_SITE
          self.assertIn(usersite, sys.path)
@@ -10615,7 +10713,7 @@ diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
          """Restore sys.path"""
          sys.path[:] = self.sys_path
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_abs_paths(self):
          # Make sure all imported modules have their __file__ and __cached__
          # attributes as absolute paths.  Arranging to put the Lib directory on
@@ -10623,7 +10721,7 @@ diff -Nru orig/Lib/test/test_site.py modified/Lib/test/test_site.py
  
  class StartupImportTests(unittest.TestCase):
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_startup_imports(self):
          # This tests checks which modules are loaded by Python when it
          # initially starts upon startup.
@@ -10746,7 +10844,7 @@ diff -Nru orig/Lib/test/test_socket.py modified/Lib/test/test_socket.py
                                       SendrecvmsgUnixStreamTestBase):
 diff -Nru orig/Lib/test/test_socketserver.py modified/Lib/test/test_socketserver.py
 --- orig/Lib/test/test_socketserver.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_socketserver.py	2016-02-14 10:29:41.000000000 +0800
++++ modified/Lib/test/test_socketserver.py	2016-02-17 11:02:33.000000000 +0800
 @@ -7,7 +7,7 @@
  import select
  import signal
@@ -10756,8 +10854,12 @@ diff -Nru orig/Lib/test/test_socketserver.py modified/Lib/test/test_socketserver
  import errno
  import tempfile
  import unittest
-@@ -31,6 +31,7 @@
- HAVE_FORKING = hasattr(os, "fork")
+@@ -28,9 +28,10 @@
+ HAVE_UNIX_SOCKETS = hasattr(socket, "AF_UNIX")
+ requires_unix_sockets = unittest.skipUnless(HAVE_UNIX_SOCKETS,
+                                             'requires Unix sockets')
+-HAVE_FORKING = hasattr(os, "fork")
++HAVE_FORKING = hasattr(os, "fork") and os.allows_subprocesses
  requires_forking = unittest.skipUnless(HAVE_FORKING, 'requires forking')
  
 +
@@ -10781,7 +10883,7 @@ diff -Nru orig/Lib/test/test_socketserver.py modified/Lib/test/test_socketserver
                          socketserver.StreamRequestHandler,
 diff -Nru orig/Lib/test/test_source_encoding.py modified/Lib/test/test_source_encoding.py
 --- orig/Lib/test/test_source_encoding.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_source_encoding.py	2016-02-16 15:49:58.000000000 +0800
++++ modified/Lib/test/test_source_encoding.py	2016-02-17 09:38:26.000000000 +0800
 @@ -7,6 +7,7 @@
  import sys
  import subprocess
@@ -10794,19 +10896,19 @@ diff -Nru orig/Lib/test/test_source_encoding.py modified/Lib/test/test_source_en
          # two bytes in common with the UTF-8 BOM
          self.assertRaises(SyntaxError, eval, b'\xef\xbb\x20')
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_20731(self):
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff -Nru orig/Lib/test/test_subprocess.py modified/Lib/test/test_subprocess.py
 --- orig/Lib/test/test_subprocess.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_subprocess.py	2016-02-16 19:32:13.000000000 +0800
++++ modified/Lib/test/test_subprocess.py	2016-02-17 09:36:48.000000000 +0800
 @@ -26,6 +26,9 @@
  
  mswindows = (sys.platform == "win32")
  
-+if not subprocess.supported:
-+    raise unittest.SkipTest("subprocess module doesn't provide Popen()")
++if not os.allows_subprocesses:
++    raise unittest.SkipTest('Test requires support for subprocesses.')
 +
  #
  # Depends on the following external programs: Python
@@ -10826,7 +10928,7 @@ diff -Nru orig/Lib/test/test_sundry.py modified/Lib/test/test_sundry.py
              import distutils.unixccompiler
 diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
 --- orig/Lib/test/test_sys.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_sys.py	2016-02-16 15:49:57.000000000 +0800
++++ modified/Lib/test/test_sys.py	2016-02-17 09:38:18.000000000 +0800
 @@ -20,6 +20,7 @@
  except ImportError:
      threading = None
@@ -10839,7 +10941,7 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
          finally:
              sys.setrecursionlimit(oldlimit)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_recursionlimit_fatalerror(self):
          # A fatal error occurs if a second recursion limit is hit when recovering
          # from a first one.
@@ -10847,7 +10949,7 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
      def test_clear_type_cache(self):
          sys._clear_type_cache()
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_ioencoding(self):
          env = dict(os.environ)
  
@@ -10855,7 +10957,7 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
  
      @unittest.skipUnless(test.support.FS_NONASCII,
                           'requires OS support of non-ASCII encodings')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_ioencoding_nonascii(self):
          env = dict(os.environ)
  
@@ -10863,7 +10965,7 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
  
      @unittest.skipIf(sys.base_prefix != sys.prefix,
                       'Test is not venv-compatible')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_executable(self):
          # sys.executable should be absolute
          self.assertEqual(os.path.abspath(sys.executable), sys.executable)
@@ -10871,13 +10973,13 @@ diff -Nru orig/Lib/test/test_sys.py modified/Lib/test/test_sys.py
              expected = None
          self.check_fsencoding(fs_encoding, expected)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def c_locale_get_error_handler(self, isolated=False, encoding=None):
          # Force the POSIX locale
          env = os.environ.copy()
 diff -Nru orig/Lib/test/test_sysconfig.py modified/Lib/test/test_sysconfig.py
 --- orig/Lib/test/test_sysconfig.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_sysconfig.py	2016-02-16 15:49:56.000000000 +0800
++++ modified/Lib/test/test_sysconfig.py	2016-02-17 09:42:01.000000000 +0800
 @@ -15,6 +15,7 @@
                         get_scheme_names, get_config_var, _main)
  import _osx_support
@@ -10896,13 +10998,25 @@ diff -Nru orig/Lib/test/test_sysconfig.py modified/Lib/test/test_sysconfig.py
          self.assertEqual(get_scheme_names(), wanted)
  
      @skip_unless_symlink
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_symlink(self):
          # On Windows, the EXE needs to know where pythonXY.dll is at so we have
          # to add the directory to the path.
+diff -Nru orig/Lib/test/test_tempfile.py modified/Lib/test/test_tempfile.py
+--- orig/Lib/test/test_tempfile.py	2015-12-07 09:39:09.000000000 +0800
++++ modified/Lib/test/test_tempfile.py	2016-02-17 11:43:31.000000000 +0800
+@@ -23,7 +23,7 @@
+     has_stat = 0
+ 
+ has_textmode = (tempfile._text_openflags != tempfile._bin_openflags)
+-has_spawnl = hasattr(os, 'spawnl')
++has_spawnl = hasattr(os, 'spawnl') and os.allows_subprocesses
+ 
+ # TEST_FILES may need to be tweaked for systems depending on the maximum
+ # number of files that can be opened at one time (see ulimit -n)
 diff -Nru orig/Lib/test/test_thread.py modified/Lib/test/test_thread.py
 --- orig/Lib/test/test_thread.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_thread.py	2016-02-14 10:29:41.000000000 +0800
++++ modified/Lib/test/test_thread.py	2016-02-17 09:53:21.000000000 +0800
 @@ -14,12 +14,14 @@
  
  _print_mutex = thread.allocate_lock()
@@ -10922,7 +11036,7 @@ diff -Nru orig/Lib/test/test_thread.py modified/Lib/test/test_thread.py
  
      @unittest.skipIf(sys.platform.startswith('win'),
                       "This test is only appropriate for POSIX-like systems.")
-+    @unittest.skipUnless(hasattr(os, 'fork'), "test requires os.fork()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      @support.reap_threads
      def test_forkinthread(self):
          def thread1():
@@ -10947,20 +11061,22 @@ diff -Nru orig/Lib/test/test_threading.py modified/Lib/test/test_threading.py
          # Python code returned but before the thread state is deleted.
 diff -Nru orig/Lib/test/test_traceback.py modified/Lib/test/test_traceback.py
 --- orig/Lib/test/test_traceback.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_traceback.py	2016-02-16 15:49:56.000000000 +0800
-@@ -6,6 +6,7 @@
++++ modified/Lib/test/test_traceback.py	2016-02-17 11:55:04.000000000 +0800
+@@ -5,7 +5,9 @@
+ import linecache
  import sys
  import unittest
++import os
  import re
 +import subprocess
  from test import support
  from test.support import TESTFN, Error, captured_output, unlink, cpython_only
  from test.support.script_helper import assert_python_ok
-@@ -110,11 +111,12 @@
+@@ -110,11 +112,12 @@
          err = traceback.format_exception_only(None, None)
          self.assertEqual(err, ['None\n'])
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_encoded_file(self):
          # Test that tracebacks are correctly printed for encoded source files:
          # - correct line number (Issue2384)
@@ -10972,15 +11088,15 @@ diff -Nru orig/Lib/test/test_traceback.py modified/Lib/test/test_traceback.py
          # encoding may be different from the current interpreter, on Windows
 diff -Nru orig/Lib/test/test_unicodedata.py modified/Lib/test/test_unicodedata.py
 --- orig/Lib/test/test_unicodedata.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_unicodedata.py	2016-02-16 15:49:55.000000000 +0800
-@@ -9,6 +9,7 @@
++++ modified/Lib/test/test_unicodedata.py	2016-02-17 09:41:56.000000000 +0800
+@@ -6,6 +6,7 @@
+ 
+ """
+ 
++import os
  import sys
  import unittest
  import hashlib
-+import subprocess
- from test.support import script_helper
- 
- encoding = 'utf-8'
 @@ -222,8 +223,10 @@
          self.assertEqual(eaw('\u2010'), 'A')
          self.assertEqual(eaw('\U00020000'), 'W')
@@ -10988,7 +11104,7 @@ diff -Nru orig/Lib/test/test_unicodedata.py modified/Lib/test/test_unicodedata.p
 +
  class UnicodeMiscTest(UnicodeDatabaseTest):
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_failed_import_during_compiling(self):
          # Issue 4367
          # Decoding \N escapes requires the unicodedata module. If it can't be
@@ -11024,7 +11140,7 @@ diff -Nru orig/Lib/test/test_urllib2net.py modified/Lib/test/test_urllib2net.py
          with support.transient_internet(redirect_url_with_frag):
 diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
 --- orig/Lib/test/test_uuid.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_uuid.py	2016-02-16 15:49:54.000000000 +0800
++++ modified/Lib/test/test_uuid.py	2016-02-17 10:14:39.000000000 +0800
 @@ -14,6 +14,7 @@
      except:
          return False
@@ -11037,7 +11153,7 @@ diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
              equal(str(u), v)
  
      @unittest.skipUnless(os.name == 'posix', 'requires Posix')
-+    @unittest.skipUnless(hasattr(os, 'fork'), "test requires os.fork()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def testIssue8621(self):
          # On at least some versions of OSX uuid.uuid4 generates
          # the same sequence of UUIDs in the parent and any
@@ -11045,7 +11161,7 @@ diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
  
  class TestInternals(unittest.TestCase):
      @unittest.skipUnless(os.name == 'posix', 'requires Posix')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_find_mac(self):
          data = '''
  fake hwaddr
@@ -11053,7 +11169,7 @@ diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
                          "%s is not an RFC 4122 node ID" % hex)
  
      @unittest.skipUnless(os.name == 'posix', 'requires Posix')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_ifconfig_getnode(self):
          node = uuid._ifconfig_getnode()
          self.check_node(node, 'ifconfig', True)
@@ -11061,7 +11177,7 @@ diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
          self.check_node(node, 'ip', True)
  
      @unittest.skipUnless(os.name == 'posix', 'requires Posix')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_arp_getnode(self):
          node = uuid._arp_getnode()
          self.check_node(node, 'arp', True)
@@ -11069,13 +11185,13 @@ diff -Nru orig/Lib/test/test_uuid.py modified/Lib/test/test_uuid.py
          self.check_node(node, 'lanscan', True)
  
      @unittest.skipUnless(os.name == 'posix', 'requires Posix')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_netstat_getnode(self):
          node = uuid._netstat_getnode()
          self.check_node(node, 'netstat', True)
 diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
 --- orig/Lib/test/test_venv.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/test/test_venv.py	2016-02-16 15:49:46.000000000 +0800
++++ modified/Lib/test/test_venv.py	2016-02-17 09:41:45.000000000 +0800
 @@ -35,6 +35,7 @@
      def failsOnWindows(f):
          return f
@@ -11088,7 +11204,7 @@ diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
          self.assertTrue(os.path.exists(fn), 'File %r should exist.' % fn)
  
      @skipInVenv
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_prefixes(self):
          """
          Test that the prefix values are as expected.
@@ -11096,7 +11212,7 @@ diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
      # point to the venv being used to run the test, and we lose the link
      # to the source build - so Python can't initialise properly.
      @skipInVenv
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_executable(self):
          """
          Test that the sys.executable value is as expected.
@@ -11104,7 +11220,7 @@ diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
          self.assertEqual(out.strip(), envpy.encode())
  
      @unittest.skipUnless(can_symlink(), 'Needs symlinks')
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_executable_symlinks(self):
          """
          Test that the sys.executable value is as expected.
@@ -11112,7 +11228,7 @@ diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
  @skipInVenv
  class EnsurePipTest(BaseTest):
      """Test venv module installation of pip."""
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def assert_pip_not_installed(self):
          envpy = os.path.join(os.path.realpath(self.env_dir),
                               self.bindir, self.exe)
@@ -11120,7 +11236,7 @@ diff -Nru orig/Lib/test/test_venv.py modified/Lib/test/test_venv.py
  
      # Requesting pip fails without SSL (http://bugs.python.org/issue19744)
      @unittest.skipIf(ssl is None, ensurepip._MISSING_SSL_MESSAGE)
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_with_pip(self):
          rmtree(self.env_dir)
          with EnvironmentVarGuard() as envvars:
@@ -11172,12 +11288,12 @@ diff -Nru orig/Lib/unittest/test/test_break.py modified/Lib/unittest/test/test_b
  class TestBreak(unittest.TestCase):
 diff -Nru orig/Lib/unittest/test/test_runner.py modified/Lib/unittest/test/test_runner.py
 --- orig/Lib/unittest/test/test_runner.py	2015-12-07 09:39:09.000000000 +0800
-+++ modified/Lib/unittest/test/test_runner.py	2016-02-16 15:49:39.000000000 +0800
++++ modified/Lib/unittest/test/test_runner.py	2016-02-17 09:41:43.000000000 +0800
 @@ -274,6 +274,7 @@
          expectedresult = (runner.stream, DESCRIPTIONS, VERBOSITY)
          self.assertEqual(runner._makeResult(), expectedresult)
  
-+    @unittest.skipUnless(subprocess.supported, "Test requires subprocess.Popen()")
++    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
      def test_warnings(self):
          """
          Check that warnings argument of TextTestRunner correctly affects the
@@ -28921,7 +29037,7 @@ diff -Nru orig/Modules/mathmodule.c modified/Modules/mathmodule.c
      r = hypot(x, y);
 diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
 --- orig/Modules/posixmodule.c	2015-12-07 09:39:10.000000000 +0800
-+++ modified/Modules/posixmodule.c	2016-02-14 10:41:08.000000000 +0800
++++ modified/Modules/posixmodule.c	2016-02-17 09:05:04.000000000 +0800
 @@ -20,6 +20,8 @@
  #  pragma weak statvfs
  #  pragma weak fstatvfs
@@ -28931,31 +29047,15 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
  #endif /* __APPLE__ */
  
  #define PY_SSIZE_T_CLEAN
-@@ -175,6 +177,23 @@
+@@ -175,7 +177,6 @@
  #endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
-+// iOS *defines* a number of POSIX functions, but you can't use them
-+// because iOS isn't a conventional multiprocess environment.
-+#if TARGET_OS_IPHONE
-+#  undef HAVE_EXECV
-+#  undef HAVE_FORK
-+#  undef HAVE_FORK1
-+#  undef HAVE_FORKPTY
-+#  undef HAVE_GETGROUPS
-+#  undef HAVE_SCHED_H
-+#  undef HAVE_SENDFILE
-+#  undef HAVE_SETPRIORITY
-+#  undef HAVE_SPAWNV
-+#  undef HAVE_WAIT
-+#  undef HAVE_WAIT3
-+#  undef HAVE_WAIT4
-+#  undef HAVE_WAITPID
-+#endif /* TARGET_OS_IPHONE */
- 
+-
  /*[clinic input]
  # one of the few times we lie about this name!
-@@ -1127,7 +1146,9 @@
+ module os
+@@ -1127,7 +1128,9 @@
  #include <crt_externs.h>
  static char **environ;
  #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
@@ -28965,7 +29065,7 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1178,7 +1199,7 @@
+@@ -1178,7 +1181,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -28974,7 +29074,7 @@ diff -Nru orig/Modules/posixmodule.c modified/Modules/posixmodule.c
      if (environ == NULL)
          return d;
      /* This part ignores errors */
-@@ -4285,7 +4306,12 @@
+@@ -4285,7 +4288,12 @@
      long result;
      char *bytes = PyBytes_AsString(command);
      Py_BEGIN_ALLOW_THREADS
@@ -29070,7 +29170,7 @@ diff -Nru orig/Objects/bytesobject.c modified/Objects/bytesobject.c
                  n++;
 diff -Nru orig/Python/importlib_external.h modified/Python/importlib_external.h
 --- orig/Python/importlib_external.h	2015-12-07 09:39:11.000000000 +0800
-+++ modified/Python/importlib_external.h	2016-02-16 16:06:55.000000000 +0800
++++ modified/Python/importlib_external.h	2016-02-17 10:08:14.000000000 +0800
 @@ -2,52 +2,52 @@
  const unsigned char _Py_M__importlib_external[] = {
      99,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,
@@ -34450,7 +34550,7 @@ diff -Nru orig/Tools/iOS-test/iOS-test/iOS-test-Prefix.pch modified/Tools/iOS-te
 \ No newline at end of file
 diff -Nru orig/Tools/iOS-test/iOS-test/main.m modified/Tools/iOS-test/iOS-test/main.m
 --- orig/Tools/iOS-test/iOS-test/main.m	1970-01-01 08:00:00.000000000 +0800
-+++ modified/Tools/iOS-test/iOS-test/main.m	2016-02-16 19:55:51.000000000 +0800
++++ modified/Tools/iOS-test/iOS-test/main.m	2016-02-17 11:57:08.000000000 +0800
 @@ -0,0 +1,149 @@
 +//
 +//  main.m
