@@ -71,7 +71,7 @@ clean:
 distclean: clean
 	rm -rf downloads
 
-downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
+downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/bzip2-$(BZIP2_VERSION).tgz downloads/xz-$(XZ_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
 
 ###########################################################################
 # OpenSSL
