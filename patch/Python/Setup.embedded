@@ -3,6 +3,7 @@
 #####################################################################
 
 _bisect _bisectmodule.c
+_bz2 _bz2module.c -I$(srcdir)/../bzip2/include -L$(srcdir)/../bzip2/lib -lbz2
 _codecs_cn cjkcodecs/_codecs_cn.c
 _codecs_hk cjkcodecs/_codecs_hk.c
 _codecs_iso2022 cjkcodecs/_codecs_iso2022.c
@@ -18,6 +19,7 @@ _elementtree _elementtree.c \
 _heapq _heapqmodule.c
 _json _json.c
 _lsprof _lsprof.o rotatingtree.c
+_lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../xz/lib -llzma
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
 _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
@@ -60,7 +62,6 @@ resource resource.c
 select selectmodule.c
 syslog syslogmodule.c
 termios termios.c
-time timemodule.c
 unicodedata unicodedata.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
@@ -75,12 +76,10 @@ _testimportmultiple _testimportmultiple.c
 #####################################################################
 # Modules that require additional frameworks
 #####################################################################
-#_bz2 bz2module.c -lbz2
 #_curses _cursesmodule.c -lcurses -ltermcap
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
-#_lzma
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
 #ossaudiodev
