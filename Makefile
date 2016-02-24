@@ -1,22 +1,22 @@
 #
 # Useful targets:
-# - all						 	- build everything
-# - iOS						 	- build everything for iOS
-# - tvOS						- build everything for tvOS
-# - watchOS					 	- build everything for watchOS
-# - OpenSSL.framework-iOS	   	- build OpenSSL.framework for iOS
-# - OpenSSL.framework-tvOS	  	- build OpenSSL.framework for tvOS
-# - OpenSSL.framework-watchOS   - build OpenSSL.framework for watchOS
-# - BZip2-iOS				   	- build BZip2 library for iOS
-# - BZip2-tvOS				  	- build BZip2 library for tvOS
-# - BZip2-watchOS			   	- build BZip2 library for watchOS
-# - XZ-iOS				   		- build XZ library for iOS
-# - XZ-tvOS				  		- build XZ library for tvOS
-# - XZ-watchOS			   		- build XZ library for watchOS
-# - Python.framework-iOS		- build Python.framework for iOS
-# - Python.framework-tvOS	   	- build Python.framework for tvOS
-# - Python.framework-watchOS	- build Python.framework for watchOS
-# - Python-host				 	- build host python
+# - all                       - build everything
+# - iOS                       - build everything for iOS
+# - tvOS                      - build everything for tvOS
+# - watchOS                   - build everything for watchOS
+# - OpenSSL.framework-iOS     - build OpenSSL.framework for iOS
+# - OpenSSL.framework-tvOS    - build OpenSSL.framework for tvOS
+# - OpenSSL.framework-watchOS - build OpenSSL.framework for watchOS
+# - BZip2-iOS                 - build BZip2 library for iOS
+# - BZip2-tvOS                - build BZip2 library for tvOS
+# - BZip2-watchOS             - build BZip2 library for watchOS
+# - XZ-iOS                    - build XZ library for iOS
+# - XZ-tvOS                   - build XZ library for tvOS
+# - XZ-watchOS                - build XZ library for watchOS
+# - Python.framework-iOS      - build Python.framework for iOS
+# - Python.framework-tvOS     - build Python.framework for tvOS
+# - Python.framework-watchOS  - build Python.framework for watchOS
+# - Python-host               - build host python
 
 # Current director
 PROJECT_DIR=$(shell pwd)
@@ -41,21 +41,21 @@ OS= iOS tvOS watchOS
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.i386 iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
 CFLAGS-iOS=-miphoneos-version-min=7.0
-CFLAGS-iphoneos.armv7=  -fembed-bitcode
+CFLAGS-iphoneos.armv7= -fembed-bitcode
 CFLAGS-iphoneos.armv7s= -fembed-bitcode
-CFLAGS-iphoneos.arm64=  -fembed-bitcode
+CFLAGS-iphoneos.arm64= -fembed-bitcode
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
 CFLAGS-tvOS=-mtvos-version-min=9.0
 CFLAGS-appletvos.arm64= -fembed-bitcode
-PYTHON_CONFIGURE-tvOS=  ac_cv_func_sigaltstack=no
+PYTHON_CONFIGURE-tvOS= ac_cv_func_sigaltstack=no
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
 CFLAGS-watchOS=-mwatchos-version-min=2.0
-CFLAGS-watchos.armv7k=  -fembed-bitcode
-PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
+CFLAGS-watchos.armv7k= -fembed-bitcode
+PYTHON_CONFIGURE-watchOS= ac_cv_func_sigaltstack=no
 
 # override machine types for arm64
 MACHINE_DETAILED-arm64=aarch64
@@ -173,16 +173,16 @@ MACHINE_SIMPLE-$1= $$(ARCH-$1)
 endif
 SDK-$1=	 $$(basename $1)
 
-SDK_ROOT-$1=	$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
-CC-$1= 			xcrun --sdk $$(SDK-$1) clang\
+SDK_ROOT-$1=$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
+CC-$1=xcrun --sdk $$(SDK-$1) clang\
 					-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
-LDFLAGS-$1=		-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
+LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
-OPENSSL_DIR-$1= build/$2/openssl-$(OPENSSL_VERSION)-$1
-BZIP2_DIR-$1= 	build/$2/bzip2-$(BZIP2_VERSION)-$1
-XZ_DIR-$1= 		build/$2/xz-$(XZ_VERSION)-$1
-PYTHON_DIR-$1=  build/$2/Python-$(PYTHON_VERSION)-$1
-pyconfig.h-$1=  pyconfig-$$(ARCH-$1).h
+OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
+BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
+XZ_DIR-$1=build/$2/xz-$(XZ_VERSION)-$1
+PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
+pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
 
 # Unpack OpenSSL
 $$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
@@ -297,11 +297,11 @@ endef
 define build
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
-OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
-BZIP2_LIB-$1=			build/$1/bzip2/lib/libbz2.a
-XZ_LIB-$1=				build/$1/xz/lib/liblzma.a
-PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
-PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
+OPENSSL_FRAMEWORK-$1=build/$1/OpenSSL.framework
+BZIP2_LIB-$1=build/$1/bzip2/lib/libbz2.a
+XZ_LIB-$1=build/$1/xz/lib/liblzma.a
+PYTHON_FRAMEWORK-$1=build/$1/Python.framework
+PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
 $1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
 
