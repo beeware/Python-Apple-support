@@ -1,54 +1,65 @@
 #
 # Useful targets:
-# - all                         - build everything
-# - iOS                         - build everything for iOS
-# - tvOS                        - build everything for tvOS
-# - watchOS                     - build everything for watchOS
-# - OpenSSL.framework-iOS       - build OpenSSL.framework for iOS
-# - OpenSSL.framework-tvOS      - build OpenSSL.framework for tvOS
+# - all						 - build everything
+# - iOS						 - build everything for iOS
+# - tvOS						- build everything for tvOS
+# - watchOS					 - build everything for watchOS
+# - OpenSSL.framework-iOS	   - build OpenSSL.framework for iOS
+# - OpenSSL.framework-tvOS	  - build OpenSSL.framework for tvOS
 # - OpenSSL.framework-watchOS   - build OpenSSL.framework for watchOS
-# - Python.framework-iOS        - build Python.framework for iOS
-# - Python.framework-tvOS       - build Python.framework for tvOS
-# - Python.framework-watchOS    - build Python.framework for watchOS
-# - Python-host                 - build host python
+# - BZip2-iOS				   - build BZip2 library for iOS
+# - BZip2-tvOS				  - build BZip2 library for tvOS
+# - BZip2-watchOS			   - build BZip2 library for watchOS
+# - XZ-iOS					  - build XZ library for iOS
+# - XZ-tvOS					 - build XZ library for tvOS
+# - XZ-watchOS				  - build XZ library for watchOS
+# - Python.framework-iOS		- build Python.framework for iOS
+# - Python.framework-tvOS	   - build Python.framework for tvOS
+# - Python.framework-watchOS	- build Python.framework for watchOS
+# - Python-host				 - build host python
 
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=4
+BUILD_NUMBER=5
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=3.4.2
-PYTHON_VER=	$(basename $(PYTHON_VERSION))
+PYTHON_VER= $(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=e
+OPENSSL_REVISION=f
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
+BZIP2_VERSION=1.0.6
+
+XZ_VERSION=5.2.2
+
 # Supported OS
-OS=	iOS tvOS watchOS
+OS= iOS tvOS watchOS
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.i386 iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
 CFLAGS-iOS=-miphoneos-version-min=7.0
-CFLAGS-iphoneos.armv7=	-fembed-bitcode
-CFLAGS-iphoneos.armv7s=	-fembed-bitcode
-CFLAGS-iphoneos.arm64=	-fembed-bitcode
+CFLAGS-iphoneos.armv7=  -fembed-bitcode
+CFLAGS-iphoneos.armv7s= -fembed-bitcode
+CFLAGS-iphoneos.arm64=  -fembed-bitcode
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
 CFLAGS-tvOS=-mtvos-version-min=9.0
-CFLAGS-appletvos.arm64=	-fembed-bitcode
-PYTHON_CONFIGURE-tvOS=	ac_cv_func_sigaltstack=no
+CFLAGS-appletvos.arm64= -fembed-bitcode
+PYTHON_CONFIGURE-tvOS=  ac_cv_func_sigaltstack=no
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
 CFLAGS-watchOS=-mwatchos-version-min=2.0
-CFLAGS-watchos.armv7k=	-fembed-bitcode
+CFLAGS-watchos.armv7k=  -fembed-bitcode
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
-# override machine for arm64
-MACHINE-arm64=aarch64
+# override machine types for arm64
+MACHINE_DETAILED-arm64=aarch64
+MACHINE_SIMPLE-arm64=arm
 
 all: $(foreach os,$(OS),$(os))
 
@@ -60,7 +71,7 @@ clean:
 distclean: clean
 	rm -rf downloads
 
-downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
+downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/bzip2-$(BZIP2_VERSION).tgz downloads/xz-$(XZ_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
 
 ###########################################################################
 # OpenSSL
@@ -79,6 +90,35 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 	mkdir -p downloads
 	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
+
+
+###########################################################################
+# BZip2
+###########################################################################
+
+# Clean the bzip2 project
+clean-bzip2:
+	rm -rf build/*/bzip2-$(BZIP2_VERSION)-* \
+		build/*/bzip2
+
+# Download original OpenSSL source code archive.
+downloads/bzip2-$(BZIP2_VERSION).tgz:
+	mkdir -p downloads
+	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then curl --fail -L http://www.bzip.org/$(BZIP2_VERSION)/bzip2-$(BZIP2_VERSION).tar.gz -o downloads/bzip2-$(BZIP2_VERSION).tgz; fi
+
+###########################################################################
+# XZ (LZMA)
+###########################################################################
+
+# Clean the XZ project
+clean-xz:
+	rm -rf build/*/xz-$(XZ_VERSION)-* \
+		build/*/xz
+
+# Download original OpenSSL source code archive.
+downloads/xz-$(XZ_VERSION).tgz:
+	mkdir -p downloads
+	if [ ! -e downloads/xz-$(XZ_VERSION).tgz ]; then curl --fail -L http://tukaani.org/xz/xz-$(XZ_VERSION).tar.gz -o downloads/xz-$(XZ_VERSION).tgz; fi
 
 ###########################################################################
 # Python
@@ -121,20 +161,28 @@ $(PYTHON_DIR-host)/dist/bin/python$(PYTHON_VER): $(PYTHON_DIR-host)/Makefile
 # - $2 - OS
 define build-target
 ARCH-$1=	$$(subst .,,$$(suffix $1))
-ifdef MACHINE-$$(ARCH-$1)
-MACHINE-$1=	$$(MACHINE-$$(ARCH-$1))
+ifdef MACHINE_DETAILED-$$(ARCH-$1)
+MACHINE_DETAILED-$1= $$(MACHINE_DETAILED-$$(ARCH-$1))
 else
-MACHINE-$1=	$$(ARCH-$1)
+MACHINE_DETAILED-$1= $$(ARCH-$1)
 endif
-SDK-$1=		$$(basename $1)
+ifdef MACHINE_SIMPLE-$$(ARCH-$1)
+MACHINE_SIMPLE-$1= $$(MACHINE_SIMPLE-$$(ARCH-$1))
+else
+MACHINE_SIMPLE-$1= $$(ARCH-$1)
+endif
+SDK-$1=  $$(basename $1)
 
 SDK_ROOT-$1=	$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
-CC-$1=		xcrun --sdk $$(SDK-$1) clang\
-		-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+CC-$1=			xcrun --sdk $$(SDK-$1) clang\
+					-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+LDFLAGS-$1=	 -arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
-OPENSSL_DIR-$1=	build/$2/openssl-$(OPENSSL_VERSION)-$1
-PYTHON_DIR-$1=	build/$2/Python-$(PYTHON_VERSION)-$1
-pyconfig.h-$1=	pyconfig-$$(ARCH-$1).h
+OPENSSL_DIR-$1= build/$2/openssl-$(OPENSSL_VERSION)-$1
+BZIP2_DIR-$1=   build/$2/bzip2-$(BZIP2_VERSION)-$1
+XZ_DIR-$1=	  build/$2/xz-$(XZ_VERSION)-$1
+PYTHON_DIR-$1=  build/$2/Python-$(PYTHON_VERSION)-$1
+pyconfig.h-$1=  pyconfig-$$(ARCH-$1).h
 
 # Unpack OpenSSL
 $$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
@@ -167,6 +215,37 @@ $$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/M
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
 		make all
 
+# Unpack BZip2
+$$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
+	# Unpack sources
+	mkdir -p $$(BZIP2_DIR-$1)
+	tar zxf downloads/bzip2-$(BZIP2_VERSION).tgz --strip-components 1 -C $$(BZIP2_DIR-$1)
+	# Patch sources to use correct compiler
+	sed -ie 's#CC=gcc#CC=$$(CC-$1)#' $$(BZIP2_DIR-$1)/Makefile
+	# Patch sources to use correct install directory
+	sed -ie 's#PREFIX=/usr/local#PREFIX=$(PROJECT_DIR)/build/$2/bzip2#' $$(BZIP2_DIR-$1)/Makefile
+
+# Build BZip2
+$$(BZIP2_DIR-$1)/libbz2.a: $$(BZIP2_DIR-$1)/Makefile
+	cd $$(BZIP2_DIR-$1) && make install
+
+# Unpack XZ
+$$(XZ_DIR-$1)/Makefile: downloads/xz-$(XZ_VERSION).tgz
+	# Unpack sources
+	mkdir -p $$(XZ_DIR-$1)
+	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$1)
+	# Configure the build
+	cd $$(XZ_DIR-$1) && ./configure \
+		CC="$$(CC-$1)" \
+		LDFLAGS="$$(LDFLAGS-$1)" \
+		--disable-shared --enable-static \
+		--host=$$(MACHINE_SIMPLE-$1)-apple-darwin \
+		--prefix=$(PROJECT_DIR)/build/$2/xz
+
+# Build XZ
+$$(XZ_DIR-$1)/src/liblzma/.libs/liblzma.a: $$(XZ_DIR-$1)/Makefile
+	cd $$(XZ_DIR-$1) && make && make install
+
 # Unpack Python
 $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST)
 	# Unpack target Python
@@ -178,14 +257,14 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
-		--host=$$(MACHINE-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		--host=$$(MACHINE_DETAILED-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
 		$$(PYTHON_CONFIGURE-$2)
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: $$(PYTHON_DIR-$1)/Makefile build/$2/OpenSSL.framework
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/OpenSSL.framework build/$2/bzip2/lib/libbz2.a build/$2/xz/lib/liblzma.a $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-host)/dist/bin:$(PATH) make all install
 
@@ -195,7 +274,7 @@ build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/p
 # Dump vars (for test)
 vars-$1:
 	@echo "ARCH-$1: $$(ARCH-$1)"
-	@echo "MACHINE-$1: $$(MACHINE-$1)"
+	@echo "MACHINE_DETAILED-$1: $$(MACHINE_DETAILED-$1)"
 	@echo "SDK-$1: $$(SDK-$1)"
 	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
 	@echo "CC-$1: $$(CC-$1)"
@@ -216,7 +295,9 @@ endef
 define build
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
-OPENSSL_FRAMEWORK-$1=	build/$1/OpenSSL.framework
+OPENSSL_FRAMEWORK-$1=   build/$1/OpenSSL.framework
+BZIP2_LIB-$1=		   build/$1/bzip2/lib/libbz2.a
+XZ_LIB-$1=			  build/$1/xz/lib/liblzma.a
 PYTHON_FRAMEWORK-$1=	build/$1/Python.framework
 PYTHON_RESOURCES-$1=	$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
@@ -255,6 +336,18 @@ build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/l
 build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libcrypto.a)
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
+
+BZip2-$1: $$(BZIP2_LIB-$1)
+
+build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(target))/libbz2.a)
+	mkdir -p build/$1/bzip2/lib
+	xcrun lipo -create -o $$(BZIP2_LIB-$1) $$^
+
+XZ-$1: $$(XZ_LIB-$1)
+
+build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
+	mkdir -p build/$1/xz/lib
+	xcrun lipo -create -o $$(XZ_LIB-$1) $$^
 
 Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
 

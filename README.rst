@@ -69,9 +69,9 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for iOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b4/Python-3.4.2-iOS-support.b4.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b4/Python-3.4.2-iOS-support.b4.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b4/Python-3.4.2-iOS-support.b4.tar.gz
+.. _for iOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b5/Python-3.4.2-iOS-support.b5.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b5/Python-3.4.2-iOS-support.b5.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-iOS-support/releases/download/3.4.2-b5/Python-3.4.2-iOS-support.b5.tar.gz
 
 Acknowledgements
 ----------------
