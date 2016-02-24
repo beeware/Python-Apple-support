@@ -28,7 +28,6 @@ This should enable the code to run on:
     - iPad Air
     - iPad Air 2
     - iPad retina
-    - iPad Pro
 * iPad Mini
     - iPad Mini (1st gen)
     - iPad Mini 2
@@ -42,7 +41,7 @@ This should enable the code to run on:
     - 4th gen
 * Apple Watch
 
-This repository branch builds a packaged version of **Python 3.4.2**.
+This repository branch builds a packaged version of **Python 3.5.1**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
