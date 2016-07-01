@@ -1,16 +1,19 @@
-Python iOS Support
-==================
+Python Apple Support
+====================
 
 This is a meta-package for building a version of Python that can be embedded
-into an iOS, tvOS or watchOS project.
+into a macOS, iOS, tvOS or watchOS project.
 
 It works by downloading, patching, and building a fat binary OpenSSL and
-Python, and packaging them both in iOS Framework format.
+Python, and packaging them both in Apple Framework format.
 
-The binaries support the ``$(ARCHS_STANDARD)`` set - that is, armv7 and
-arm64 for iOS devices, arm64 for appleTV devices, and armv7k for watchOS.
-This should enable the code to run on:
+The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
+macOS,  armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
+for watchOS. This should enable the code to run on:
 
+* MacBook (including Pro & Air)
+* iMac
+* Mac Pro
 * iPhone
     - iPhone 4s
     - iPhone 5
@@ -48,13 +51,14 @@ repository.
 Quickstart
 ----------
 
-Pre-built versions of the frameworks can be downloaded `for iOS`_,
-`for tvOS`_, and `for watchOS`_, and added to your project.
+Pre-built versions of the frameworks can be downloaded `for macOS`_, `for
+iOS`_, `for tvOS`_, and `for watchOS`_, and added to your project.
 
 Alternatively, to build the frameworks on your own, download/clone this
 repository, and then in the root directory, and run:
 
 * `make` (or `make all`) to build everything.
+* `make macOS` to build everything for macOS.
 * `make iOS` to build everything for iOS.
 * `make tvOS` to build everything for tvOS.
 * `make watchOS` to build everything for watchOS.
@@ -68,9 +72,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for iOS: https://github.com/pybee/Python-iOS-support/releases/download/3.5.1-b1/Python-3.5.1-iOS-support.b1.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-iOS-support/releases/download/3.5.1-b1/Python-3.5.1-iOS-support.b1.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-iOS-support/releases/download/3.5.1-b1/Python-3.5.1-iOS-support.b1.tar.gz
+.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5.1-b2/Python-3.5.1-macOS-support.b2.tar.gz
+.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5.1-b2/Python-3.5.1-iOS-support.b2.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5.1-b2/Python-3.5.1-tvOS-support.b2.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5.1-b2/Python-3.5.1-watchOS-support.b2.tar.gz
 
 Acknowledgements
 ----------------
