@@ -3,34 +3,47 @@
 #####################################################################
 
 _bisect _bisectmodule.c
-_bz2 _bz2module.c -I$(srcdir)/../bzip2/include -L$(srcdir)/../bzip2/lib -lbz2
+_codecs _codecsmodule.c
 _codecs_cn cjkcodecs/_codecs_cn.c
 _codecs_hk cjkcodecs/_codecs_hk.c
 _codecs_iso2022 cjkcodecs/_codecs_iso2022.c
 _codecs_jp cjkcodecs/_codecs_jp.c
 _codecs_kr cjkcodecs/_codecs_kr.c
 _codecs_tw cjkcodecs/_codecs_tw.c
-_crypt _cryptmodule.c
+_collections _collectionsmodule.c
+crypt cryptmodule.c
 _csv _csv.c
-_datetime _datetimemodule.c
+datetime datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
-_heapq _heapqmodule.c
+_functools _functoolsmodule.c
+_hotshot _hotshot.c
+_io -I$(srcdir)/Modules/_io \
+    _io/bufferedio.c \
+    _io/bytesio.c \
+    _io/fileio.c \
+    _io/iobase.c \
+    _io/_iomodule.c \
+    _io/stringio.c \
+    _io/textio.c
 _json _json.c
-_lsprof _lsprof.o rotatingtree.c
-_lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../xz/lib -llzma
-_md5 md5module.c
+_locale _localemodule.c
+_lsprof _lsprof.c rotatingtree.c
+_heapq _heapqmodule.c
+_md5 md5module.c md5.c
 _multibytecodec cjkcodecs/multibytecodec.c
-_multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
-_opcode _opcode.c
-_pickle _pickle.c
-_posixsubprocess _posixsubprocess.c
+_multiprocessing \
+    _multiprocessing/multiprocessing.c \
+    _multiprocessing/socket_connection.c \
+    _multiprocessing/semaphore.c
 _random _randommodule.c
-_sha1 sha1module.c
+_sha shamodule.c
 _sha256 sha256module.c
 _sha512 sha512module.c
 _socket socketmodule.c
+_sre _sre.c
+_symtable symtablemodule.c
 _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 \
     _sqlite/cache.c \
     _sqlite/connection.c \
@@ -43,39 +56,56 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/util.c
 _ssl _ssl.c -I$(srcdir)/../OpenSSL.framework/Headers -framework OpenSSL -F$(srcdir)/.. -DUSE_SSL
 _struct _struct.c
+_weakref _weakref.c
 array arraymodule.c
 audioop audioop.c
 binascii binascii.c
+bsddb185 bsddbmodule.c
+bz2 bz2module.c -I$(srcdir)/../BZip2.framework/Headers -framework BZip2 -F$(srcdir)/..
 cmath cmathmodule.c _math.c
+cPickle cPickle.c
+cStringIO cStringIO.c
+dl dlmodule.c
+errno errnomodule.c
 fcntl fcntlmodule.c
+future_builtins future_builtins.c
 grp grpmodule.c
+imageop imageop.c
+itertools itertoolsmodule.c
 math mathmodule.c
 mmap mmapmodule.c
+operator operator.c
 parser parsermodule.c
+posix posixmodule.c
+pure puremodule.c $(WHICH_PURE_PRODUCTS) $(PURE_INCLS) $(PURE_STUBLIBS)
 pyexpat expat/xmlparse.c \
     expat/xmlrole.c \
     expat/xmltok.c \
     pyexpat.c \
     -I$(srcdir)/Modules/expat \
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
+pwd pwdmodule.c
 resource resource.c
 select selectmodule.c
+strop stropmodule.c
 syslog syslogmodule.c
 termios termios.c
+time timemodule.c
+timing timingmodule.c
 unicodedata unicodedata.c
+zipimport zipimport.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
 #####################################################################
 # Testing modules
 #####################################################################
 _ctypes_test _ctypes/_ctypes_test.c
-_testbuffer _testbuffer.c
 _testcapi  _testcapimodule.c
-_testimportmultiple _testimportmultiple.c
 
 #####################################################################
 # Modules that require additional frameworks
 #####################################################################
+#_bsddb _bsddb.c -I$(DBINC) -L$(DBLIB) -ldb-$(DBLIBVER)
 #_curses _cursesmodule.c -lcurses -ltermcap
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_dbm _dbmmodule.c

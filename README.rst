@@ -44,7 +44,7 @@ for watchOS. This should enable the code to run on:
     - 4th gen
 * Apple Watch
 
-This repository branch builds a packaged version of **Python 3.4.2**.
+This repository branch builds a packaged version of **Python 2.7.12**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -72,10 +72,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.4.2-b6/Python-3.4.2-macOS-support.b6.tar.gz
-.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.4.2-b6/Python-3.4.2-iOS-support.b6.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.4.2-b6/Python-3.4.2-tvOS-support.b6.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.4.2-b6/Python-3.4.2-watchOS-support.b6.tar.gz
+.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7.12-b1/Python-2.7.12-macOS-support.b1.tar.gz
+.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7.12-b1/Python-2.7.12-iOS-support.b1.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7.12-b1/Python-2.7.12-tvOS-support.b1.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7.12-b1/Python-2.7.12-watchOS-support.b1.tar.gz
 
 Acknowledgements
 ----------------
