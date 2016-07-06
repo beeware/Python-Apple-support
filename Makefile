@@ -13,10 +13,6 @@
 # - BZip2.framework-iOS       - build BZip2.framework for iOS
 # - BZip2.framework-tvOS      - build BZip2.framework for tvOS
 # - BZip2.framework-watchOS   - build BZip2.framework for watchOS
-# - XZ.framework-macOS        - build XZ.framework for macOS
-# - XZ.framework-iOS          - build XZ.framework for iOS
-# - XZ.framework-tvOS         - build XZ.framework for tvOS
-# - XZ.framework-watchOS      - build XZ.framework for watchOS
 # - Python.framework-macOS    - build Python.framework for macOS
 # - Python.framework-iOS      - build Python.framework for iOS
 # - Python.framework-tvOS     - build Python.framework for tvOS
@@ -36,8 +32,6 @@ OPENSSL_REVISION=h
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.6
-
-XZ_VERSION=5.2.2
 
 # Supported OS
 OS=macOS iOS tvOS watchOS
@@ -78,7 +72,7 @@ clean:
 distclean: clean
 	rm -rf downloads
 
-downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/bzip2-$(BZIP2_VERSION).tgz downloads/xz-$(XZ_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
+downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/bzip2-$(BZIP2_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
 
 ###########################################################################
 # OpenSSL
@@ -112,20 +106,6 @@ clean-bzip2:
 downloads/bzip2-$(BZIP2_VERSION).tgz:
 	mkdir -p downloads
 	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then curl --fail -L http://www.bzip.org/$(BZIP2_VERSION)/bzip2-$(BZIP2_VERSION).tar.gz -o downloads/bzip2-$(BZIP2_VERSION).tgz; fi
-
-###########################################################################
-# XZ (LZMA)
-###########################################################################
-
-# Clean the XZ project
-clean-xz:
-	rm -rf build/*/xz-$(XZ_VERSION)-* \
-		build/*/xz
-
-# Download original OpenSSL source code archive.
-downloads/xz-$(XZ_VERSION).tgz:
-	mkdir -p downloads
-	if [ ! -e downloads/xz-$(XZ_VERSION).tgz ]; then curl --fail -L http://tukaani.org/xz/xz-$(XZ_VERSION).tar.gz -o downloads/xz-$(XZ_VERSION).tgz; fi
 
 ###########################################################################
 # Python
@@ -173,7 +153,6 @@ LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
 OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
 BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
-XZ_DIR-$1=build/$2/xz-$(XZ_VERSION)-$1
 PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
 pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
 
@@ -229,23 +208,6 @@ $$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
 $$(BZIP2_DIR-$1)/libbz2.a: $$(BZIP2_DIR-$1)/Makefile
 	cd $$(BZIP2_DIR-$1) && make install
 
-# Unpack XZ
-$$(XZ_DIR-$1)/Makefile: downloads/xz-$(XZ_VERSION).tgz
-	# Unpack sources
-	mkdir -p $$(XZ_DIR-$1)
-	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$1)
-	# Configure the build
-	cd $$(XZ_DIR-$1) && ./configure \
-		CC="$$(CC-$1)" \
-		LDFLAGS="$$(LDFLAGS-$1)" \
-		--disable-shared --enable-static \
-		--host=$$(MACHINE_SIMPLE-$1)-apple-darwin \
-		--prefix=$(PROJECT_DIR)/build/$2/xz
-
-# Build XZ
-$$(XZ_DIR-$1)/src/liblzma/.libs/liblzma.a: $$(XZ_DIR-$1)/Makefile
-	cd $$(XZ_DIR-$1) && make && make install
-
 # Unpack Python
 $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST)
 	# Unpack target Python
@@ -273,7 +235,7 @@ else
 endif
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/OpenSSL.framework build/$2/BZip2.framework build/$2/XZ.framework $$(PYTHON_DIR-$1)/Makefile
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/OpenSSL.framework build/$2/BZip2.framework $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) make all install
 
@@ -306,7 +268,6 @@ $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
 OPENSSL_FRAMEWORK-$1=build/$1/OpenSSL.framework
 BZIP2_FRAMEWORK-$1=build/$1/BZip2.framework
-XZ_FRAMEWORK-$1=build/$1/XZ.framework
 PYTHON_FRAMEWORK-$1=build/$1/Python.framework
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
@@ -315,7 +276,7 @@ $1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
 clean-$1:
 	rm -rf build/$1
 
-dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
 	tar zcvf $$@ -C build/$1 $$(notdir $$^)
 
@@ -366,29 +327,6 @@ $$(BZIP2_FRAMEWORK-$1): build/$1/bzip2/lib/libbz2.a
 	ln -fs Versions/Current/bzip2 $$(BZIP2_FRAMEWORK-$1)
 
 build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(target))/libbz2.a)
-	mkdir -p build/$1
-	xcrun lipo -create -o $$@ $$^
-
-# Build XZ.framework
-XZ.framework-$1: $$(XZ_FRAMEWORK-$1)
-
-$$(XZ_FRAMEWORK-$1): build/$1/xz/lib/liblzma.a
-	# Create framework directory structure
-	mkdir -p $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)
-
-	# Copy the headers
-	cp -f -r build/$1/xz/include $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/Headers
-
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/xz $$^
-
-	# Create symlinks
-	ln -fs $(XZ_VERSION) $$(XZ_FRAMEWORK-$1)/Versions/Current
-	ln -fs Versions/Current/Headers $$(XZ_FRAMEWORK-$1)
-	ln -fs Versions/Current/xz $$(XZ_FRAMEWORK-$1)
-
-build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
 
