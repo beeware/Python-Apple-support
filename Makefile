@@ -330,6 +330,8 @@ build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(ta
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
 
+$1: Python.framework-$1
+
 Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
 
 # Build Python.framework
