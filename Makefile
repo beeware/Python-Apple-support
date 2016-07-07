@@ -271,7 +271,7 @@ BZIP2_FRAMEWORK-$1=build/$1/BZip2.framework
 PYTHON_FRAMEWORK-$1=build/$1/Python.framework
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
 
-$1: dist/Python-$(PYTHON_VERSION)-$1-support.b$(BUILD_NUMBER).tar.gz
+$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
