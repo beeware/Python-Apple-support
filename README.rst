@@ -51,22 +51,22 @@ Python versions are supported:
 
 * `Python 2.7.12 <https://github.com/pybee/Python-Apple-support/tree/2.7>`__:
 
-    * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-macOS-support.b1.tar.gz>`__
-    * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-iOS-support.b1.tar.gz>`__
-    * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-tvOS-support.b1.tar.gz>`__
-    * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-watchOS-support.b1.tar.gz>`__
+  * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-macOS-support.b1.tar.gz>`__
+  * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-iOS-support.b1.tar.gz>`__
+  * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-tvOS-support.b1.tar.gz>`__
+  * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-watchOS-support.b1.tar.gz>`__
 
 * `Python 3.4.5 <https://github.com/pybee/Python-Apple-support/tree/3.4>`__:
 
-    * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-macOS-support.b1.tar.gz>`__
-    * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-iOS-support.b1.tar.gz>`__
-    * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-tvOS-support.b1.tar.gz>`__
-    * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-watchOS-support.b1.tar.gz>`__
+  * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-macOS-support.b1.tar.gz>`__
+  * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-iOS-support.b1.tar.gz>`__
+  * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-tvOS-support.b1.tar.gz>`__
+  * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.4-b1/Python-3.4-watchOS-support.b1.tar.gz>`__
 
 * `Python 3.5.2 <https://github.com/pybee/Python-Apple-support/tree/3.5>`__:
 
-    * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-macOS-support.b1.tar.gz>`__
-    * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-iOS-support.b1.tar.gz>`__
-    * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-tvOS-support.b1.tar.gz>`__
-    * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-watchOS-support.b1.tar.gz>`__
+  * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-macOS-support.b1.tar.gz>`__
+  * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-iOS-support.b1.tar.gz>`__
+  * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-tvOS-support.b1.tar.gz>`__
+  * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-watchOS-support.b1.tar.gz>`__
 
