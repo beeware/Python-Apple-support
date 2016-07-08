@@ -278,7 +278,12 @@ clean-$1:
 
 dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
+ifeq ($1,macOS)
+	mv build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
+	tar zcvf $$@ -C build/$1 python
+else
 	tar zcvf $$@ -C build/$1 $$(notdir $$^)
+endif
 
 # Build OpenSSL.framework
 OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
