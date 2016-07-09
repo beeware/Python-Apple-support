@@ -256,14 +256,14 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 
 	# Configure target Python
 ifeq ($2,macOS)
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
+	cd $$(PYTHON_DIR-$1) && ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
 else
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
+	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/python/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--host=$$(MACHINE_DETAILED-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
@@ -317,11 +317,13 @@ clean-$1:
 
 dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
+	echo "Python version: $(PYTHON_VERSION) " > build/$1/support.version
+	echo "Build: $(BUILD_NUMBER)" >> build/$1/support.version
 ifeq ($1,macOS)
-	mv build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
-	tar zcvf $$@ -C build/$1 python
+	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
+	tar zcvf $$@ -C build/$1 support.version python
 else
-	tar zcvf $$@ -C build/$1 $$(notdir $$^)
+	tar zcvf $$@ -C build/$1 support.version $$(notdir $$^)
 endif
 
 # Build OpenSSL.framework
@@ -396,6 +398,8 @@ $$(XZ_FRAMEWORK-$1): build/$1/xz/lib/liblzma.a
 build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
+
+$1: Python.framework-$1
 
 Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
 
