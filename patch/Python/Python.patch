@@ -860,7 +860,7 @@ diff -Nru orig/Lib/importlib/_bootstrap_external.py modified/Lib/importlib/_boot
  def _make_relax_case():
 diff -Nru orig/Lib/os.py modified/Lib/os.py
 --- orig/Lib/os.py	2016-06-26 05:38:36.000000000 +0800
-+++ modified/Lib/os.py	2016-07-06 16:40:19.000000000 +0800
++++ modified/Lib/os.py	2016-09-05 16:21:09.000000000 +0800
 @@ -32,7 +32,7 @@
  __all__ = ["altsep", "curdir", "pardir", "sep", "pathsep", "linesep",
             "defpath", "name", "path", "devnull", "SEEK_SET", "SEEK_CUR",
@@ -886,7 +886,7 @@ diff -Nru orig/Lib/os.py modified/Lib/os.py
 +if sys.platform in ('iOS', 'tvos', 'watchos'):
 +    allows_subprocesses = False
 +else:
-+    allows_subprocesses = False
++    allows_subprocesses = True
 +
 +
  # Supply spawn*() (probably only for Unix)

@@ -12,7 +12,7 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them both in Apple Framework format.
 
 The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS,  armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
+macOS, armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
 for watchOS. This should enable the code to run on:
 
 * MacBook (including Pro & Air)
@@ -72,10 +72,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-macOS-support.b1.tar.gz
-.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-iOS-support.b1.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-tvOS-support.b1.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-watchOS-support.b1.tar.gz
+.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-macOS-support.b2.tar.gz
+.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-iOS-support.b2.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-tvOS-support.b2.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-watchOS-support.b2.tar.gz
 
 Acknowledgements
 ----------------
