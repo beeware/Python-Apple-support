@@ -25,7 +25,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=2
+BUILD_NUMBER=3
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=3.5.2
@@ -34,6 +34,8 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 OPENSSL_VERSION_NUMBER=1.0.2
 OPENSSL_REVISION=h
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
+
+ZLIB_VERSION=1.2.8
 
 BZIP2_VERSION=1.0.6
 
@@ -98,6 +100,20 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
 
+
+###########################################################################
+# zlib
+###########################################################################
+
+# Clean the bzip2 project
+clean-zlib:
+	rm -rf build/*/zlib-$(ZLIB_VERSION)-* \
+		build/*/zlib
+
+# Download original OpenSSL source code archive.
+downloads/zlib-$(ZLIB_VERSION).tar.gz:
+	mkdir -p downloads
+	if [ ! -e downloads/zlib-$(ZLIB_VERSION).tar.gz ]; then curl --fail -L http://zlib.net/zlib-$(ZLIB_VERSION).tar.gz -o downloads/zlib-$(ZLIB_VERSION).tar.gz; fi
 
 ###########################################################################
 # BZip2
@@ -172,6 +188,7 @@ CC-$1=xcrun --sdk $$(SDK-$1) clang\
 LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
 OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
+ZLIB_DIR-$1=build/$2/zlib-$(ZLIB_VERSION)-$1
 BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
 XZ_DIR-$1=build/$2/xz-$(XZ_VERSION)-$1
 PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
@@ -214,6 +231,23 @@ $$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/M
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
 		make all
+
+# Unpack zlib
+$$(ZLIB_DIR-$1)/Makefile: downloads/zlib-$(ZLIB_VERSION).tar.gz
+	# Unpack sources
+	mkdir -p $$(ZLIB_DIR-$1)
+	tar zxf downloads/zlib-$(ZLIB_VERSION).tar.gz --strip-components 1 -C $$(ZLIB_DIR-$1)
+	# Configure the build
+	cd $$(ZLIB_DIR-$1) && \
+		CC="$$(CC-$1)" \
+		LDFLAGS="$$(LDFLAGS-$1)" ./configure \
+        --static \
+		--prefix=$(PROJECT_DIR)/build/$2/zlib
+#		--host=$$(MACHINE_SIMPLE-$1)-apple-darwin \     # how to set this for zlib?
+
+# Build zlib
+$$(ZLIB_DIR-$1)/libz.a: $$(ZLIB_DIR-$1)/Makefile
+	cd $$(ZLIB_DIR-$1) && make install
 
 # Unpack BZip2
 $$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
@@ -261,6 +295,8 @@ ifeq ($2,macOS)
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
+	# Apply patch
+	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Setup.patch
 else
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/python/bin:$(PATH) ./configure \
@@ -273,7 +309,7 @@ else
 endif
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/OpenSSL.framework build/$2/BZip2.framework build/$2/XZ.framework $$(PYTHON_DIR-$1)/Makefile
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/OpenSSL.framework build/$2/zlib.framework build/$2/BZip2.framework build/$2/XZ.framework $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) make all install
 
@@ -305,6 +341,7 @@ define build
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
 OPENSSL_FRAMEWORK-$1=build/$1/OpenSSL.framework
+ZLIB_FRAMEWORK-$1=build/$1/zlib.framework
 BZIP2_FRAMEWORK-$1=build/$1/BZip2.framework
 XZ_FRAMEWORK-$1=build/$1/XZ.framework
 PYTHON_FRAMEWORK-$1=build/$1/Python.framework
@@ -315,7 +352,7 @@ $1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 clean-$1:
 	rm -rf build/$1
 
-dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(ZLIB_FRAMEWORK-$1) $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
 	echo "Python version: $(PYTHON_VERSION) " > build/$1/support.version
 	echo "Build: $(BUILD_NUMBER)" >> build/$1/support.version
@@ -352,6 +389,29 @@ build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/l
 build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libcrypto.a)
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
+
+# Build zlib.framework
+zlib.framework-$1: $$(ZLIB_FRAMEWORK-$1)
+
+$$(ZLIB_FRAMEWORK-$1): build/$1/zlib/lib/libz.a
+	# Create framework directory structure
+	mkdir -p $$(ZLIB_FRAMEWORK-$1)/Versions/$(ZLIB_VERSION)
+
+	# Copy the headers
+	cp -f -r build/$1/zlib/include $$(ZLIB_FRAMEWORK-$1)/Versions/$(ZLIB_VERSION)/Headers
+
+	# Create the fat library
+	xcrun libtool -no_warning_for_no_symbols -static \
+		-o $$(ZLIB_FRAMEWORK-$1)/Versions/$(ZLIB_VERSION)/zlib $$^
+
+	# Create symlinks
+	ln -fs $(ZLIB_VERSION) $$(ZLIB_FRAMEWORK-$1)/Versions/Current
+	ln -fs Versions/Current/Headers $$(ZLIB_FRAMEWORK-$1)
+	ln -fs Versions/Current/zlib $$(ZLIB_FRAMEWORK-$1)
+
+build/$1/zlib/lib/libz.a: $$(foreach target,$$(TARGETS-$1),$$(ZLIB_DIR-$$(target))/libz.a)
+	mkdir -p build/$1
+	xcrun lipo -create -o $$@ $$^
 
 # Build BZip2.framework
 BZip2.framework-$1: $$(BZIP2_FRAMEWORK-$1)
