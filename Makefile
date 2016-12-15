@@ -248,6 +248,9 @@ $$(ZLIB_DIR-$1)/Makefile: downloads/zlib-$(ZLIB_VERSION).tar.gz
 # Build zlib
 $$(ZLIB_DIR-$1)/libz.a: $$(ZLIB_DIR-$1)/Makefile
 	cd $$(ZLIB_DIR-$1) && make install
+	# Copy to the Python installation prefix so that the zlib dynload lib can be built
+	mkdir -p $(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist/lib
+	cp -R $(PROJECT_DIR)/build/$2/zlib/* $(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist
 
 # Unpack BZip2
 $$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
@@ -295,8 +298,6 @@ ifeq ($2,macOS)
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-doc-strings --disable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
-	# Apply patch
-	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Setup.patch
 else
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/python/bin:$(PATH) ./configure \
