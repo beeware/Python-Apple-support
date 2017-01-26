@@ -65,8 +65,8 @@ Python versions are supported:
 
 * `Python 3.5.2 <https://github.com/pybee/Python-Apple-support/tree/3.5>`__:
 
-  * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-macOS-support.b1.tar.gz>`__
-  * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-iOS-support.b1.tar.gz>`__
-  * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-tvOS-support.b1.tar.gz>`__
-  * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b1/Python-3.5-watchOS-support.b1.tar.gz>`__
+  * `macOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-macOS-support.b2.tar.gz>`__
+  * `iOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-iOS-support.b2.tar.gz>`__
+  * `tvOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-tvOS-support.b2.tar.gz>`__
+  * `watchOS <https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-watchOS-support.b2.tar.gz>`__
 
