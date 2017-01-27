@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 2.7.12**.
+**This repository branch builds a packaged version of Python 2.7.13**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -27,6 +27,7 @@ for watchOS. This should enable the code to run on:
     - iPhone 6 Plus
     - iPhone 6s
     - iPhone 6s Plus
+    - iPhone 7
 * iPad Pro
 * iPad
     - iPad 2
@@ -72,10 +73,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-macOS-support.b1.tar.gz
-.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-iOS-support.b1.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-tvOS-support.b1.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b1/Python-2.7-watchOS-support.b1.tar.gz
+.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-macOS-support.b2.tar.gz
+.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-iOS-support.b2.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-tvOS-support.b2.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-watchOS-support.b2.tar.gz
 
 Acknowledgements
 ----------------

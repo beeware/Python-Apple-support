@@ -21,14 +21,14 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=1
+BUILD_NUMBER=2
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=2.7.12
+PYTHON_VERSION=2.7.13
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=h
+OPENSSL_REVISION=k
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.6
@@ -227,7 +227,8 @@ else
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/python/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
-		--host=$$(MACHINE_DETAILED-$1)-apple-ios --build=x86_64-apple-darwin$(shell uname -r) \
+		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
+		--build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-pymalloc --without-doc-strings --disable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
