@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.5.2**.
+**This repository branch builds a packaged version of Python 3.5.3**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -27,6 +27,7 @@ for watchOS. This should enable the code to run on:
     - iPhone 6 Plus
     - iPhone 6s
     - iPhone 6s Plus
+    - iPhone 7
 * iPad Pro
 * iPad
     - iPad 2
@@ -72,10 +73,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-macOS-support.b2.tar.gz
-.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-iOS-support.b2.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-tvOS-support.b2.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b2/Python-3.5-watchOS-support.b2.tar.gz
+.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b3/Python-3.5-macOS-support.b3.tar.gz
+.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b3/Python-3.5-iOS-support.b3.tar.gz
+.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b3/Python-3.5-tvOS-support.b3.tar.gz
+.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/3.5-b3/Python-3.5-watchOS-support.b3.tar.gz
 
 Acknowledgements
 ----------------
