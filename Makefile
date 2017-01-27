@@ -277,6 +277,8 @@ endif
 $$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/OpenSSL.framework build/$2/BZip2.framework build/$2/XZ.framework $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) make all install
+	# removing unecessary test files from build
+	rm -rf $(PYTHON_DIR-macOS)/dist/lib/python$(PYTHON_VER)/test
 
 build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)m/pyconfig.h
 	cp -f $$^ $$@
