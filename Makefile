@@ -180,11 +180,15 @@ MACHINE_SIMPLE-$1=$$(MACHINE_SIMPLE-$$(ARCH-$1))
 else
 MACHINE_SIMPLE-$1=$$(ARCH-$1)
 endif
-SDK-$1=$$(basename $1)
+
+MACOSX_DEPLOYMENT_TARGET=10.6
+
+SDK-$1=$$(basename $1)$$(MACOSX_DEPLOYMENT_TARGET)
 
 SDK_ROOT-$1=$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
-CC-$1=xcrun --sdk $$(SDK-$1) clang\
-					-arch $$(ARCH-$1) --sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
+CC-$1=xcrun --sdk $$(SDK-$1) cc\
+			-arch $$(ARCH-$1) -mmacosx-version-min=$$(MACOSX_DEPLOYMENT_TARGET) \
+			--sysroot=$$(SDK_ROOT-$1) $$(CFLAGS-$2) $$(CFLAGS-$1)
 LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 
 OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
@@ -294,7 +298,7 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST
 	# Configure target Python
 ifeq ($2,macOS)
 	cd $$(PYTHON_DIR-$1) && ./configure \
-		CC="$$(CC-$1)" LD="$$(CC-$1)" \
+		MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-doc-strings --disable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
