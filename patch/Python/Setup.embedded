@@ -63,7 +63,7 @@ select selectmodule.c
 syslog syslogmodule.c
 termios termios.c
 unicodedata unicodedata.c
-zlib zlibmodule.c -I$(prefix)/include -lz
+zlib zlibmodule.c -I$(srcdir)/../zlib/include -L$(srcdir)/../zlib/lib -lz
 
 #####################################################################
 # Testing modules
