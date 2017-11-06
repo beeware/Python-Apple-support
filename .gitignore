@@ -6,3 +6,4 @@ build/*
 downloads/*
 diff/*
 dist/*
+.env
