@@ -1,0 +1,12 @@
+.gitignore
+.mention-bot
+.travis.yml
+Modules/_ctypes/libffi_osx/LICENSE
+PCbuild/_elementtree.vcxproj
+PCbuild/_elementtree.vcxproj.filters
+PCbuild/pyexpat.vcxproj
+PCbuild/pyexpat.vcxproj.filters
+PCbuild/pyproject.props
+Tools/msi/msi.props
+Tools/msi/uploadrelease.bat
+Tools/msi/uploadrelease.proj
