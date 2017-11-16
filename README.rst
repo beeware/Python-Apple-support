@@ -73,10 +73,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/macOS/Python-3.5-macOS-support.b4.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-macOS-support.b4.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-macOS-support.b4.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-macOS-support.b4.tar.gz
+.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/macOS/Python-3.5-macOS-support.b5.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-macOS-support.b5.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-macOS-support.b5.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-macOS-support.b5.tar.gz
 
 Acknowledgements
 ----------------
