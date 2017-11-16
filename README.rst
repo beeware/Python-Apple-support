@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 2.7.13**.
+**This repository branch builds a packaged version of Python 2.7.14**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -12,41 +12,16 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them both in Apple Framework format.
 
 The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS,  armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
+macOS, armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
 for watchOS. This should enable the code to run on:
 
-* MacBook (including Pro & Air)
+* MacBook
 * iMac
 * Mac Pro
-* iPhone
-    - iPhone 4s
-    - iPhone 5
-    - iPhone 5c
-    - iPhone 5s
-    - iPhone 6
-    - iPhone 6 Plus
-    - iPhone 6s
-    - iPhone 6s Plus
-    - iPhone 7
-* iPad Pro
+* iPhone (4s or later)
 * iPad
-    - iPad 2
-    - iPad (3rd gen)
-    - iPad (4th gen)
-    - iPad Air
-    - iPad Air 2
-    - iPad retina
-* iPad Mini
-    - iPad Mini (1st gen)
-    - iPad Mini 2
-    - iPad Mini 3
-    - iPad Mini 4
-* iPod Touch
-    - iPod Touch (4th gen)
-    - iPod Touch (5th gen)
-    - iPod Touch (6th gen)
-* Apple TV
-    - 4th gen
+* iPod Touch (4th gen or later)
+* Apple TV (4th gen or later)
 * Apple Watch
 
 Quickstart
@@ -73,10 +48,10 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-macOS-support.b2.tar.gz
-.. _for iOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-iOS-support.b2.tar.gz
-.. _for tvOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-tvOS-support.b2.tar.gz
-.. _for watchOS: https://github.com/pybee/Python-Apple-support/releases/download/2.7-b2/Python-2.7-watchOS-support.b2.tar.gz
+.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/macOS/Python-2.7-macOS-support.b3.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/iOS/Python-2.7-macOS-support.b3.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/tvOS/Python-2.7-macOS-support.b3.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/watchOS/Python-2.7-macOS-support.b3.tar.gz
 
 Acknowledgements
 ----------------
