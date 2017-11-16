@@ -25,7 +25,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=4
+BUILD_NUMBER=5
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
@@ -275,7 +275,7 @@ ifeq ($2,macOS)
 	cat $$(PYTHON_DIR-$1)/Modules/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
 	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
-		--without-doc-strings --without-ensurepip \
+		--without-doc-strings --enable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
 else
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/build/macOS/python/bin:$(PATH) ./configure \
@@ -283,7 +283,7 @@ else
 		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
 		--build=x86_64-apple-darwin$(shell uname -r) \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
-		--without-doc-strings --disable-ipv6 --without-ensurepip \
+		--without-doc-strings --enable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
 		$$(PYTHON_CONFIGURE-$2)
 endif
