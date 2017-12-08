@@ -49,9 +49,9 @@ The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
 .. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/macOS/Python-3.4-macOS-support.b4.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/iOS/Python-3.4-macOS-support.b4.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/tvOS/Python-3.4-macOS-support.b4.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/watchOS/Python-3.4-macOS-support.b4.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/iOS/Python-3.4-iOS-support.b4.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/tvOS/Python-3.4-tvOS-support.b4.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/watchOS/Python-3.4-watchOS-support.b4.tar.gz
 
 Acknowledgements
 ----------------
