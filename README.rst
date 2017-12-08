@@ -15,38 +15,13 @@ The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
 macOS, armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
 for watchOS. This should enable the code to run on:
 
-* MacBook (including Pro & Air)
+* MacBook
 * iMac
 * Mac Pro
-* iPhone
-    - iPhone 4s
-    - iPhone 5
-    - iPhone 5c
-    - iPhone 5s
-    - iPhone 6
-    - iPhone 6 Plus
-    - iPhone 6s
-    - iPhone 6s Plus
-    - iPhone 7
-* iPad Pro
+* iPhone (4s or later)
 * iPad
-    - iPad 2
-    - iPad (3rd gen)
-    - iPad (4th gen)
-    - iPad Air
-    - iPad Air 2
-    - iPad retina
-* iPad Mini
-    - iPad Mini (1st gen)
-    - iPad Mini 2
-    - iPad Mini 3
-    - iPad Mini 4
-* iPod Touch
-    - iPod Touch (4th gen)
-    - iPod Touch (5th gen)
-    - iPod Touch (6th gen)
-* Apple TV
-    - 4th gen
+* iPod Touch (4th gen or later)
+* Apple TV (4th gen or later)
 * Apple Watch
 
 Quickstart
@@ -74,9 +49,9 @@ The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
 .. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/macOS/Python-3.5-macOS-support.b5.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-macOS-support.b5.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-macOS-support.b5.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-macOS-support.b5.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-iOS-support.b5.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-tvOS-support.b5.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-watchOS-support.b5.tar.gz
 
 Acknowledgements
 ----------------
