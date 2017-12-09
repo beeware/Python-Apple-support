@@ -1,6 +1,9 @@
 Python Apple Support
 ====================
 
+**Python 3.7.0 has not yet been released - this repository is a placeholder
+in preparation for the final release, which is currently expected mid 2018**
+
 **This repository branch builds a packaged version of Python 3.7.0**.
 Other Python versions are available by cloning other branches of the main
 repository.
