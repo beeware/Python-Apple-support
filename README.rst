@@ -29,4 +29,4 @@ Python versions are supported:
 * `Python 3.4 <https://github.com/pybee/Python-Apple-support/tree/3.4>`__
 * `Python 3.5 <https://github.com/pybee/Python-Apple-support/tree/3.5>`__
 * `Python 3.6 <https://github.com/pybee/Python-Apple-support/tree/3.6>`__
-* `Python 3.7 <https://github.com/pybee/Python-Apple-support/tree/3.7>`__
+.. * `Python 3.7 <https://github.com/pybee/Python-Apple-support/tree/3.7>`__
