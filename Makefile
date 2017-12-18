@@ -389,13 +389,13 @@ $$(BZIP2_FRAMEWORK-$1): build/$1/bzip2/lib/libbz2.a
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(BZIP2_FRAMEWORK-$1)/Versions/$(BZIP2_VERSION)/bzip2 $$^
+		-o $$(BZIP2_FRAMEWORK-$1)/Versions/$(BZIP2_VERSION)/BZip2 $$^
 
 	# Create symlinks
 	ln -fs $(BZIP2_VERSION) $$(BZIP2_FRAMEWORK-$1)/Versions/Current
 	ln -fs Versions/Current/Headers $$(BZIP2_FRAMEWORK-$1)
 	ln -fs Versions/Current/Resources $$(BZIP2_FRAMEWORK-$1)
-	ln -fs Versions/Current/bzip2 $$(BZIP2_FRAMEWORK-$1)
+	ln -fs Versions/Current/BZip2 $$(BZIP2_FRAMEWORK-$1)
 
 	# Create plist file
 	sed -e "s/xxxNAMExxx/BZip2/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.1
@@ -420,13 +420,13 @@ $$(XZ_FRAMEWORK-$1): build/$1/xz/lib/liblzma.a
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/xz $$^
+		-o $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/XZ $$^
 
 	# Create symlinks
 	ln -fs $(XZ_VERSION) $$(XZ_FRAMEWORK-$1)/Versions/Current
 	ln -fs Versions/Current/Headers $$(XZ_FRAMEWORK-$1)
 	ln -fs Versions/Current/Resources $$(XZ_FRAMEWORK-$1)
-	ln -fs Versions/Current/xz $$(XZ_FRAMEWORK-$1)
+	ln -fs Versions/Current/XZ $$(XZ_FRAMEWORK-$1)
 
 	# Create plist file
 	sed -e "s/xxxNAMExxx/XZ/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.1
