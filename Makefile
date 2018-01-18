@@ -5,22 +5,22 @@
 # - iOS                       - build everything for iOS
 # - tvOS                      - build everything for tvOS
 # - watchOS                   - build everything for watchOS
-# - OpenSSL.framework-macOS   - build OpenSSL.framework for macOS
-# - OpenSSL.framework-iOS     - build OpenSSL.framework for iOS
-# - OpenSSL.framework-tvOS    - build OpenSSL.framework for tvOS
-# - OpenSSL.framework-watchOS - build OpenSSL.framework for watchOS
-# - BZip2.framework-macOS     - build BZip2.framework for macOS
-# - BZip2.framework-iOS       - build BZip2.framework for iOS
-# - BZip2.framework-tvOS      - build BZip2.framework for tvOS
-# - BZip2.framework-watchOS   - build BZip2.framework for watchOS
-# - XZ.framework-macOS        - build XZ.framework for macOS
-# - XZ.framework-iOS          - build XZ.framework for iOS
-# - XZ.framework-tvOS         - build XZ.framework for tvOS
-# - XZ.framework-watchOS      - build XZ.framework for watchOS
-# - Python.framework-macOS    - build Python.framework for macOS
-# - Python.framework-iOS      - build Python.framework for iOS
-# - Python.framework-tvOS     - build Python.framework for tvOS
-# - Python.framework-watchOS  - build Python.framework for watchOS
+# - OpenSSL-macOS   - build OpenSSL for macOS
+# - OpenSSL-iOS     - build OpenSSL for iOS
+# - OpenSSL-tvOS    - build OpenSSL for tvOS
+# - OpenSSL-watchOS - build OpenSSL for watchOS
+# - BZip2-macOS     - build BZip2 for macOS
+# - BZip2-iOS       - build BZip2 for iOS
+# - BZip2-tvOS      - build BZip2 for tvOS
+# - BZip2-watchOS   - build BZip2 for watchOS
+# - XZ-macOS        - build XZ for macOS
+# - XZ-iOS          - build XZ for iOS
+# - XZ-tvOS         - build XZ for tvOS
+# - XZ-watchOS      - build XZ for watchOS
+# - Python-macOS    - build Python for macOS
+# - Python-iOS      - build Python for iOS
+# - Python-tvOS     - build Python for tvOS
+# - Python-watchOS  - build Python for watchOS
 
 # Current director
 PROJECT_DIR=$(shell pwd)
@@ -102,7 +102,7 @@ upload: $(foreach os,$(OS),$(os))
 clean-OpenSSL:
 	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
 		build/*/libssl.a build/*/libcrypto.a \
-		build/*/OpenSSL.framework
+		build/*/OpenSSL
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
@@ -149,7 +149,7 @@ clean-Python:
 		build/*/Python-$(PYTHON_VERSION)-* \
 		build/*/libpython$(PYTHON_VER)m.a \
 		build/*/pyconfig-*.h \
-		build/*/Python.framework
+		build/*/Python
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
@@ -222,12 +222,16 @@ endif
 
 # Build OpenSSL
 $$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/Makefile
+	# Installing multiple times causes problems with the man directory.
+	# Since we're just overwriting anyway, and we're not going to keep the man files
+	# delete the man directory (if it exists) first.
+	rm -rf $(PROJECT_DIR)/build/$2/openssl/man
 	# Make the build
 	cd $$(OPENSSL_DIR-$1) && \
 		CC="$$(CC-$1)" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		make all
+		make all && make install
 
 # Unpack BZip2
 $$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
@@ -276,7 +280,7 @@ ifeq ($2,macOS)
 	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-doc-strings --enable-ipv6 --without-ensurepip \
-		$$(PYTHON_CONFIGU.RE-$2)
+		$$(PYTHON_CONFIGURE-$2)
 else
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/build/macOS/python/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
@@ -289,7 +293,7 @@ else
 endif
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/OpenSSL.framework build/$2/BZip2.framework build/$2/XZ.framework $$(PYTHON_DIR-$1)/Makefile
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) make all install
 
@@ -320,11 +324,11 @@ endef
 define build
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
 
-OPENSSL_FRAMEWORK-$1=build/$1/OpenSSL.framework
-BZIP2_FRAMEWORK-$1=build/$1/BZip2.framework
-XZ_FRAMEWORK-$1=build/$1/XZ.framework
-PYTHON_FRAMEWORK-$1=build/$1/Python.framework
-PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Resources
+OPENSSL_FRAMEWORK-$1=build/$1/Support/OpenSSL
+BZIP2_FRAMEWORK-$1=build/$1/Support/BZip2
+XZ_FRAMEWORK-$1=build/$1/Support/XZ
+PYTHON_FRAMEWORK-$1=build/$1/Support/Python
+PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
 
 $1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
@@ -333,40 +337,33 @@ clean-$1:
 
 dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
-	echo "Python version: $(PYTHON_VERSION) " > build/$1/support.version
-	echo "Build: $(BUILD_NUMBER)" >> build/$1/support.version
+	echo "Python version: $(PYTHON_VERSION) " > build/$1/Support/VERSIONS
+	echo "Build: $(BUILD_NUMBER)" >> build/$1/Support/VERSIONS
+	echo "---------------------" >> build/$1/Support/VERSIONS
+	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/Support/VERSIONS
+	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/Support/VERSIONS
+	echo "XZ: $(XZ_VERSION)" >> build/$1/Support/VERSIONS
 ifeq ($1,macOS)
 	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
-	tar zcvf $$@ -C build/$1 support.version python
+	mv build/$1/Support/VERSIONS build/$1
+	tar zcvf $$@ -C build/$1 VERSIONS python
 else
-	tar zcvf $$@ -C build/$1 support.version $$(notdir $$^)
+	tar zcvf $$@ -C build/$1 Support
 endif
 
-# Build OpenSSL.framework
-OpenSSL.framework-$1: $$(OPENSSL_FRAMEWORK-$1)
+# Build OpenSSL
+OpenSSL-$1: $$(OPENSSL_FRAMEWORK-$1)
 
 $$(OPENSSL_FRAMEWORK-$1): build/$1/libssl.a build/$1/libcrypto.a
 	# Create framework directory structure
-	mkdir -p $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/Resources
+	mkdir -p $$(OPENSSL_FRAMEWORK-$1)
 
 	# Copy the headers
-	cp -f -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/Headers
+	cp -f -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include $$(OPENSSL_FRAMEWORK-$1)/Headers
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(OPENSSL_FRAMEWORK-$1)/Versions/$(OPENSSL_VERSION)/OpenSSL $$^
-
-	# Create symlinks
-	ln -fs $(OPENSSL_VERSION) $$(OPENSSL_FRAMEWORK-$1)/Versions/Current
-	ln -fs Versions/Current/Headers $$(OPENSSL_FRAMEWORK-$1)
-	ln -fs Versions/Current/Resources $$(OPENSSL_FRAMEWORK-$1)
-	ln -fs Versions/Current/OpenSSL $$(OPENSSL_FRAMEWORK-$1)
-
-	# Create plist file
-	sed -e "s/xxxNAMExxx/OpenSSL/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.1
-	sed -e "s/xxxBUNDLExxx/org.openssl/g" $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.1 > $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.2
-	sed -e "s/xxxVERSIONxxx/$$(OPENSSL_VERSION)/g" $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.2 > $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist
-	rm $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.1 $$(OPENSSL_FRAMEWORK-$1)/Resources/Info.plist.2
+		-o $$(OPENSSL_FRAMEWORK-$1)/libOpenSSL.a $$^
 
 
 build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libssl.a)
@@ -377,83 +374,59 @@ build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target)
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
 
-# Build BZip2.framework
-BZip2.framework-$1: $$(BZIP2_FRAMEWORK-$1)
+# Build BZip2
+BZip2-$1: $$(BZIP2_FRAMEWORK-$1)
 
 $$(BZIP2_FRAMEWORK-$1): build/$1/bzip2/lib/libbz2.a
 	# Create framework directory structure
-	mkdir -p $$(BZIP2_FRAMEWORK-$1)/Versions/$(BZIP2_VERSION)/Resources
+	mkdir -p $$(BZIP2_FRAMEWORK-$1)
 
 	# Copy the headers
-	cp -f -r build/$1/bzip2/include $$(BZIP2_FRAMEWORK-$1)/Versions/$(BZIP2_VERSION)/Headers
+	cp -f -r build/$1/bzip2/include $$(BZIP2_FRAMEWORK-$1)/Headers
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(BZIP2_FRAMEWORK-$1)/Versions/$(BZIP2_VERSION)/bzip2 $$^
-
-	# Create symlinks
-	ln -fs $(BZIP2_VERSION) $$(BZIP2_FRAMEWORK-$1)/Versions/Current
-	ln -fs Versions/Current/Headers $$(BZIP2_FRAMEWORK-$1)
-	ln -fs Versions/Current/Resources $$(BZIP2_FRAMEWORK-$1)
-	ln -fs Versions/Current/bzip2 $$(BZIP2_FRAMEWORK-$1)
-
-	# Create plist file
-	sed -e "s/xxxNAMExxx/BZip2/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.1
-	sed -e "s/xxxBUNDLExxx/org.bzip.bzip2/g" $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.1 > $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.2
-	sed -e "s/xxxVERSIONxxx/$$(BZIP2_VERSION)/g" $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.2 > $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist
-	rm $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.1 $$(BZIP2_FRAMEWORK-$1)/Resources/Info.plist.2
+		-o $$(BZIP2_FRAMEWORK-$1)/libbzip2.a $$^
 
 
 build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(target))/libbz2.a)
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
 
-# Build XZ.framework
-XZ.framework-$1: $$(XZ_FRAMEWORK-$1)
+# Build XZ
+XZ-$1: $$(XZ_FRAMEWORK-$1)
 
 $$(XZ_FRAMEWORK-$1): build/$1/xz/lib/liblzma.a
 	# Create framework directory structure
-	mkdir -p $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/Resources
+	mkdir -p $$(XZ_FRAMEWORK-$1)
 
 	# Copy the headers
-	cp -f -r build/$1/xz/include $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/Headers
+	cp -f -r build/$1/xz/include $$(XZ_FRAMEWORK-$1)/Headers
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(XZ_FRAMEWORK-$1)/Versions/$(XZ_VERSION)/xz $$^
-
-	# Create symlinks
-	ln -fs $(XZ_VERSION) $$(XZ_FRAMEWORK-$1)/Versions/Current
-	ln -fs Versions/Current/Headers $$(XZ_FRAMEWORK-$1)
-	ln -fs Versions/Current/Resources $$(XZ_FRAMEWORK-$1)
-	ln -fs Versions/Current/xz $$(XZ_FRAMEWORK-$1)
-
-	# Create plist file
-	sed -e "s/xxxNAMExxx/XZ/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.1
-	sed -e "s/xxxBUNDLExxx/org.tukaani.xz/g" $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.1 > $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.2
-	sed -e "s/xxxVERSIONxxx/$$(XZ_VERSION)/g" $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.2 > $$(XZ_FRAMEWORK-$1)/Resources/Info.plist
-	rm $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.1 $$(XZ_FRAMEWORK-$1)/Resources/Info.plist.2
+		-o $$(XZ_FRAMEWORK-$1)/libxz.a $$^
 
 build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
 
-$1: Python.framework-$1
+$1: Python-$1
 
-Python.framework-$1: $$(PYTHON_FRAMEWORK-$1)
+Python-$1: $$(PYTHON_FRAMEWORK-$1)
 
-# Build Python.framework
+# Build Python
 $$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER)m.a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
 	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 
 	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
-	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
-	cp -f $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
+	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
+	cp -f $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Headers
 
 	# Copy Python.h and pyconfig.h into the resources include directory
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 
 	# Copy the standard library from the simulator build
 ifneq ($(TEST),)
@@ -468,19 +441,8 @@ else
 endif
 
 	# Copy fat library
-	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/Versions/$(PYTHON_VER)/Python
+	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/libPython.a
 
-	# Create symlinks
-	ln -fs $(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Versions/Current
-	ln -fs Versions/Current/Headers $$(PYTHON_FRAMEWORK-$1)
-	ln -fs Versions/Current/Resources $$(PYTHON_FRAMEWORK-$1)
-	ln -fs Versions/Current/Python $$(PYTHON_FRAMEWORK-$1)
-
-	# Create plist file
-	sed -e "s/xxxNAMExxx/Python/g" $(PROJECT_DIR)/patch/Info.plist.tmpl > $$(PYTHON_RESOURCES-$1)/Info.plist.1
-	sed -e "s/xxxBUNDLExxx/org.python/g" $$(PYTHON_RESOURCES-$1)/Info.plist.1 > $$(PYTHON_RESOURCES-$1)/Info.plist.2
-	sed -e "s/xxxVERSIONxxx/$$(PYTHON_VERSION)/g" $$(PYTHON_RESOURCES-$1)/Info.plist.2 > $$(PYTHON_RESOURCES-$1)/Info.plist
-	rm $$(PYTHON_RESOURCES-$1)/Info.plist.1 $$(PYTHON_RESOURCES-$1)/Info.plist.2
 
 # Build libpython fat library
 build/$1/libpython$(PYTHON_VER)m.a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER)m.a)
