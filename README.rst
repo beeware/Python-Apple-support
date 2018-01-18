@@ -9,11 +9,12 @@ This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
 
 It works by downloading, patching, and building a fat binary of Python and
-selected pre-requisites, and packaging them both in Apple Framework format.
+selected pre-requisites, and packaging them as static libraries that can be
+incorporated into an XCode project.
 
 The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS, armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
-for watchOS. This should enable the code to run on:
+macOS; armv7, armv7s and arm64 for iOS devices, arm64 for appleTV devices, and
+armv7k for watchOS. This should enable the code to run on:
 
 * MacBook
 * iMac
@@ -52,13 +53,3 @@ will be in the `dist` directory.
 .. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/iOS/Python-2.7-iOS-support.b3.tar.gz
 .. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/tvOS/Python-2.7-tvOS-support.b3.tar.gz
 .. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/watchOS/Python-2.7-watchOS-support.b3.tar.gz
-
-
-Acknowledgements
-----------------
-
-The approach to framework packaging is drawn from `Jeff Verkoeyen`_, and
-`Ernesto García's`_ tutorials.
-
-.. _Jeff Verkoeyen: https://github.com/jverkoey/iOS-Framework
-.. _Ernesto García's: http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial
