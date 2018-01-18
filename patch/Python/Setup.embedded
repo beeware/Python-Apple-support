@@ -3,7 +3,7 @@
 #####################################################################
 
 _bisect _bisectmodule.c
-_bz2 _bz2module.c -I$(srcdir)/../bzip2/include -L$(srcdir)/../bzip2/lib -lbz2
+_bz2 _bz2module.c -I$(srcdir)/../bzip2/include -L$(srcdir)/../Support/BZip2 -lbz2
 _codecs_cn cjkcodecs/_codecs_cn.c
 _codecs_hk cjkcodecs/_codecs_hk.c
 _codecs_iso2022 cjkcodecs/_codecs_iso2022.c
@@ -19,7 +19,7 @@ _elementtree _elementtree.c \
 _heapq _heapqmodule.c
 _json _json.c
 _lsprof _lsprof.o rotatingtree.c
-_lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../xz/lib -llzma
+_lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../Support/XZ -llzma
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
 _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
@@ -41,7 +41,7 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/row.c \
     _sqlite/statement.c \
     _sqlite/util.c
-_ssl _ssl.c -I$(srcdir)/../OpenSSL.framework/Headers -framework OpenSSL -F$(srcdir)/.. -DUSE_SSL
+_ssl _ssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _struct _struct.c
 array arraymodule.c
 audioop audioop.c
