@@ -49,7 +49,7 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/macOS/Python-2.7-macOS-support.b3.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/iOS/Python-2.7-iOS-support.b3.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/tvOS/Python-2.7-tvOS-support.b3.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/watchOS/Python-2.7-watchOS-support.b3.tar.gz
+.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/macOS/Python-2.7-macOS-support.b4.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/iOS/Python-2.7-iOS-support.b4.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/tvOS/Python-2.7-tvOS-support.b4.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/2.7/watchOS/Python-2.7-watchOS-support.b4.tar.gz

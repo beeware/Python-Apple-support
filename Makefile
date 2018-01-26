@@ -21,7 +21,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=3
+BUILD_NUMBER=4
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
@@ -30,7 +30,7 @@ PYTHON_VERSION=2.7.14
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=m
+OPENSSL_REVISION=n
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.6
@@ -358,16 +358,16 @@ Python-$1: $$(PYTHON_FRAMEWORK-$1)
 
 # Build Python
 $$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
-	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
 
 	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Headers
 	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
 	cp -f $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Headers
 
 	# Copy Python.h and pyconfig.h into the resources include directory
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
 
 	# Copy the standard library from the simulator build
 ifneq ($(TEST),)
