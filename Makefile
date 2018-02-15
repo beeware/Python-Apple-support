@@ -25,12 +25,12 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=5
+BUILD_NUMBER=6
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.4.7
+PYTHON_VERSION=3.4.8
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
