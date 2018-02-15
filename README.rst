@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.5.4**.
+**This repository branch builds a packaged version of Python 3.5.5**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -49,7 +49,7 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/macOS/Python-3.5-macOS-support.b6.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-iOS-support.b6.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-tvOS-support.b6.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-watchOS-support.b6.tar.gz
+.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/macOS/Python-3.5-macOS-support.b7.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/iOS/Python-3.5-iOS-support.b7.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/tvOS/Python-3.5-tvOS-support.b7.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.5/watchOS/Python-3.5-watchOS-support.b7.tar.gz
