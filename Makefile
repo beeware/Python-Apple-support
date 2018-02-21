@@ -25,7 +25,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=7
+BUILD_NUMBER=8
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
