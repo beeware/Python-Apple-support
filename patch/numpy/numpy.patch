@@ -1,0 +1,56 @@
+diff -Naur numpy-1.9.1.orig/numpy/core/include/numpy/npy_endian.h numpy-1.9.1.ios/numpy/core/include/numpy/npy_endian.h
+--- numpy-1.9.1.orig/numpy/core/include/numpy/npy_endian.h	2014-10-26 15:36:14.000000000 +0100
++++ numpy-1.9.1.ios/numpy/core/include/numpy/npy_endian.h	2014-11-24 01:59:52.000000000 +0100
+@@ -6,7 +6,10 @@
+  * endian.h
+  */
+ 
+-#ifdef NPY_HAVE_ENDIAN_H
++
++//#ifdef NPY_HAVE_ENDIAN_H
++//XXX iOS fix, it detects endian.h, but weird detection happen during the compilation
++#if 0
+     /* Use endian.h if available */
+     #include <endian.h>
+ 
+diff -Naur numpy-1.9.1.orig/numpy/core/setup.py numpy-1.9.1.ios/numpy/core/setup.py
+--- numpy-1.9.1.orig/numpy/core/setup.py	2014-10-26 17:22:33.000000000 +0100
++++ numpy-1.9.1.ios/numpy/core/setup.py	2014-11-24 01:58:43.000000000 +0100
+@@ -951,6 +951,9 @@
+     blas_info = get_info('blas_opt', 0)
+     #blas_info = {}
+     def get_dotblas_sources(ext, build_dir):
++        # XXX no blas for iOS, maybe it's not needed anymore as our recipe do
++        # BLAS=None
++        return None
+         if blas_info:
+             if ('NO_ATLAS_INFO', 1) in blas_info.get('define_macros', []):
+                 return None # dotblas needs ATLAS, Fortran compiled blas will not be sufficient.
+diff -Naur numpy-1.9.1.orig/numpy/linalg/setup.py numpy-1.9.1.ios/numpy/linalg/setup.py
+--- numpy-1.9.1.orig/numpy/linalg/setup.py	2014-10-26 15:36:15.000000000 +0100
++++ numpy-1.9.1.ios/numpy/linalg/setup.py	2014-11-24 01:57:48.000000000 +0100
+@@ -34,8 +34,14 @@
+                 return ext.depends[:1]
+             return ext.depends[:2]
+ 
++    def get_lapack_lite_sources_ios(ext, build_dir):
++        return ext.depends[:-1]
++
++    def get_umath_linalg_ios(ext, build_dir):
++        return ext.depends[:1]
++
+     config.add_extension('lapack_lite',
+-                         sources = [get_lapack_lite_sources],
++                         sources = [get_lapack_lite_sources_ios],
+                          depends = ['lapack_litemodule.c'] + lapack_lite_src,
+                          extra_info = lapack_info
+                          )
+@@ -43,7 +49,7 @@
+     # umath_linalg module
+ 
+     config.add_extension('_umath_linalg',
+-                         sources = [get_lapack_lite_sources],
++                         sources = [get_umath_linalg_ios],
+                          depends =  ['umath_linalg.c.src'] + lapack_lite_src,
+                          extra_info = lapack_info,
+                          libraries = ['npymath'],
