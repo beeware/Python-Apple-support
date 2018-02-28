@@ -5,10 +5,11 @@ This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
 
 It works by downloading, patching, and building a fat binary of Python and
-selected pre-requisites, and packaging them both in Apple Framework format.
+selected pre-requisites, and packaging them as static libraries that can be
+included in an Xcode project.
 
 The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS,  armv7 and arm64 for iOS devices, arm64 for appleTV devices, and armv7k
+macOS,  armv7 and arm64 for iOS devices, arm64 for AppleTV devices, and armv7k
 for watchOS. This should enable the code to run on:
 
 * MacBook
@@ -19,7 +20,6 @@ for watchOS. This should enable the code to run on:
 * iPod Touch (4th gen or later)
 * Apple TV (4th gen or later)
 * Apple Watch
-
 
 The master branch of this repository has no content; there is an
 independent branch for each supported version of Python. The following
