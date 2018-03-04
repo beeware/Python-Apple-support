@@ -49,6 +49,27 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
+Binary packages
+---------------
+
+These tools are also able to compile the following packages that have binary
+components:
+
+* `numpy <patch/numpy/README.rst>`__
+
+These binary components are not compiled by default. However, the build
+infrastructure of this project can compile them on request. You can run::
+
+    make <name of package>
+
+to build a specific package; or, to build all supported packages::
+
+    make app_packages
+
+For details on how to add these binary packages to your project, see the
+package-specific documentation linked above.
+
+
 .. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/macOS/Python-3.4-macOS-support.b7.tar.gz
 .. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/iOS/Python-3.4-iOS-support.b7.tar.gz
 .. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.4/tvOS/Python-3.4-tvOS-support.b7.tar.gz

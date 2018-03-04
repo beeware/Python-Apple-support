@@ -330,7 +330,7 @@ XZ_FRAMEWORK-$1=build/$1/Support/XZ
 PYTHON_FRAMEWORK-$1=build/$1/Support/Python
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
 
-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
+$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz packages-$1
 
 clean-$1:
 	rm -rf build/$1
@@ -448,6 +448,39 @@ build/$1/libpython$(PYTHON_VER)m.a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_D
 	# Create a fat binary for the libPython library
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
+
+vars-$1: $$(foreach target,$$(TARGETS-$1),vars-$$(target))
+
 endef
 
 $(foreach os,$(OS),$(eval $(call build,$(os))))
+
+###########################################################################
+# Compiling Python Libraries with binary components
+###########################################################################
+
+HOST_PYTHON=$(CURDIR)/build/macOS/python/bin/python3
+HOST_PIP=$(CURDIR)/build/macOS/python/bin/pip3
+
+# Ensure pip and setuptools are available
+pip: Python-macOS
+	$(HOST_PYTHON) -m ensurepip
+
+# Create the directory that will contain installed packages
+dist/app_packages:
+	mkdir -p dist/app_packages
+
+# Makefiles for individual binary packages that are supported.
+include patch/numpy/Makefile.numpy
+
+define build-app-packages
+packages-$1: numpy-$1
+endef
+
+$(foreach os,$(OS),$(eval $(call build-app-packages,$(os))))
+
+app_packages: numpy
+
+# Dump vars (for test)
+vars: $(foreach os,$(OS),vars-$(os))
+	@echo "APP_PACKAGES: $(APP_PACKAGES)"
