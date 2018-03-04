@@ -408,7 +408,7 @@ pip: Python-macOS
 	$(HOST_PYTHON) -m ensurepip
 
 # Create the directory that will contain installed packages
-dist/app_packages:
+dist/app_packages: pip
 	mkdir -p dist/app_packages
 
 # Makefiles for individual binary packages that are supported.

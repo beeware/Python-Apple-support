@@ -3,7 +3,11 @@ Adding NumPy to your iOS project
 
 1. Build NumPy. You can either build NumPy specficially::
 
-       make <name of package>
+       make numpy
+
+   or build NumPy for a specific platform::
+
+       make numpy-iOS
 
    or build all supported binary packages::
 
