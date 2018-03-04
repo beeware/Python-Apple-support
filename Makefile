@@ -170,6 +170,12 @@ BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
 PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
 pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
 
+ifeq ($2,macOS)
+PYTHON_HOST_DEP-$1=
+else
+PYTHON_HOST-$1=$(PYTHON_HOST)
+endif
+
 # Unpack OpenSSL
 $$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
 	# Unpack sources
@@ -227,7 +233,7 @@ $$(BZIP2_DIR-$1)/libbz2.a: $$(BZIP2_DIR-$1)/Makefile
 	cd $$(BZIP2_DIR-$1) && make install
 
 # Unpack Python
-$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $(PYTHON_HOST)
+$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOST-$1)
 	# Unpack target Python
 	mkdir -p $$(PYTHON_DIR-$1)
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
@@ -353,7 +359,7 @@ build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(ta
 
 $1: Python-$1
 
-Python-$1: $$(PYTHON_FRAMEWORK-$1)
+Python-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 # Build Python
 $$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
@@ -408,7 +414,7 @@ pip: Python-macOS
 	$(HOST_PYTHON) -m ensurepip
 
 # Create the directory that will contain installed packages
-dist/app_packages: pip
+dist/app_packages:
 	mkdir -p dist/app_packages
 
 # Makefiles for individual binary packages that are supported.
