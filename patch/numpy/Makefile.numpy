@@ -36,7 +36,7 @@ endef
 define build-numpy
 $$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-numpy-target,$$(target),$1)))
 
-build/$1/packages/numpy: downloads/numpy-$(NUMPY_VERSION).tgz
+build/$1/packages/numpy: pip downloads/numpy-$(NUMPY_VERSION).tgz
 	# Unpack numpy sources
 	mkdir -p build/$1/packages/numpy
 	tar zxf downloads/numpy-$(NUMPY_VERSION).tgz --strip-components 1 -C build/$1/packages/numpy
@@ -50,12 +50,12 @@ ifeq ($1,macOS)
 # Just install the source as-is into the dist/app_packages directory
 # Then clean out all the binary artefacts
 
-dist/app_packages/numpy: dist/app_packages build/$1/packages/numpy
-	cd build/$1/packages/numpy && \
+dist/app_packages/numpy: pip dist/app_packages build/macOS/packages/numpy
+	cd build/macOS/packages/numpy && \
 		$(NUMPY_CONFIG) $(HOST_PIP) install --target $(PROJECT_DIR)/dist/app_packages .
-	find build/$1/packages/numpy -name "*.so" -exec rm {} \;
+	find build/macOS/packages/numpy -name "*.so" -exec rm {} \;
 
-numpy-$1: dist/app_packages/numpy
+numpy-macOS: dist/app_packages/numpy
 
 else
 # For all other platforms, run the numpy build for each target architecture
@@ -75,4 +75,4 @@ endef
 $(foreach os,$(OS),$(eval $(call build-numpy,$(os))))
 
 # Main entry point
-numpy: pip $(foreach os,$(OS),numpy-$(os))
+numpy: $(foreach os,$(OS),numpy-$(os))
