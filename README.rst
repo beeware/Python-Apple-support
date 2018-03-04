@@ -55,7 +55,7 @@ Binary packages
 These tools are also able to compile the following packages that have binary
 components:
 
-* numpy
+* `numpy <patch/numpy/README.rst>`__
 
 These binary components are not compiled by default. However, the build
 infrastructure of this project can compile them on request. You can run::
@@ -66,21 +66,8 @@ to build a specific package; or, to build all supported packages::
 
     make app_packages
 
-This will produce:
-
-* a folder named `dist/app_packages`, containing the python code required by
-  the package
-* a folder for each supported mobile platform (iOS, tvOS and watchOS)
-  containing the static fat binary libraries needed to support the Python
-  code.
-
-Once these artefacts have been compiled:
-
-* Copy the contents of `dist/app_packages` into your project's `site_packages`
-  or `app_packages` directory. This will make the Python library available to
-  your project; and
-* Add the static binary libraries in the platform directory (e.g., the contents
-  of `dist/iOS`) as static libraries in your project.
+For details on how to add these binary packages to your project, see the
+package-specific documentation linked above.
 
 
 .. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/macOS/Python-3.6-macOS-support.b6.tar.gz
