@@ -40,10 +40,8 @@ Adding NumPy to your iOS project
                "    def find_module(self, fullname, mpath=None):\n" \
                "        if fullname in (" \
                "                    'numpy.core.multiarray', " \
-               "                    'numpy.core.scalarmath', " \
                "                    'numpy.core.umath', " \
                "                    'numpy.fft.fftpack_lite', " \
-               "                    'numpy.lib._compiled_base', " \
                "                    'numpy.linalg._umath_linalg', " \
                "                    'numpy.linalg.lapack_lite', " \
                "                    'numpy.random.mtrand', " \
@@ -66,10 +64,8 @@ Adding NumPy to your iOS project
    configures your Python enviroment::
 
        extern PyMODINIT_FUNC PyInit_multiarray(void);
-       extern PyMODINIT_FUNC PyInit_scalarmath(void);
        extern PyMODINIT_FUNC PyInit_umath(void);
        extern PyMODINIT_FUNC PyInit_fftpack_lite(void);
-       extern PyMODINIT_FUNC PyInit__compiled_base(void);
        extern PyMODINIT_FUNC PyInit__umath_linalg(void);
        extern PyMODINIT_FUNC PyInit_lapack_lite(void);
        extern PyMODINIT_FUNC PyInit_mtrand(void);
@@ -77,10 +73,8 @@ Adding NumPy to your iOS project
 6. Add the following function calls *before* invoking ``Py_Initialize()``::
 
        PyImport_AppendInittab("__numpy_core_multiarray", &PyInit_multiarray);
-       PyImport_AppendInittab("__numpy_core_scalarmath", &PyInit_scalarmath);
        PyImport_AppendInittab("__numpy_core_umath", &PyInit_umath);
        PyImport_AppendInittab("__numpy_fft_fftpack_lite", &PyInit_fftpack_lite);
-       PyImport_AppendInittab("__numpy_lib__compiled_base", &PyInit__compiled_base);
        PyImport_AppendInittab("__numpy_linalg__umath_linalg", &PyInit__umath_linalg);
        PyImport_AppendInittab("__numpy_linalg_lapack_lite", &PyInit_lapack_lite);
        PyImport_AppendInittab("__numpy_random_mtrand", &PyInit_mtrand);
@@ -114,10 +108,8 @@ folder in the Xcode project) will look something like this::
 
 
     extern PyMODINIT_FUNC PyInit_multiarray(void);
-    extern PyMODINIT_FUNC PyInit_scalarmath(void);
     extern PyMODINIT_FUNC PyInit_umath(void);
     extern PyMODINIT_FUNC PyInit_fftpack_lite(void);
-    extern PyMODINIT_FUNC PyInit__compiled_base(void);
     extern PyMODINIT_FUNC PyInit__umath_linalg(void);
     extern PyMODINIT_FUNC PyInit_lapack_lite(void);
     extern PyMODINIT_FUNC PyInit_mtrand(void);
@@ -141,10 +133,8 @@ folder in the Xcode project) will look something like this::
             putenv((char *)[tmp_path UTF8String]);
 
             PyImport_AppendInittab("__numpy_core_multiarray", &PyInit_multiarray);
-            PyImport_AppendInittab("__numpy_core_scalarmath", &PyInit_scalarmath);
             PyImport_AppendInittab("__numpy_core_umath", &PyInit_umath);
             PyImport_AppendInittab("__numpy_fft_fftpack_lite", &PyInit_fftpack_lite);
-            PyImport_AppendInittab("__numpy_lib__compiled_base", &PyInit__compiled_base);
             PyImport_AppendInittab("__numpy_linalg__umath_linalg", &PyInit__umath_linalg);
             PyImport_AppendInittab("__numpy_linalg_lapack_lite", &PyInit_lapack_lite);
             PyImport_AppendInittab("__numpy_random_mtrand", &PyInit_mtrand);

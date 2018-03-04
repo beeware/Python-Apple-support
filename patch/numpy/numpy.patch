@@ -1,56 +1,119 @@
-diff -Naur numpy-1.9.1.orig/numpy/core/include/numpy/npy_endian.h numpy-1.9.1.ios/numpy/core/include/numpy/npy_endian.h
---- numpy-1.9.1.orig/numpy/core/include/numpy/npy_endian.h	2014-10-26 15:36:14.000000000 +0100
-+++ numpy-1.9.1.ios/numpy/core/include/numpy/npy_endian.h	2014-11-24 01:59:52.000000000 +0100
-@@ -6,7 +6,10 @@
-  * endian.h
+diff -Nru numpy-1.14.1/numpy/_build_utils/apple_accelerate.py numpy/numpy/_build_utils/apple_accelerate.py
+--- numpy-1.14.1/numpy/_build_utils/apple_accelerate.py	2018-02-05 09:21:37.000000000 +0800
++++ numpy/numpy/_build_utils/apple_accelerate.py	2018-03-04 13:26:52.000000000 +0800
+@@ -8,8 +8,13 @@
+ 
+ def uses_accelerate_framework(info):
+     """ Returns True if Accelerate framework is used for BLAS/LAPACK """
++    # If we're not building on Darwin (macOS), don't use accelerate
+     if sys.platform != "darwin":
+         return False
++    # If we're building on macOS, but targeting a different platform,
++    # don't use accelerate.
++    if os.getenv('_PYTHON_HOST_PLATFORM', None):
++        return False
+     r_accelerate = re.compile("Accelerate")
+     extra_link_args = info.get('extra_link_args', '')
+     for arg in extra_link_args:
+diff -Nru numpy-1.14.1/numpy/core/src/multiarray/strfuncs.c numpy/numpy/core/src/multiarray/strfuncs.c
+--- numpy-1.14.1/numpy/core/src/multiarray/strfuncs.c	2018-02-20 07:16:17.000000000 +0800
++++ numpy/numpy/core/src/multiarray/strfuncs.c	2018-03-04 13:26:52.000000000 +0800
+@@ -41,7 +41,7 @@
+  * XXX we do this in multiple places; time for a string library?
   */
+ static char *
+-extend(char **strp, Py_ssize_t n, Py_ssize_t *maxp)
++extend_str(char **strp, Py_ssize_t n, Py_ssize_t *maxp)
+ {
+     char *str = *strp;
+     Py_ssize_t new_cap;
+@@ -71,7 +71,7 @@
+     npy_intp i, N, ret = 0;
  
--#ifdef NPY_HAVE_ENDIAN_H
+ #define CHECK_MEMORY do {                           \
+-        if (extend(string, *n, max_n) == NULL) {    \
++        if (extend_str(string, *n, max_n) == NULL) {    \
+             ret = -1;                               \
+             goto end;                               \
+         }                                           \
+diff -Nru numpy-1.14.1/numpy/distutils/system_info.py numpy/numpy/distutils/system_info.py
+--- numpy-1.14.1/numpy/distutils/system_info.py	2018-02-21 01:46:17.000000000 +0800
++++ numpy/numpy/distutils/system_info.py	2018-03-04 13:26:52.000000000 +0800
+@@ -219,21 +219,21 @@
+     _lib_dirs = [
+         'lib',
+     ]
+-    
 +
-+//#ifdef NPY_HAVE_ENDIAN_H
-+//XXX iOS fix, it detects endian.h, but weird detection happen during the compilation
-+#if 0
-     /* Use endian.h if available */
-     #include <endian.h>
- 
-diff -Naur numpy-1.9.1.orig/numpy/core/setup.py numpy-1.9.1.ios/numpy/core/setup.py
---- numpy-1.9.1.orig/numpy/core/setup.py	2014-10-26 17:22:33.000000000 +0100
-+++ numpy-1.9.1.ios/numpy/core/setup.py	2014-11-24 01:58:43.000000000 +0100
-@@ -951,6 +951,9 @@
-     blas_info = get_info('blas_opt', 0)
-     #blas_info = {}
-     def get_dotblas_sources(ext, build_dir):
-+        # XXX no blas for iOS, maybe it's not needed anymore as our recipe do
-+        # BLAS=None
-+        return None
-         if blas_info:
-             if ('NO_ATLAS_INFO', 1) in blas_info.get('define_macros', []):
-                 return None # dotblas needs ATLAS, Fortran compiled blas will not be sufficient.
-diff -Naur numpy-1.9.1.orig/numpy/linalg/setup.py numpy-1.9.1.ios/numpy/linalg/setup.py
---- numpy-1.9.1.orig/numpy/linalg/setup.py	2014-10-26 15:36:15.000000000 +0100
-+++ numpy-1.9.1.ios/numpy/linalg/setup.py	2014-11-24 01:57:48.000000000 +0100
-@@ -34,8 +34,14 @@
-                 return ext.depends[:1]
-             return ext.depends[:2]
- 
-+    def get_lapack_lite_sources_ios(ext, build_dir):
-+        return ext.depends[:-1]
+     _include_dirs = [d.replace('/', os.sep) for d in _include_dirs]
+     _lib_dirs = [d.replace('/', os.sep) for d in _lib_dirs]
+     def add_system_root(library_root):
+         """Add a package manager root to the include directories"""
+         global default_lib_dirs
+         global default_include_dirs
+-        
 +
-+    def get_umath_linalg_ios(ext, build_dir):
-+        return ext.depends[:1]
+         library_root = os.path.normpath(library_root)
+- 
 +
-     config.add_extension('lapack_lite',
--                         sources = [get_lapack_lite_sources],
-+                         sources = [get_lapack_lite_sources_ios],
-                          depends = ['lapack_litemodule.c'] + lapack_lite_src,
-                          extra_info = lapack_info
-                          )
-@@ -43,7 +49,7 @@
-     # umath_linalg module
+         default_lib_dirs.extend(
+             os.path.join(library_root, d) for d in _lib_dirs)
+         default_include_dirs.extend(
+             os.path.join(library_root, d) for d in _include_dirs)
+-    
++
+     if sys.version_info >= (3, 3):
+         # VCpkg is the de-facto package manager on windows for C/C++
+         # libraries. If it is on the PATH, then we append its paths here.
+@@ -247,7 +247,7 @@
+             else:
+                 specifier = 'x64'
  
-     config.add_extension('_umath_linalg',
--                         sources = [get_lapack_lite_sources],
-+                         sources = [get_umath_linalg_ios],
-                          depends =  ['umath_linalg.c.src'] + lapack_lite_src,
-                          extra_info = lapack_info,
-                          libraries = ['npymath'],
+-            vcpkg_installed = os.path.join(vcpkg_dir, 'installed') 
++            vcpkg_installed = os.path.join(vcpkg_dir, 'installed')
+             for vcpkg_root in [
+                 os.path.join(vcpkg_installed, specifier + '-windows'),
+                 os.path.join(vcpkg_installed, specifier + '-windows-static'),
+@@ -260,7 +260,7 @@
+             conda_dir = os.path.dirname(conda)
+             add_system_root(os.path.join(conda_dir, '..', 'Library'))
+             add_system_root(os.path.join(conda_dir, 'Library'))
+-                        
++
+ else:
+     default_lib_dirs = libpaths(['/usr/local/lib', '/opt/lib', '/usr/lib',
+                                  '/opt/local/lib', '/sw/lib'], platform_bits)
+@@ -1549,7 +1549,9 @@
+         if not atlas_info:
+             atlas_info = get_info('atlas')
+ 
+-        if sys.platform == 'darwin' and not (atlas_info or openblas_info or
++        if sys.platform == 'darwin' \
++                and not os.getenv('_PYTHON_HOST_PLATFORM', None) \
++                and not (atlas_info or openblas_info or
+                                              lapack_mkl_info):
+             # Use the system lapack from Accelerate or vecLib under OSX
+             args = []
+@@ -1655,7 +1657,9 @@
+         if not atlas_info:
+             atlas_info = get_info('atlas_blas')
+ 
+-        if sys.platform == 'darwin' and not (atlas_info or openblas_info or
++        if sys.platform == 'darwin' \
++                and not os.getenv('_PYTHON_HOST_PLATFORM', None) \
++                and not (atlas_info or openblas_info or
+                                              blas_mkl_info or blis_info):
+             # Use the system BLAS from Accelerate or vecLib under OSX
+             args = []
+diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_lite/f2c.h
+--- numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h	2018-02-20 07:16:17.000000000 +0800
++++ numpy/numpy/linalg/lapack_lite/f2c.h	2018-03-04 16:12:26.000000000 +0800
+@@ -7,6 +7,8 @@
+ #ifndef F2C_INCLUDE
+ #define F2C_INCLUDE
+ 
++#include <math.h>
++
+ typedef int integer;
+ typedef char *address;
+ typedef short int shortint;

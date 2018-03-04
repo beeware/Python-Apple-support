@@ -2,14 +2,13 @@
 # NumPy
 ###########################################################################
 
-NUMPY_VERSION=1.9.1
+NUMPY_VERSION=1.14.1
 NUMPY_CONFIG=BLAS=None LAPACK=None ATLAS=None
 
 # Download original numpy source code archive.
 downloads/numpy-$(NUMPY_VERSION).tgz:
 	mkdir -p downloads
-	# if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/releases/download/v$(NUMPY_VERSION)/numpy-$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
-	if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/archive/v$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
+	if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/releases/download/v$(NUMPY_VERSION)/numpy-$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
 
 define build-numpy-target
 NUMPY-CFLAGS-$1=$$(CFLAGS-$2)
