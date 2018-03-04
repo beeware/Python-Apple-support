@@ -31,7 +31,7 @@ Adding NumPy to your iOS project
 4. Add the following function definition to the file that configures your
    Python environment (if you're using a BeeWare template, this will be
    the ``main.m`` file; in other projects, it's whichever file contains
-   the code that invokes ``Py_Initialize()`` and ``Py_InitThreads()``::
+   the code that invokes ``Py_Initialize()`` and ``PyEval_InitThreads()``::
 
        void numpy_importer() {
            PyRun_SimpleString(
