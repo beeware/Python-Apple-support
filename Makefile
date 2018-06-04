@@ -336,7 +336,7 @@ XZ_FRAMEWORK-$1=build/$1/Support/XZ
 PYTHON_FRAMEWORK-$1=build/$1/Support/Python
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
 
-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz packages-$1
+$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
