@@ -1,7 +1,9 @@
+.gitattributes
+.github/*
 .gitignore
 .mention-bot
 .travis.yml
-.github/*
+Doc/make.bat
 Modules/_ctypes/libffi_osx/LICENSE
 PCbuild/*
 Tools/msi/*
