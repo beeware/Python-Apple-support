@@ -1,9 +1,6 @@
 Python Apple Support
 ====================
 
-**Python 3.7.0 has not yet been released - this repository is a placeholder
-in preparation for the final release, which is currently expected mid 2018**
-
 **This repository branch builds a packaged version of Python 3.7.0**.
 Other Python versions are available by cloning other branches of the main
 repository.
@@ -15,16 +12,18 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project.
 
-The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS; armv7, armv7s and arm64 for iOS devices, arm64 for appleTV devices, and
-armv7k for watchOS. This should enable the code to run on:
+The binaries support x86_64 for macOS; arm64 for iOS and appleTV devices;
+and armv7k for watchOS. This should enable the code to run on:
 
 * MacBook
 * iMac
 * Mac Pro
-* iPhone (4s or later)
-* iPad
-* iPod Touch (4th gen or later)
+* iPhone (5s or later)
+* iPad (5th gen or later)
+* iPad Air (all models)
+* iPad Mini (2 or later)
+* iPad Pro (all models)
+* iPod Touch (6th gen or later)
 * Apple TV (4th gen or later)
 * Apple Watch
 

@@ -2,30 +2,39 @@
 # Static compilation instructions for all binary modules.
 #####################################################################
 
+_abc _abc.c
+_asyncio _asynciomodule.c
 _bisect _bisectmodule.c
 _blake2 _blake2/blake2module.c _blake2/blake2b_impl.c _blake2/blake2s_impl.c
 _bz2 _bz2module.c -I$(srcdir)/../bzip2/include -L$(srcdir)/../Support/BZip2 -lbz2
+_codecs _codecsmodule.c
 _codecs_cn cjkcodecs/_codecs_cn.c
 _codecs_hk cjkcodecs/_codecs_hk.c
 _codecs_iso2022 cjkcodecs/_codecs_iso2022.c
 _codecs_jp cjkcodecs/_codecs_jp.c
 _codecs_kr cjkcodecs/_codecs_kr.c
 _codecs_tw cjkcodecs/_codecs_tw.c
+_collections _collectionsmodule.c
+_contextvars _contextvarsmodule.c
 _crypt _cryptmodule.c
 _csv _csv.c
 _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
-_hashlib _hashopenssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL
+_functools -DPy_BUILD_CORE _functoolsmodule.c
+_hashlib _hashopenssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _heapq _heapqmodule.c
+_io -DPy_BUILD_CORE -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
 _json _json.c
+_locale _localemodule.c
 _lsprof _lsprof.o rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../Support/XZ -llzma
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
 _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
 _opcode _opcode.c
+_operator _operator.c
 _pickle _pickle.c
 _posixsubprocess _posixsubprocess.c
 _random _randommodule.c
@@ -33,6 +42,7 @@ _sha1 sha1module.c
 _sha3 _sha3/sha3module.c
 _sha256 sha256module.c
 _sha512 sha512module.c
+_signal -DPy_BUILD_CORE signalmodule.c
 _socket socketmodule.c
 _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 \
     _sqlite/cache.c \
@@ -44,18 +54,29 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/row.c \
     _sqlite/statement.c \
     _sqlite/util.c
+_sre _sre.c
 _ssl _ssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
-_hashlib _hashopenssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
+_stat _stat.c
 _struct _struct.c
+_symtable symtablemodule.c
+_thread -DPy_BUILD_CORE _threadmodule.c
+_tracemalloc _tracemalloc.c hashtable.c
+_weakref _weakref.c
+atexit atexitmodule.c
 array arraymodule.c
 audioop audioop.c
 binascii binascii.c
 cmath cmathmodule.c _math.c
+errno errnomodule.c
+faulthandler faulthandler.c
 fcntl fcntlmodule.c
 grp grpmodule.c
+itertools itertoolsmodule.c
 math mathmodule.c
 mmap mmapmodule.c
 parser parsermodule.c
+posix -DPy_BUILD_CORE posixmodule.c
+pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
     expat/xmlrole.c \
     expat/xmltok.c \
@@ -68,6 +89,7 @@ syslog syslogmodule.c
 termios termios.c
 time timemodule.c
 unicodedata unicodedata.c
+zipimport -DPy_BUILD_CORE zipimport.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
 #####################################################################
