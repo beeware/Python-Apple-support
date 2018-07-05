@@ -25,21 +25,21 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=6
+BUILD_NUMBER=7
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.6.4
+PYTHON_VERSION=3.6.6
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=n
+OPENSSL_REVISION=o
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.6
 
-XZ_VERSION=5.2.3
+XZ_VERSION=5.2.4
 
 # Supported OS
 OS=macOS iOS tvOS watchOS
@@ -49,10 +49,8 @@ TARGETS-macOS=macosx.x86_64
 CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.i386 iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
+TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
 CFLAGS-iOS=-mios-version-min=7.0
-CFLAGS-iphoneos.armv7=-fembed-bitcode
-CFLAGS-iphoneos.armv7s=-fembed-bitcode
 CFLAGS-iphoneos.arm64=-fembed-bitcode
 
 # tvOS targets

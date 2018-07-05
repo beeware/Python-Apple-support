@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.6.4**.
+**This repository branch builds a packaged version of Python 3.6.6**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -12,16 +12,18 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project.
 
-The binaries support the ``$(ARCHS_STANDARD)`` set - that is, x86_64 for
-macOS; armv7, armv7s and arm64 for iOS devices, arm64 for appleTV devices, and
-armv7k for watchOS. This should enable the code to run on:
+The binaries support x86_64 for macOS; arm64 for iOS and appleTV devices;
+and armv7k for watchOS. This should enable the code to run on:
 
 * MacBook
 * iMac
 * Mac Pro
-* iPhone (4s or later)
-* iPad
-* iPod Touch (4th gen or later)
+* iPhone (5s or later)
+* iPad (5th gen or later)
+* iPad Air (all models)
+* iPad Mini (2 or later)
+* iPad Pro (all models)
+* iPod Touch (6th gen or later)
 * Apple TV (4th gen or later)
 * Apple Watch
 
@@ -70,7 +72,7 @@ For details on how to add these binary packages to your project, see the
 package-specific documentation linked above.
 
 
-.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/macOS/Python-3.6-macOS-support.b6.tar.gz
-.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/iOS/Python-3.6-iOS-support.b6.tar.gz
-.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/tvOS/Python-3.6-tvOS-support.b6.tar.gz
-.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/watchOS/Python-3.6-watchOS-support.b6.tar.gz
+.. _for macOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/macOS/Python-3.6-macOS-support.b7.tar.gz
+.. _for iOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/iOS/Python-3.6-iOS-support.b7.tar.gz
+.. _for tvOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/tvOS/Python-3.6-tvOS-support.b7.tar.gz
+.. _for watchOS: https://s3-us-west-2.amazonaws.com/pybee-briefcase-support/Python-Apple-support/3.6/watchOS/Python-3.6-watchOS-support.b7.tar.gz
