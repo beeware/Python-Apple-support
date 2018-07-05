@@ -1,8 +1,10 @@
+.gitattributes
+.github/*
 .gitignore
 .mention-bot
 .travis.yml
-.github/*
 Doc/make.bat
+Lib/test/bisect.py
 Modules/_ctypes/libffi_osx/LICENSE
 PC/*
 PCbuild/*
