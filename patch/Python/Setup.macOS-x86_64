@@ -13,7 +13,9 @@ _ctypes _ctypes/_ctypes.c \
     _ctypes/libffi_apple/java_raw_api.c \
     _ctypes/libffi_apple/closures.c \
     _ctypes/libffi_apple/x86/ffi64_x86_64.c \
+    _ctypes/libffi_apple/x86/ffiw64_x86_64.c \
     _ctypes/libffi_apple/x86/unix64_x86_64.S \
+    _ctypes/libffi_apple/x86/win64_x86_64.S \
     -I$(srcdir)/Modules/_ctypes/libffi_apple/include
 
 _decimal _decimal/_decimal.c \

@@ -25,7 +25,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=7
+BUILD_NUMBER=8
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
@@ -34,12 +34,12 @@ PYTHON_VERSION=3.4.8
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=n
+OPENSSL_REVISION=o
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.6
 
-XZ_VERSION=5.2.3
+XZ_VERSION=5.2.4
 
 # Supported OS
 OS=macOS iOS tvOS watchOS
@@ -49,10 +49,8 @@ TARGETS-macOS=macosx.x86_64
 CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.i386 iphoneos.armv7 iphoneos.armv7s iphoneos.arm64
+TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
 CFLAGS-iOS=-mios-version-min=7.0
-CFLAGS-iphoneos.armv7=-fembed-bitcode
-CFLAGS-iphoneos.armv7s=-fembed-bitcode
 CFLAGS-iphoneos.arm64=-fembed-bitcode
 
 # tvOS targets
@@ -336,7 +334,7 @@ XZ_FRAMEWORK-$1=build/$1/Support/XZ
 PYTHON_FRAMEWORK-$1=build/$1/Support/Python
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
 
-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz packages-$1
+$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
