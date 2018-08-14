@@ -286,7 +286,7 @@ ifeq ($2,macOS)
 		--without-doc-strings --enable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
 else
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/build/macOS/python/bin:$(PATH) ./configure \
+	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/build/macOS/python/bin:$(PATH)" ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
 		--build=x86_64-apple-darwin$(shell uname -r) \
@@ -299,7 +299,7 @@ endif
 # Build Python
 $$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) make all install
+	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH)" make all install
 
 build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)m/pyconfig.h
 	cp -f $$^ $$@
