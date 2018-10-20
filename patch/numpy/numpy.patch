@@ -117,18 +117,25 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
  typedef int integer;
  typedef char *address;
  typedef short int shortint;
---- numpy-1.14.1/numpy/core/src/private/npy_config.h   2018-10-20 17:29:21.000000000 +0200
-+++ numpy/numpy/core/src/private/npy_config copy.h  2018-10-20 17:31:20.000000000 +0200
-@@ -91,7 +91,7 @@
- #if defined(HAVE_POWL) && defined(NPY_OS_DARWIN)
- #undef HAVE_POWL
- #endif
--
+--- numpy-1.14.1/numpy/core/src/private/npy_config.h   2018-10-20 19:30:37.000000000 +0200
++++ numpy/numpy/core/src/private/npy_config.h  2018-10-20 20:13:35.000000000 +0200
+@@ -6,6 +6,15 @@
+ #include "numpy/npy_cpu.h"
+ #include "numpy/npy_os.h"
+ 
++#undef HAVE_ATTRIBUTE_OPTIMIZE_UNROLL_LOOPS
++#undef HAVE_ATTRIBUTE_OPTIMIZE_OPT_3
++#undef HAVE_ATTRIBUTE_TARGET_AVX
++#undef HAVE_ATTRIBUTE_TARGET_AVX2
++#undef HAVE_XMMINTRIN_H
++#undef HAVE_EMMINTRIN_H
++#undef HAVE___BUILTIN_CPU_SUPPORTS
 +#undef HAVE_FEATURES_H
- /* Disable broken gnu trig functions */
- #if defined(HAVE_FEATURES_H)
- #include <features.h>
---- numpy-1.14.1//numpy/core/src/private/npy_fpmath.h   2018-02-05 02:21:37.000000000 +0100
++
+ /*
+  * largest alignment the copy loops might require
+  * required as string, void and complex types might get copied using larger
+--- numpy-1.14.1/numpy/core/src/private/npy_fpmath.h   2018-02-05 02:21:37.000000000 +0100
 +++ numpy/numpy/core/src/private/npy_fpmath.h  2018-10-20 18:59:59.000000000 +0200
 @@ -44,7 +44,8 @@
        defined(HAVE_LDOUBLE_INTEL_EXTENDED_12_BYTES_LE) || \
