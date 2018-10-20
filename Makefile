@@ -27,7 +27,7 @@ PROJECT_DIR=$(shell pwd)
 
 BUILD_NUMBER=7
 
-MACOSX_DEPLOYMENT_TARGET=10.8
+MACOSX_DEPLOYMENT_TARGET=10.14
 
 # Version of packages that will be compiled by this meta-package
 PYTHON_VERSION=3.6.6
