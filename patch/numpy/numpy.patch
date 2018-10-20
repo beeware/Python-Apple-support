@@ -128,3 +128,14 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
  /* Disable broken gnu trig functions */
  #if defined(HAVE_FEATURES_H)
  #include <features.h>
+--- numpy-1.14.1//numpy/core/src/private/npy_fpmath.h   2018-02-05 02:21:37.000000000 +0100
++++ numpy/numpy/core/src/private/npy_fpmath.h  2018-10-20 18:59:59.000000000 +0200
+@@ -44,7 +44,8 @@
+       defined(HAVE_LDOUBLE_INTEL_EXTENDED_12_BYTES_LE) || \
+       defined(HAVE_LDOUBLE_MOTOROLA_EXTENDED_12_BYTES_BE) || \
+       defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_BE) || \
+-      defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_LE))
++      defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_LE) ||\
++      defined(__aarch64__)) /* Cross compiling for ARM64 (which has long double support) on macOS */
+     #error No long double representation defined
+ #endif
