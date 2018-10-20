@@ -117,3 +117,14 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
  typedef int integer;
  typedef char *address;
  typedef short int shortint;
+--- numpy-1.14.1/numpy/core/src/private/npy_config.h   2018-10-20 17:29:21.000000000 +0200
++++ numpy/numpy/core/src/private/npy_config copy.h  2018-10-20 17:31:20.000000000 +0200
+@@ -91,7 +91,7 @@
+ #if defined(HAVE_POWL) && defined(NPY_OS_DARWIN)
+ #undef HAVE_POWL
+ #endif
+-
++#undef HAVE_FEATURES_H
+ /* Disable broken gnu trig functions */
+ #if defined(HAVE_FEATURES_H)
+ #include <features.h>
