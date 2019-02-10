@@ -11,11 +11,10 @@ downloads/numpy-$(NUMPY_VERSION).tgz:
 	if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/releases/download/v$(NUMPY_VERSION)/numpy-$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
 
 define build-numpy-target
-NUMPY-CFLAGS-$1=$$(CFLAGS-$2)
+NUMPY-CFLAGS-$1=$$(CFLAGS-$1)
 NUMPY-CC-$1=xcrun --sdk $$(SDK-$1) clang \
 	-arch $$(ARCH-$1) \
-	--sysroot=$$(SDK_ROOT-$1) \
-	$$(NUMPY_CFLAGS-$1)
+	--sysroot $$(SDK_ROOT-$1) \
 
 build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a: build/$2/packages/numpy
 	cd build/$2/packages/numpy && \
@@ -23,7 +22,7 @@ build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a: build/$2/packag
 		CFLAGS="$$(NUMPY-CFLAGS-$1)" \
 		$(NUMPY_CONFIG) \
 		_PYTHON_HOST_PLATFORM=$1 \
-		$(HOST_PYTHON) setup.py build_ext
+		$(HOST_PYTHON) setup.py --verbose --no-user-cfg build_ext
 
 build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libnumpy.a: build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a
 	cd build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER) && \
