@@ -39,50 +39,6 @@ diff -Nru numpy-1.14.1/numpy/core/src/multiarray/strfuncs.c numpy/numpy/core/src
 diff -Nru numpy-1.14.1/numpy/distutils/system_info.py numpy/numpy/distutils/system_info.py
 --- numpy-1.14.1/numpy/distutils/system_info.py	2018-02-21 01:46:17.000000000 +0800
 +++ numpy/numpy/distutils/system_info.py	2018-03-04 13:26:52.000000000 +0800
-@@ -219,21 +219,21 @@
-     _lib_dirs = [
-         'lib',
-     ]
--    
-+
-     _include_dirs = [d.replace('/', os.sep) for d in _include_dirs]
-     _lib_dirs = [d.replace('/', os.sep) for d in _lib_dirs]
-     def add_system_root(library_root):
-         """Add a package manager root to the include directories"""
-         global default_lib_dirs
-         global default_include_dirs
--        
-+
-         library_root = os.path.normpath(library_root)
-- 
-+
-         default_lib_dirs.extend(
-             os.path.join(library_root, d) for d in _lib_dirs)
-         default_include_dirs.extend(
-             os.path.join(library_root, d) for d in _include_dirs)
--    
-+
-     if sys.version_info >= (3, 3):
-         # VCpkg is the de-facto package manager on windows for C/C++
-         # libraries. If it is on the PATH, then we append its paths here.
-@@ -247,7 +247,7 @@
-             else:
-                 specifier = 'x64'
- 
--            vcpkg_installed = os.path.join(vcpkg_dir, 'installed') 
-+            vcpkg_installed = os.path.join(vcpkg_dir, 'installed')
-             for vcpkg_root in [
-                 os.path.join(vcpkg_installed, specifier + '-windows'),
-                 os.path.join(vcpkg_installed, specifier + '-windows-static'),
-@@ -260,7 +260,7 @@
-             conda_dir = os.path.dirname(conda)
-             add_system_root(os.path.join(conda_dir, '..', 'Library'))
-             add_system_root(os.path.join(conda_dir, 'Library'))
--                        
-+
- else:
-     default_lib_dirs = libpaths(['/usr/local/lib', '/opt/lib', '/usr/lib',
-                                  '/opt/local/lib', '/sw/lib'], platform_bits)
 @@ -1549,7 +1549,9 @@
          if not atlas_info:
              atlas_info = get_info('atlas')
