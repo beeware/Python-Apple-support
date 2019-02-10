@@ -75,7 +75,7 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
  typedef short int shortint;
 --- numpy-1.14.1/numpy/core/src/private/npy_config.h   2018-10-20 19:30:37.000000000 +0200
 +++ numpy/numpy/core/src/private/npy_config.h  2018-10-20 20:13:35.000000000 +0200
-@@ -6,6 +6,15 @@
+@@ -6,6 +6,17 @@
  #include "numpy/npy_cpu.h"
  #include "numpy/npy_os.h"
  
@@ -87,6 +87,8 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
 +#undef HAVE_EMMINTRIN_H
 +#undef HAVE___BUILTIN_CPU_SUPPORTS
 +#undef HAVE_FEATURES_H
++#undef HAVE_SYS_ENDIAN_H
++#undef HAVE_ENDIAN_H
 +
  /*
   * largest alignment the copy loops might require
