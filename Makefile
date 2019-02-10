@@ -180,9 +180,9 @@ SDK-$1=$$(basename $1)
 SDK_ROOT-$1=$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
 CC-$1=xcrun --sdk $$(SDK-$1) clang \
 	-arch $$(ARCH-$1) \
-	--sysroot=$$(SDK_ROOT-$1) \
+	--sysroot $$(SDK_ROOT-$1) \
 	$$(CFLAGS-$2) $$(CFLAGS-$1)
-LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
+LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot $$(SDK_ROOT-$1)
 
 OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
 BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
