@@ -1,80 +1,6 @@
-diff -Nru numpy-1.14.1/numpy/_build_utils/apple_accelerate.py numpy/numpy/_build_utils/apple_accelerate.py
---- numpy-1.14.1/numpy/_build_utils/apple_accelerate.py	2018-02-05 09:21:37.000000000 +0800
-+++ numpy/numpy/_build_utils/apple_accelerate.py	2018-03-04 13:26:52.000000000 +0800
-@@ -8,8 +8,13 @@
- 
- def uses_accelerate_framework(info):
-     """ Returns True if Accelerate framework is used for BLAS/LAPACK """
-+    # If we're not building on Darwin (macOS), don't use accelerate
-     if sys.platform != "darwin":
-         return False
-+    # If we're building on macOS, but targeting a different platform,
-+    # don't use accelerate.
-+    if os.getenv('_PYTHON_HOST_PLATFORM', None):
-+        return False
-     r_accelerate = re.compile("Accelerate")
-     extra_link_args = info.get('extra_link_args', '')
-     for arg in extra_link_args:
-diff -Nru numpy-1.14.1/numpy/core/src/multiarray/strfuncs.c numpy/numpy/core/src/multiarray/strfuncs.c
---- numpy-1.14.1/numpy/core/src/multiarray/strfuncs.c	2018-02-20 07:16:17.000000000 +0800
-+++ numpy/numpy/core/src/multiarray/strfuncs.c	2018-03-04 13:26:52.000000000 +0800
-@@ -41,7 +41,7 @@
-  * XXX we do this in multiple places; time for a string library?
-  */
- static char *
--extend(char **strp, Py_ssize_t n, Py_ssize_t *maxp)
-+extend_str(char **strp, Py_ssize_t n, Py_ssize_t *maxp)
- {
-     char *str = *strp;
-     Py_ssize_t new_cap;
-@@ -71,7 +71,7 @@
-     npy_intp i, N, ret = 0;
- 
- #define CHECK_MEMORY do {                           \
--        if (extend(string, *n, max_n) == NULL) {    \
-+        if (extend_str(string, *n, max_n) == NULL) {    \
-             ret = -1;                               \
-             goto end;                               \
-         }                                           \
-diff -Nru numpy-1.14.1/numpy/distutils/system_info.py numpy/numpy/distutils/system_info.py
---- numpy-1.14.1/numpy/distutils/system_info.py	2018-02-21 01:46:17.000000000 +0800
-+++ numpy/numpy/distutils/system_info.py	2018-03-04 13:26:52.000000000 +0800
-@@ -1549,7 +1549,9 @@
-         if not atlas_info:
-             atlas_info = get_info('atlas')
- 
--        if sys.platform == 'darwin' and not (atlas_info or openblas_info or
-+        if sys.platform == 'darwin' \
-+                and not os.getenv('_PYTHON_HOST_PLATFORM', None) \
-+                and not (atlas_info or openblas_info or
-                                              lapack_mkl_info):
-             # Use the system lapack from Accelerate or vecLib under OSX
-             args = []
-@@ -1655,7 +1657,9 @@
-         if not atlas_info:
-             atlas_info = get_info('atlas_blas')
- 
--        if sys.platform == 'darwin' and not (atlas_info or openblas_info or
-+        if sys.platform == 'darwin' \
-+                and not os.getenv('_PYTHON_HOST_PLATFORM', None) \
-+                and not (atlas_info or openblas_info or
-                                              blas_mkl_info or blis_info):
-             # Use the system BLAS from Accelerate or vecLib under OSX
-             args = []
-diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_lite/f2c.h
---- numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h	2018-02-20 07:16:17.000000000 +0800
-+++ numpy/numpy/linalg/lapack_lite/f2c.h	2018-03-04 16:12:26.000000000 +0800
-@@ -7,6 +7,8 @@
- #ifndef F2C_INCLUDE
- #define F2C_INCLUDE
- 
-+#include <math.h>
-+
- typedef int integer;
- typedef char *address;
- typedef short int shortint;
---- numpy-1.14.1/numpy/core/src/private/npy_config.h   2018-10-20 19:30:37.000000000 +0200
-+++ numpy/numpy/core/src/private/npy_config.h  2018-10-20 20:13:35.000000000 +0200
+diff -Nru numpy-1.16.3/numpy/core/src/common/npy_config.h numpy/numpy/core/src/common/npy_config.h
+--- numpy-1.16.3/numpy/core/src/common/npy_config.h 2019-02-22 01:33:41.000000000 +0100
++++ numpy/numpy/core/src/common/npy_config.h    2019-04-26 16:36:26.000000000 +0200
 @@ -6,6 +6,17 @@
  #include "numpy/npy_cpu.h"
  #include "numpy/npy_os.h"
@@ -90,17 +16,20 @@ diff -Nru numpy-1.14.1/numpy/linalg/lapack_lite/f2c.h numpy/numpy/linalg/lapack_
 +#undef HAVE_SYS_ENDIAN_H
 +#undef HAVE_ENDIAN_H
 +
- /*
-  * largest alignment the copy loops might require
-  * required as string, void and complex types might get copied using larger
---- numpy-1.14.1/numpy/core/src/private/npy_fpmath.h   2018-02-05 02:21:37.000000000 +0100
-+++ numpy/numpy/core/src/private/npy_fpmath.h  2018-10-20 18:59:59.000000000 +0200
-@@ -44,7 +44,8 @@
+ /* blacklist */
+ 
+ /* Disable broken Sun Workshop Pro math functions */
+diff -Nru numpy-1.16.3/numpy/core/src/common/npy_fpmath.h numpy/numpy/core/src/common/npy_fpmath.h
+--- numpy-1.16.3/numpy/core/src/common/npy_fpmath.h 2019-02-22 01:33:41.000000000 +0100
++++ numpy/numpy/core/src/common/npy_fpmath.h    2019-04-26 17:14:16.000000000 +0200
+@@ -15,7 +15,9 @@
        defined(HAVE_LDOUBLE_INTEL_EXTENDED_12_BYTES_LE) || \
        defined(HAVE_LDOUBLE_MOTOROLA_EXTENDED_12_BYTES_BE) || \
-       defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_BE) || \
--      defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_LE))
-+      defined(HAVE_LDOUBLE_DOUBLE_DOUBLE_LE) ||\
-+      defined(__aarch64__)) /* Cross compiling for ARM64 (which has long double support) on macOS */
+       defined(HAVE_LDOUBLE_IBM_DOUBLE_DOUBLE_BE) || \
+-      defined(HAVE_LDOUBLE_IBM_DOUBLE_DOUBLE_LE))
++      defined(HAVE_LDOUBLE_IBM_DOUBLE_DOUBLE_LE) || \
++      defined(__aarch64__))
++      /* Cross compiling for ARM64 (which has long double support) on macOS */
      #error No long double representation defined
  #endif
+ 

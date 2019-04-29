@@ -2,7 +2,7 @@
 # NumPy
 ###########################################################################
 
-NUMPY_VERSION=1.14.1
+NUMPY_VERSION=1.16.3
 NUMPY_CONFIG=BLAS=None LAPACK=None ATLAS=None
 
 # Download original numpy source code archive.
