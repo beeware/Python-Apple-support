@@ -10,9 +10,6 @@ downloads/numpy-$(NUMPY_VERSION).tgz:
 	mkdir -p downloads
 	if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/releases/download/v$(NUMPY_VERSION)/numpy-$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
 
-# NUMPY-LDSHARED-iphonesimulator.x86_64=xcrun --sdk 'iphonesimulator' clang \
-#	-arch x86_64 -Wall \
-# --sysroot $$(SDK_ROOT-$1) -v -bundle -undefined dynamic_lookup
 define build-numpy-target
 NUMPY-CFLAGS-$1=$$(CFLAGS-$1)
 NUMPY-CC-$1=xcrun --sdk $$(SDK-$1) clang \
