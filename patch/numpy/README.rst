@@ -43,8 +43,7 @@ Adding NumPy to your iOS project
                "class NumpyImporter(object):\n" \
                "    def find_module(self, fullname, mpath=None):\n" \
                "        if fullname in (" \
-               "                    'numpy.core.multiarray', " \
-               "                    'numpy.core.umath', " \
+               '                    'numpy.core._multiarray_umath', " \
                "                    'numpy.fft.fftpack_lite', " \
                "                    'numpy.linalg._umath_linalg', " \
                "                    'numpy.linalg.lapack_lite', " \
@@ -67,8 +66,7 @@ Adding NumPy to your iOS project
 5. Add the following external function declarations to the file that
    configures your Python enviroment::
 
-       extern PyMODINIT_FUNC PyInit_multiarray(void);
-       extern PyMODINIT_FUNC PyInit_umath(void);
+       extern PyMODINIT_FUNC PyInit__multiarray_umath(void);
        extern PyMODINIT_FUNC PyInit_fftpack_lite(void);
        extern PyMODINIT_FUNC PyInit__umath_linalg(void);
        extern PyMODINIT_FUNC PyInit_lapack_lite(void);
@@ -76,8 +74,7 @@ Adding NumPy to your iOS project
 
 6. Add the following function calls *before* invoking ``Py_Initialize()``::
 
-       PyImport_AppendInittab("__numpy_core_multiarray", &PyInit_multiarray);
-       PyImport_AppendInittab("__numpy_core_umath", &PyInit_umath);
+       PyImport_AppendInittab("__numpy_core_multiarray", &PyInit__multiarray_umath);
        PyImport_AppendInittab("__numpy_fft_fftpack_lite", &PyInit_fftpack_lite);
        PyImport_AppendInittab("__numpy_linalg__umath_linalg", &PyInit__umath_linalg);
        PyImport_AppendInittab("__numpy_linalg_lapack_lite", &PyInit_lapack_lite);
@@ -111,8 +108,7 @@ folder in the Xcode project) will look something like this::
     }
 
 
-    extern PyMODINIT_FUNC PyInit_multiarray(void);
-    extern PyMODINIT_FUNC PyInit_umath(void);
+    extern PyMODINIT_FUNC PyInit__multiarray_umath(void);
     extern PyMODINIT_FUNC PyInit_fftpack_lite(void);
     extern PyMODINIT_FUNC PyInit__umath_linalg(void);
     extern PyMODINIT_FUNC PyInit_lapack_lite(void);
@@ -136,8 +132,7 @@ folder in the Xcode project) will look something like this::
             tmp_path = [NSString stringWithFormat:@"TMP=%@/tmp", resourcePath, nil];
             putenv((char *)[tmp_path UTF8String]);
 
-            PyImport_AppendInittab("__numpy_core_multiarray", &PyInit_multiarray);
-            PyImport_AppendInittab("__numpy_core_umath", &PyInit_umath);
+            PyImport_AppendInittab("__numpy_core__multiarray_umath", &PyInit__multiarray_umath);
             PyImport_AppendInittab("__numpy_fft_fftpack_lite", &PyInit_fftpack_lite);
             PyImport_AppendInittab("__numpy_linalg__umath_linalg", &PyInit__umath_linalg);
             PyImport_AppendInittab("__numpy_linalg_lapack_lite", &PyInit_lapack_lite);

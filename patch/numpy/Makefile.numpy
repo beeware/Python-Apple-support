@@ -10,22 +10,44 @@ downloads/numpy-$(NUMPY_VERSION).tgz:
 	mkdir -p downloads
 	if [ ! -e downloads/numpy-$(NUMPY_VERSION).tgz ]; then curl --fail -L https://github.com/numpy/numpy/releases/download/v$(NUMPY_VERSION)/numpy-$(NUMPY_VERSION).tar.gz -o downloads/numpy-$(NUMPY_VERSION).tgz; fi
 
+# NUMPY-LDSHARED-iphonesimulator.x86_64=xcrun --sdk 'iphonesimulator' clang \
+#	-arch x86_64 -Wall \
+# --sysroot $$(SDK_ROOT-$1) -v -bundle -undefined dynamic_lookup
 define build-numpy-target
 NUMPY-CFLAGS-$1=$$(CFLAGS-$1)
 NUMPY-CC-$1=xcrun --sdk $$(SDK-$1) clang \
 	-arch $$(ARCH-$1) \
-	--sysroot $$(SDK_ROOT-$1) \
+	--sysroot $$(SDK_ROOT-$1)
+NUMPY-LDSHARED-iphonesimulator.x86_64=xcrun --sdk 'iphonesimulator' clang \
+	-arch x86_64 -Wall \
+	--sysroot $$(SDK_ROOT-$1) -v -r -fembed-bitcode
+NUMPY-LDLIB-iphonesimulator.x86_64=$(abspath build/iOS/)
+NUMPY-LDSHARED-iphoneos.arm64=xcrun --sdk 'iphoneos' clang \
+	-arch arm64 -Wall \
+	--sysroot $$(SDK_ROOT-$1) -v -r -fembed-bitcode
+NUMPY-LDLIB-iphoneos.arm64=$(abspath build/iOS/)
+
 
 build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a: build/$2/packages/numpy
 	cd build/$2/packages/numpy && \
 		CC="$$(NUMPY-CC-$1)" \
 		CFLAGS="$$(NUMPY-CFLAGS-$1)" \
+		BASECFLAGS="" \
+		LDSHARED="$$(NUMPY-LDSHARED-$1)" \
+		LDLIB="$$(NUMPY-LDLIB-$1)" \
 		$(NUMPY_CONFIG) \
 		_PYTHON_HOST_PLATFORM=$1 \
-		$(HOST_PYTHON) setup.py --verbose --no-user-cfg build_ext
+		$(HOST_PYTHON) setup.py --verbose --no-user-cfg  build_ext
 
 build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libnumpy.a: build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a
 	cd build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER) && \
+		CC="$$(NUMPY-CC-$1)" \
+		CFLAGS="$$(NUMPY-CFLAGS-$1)" \
+		BASECFLAGS="" \
+		LDSHARED="$$(NUMPY-LDSHARED-$1)" \
+		LDLIB="$$(NUMPY-LDLIB-$1)" \
+		$(NUMPY_CONFIG) \
+		_PYTHON_HOST_PLATFORM=$1 \
 		xcrun --sdk $$(SDK-$1) ar -q libnumpy.a `find . -name "*.o"`
 
 numpy-$1: build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libnumpy.a

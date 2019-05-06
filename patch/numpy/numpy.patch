@@ -1,6 +1,21 @@
+diff -Nru numpy-1.16.3/numpy/core/setup.py numpy/numpy/core/setup.py
+--- numpy-1.16.3/numpy/core/setup.py  2019-04-21 20:54:37.000000000 +0200
++++ numpy/numpy/core/setup.py 2019-05-06 15:02:09.000000000 +0200
+@@ -68,10 +68,7 @@
+ 
+ def pythonlib_dir():
+     """return path where libpython* is."""
+-    if sys.platform == 'win32':
+-        return os.path.join(sys.prefix, "libs")
+-    else:
+-        return get_config_var('LIBDIR')
++    return get_config_var('LDLIB')
+ 
+ def is_npy_no_signal():
+     """Return True if the NPY_NO_SIGNAL symbol must be defined in configuration
 diff -Nru numpy-1.16.3/numpy/core/src/common/npy_config.h numpy/numpy/core/src/common/npy_config.h
 --- numpy-1.16.3/numpy/core/src/common/npy_config.h 2019-02-22 01:33:41.000000000 +0100
-+++ numpy/numpy/core/src/common/npy_config.h    2019-04-26 16:36:26.000000000 +0200
++++ numpy/numpy/core/src/common/npy_config.h  2019-04-26 16:36:26.000000000 +0200
 @@ -6,6 +6,17 @@
  #include "numpy/npy_cpu.h"
  #include "numpy/npy_os.h"
@@ -21,7 +36,7 @@ diff -Nru numpy-1.16.3/numpy/core/src/common/npy_config.h numpy/numpy/core/src/c
  /* Disable broken Sun Workshop Pro math functions */
 diff -Nru numpy-1.16.3/numpy/core/src/common/npy_fpmath.h numpy/numpy/core/src/common/npy_fpmath.h
 --- numpy-1.16.3/numpy/core/src/common/npy_fpmath.h 2019-02-22 01:33:41.000000000 +0100
-+++ numpy/numpy/core/src/common/npy_fpmath.h    2019-04-26 17:14:16.000000000 +0200
++++ numpy/numpy/core/src/common/npy_fpmath.h  2019-04-26 17:14:16.000000000 +0200
 @@ -15,7 +15,9 @@
        defined(HAVE_LDOUBLE_INTEL_EXTENDED_12_BYTES_LE) || \
        defined(HAVE_LDOUBLE_MOTOROLA_EXTENDED_12_BYTES_BE) || \
@@ -33,3 +48,18 @@ diff -Nru numpy-1.16.3/numpy/core/src/common/npy_fpmath.h numpy/numpy/core/src/c
      #error No long double representation defined
  #endif
  
+diff -Nru numpy-1.16.3/numpy/distutils/ccompiler.py numpy/numpy/distutils/ccompiler.py
+--- numpy-1.16.3/numpy/distutils/ccompiler.py 2019-04-21 20:06:28.000000000 +0200
++++ numpy/numpy/distutils/ccompiler.py  2019-05-06 15:09:18.000000000 +0200
+@@ -400,9 +400,9 @@
+         for macro in cmd.undef:
+             self.undefine_macro(macro)
+     if allow('libraries'):
+-        self.set_libraries(self.libraries + cmd.libraries)
++        self.set_libraries(self.libraries + ["python3.6m", "ssl", "crypto", "bz2", "sqlite3", "z", "lzma", "stdc++", "c++"] + cmd.libraries)
+     if allow('library_dirs'):
+-        self.set_library_dirs(self.library_dirs + cmd.library_dirs)
++        self.set_library_dirs(self.library_dirs + [os.environ['LDLIB']] + cmd.library_dirs)
+     if allow('rpath'):
+         self.set_runtime_library_dirs(cmd.rpath)
+     if allow('link_objects'):
