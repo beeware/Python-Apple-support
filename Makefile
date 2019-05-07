@@ -52,6 +52,7 @@ CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
 CFLAGS-iOS=-mios-version-min=11.0
 CFLAGS-iphoneos.arm64=-fembed-bitcode
+CFLAGS-iphonesimulator.x86_64=-fembed-bitcode
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
