@@ -77,7 +77,20 @@ dist/$1/libnumpy.a: $(foreach target,$(TARGETS-$1),numpy-$(target))
 	xcrun lipo -create -output dist/$1/libnpysort.a $(foreach target,$(TARGETS-$1),build/$1/packages/numpy/build/temp.$(target)-$(PYTHON_VER)/libnpysort.a)
 	xcrun lipo -create -output dist/$1/libnumpy.a $(foreach target,$(TARGETS-$1),build/$1/packages/numpy/build/temp.$(target)-$(PYTHON_VER)/libnumpy.a)
 
-numpy-$1: dist/$1/libnumpy.a
+dist/$1/app_packages/numpy/: downloads/numpy-$(NUMPY_VERSION).tgz
+	mkdir -p dist/$1/app_packages/
+	cp -r build/$1/packages/numpy/numpy dist/$1/app_packages/
+	find build/$1/packages/numpy//build/ -name '__config__.py' -exec cp {} dist/$1/app_packages/numpy  \;
+	
+	# Remove unneeded files
+	# Remove module mtrand, it's provided by fat lib
+	rm -rf dist/$1/app_packages/numpy/random/mtrand
+	find dist/$1/app_packages/numpy/ -name tests -delete
+	find dist/$1/app_packages/numpy/ -name __pycache__ -delete
+	find dist/$1/app_packages/numpy/ -name *.pyc -delete
+	
+
+numpy-$1: dist/$1/libnumpy.a dist/$1/app_packages/numpy/
 
 endif
 endef

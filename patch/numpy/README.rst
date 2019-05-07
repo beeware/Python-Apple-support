@@ -22,7 +22,7 @@ Adding NumPy to your iOS project
      containing the static fat binary libraries needed to support the Python
      code.
 
-2. Copy the contents of `dist/app_packages` into your project's `site_packages`
+2. Copy the contents of `dist/app_packages` or `dist/{iOS/watchOS/tvOS}/app_packages` into your project's `site_packages`
    or `app_packages` directory. This will make the Python library available to
    your project.
 
