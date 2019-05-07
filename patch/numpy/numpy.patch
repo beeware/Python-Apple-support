@@ -63,3 +63,15 @@ diff -Nru numpy-1.16.3/numpy/distutils/ccompiler.py numpy/numpy/distutils/ccompi
      if allow('rpath'):
          self.set_runtime_library_dirs(cmd.rpath)
      if allow('link_objects'):
+diff -Nru numpy-1.16.3/numpy/random/__init__.py numpy/numpy/random/__init__.py
+--- numpy-1.16.3/numpy/random/__init__.py 2019-02-22 01:33:42.000000000 +0100
++++ numpy/numpy/random/__init__.py  2019-05-06 16:37:28.000000000 +0200
+@@ -140,7 +140,7 @@
+ 
+ with warnings.catch_warnings():
+     warnings.filterwarnings("ignore", message="numpy.ndarray size changed")
+-    from .mtrand import *
++    from numpy.random.mtrand import *
+ 
+ # Some aliases:
+ ranf = random = sample = random_sample
