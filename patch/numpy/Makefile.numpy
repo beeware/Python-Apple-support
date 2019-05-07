@@ -38,13 +38,6 @@ build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a: build/$2/packag
 
 build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libnumpy.a: build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libpymath.a
 	cd build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER) && \
-		CC="$$(NUMPY-CC-$1)" \
-		CFLAGS="$$(NUMPY-CFLAGS-$1)" \
-		BASECFLAGS="" \
-		LDSHARED="$$(NUMPY-LDSHARED-$1)" \
-		LDLIB="$$(NUMPY-LDLIB-$1)" \
-		$(NUMPY_CONFIG) \
-		_PYTHON_HOST_PLATFORM=$1 \
 		xcrun --sdk $$(SDK-$1) ar -q libnumpy.a `find . -name "*.o"`
 
 numpy-$1: build/$2/packages/numpy/build/temp.$1-$(PYTHON_VER)/libnumpy.a
