@@ -33,7 +33,7 @@ OPENSSL_VERSION_NUMBER=1.0.2
 OPENSSL_REVISION=o
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
-BZIP2_VERSION=1.0.6
+BZIP2_VERSION=1.0.8
 
 # Supported OS
 OS=macOS iOS tvOS watchOS
@@ -115,7 +115,7 @@ clean-bzip2:
 # Download original BZip2 source code archive.
 downloads/bzip2-$(BZIP2_VERSION).tgz:
 	mkdir -p downloads
-	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then curl --fail -L http://www.bzip.org/$(BZIP2_VERSION)/bzip2-$(BZIP2_VERSION).tar.gz -o downloads/bzip2-$(BZIP2_VERSION).tgz; fi
+	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then curl --fail -L https://sourceware.org/pub/bzip2/bzip2-$(BZIP2_VERSION).tar.gz -o downloads/bzip2-$(BZIP2_VERSION).tgz; fi
 
 ###########################################################################
 # Python
