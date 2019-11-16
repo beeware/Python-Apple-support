@@ -2,11 +2,11 @@ import os
 import sys
 import threading
 
-
 from botocore.exceptions import ClientError
 import boto3
 
 from argparse import ArgumentParser
+
 
 class Progress:
     def __init__(self, index, count, filename):
@@ -45,8 +45,8 @@ def upload(build, directory, s3_client):
             with open(full_filename, 'rb') as data:
                 s3_client.upload_fileobj(
                     data,
-                    'pybee-briefcase-support',
-                    'Python-Apple-support/%s/%s/%s' % (
+                    'briefcase-support',
+                    'python/%s/%s/%s' % (
                         version,
                         platform,
                         filename

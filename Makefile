@@ -341,17 +341,18 @@ clean-$1:
 
 dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
-	echo "Python version: $(PYTHON_VERSION) " > build/$1/VERSIONS
-	echo "Build: $(BUILD_NUMBER)" >> build/$1/VERSIONS
-	echo "---------------------" >> build/$1/VERSIONS
-	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/VERSIONS
-	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/VERSIONS
-	echo "XZ: $(XZ_VERSION)" >> build/$1/VERSIONS
+	echo "Python version: $(PYTHON_VERSION) " > build/$1/Support/VERSIONS
+	echo "Build: $(BUILD_NUMBER)" >> build/$1/Support/VERSIONS
+	echo "---------------------" >> build/$1/Support/VERSIONS
+	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/Support/VERSIONS
+	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/Support/VERSIONS
+	echo "XZ: $(XZ_VERSION)" >> build/$1/Support/VERSIONS
 ifeq ($1,macOS)
 	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
-	tar zcvf $$@ -C build/$1 VERSIONS python
+	mv build/$1/Support/VERSIONS build/$1/python/VERSIONS
+	tar zcvf $$@ -C build/$1/python `ls -A build/$1/python`
 else
-	tar zcvf $$@ -C build/$1 VERSIONS Support
+	tar zcvf $$@ -C build/$1/Support `ls -A build/$1/Support`
 endif
 
 # Build OpenSSL
