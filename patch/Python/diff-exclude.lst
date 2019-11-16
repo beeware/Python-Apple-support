@@ -3,11 +3,3 @@
 .gitignore
 .mention-bot
 .travis.yml
-Doc/make.bat
-Lib/idlelib/calltip.py
-Lib/idlelib/idle_test/test_calltip.py
-Lib/idlelib/window.py
-Misc/NEWS.d/3.6.6rc1.rst
-Modules/_ctypes/libffi_osx/LICENSE
-PCbuild/*
-Tools/msi/*
