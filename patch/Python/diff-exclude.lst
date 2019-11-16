@@ -3,7 +3,3 @@
 .gitignore
 .mention-bot
 .travis.yml
-Doc/make.bat
-Modules/_ctypes/libffi_osx/LICENSE
-PCbuild/*
-Tools/msi/*
