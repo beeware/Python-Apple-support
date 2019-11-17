@@ -33,8 +33,8 @@ MACOSX_DEPLOYMENT_TARGET=10.8
 PYTHON_VERSION=3.7.5
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
-OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=t
+OPENSSL_VERSION_NUMBER=1.1.1
+OPENSSL_REVISION=d
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.8
@@ -50,7 +50,7 @@ CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
-CFLAGS-iOS=-mios-version-min=7.0
+CFLAGS-iOS=-mios-version-min=8.0
 CFLAGS-iphoneos.arm64=-fembed-bitcode
 
 # tvOS targets
@@ -205,8 +205,9 @@ ifeq ($$(findstring simulator,$$(SDK-$1)),)
 	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_DIR-$1)/crypto/ui/ui_openssl.c
 endif
 ifeq ($$(findstring iphone,$$(SDK-$1)),)
-	# Patch apps/speed.c to not use fork() since it's not available on tvOS
+	# Patch apps/speed.c and apps/ocsp.c to not use fork() since it's not available on tvOS
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/speed.c
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/ocsp.c
 	# Patch Configure to build for tvOS or watchOS, not iOS
 	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
 endif
@@ -215,13 +216,13 @@ endif
 ifeq ($2,macOS)
 	cd $$(OPENSSL_DIR-$1) && \
 	CC="$$(CC-$1)" MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) \
-		./Configure darwin64-x86_64-cc --openssldir=$(PROJECT_DIR)/build/$2/openssl
+		./Configure darwin64-x86_64-cc no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
 else
 	cd $$(OPENSSL_DIR-$1) && \
 		CC="$$(CC-$1)" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		./Configure iphoneos-cross no-asm --openssldir=$(PROJECT_DIR)/build/$2/openssl
+		./Configure iphoneos-cross no-asm no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
 endif
 
 # Build OpenSSL
