@@ -314,14 +314,6 @@ vars-$1:
 endef
 
 #
-# Install target pyconfig.h
-# Parameters:
-# - $1 - target
-# - $2 - framework directory
-define install-target-pyconfig
-endef
-
-#
 # Build for specified OS (from $(OS))
 # Parameters:
 # - $1 - OS
@@ -424,10 +416,15 @@ $$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER)m.a $$(foreach target,$$
 	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 
 	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
+	# We ship a master pyconfig.h for iOS, tvOS and watchOS that delegates to architecture
+	# specific versions; on macOS, we can use the original version as-is.
 	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
 	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
-	cp -f $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/iOS/include/pyconfig.h $$(PYTHON_FRAMEWORK-$1)/Headers
-
+ifeq ($1,macOS)
+	mv $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig-x86_64.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
+else
+	cp -f $(PROJECT_DIR)/patch/Python/pyconfig-$1.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
+endif
 	# Copy Python.h and pyconfig.h into the resources include directory
 	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
