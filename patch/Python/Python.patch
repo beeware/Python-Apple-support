@@ -31917,39 +31917,6 @@ index 5861042398..38ff0ab8b9 100644
 +
 +#endif
 \ No newline at end of file
-diff --git a/Modules/_ctypes/libffi_osx/LICENSE b/Modules/_ctypes/libffi_osx/LICENSE
-index f591795152..a66fab4f25 100644
---- a/Modules/_ctypes/libffi_osx/LICENSE
-+++ b/Modules/_ctypes/libffi_osx/LICENSE
-@@ -1,4 +1,5 @@
--libffi - Copyright (c) 1996-2003  Red Hat, Inc.
-+libffi - Copyright (c) 1996-2014  Anthony Green, Red Hat, Inc and others.
-+See source files for details.
- 
- Permission is hereby granted, free of charge, to any person obtaining
- a copy of this software and associated documentation files (the
-@@ -8,13 +9,13 @@
- permit persons to whom the Software is furnished to do so, subject to
- the following conditions:
- 
--The above copyright notice and this permission notice shall be included
--in all copies or substantial portions of the Software.
-+The above copyright notice and this permission notice shall be
-+included in all copies or substantial portions of the Software.
- 
--THE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY KIND, EXPRESS
--OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-+THE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY KIND,
-+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
--IN NO EVENT SHALL CYGNUS SOLUTIONS BE LIABLE FOR ANY CLAIM, DAMAGES OR
--OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
--ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
--OTHER DEALINGS IN THE SOFTWARE.
-+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/Modules/_ctypes/malloc_closure.c b/Modules/_ctypes/malloc_closure.c
 index 8ad76497c7..5857c68301 100644
 --- a/Modules/_ctypes/malloc_closure.c
@@ -32103,7 +32070,7 @@ index 8eedca8a30..ad70499c82 100644
      PyFPE_START_PROTECT("in math_hypot", return 0);
      r = hypot(x, y);
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 58cb9b0d46..4a2ae3f024 100644
+index 58cb9b0d46..f258f9d445 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -20,6 +20,8 @@
@@ -32139,7 +32106,51 @@ index 58cb9b0d46..4a2ae3f024 100644
  
  /*[clinic input]
  # one of the few times we lie about this name!
-@@ -1309,7 +1328,9 @@
+@@ -429,35 +448,43 @@
+         }
+     }
+ }
++#endif
+ 
+ void
+ PyOS_BeforeFork(void)
+ {
++#ifdef HAVE_FORK
+     run_at_forkers(PyThreadState_Get()->interp->before_forkers, 1);
+ 
+     _PyImport_AcquireLock();
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Parent(void)
+ {
++#ifdef HAVE_FORK
+     if (_PyImport_ReleaseLock() <= 0)
+         Py_FatalError("failed releasing import lock after fork");
+ 
+     run_at_forkers(PyThreadState_Get()->interp->after_forkers_parent, 0);
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Child(void)
+ {
++#ifdef HAVE_FORK
+     _PyGILState_Reinit();
+     PyEval_ReInitThreads();
+     _PyImport_ReInitLock();
+     _PySignal_AfterFork();
+ 
+     run_at_forkers(PyThreadState_Get()->interp->after_forkers_child, 0);
++#endif
+ }
+ 
++#ifdef HAVE_FORK
+ static int
+ register_at_forker(PyObject **lst, PyObject *func)
+ {
+@@ -1309,7 +1336,9 @@
  #include <crt_externs.h>
  static char **environ;
  #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
@@ -32149,7 +32160,7 @@ index 58cb9b0d46..4a2ae3f024 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1360,7 +1381,7 @@
+@@ -1360,7 +1389,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -32158,7 +32169,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      if (environ == NULL)
          return d;
      /* This part ignores errors */
-@@ -4221,7 +4242,12 @@
+@@ -4221,7 +4250,12 @@
      long result;
      const char *bytes = PyBytes_AsString(command);
      Py_BEGIN_ALLOW_THREADS
@@ -32171,7 +32182,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -4498,7 +4524,7 @@
+@@ -4498,7 +4532,7 @@
  static int
  utime_dir_fd(utime_t *ut, int dir_fd, const char *path, int follow_symlinks)
  {
@@ -32180,7 +32191,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      int flags = follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW;
      UTIME_TO_TIMESPEC;
      return utimensat(dir_fd, path, time, flags);
-@@ -4524,7 +4550,7 @@
+@@ -4524,7 +4558,7 @@
  static int
  utime_fd(utime_t *ut, int fd)
  {
@@ -32189,7 +32200,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      UTIME_TO_TIMESPEC;
      return futimens(fd, time);
  #else
-@@ -4547,7 +4573,7 @@
+@@ -4547,7 +4581,7 @@
  static int
  utime_nofollow_symlinks(utime_t *ut, const char *path)
  {
@@ -32198,7 +32209,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      UTIME_TO_TIMESPEC;
      return utimensat(DEFAULT_DIR_FD, path, time, AT_SYMLINK_NOFOLLOW);
  #else
-@@ -4563,7 +4589,7 @@
+@@ -4563,7 +4597,7 @@
  static int
  utime_default(utime_t *ut, const char *path)
  {
@@ -32268,7 +32279,7 @@ index 810427a229..66b2afc098 100644
                       "getpwnam(): name not found: %R", arg);
          goto out;
 diff --git a/Modules/timemodule.c b/Modules/timemodule.c
-index 0ae4fcc323..8fc09b9cd7 100644
+index 0ae4fcc323..bf1f9bedd7 100644
 --- a/Modules/timemodule.c
 +++ b/Modules/timemodule.c
 @@ -50,6 +50,11 @@
@@ -32297,6 +32308,45 @@ index 0ae4fcc323..8fc09b9cd7 100644
      Py_RETURN_NONE;
  }
  
+@@ -289,11 +296,13 @@
+         return NULL;
+     }
+ 
++#if !TARGET_OS_IPHONE
+     ret = clock_settime((clockid_t)clk_id, &ts);
+     if (ret != 0) {
+         PyErr_SetFromErrno(PyExc_OSError);
+         return NULL;
+     }
++#endif
+     Py_RETURN_NONE;
+ }
+ 
+diff --git a/Python/bootstrap_hash.c b/Python/bootstrap_hash.c
+index 58b0802f46..75cb4843d0 100644
+--- a/Python/bootstrap_hash.c
++++ b/Python/bootstrap_hash.c
+@@ -24,6 +24,10 @@
+ #  include <sanitizer/msan_interface.h>
+ #endif
+ 
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ #ifdef Py_DEBUG
+ int _Py_HashSecret_Initialized = 0;
+ #else
+@@ -196,6 +200,9 @@
+ }
+ 
+ #elif defined(HAVE_GETENTROPY)
++// iOS, tvOS and watchOS have an incomplete definitions of getentropy
++// so it is *found* by configure, but doesn't actually exist.
++#elif defined(HAVE_GETENTROPY) && !TARGET_OS_IPHONE
+ #define PY_GETENTROPY 1
+ 
+ /* Fill buffer with size pseudo-random bytes generated by getentropy():
 diff --git a/Python/marshal.c b/Python/marshal.c
 index 7d60614e71..89362ef971 100644
 --- a/Python/marshal.c
