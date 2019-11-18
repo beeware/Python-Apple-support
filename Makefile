@@ -25,16 +25,16 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=2
+BUILD_NUMBER=1
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.7.5
+PYTHON_VERSION=3.8.0
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
-OPENSSL_VERSION_NUMBER=1.0.2
-OPENSSL_REVISION=t
+OPENSSL_VERSION_NUMBER=1.1.1
+OPENSSL_REVISION=d
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.8
@@ -50,7 +50,7 @@ CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
-CFLAGS-iOS=-mios-version-min=7.0
+CFLAGS-iOS=-mios-version-min=8.0
 CFLAGS-iphoneos.arm64=-fembed-bitcode
 
 # tvOS targets
@@ -145,7 +145,7 @@ downloads/xz-$(XZ_VERSION).tgz:
 clean-Python:
 	rm -rf \
 		build/*/Python-$(PYTHON_VERSION)-* \
-		build/*/libpython$(PYTHON_VER)m.a \
+		build/*/libpython$(PYTHON_VER).a \
 		build/*/pyconfig-*.h \
 		build/*/Python
 
@@ -155,7 +155,7 @@ downloads/Python-$(PYTHON_VERSION).tgz:
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
 PYTHON_DIR-macOS=build/macOS/Python-$(PYTHON_VERSION)-macosx.x86_64
-PYTHON_HOST=$(PYTHON_DIR-macOS)/dist/lib/libpython$(PYTHON_VER)m.a
+PYTHON_HOST=$(PYTHON_DIR-macOS)/dist/lib/libpython$(PYTHON_VER).a
 
 # Build for specified target (from $(TARGETS))
 #
@@ -205,8 +205,9 @@ ifeq ($$(findstring simulator,$$(SDK-$1)),)
 	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_DIR-$1)/crypto/ui/ui_openssl.c
 endif
 ifeq ($$(findstring iphone,$$(SDK-$1)),)
-	# Patch apps/speed.c to not use fork() since it's not available on tvOS
+	# Patch apps/speed.c and apps/ocsp.c to not use fork() since it's not available on tvOS
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/speed.c
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/ocsp.c
 	# Patch Configure to build for tvOS or watchOS, not iOS
 	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
 endif
@@ -215,13 +216,13 @@ endif
 ifeq ($2,macOS)
 	cd $$(OPENSSL_DIR-$1) && \
 	CC="$$(CC-$1)" MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) \
-		./Configure darwin64-x86_64-cc --openssldir=$(PROJECT_DIR)/build/$2/openssl
+		./Configure darwin64-x86_64-cc no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
 else
 	cd $$(OPENSSL_DIR-$1) && \
 		CC="$$(CC-$1)" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		./Configure iphoneos-cross no-asm --openssldir=$(PROJECT_DIR)/build/$2/openssl
+		./Configure iphoneos-cross no-asm no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
 endif
 
 # Build OpenSSL
@@ -297,11 +298,11 @@ else
 endif
 
 # Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ $$(PYTHON_DIR-$1)/Makefile
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ $$(PYTHON_DIR-$1)/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH)" make all install
 
-build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)m/pyconfig.h
+build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/pyconfig.h
 	cp -f $$^ $$@
 
 # Dump vars (for test)
@@ -412,13 +413,13 @@ $1: Python-$1
 Python-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
 
 # Build Python
-$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER)m.a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
-	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
+	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
 
 	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
 	# We ship a master pyconfig.h for iOS, tvOS and watchOS that delegates to architecture
 	# specific versions; on macOS, we can use the original version as-is.
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Headers
 	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
 ifeq ($1,macOS)
 	mv $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig-x86_64.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
@@ -426,14 +427,14 @@ else
 	cp -f $(PROJECT_DIR)/patch/Python/pyconfig-$1.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
 endif
 	# Copy Python.h and pyconfig.h into the resources include directory
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
 
 	# Copy the standard library from the simulator build
 ifneq ($(TEST),)
 	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
 	# Remove the pieces of the resources directory that aren't needed:
-	rm -f $$(PYTHON_RESOURCES-$1)/lib/libpython$(PYTHON_VER)m.a
+	rm -f $$(PYTHON_RESOURCES-$1)/lib/libpython$(PYTHON_VER).a
 	rm -rf $$(PYTHON_RESOURCES-$1)/lib/pkgconfig
 else
 	mkdir -p $$(PYTHON_RESOURCES-$1)/lib
@@ -446,7 +447,7 @@ endif
 
 
 # Build libpython fat library
-build/$1/libpython$(PYTHON_VER)m.a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER)m.a)
+build/$1/libpython$(PYTHON_VER).a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER).a)
 	# Create a fat binary for the libPython library
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^

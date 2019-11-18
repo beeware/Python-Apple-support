@@ -22,11 +22,11 @@ _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
-_functools -DPy_BUILD_CORE _functoolsmodule.c
-_hashlib _hashopenssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
+_functools -DPy_BUILD_CORE -I$(srcdir)/Include/internal _functoolsmodule.c
+_hashlib _hashopenssl.c -I$(srcdir)/../Support/OpenSSL/Headers -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _heapq _heapqmodule.c
-_io -DPy_BUILD_CORE -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
-_json _json.c
+_io -DPy_BUILD_CORE -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
+_json -I$(srcdir)/Include/internal -DPy_BUILD_CORE_BUILTIN _json.c
 _locale _localemodule.c
 _lsprof _lsprof.o rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../xz/include -L$(srcdir)/../Support/XZ -llzma
@@ -37,12 +37,13 @@ _opcode _opcode.c
 _operator _operator.c
 _pickle _pickle.c
 _posixsubprocess _posixsubprocess.c
+_queue _queuemodule.c
 _random _randommodule.c
 _sha1 sha1module.c
 _sha3 _sha3/sha3module.c
 _sha256 sha256module.c
 _sha512 sha512module.c
-_signal -DPy_BUILD_CORE signalmodule.c
+_signal -DPy_BUILD_CORE -I$(srcdir)/Include/internal signalmodule.c
 _socket socketmodule.c
 _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 \
     _sqlite/cache.c \
@@ -55,13 +56,15 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/statement.c \
     _sqlite/util.c
 _sre _sre.c
-_ssl _ssl.c -I$(srcdir)/../openssl/include -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
+_ssl _ssl.c -I$(srcdir)/../Support/OpenSSL/Headers -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _stat _stat.c
+_statistics _statisticsmodule.c
 _struct _struct.c
 _symtable symtablemodule.c
-_thread -DPy_BUILD_CORE _threadmodule.c
+_thread -DPy_BUILD_CORE -I$(srcdir)/Include/internal _threadmodule.c
 _tracemalloc _tracemalloc.c hashtable.c
 _weakref _weakref.c
+_uuid _uuidmodule.c
 atexit atexitmodule.c
 array arraymodule.c
 audioop audioop.c
@@ -75,7 +78,7 @@ itertools itertoolsmodule.c
 math mathmodule.c
 mmap mmapmodule.c
 parser parsermodule.c
-posix -DPy_BUILD_CORE posixmodule.c
+posix -DPy_BUILD_CORE -I$(srcdir)/Include/internal posixmodule.c
 pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
     expat/xmlrole.c \
@@ -87,18 +90,19 @@ resource resource.c
 select selectmodule.c
 syslog syslogmodule.c
 termios termios.c
-time timemodule.c
+time -DPy_BUILD_CORE -I$(srcdir)/Include/internal timemodule.c
 unicodedata unicodedata.c
-zipimport -DPy_BUILD_CORE zipimport.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
 #####################################################################
 # Testing modules
 #####################################################################
-_ctypes_test _ctypes/_ctypes_test.c
-_testbuffer _testbuffer.c
-_testcapi  _testcapimodule.c
-_testimportmultiple _testimportmultiple.c
+#_ctypes_test _ctypes/_ctypes_test.c
+#_testbuffer _testbuffer.c
+#_testcapi  _testcapimodule.c
+#_testimportmultiple _testimportmultiple.c
+#_testinternalcapi _testinternalcapi.c -I$(srcdir)/Include/internal -DPy_BUILD_CORE_MODULE
+#_testmultiphase _testmultiphase.c
 
 #####################################################################
 # Modules that require additional frameworks
@@ -107,6 +111,8 @@ _testimportmultiple _testimportmultiple.c
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
+#_posixshmem _multiprocessing/posixshmem.c
+#_scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
 #ossaudiodev
