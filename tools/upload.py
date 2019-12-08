@@ -39,7 +39,7 @@ def upload(build, directory, s3_client):
             filenames.append((filename, full_filename))
 
     for i, (filename, full_filename) in enumerate(filenames):
-            py, version, platform, remainder = filename.split('-')
+            py, version, platform, *remainder = filename.split('-')
             sys.stdout.write("[%s/%s] %s..." % (i + 1, len(filenames), filename))
             sys.stdout.flush()
             with open(full_filename, 'rb') as data:
@@ -65,21 +65,9 @@ def main():
     parser.add_argument('tag', metavar='tag', help='Build tag to upload.')
     options = parser.parse_args()
 
-    # Load sensitive environment variables from a .env file
-    try:
-        with open('.env') as envfile:
-            for line in envfile:
-                if line.strip() and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    os.environ.setdefault(key.strip(), value.strip())
-    except FileNotFoundError:
-        pass
-
     try:
         aws_session = boto3.session.Session(
-            region_name=os.environ['AWS_REGION'],
-            aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+            profile_name=os.environ['AWS_PROFILE'],
         )
         s3_client = aws_session.client('s3')
 
