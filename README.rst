@@ -71,8 +71,7 @@ to build a specific package; or, to build all supported packages::
 For details on how to add these binary packages to your project, see the
 package-specific documentation linked above.
 
-
-.. _for macOS: https://briefcase-support.s3-us-west-2.amazonaws.com/python/3.6/macOS/Python-3.6-macOS-support.b8.tar.gz
-.. _for iOS: https://briefcase-support.s3-us-west-2.amazonaws.com/python/3.6/iOS/Python-3.6-iOS-support.b8.tar.gz
-.. _for tvOS: https://briefcase-support.s3-us-west-2.amazonaws.com/python/3.6/tvOS/Python-3.6-tvOS-support.b8.tar.gz
-.. _for watchOS: https://briefcase-support.s3-us-west-2.amazonaws.com/python/3.6/watchOS/Python-3.6-watchOS-support.b8.tar.gz
+.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.6
+.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.6
+.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.6
+.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.6
