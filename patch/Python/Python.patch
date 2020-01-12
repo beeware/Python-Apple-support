@@ -32006,7 +32006,7 @@ index 4e97337811..bb8d8f9590 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 850769fd95..10fab7d8a5 100644
+index 850769fd95..4e8c32c4fd 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -20,6 +20,8 @@
@@ -32044,52 +32044,7 @@ index 850769fd95..10fab7d8a5 100644
  
  /*[clinic input]
  # one of the few times we lie about this name!
-@@ -442,27 +463,33 @@
-         }
-     }
- }
-+#endif
- 
- void
- PyOS_BeforeFork(void)
- {
-+#ifdef HAVE_FORK
-     run_at_forkers(_PyInterpreterState_Get()->before_forkers, 1);
- 
-     _PyImport_AcquireLock();
-+#endif
- }
- 
- void
- PyOS_AfterFork_Parent(void)
- {
-+#ifdef HAVE_FORK
-     if (_PyImport_ReleaseLock() <= 0)
-         Py_FatalError("failed releasing import lock after fork");
- 
-     run_at_forkers(_PyInterpreterState_Get()->after_forkers_parent, 0);
-+#endif
- }
- 
- void
- PyOS_AfterFork_Child(void)
- {
-+#ifdef HAVE_FORK
-     _PyRuntimeState *runtime = &_PyRuntime;
-     _PyGILState_Reinit(runtime);
-     _PyEval_ReInitThreads(runtime);
-@@ -472,8 +499,10 @@
-     _PyInterpreterState_DeleteExceptMain(runtime);
- 
-     run_at_forkers(_PyInterpreterState_Get()->after_forkers_child, 0);
-+#endif
- }
- 
-+#ifdef HAVE_FORK
- static int
- register_at_forker(PyObject **lst, PyObject *func)
- {
-@@ -1373,7 +1402,9 @@
+@@ -1373,7 +1394,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -32099,15 +32054,7 @@ index 850769fd95..10fab7d8a5 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1444,6 +1475,7 @@
-         Py_DECREF(k);
-         Py_DECREF(v);
-     }
-+#endif
-     return d;
- }
- 
-@@ -4348,7 +4380,12 @@
+@@ -4348,7 +4371,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -32120,7 +32067,7 @@ index 850769fd95..10fab7d8a5 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -4625,7 +4662,7 @@
+@@ -4625,7 +4653,7 @@
  static int
  utime_dir_fd(utime_t *ut, int dir_fd, const char *path, int follow_symlinks)
  {
@@ -32129,7 +32076,7 @@ index 850769fd95..10fab7d8a5 100644
      int flags = follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW;
      UTIME_TO_TIMESPEC;
      return utimensat(dir_fd, path, time, flags);
-@@ -4651,7 +4688,7 @@
+@@ -4651,7 +4679,7 @@
  static int
  utime_fd(utime_t *ut, int fd)
  {
@@ -32138,7 +32085,7 @@ index 850769fd95..10fab7d8a5 100644
      UTIME_TO_TIMESPEC;
      return futimens(fd, time);
  #else
-@@ -4674,7 +4711,7 @@
+@@ -4674,7 +4702,7 @@
  static int
  utime_nofollow_symlinks(utime_t *ut, const char *path)
  {
@@ -32147,7 +32094,7 @@ index 850769fd95..10fab7d8a5 100644
      UTIME_TO_TIMESPEC;
      return utimensat(DEFAULT_DIR_FD, path, time, AT_SYMLINK_NOFOLLOW);
  #else
-@@ -4690,7 +4727,7 @@
+@@ -4690,7 +4718,7 @@
  static int
  utime_default(utime_t *ut, const char *path)
  {
