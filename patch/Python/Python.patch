@@ -32069,7 +32069,7 @@ index 8eedca8a30..ad70499c82 100644
      PyFPE_START_PROTECT("in math_hypot", return 0);
      r = hypot(x, y);
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 58cb9b0d46..4a2ae3f024 100644
+index 58cb9b0d46..d01aba8d6f 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -20,6 +20,8 @@
@@ -32105,7 +32105,61 @@ index 58cb9b0d46..4a2ae3f024 100644
  
  /*[clinic input]
  # one of the few times we lie about this name!
-@@ -1309,7 +1328,9 @@
+@@ -429,35 +448,43 @@
+         }
+     }
+ }
++#endif
+ 
+ void
+ PyOS_BeforeFork(void)
+ {
++#ifdef HAVE_FORK
+     run_at_forkers(PyThreadState_Get()->interp->before_forkers, 1);
+ 
+     _PyImport_AcquireLock();
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Parent(void)
+ {
++#ifdef HAVE_FORK
+     if (_PyImport_ReleaseLock() <= 0)
+         Py_FatalError("failed releasing import lock after fork");
+ 
+     run_at_forkers(PyThreadState_Get()->interp->after_forkers_parent, 0);
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Child(void)
+ {
++#ifdef HAVE_FORK
+     _PyGILState_Reinit();
+     PyEval_ReInitThreads();
+     _PyImport_ReInitLock();
+     _PySignal_AfterFork();
+ 
+     run_at_forkers(PyThreadState_Get()->interp->after_forkers_child, 0);
++#endif
+ }
+ 
++#ifdef HAVE_FORK
+ static int
+ register_at_forker(PyObject **lst, PyObject *func)
+ {
+@@ -476,9 +503,7 @@
+ void
+ PyOS_AfterFork(void)
+ {
+-#ifdef HAVE_FORK
+     PyOS_AfterFork_Child();
+-#endif
+ }
+ 
+ 
+@@ -1309,7 +1334,9 @@
  #include <crt_externs.h>
  static char **environ;
  #elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
@@ -32115,7 +32169,7 @@ index 58cb9b0d46..4a2ae3f024 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1360,7 +1381,7 @@
+@@ -1360,7 +1387,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -32124,7 +32178,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      if (environ == NULL)
          return d;
      /* This part ignores errors */
-@@ -4221,7 +4242,12 @@
+@@ -4221,7 +4248,12 @@
      long result;
      const char *bytes = PyBytes_AsString(command);
      Py_BEGIN_ALLOW_THREADS
@@ -32137,7 +32191,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -4498,7 +4524,7 @@
+@@ -4498,7 +4530,7 @@
  static int
  utime_dir_fd(utime_t *ut, int dir_fd, const char *path, int follow_symlinks)
  {
@@ -32146,7 +32200,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      int flags = follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW;
      UTIME_TO_TIMESPEC;
      return utimensat(dir_fd, path, time, flags);
-@@ -4524,7 +4550,7 @@
+@@ -4524,7 +4556,7 @@
  static int
  utime_fd(utime_t *ut, int fd)
  {
@@ -32155,7 +32209,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      UTIME_TO_TIMESPEC;
      return futimens(fd, time);
  #else
-@@ -4547,7 +4573,7 @@
+@@ -4547,7 +4579,7 @@
  static int
  utime_nofollow_symlinks(utime_t *ut, const char *path)
  {
@@ -32164,7 +32218,7 @@ index 58cb9b0d46..4a2ae3f024 100644
      UTIME_TO_TIMESPEC;
      return utimensat(DEFAULT_DIR_FD, path, time, AT_SYMLINK_NOFOLLOW);
  #else
-@@ -4563,7 +4589,7 @@
+@@ -4563,7 +4595,7 @@
  static int
  utime_default(utime_t *ut, const char *path)
  {
