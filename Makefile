@@ -61,7 +61,7 @@ CFLAGS-appletvos.arm64=-fembed-bitcode
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
-TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
+TARGETS-watchOS=watchsimulator.i386 watchos.armv7k watchos.arm64_32
 CFLAGS-watchOS=-mwatchos-version-min=4.0
 CFLAGS-watchos.armv7k=-fembed-bitcode
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
@@ -69,6 +69,10 @@ PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 # override machine types for arm64
 MACHINE_DETAILED-arm64=aarch64
 MACHINE_SIMPLE-arm64=arm
+
+# override machine types for arm64
+MACHINE_DETAILED-arm64_32=aarch64
+MACHINE_SIMPLE-arm64_32=arm
 
 all: $(foreach os,$(OS),$(os))
 
