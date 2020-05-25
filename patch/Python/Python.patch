@@ -1,8 +1,8 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 9d2e8b2eea..5d4b5c9572 100644
+index 3157b887b5..754b1e7b56 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
-@@ -3090,6 +3090,13 @@
+@@ -3140,6 +3140,13 @@
  
     .. versionadded:: 3.8
  
@@ -17,7 +17,7 @@ index 9d2e8b2eea..5d4b5c9572 100644
  .. data:: MFD_CLOEXEC
            MFD_ALLOW_SEALING
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index ea12cd133a..b6ef81c038 100644
+index cce7da1c9b..99ebbb6a9f 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -538,7 +538,7 @@ index 97973bce00..0ed9540719 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/distutils/tests/test_build_ext.py b/Lib/distutils/tests/test_build_ext.py
-index 52d36b2484..dc8d2d01f7 100644
+index 5e47e0773a..9396977f62 100644
 --- a/Lib/distutils/tests/test_build_ext.py
 +++ b/Lib/distutils/tests/test_build_ext.py
 @@ -52,6 +52,8 @@
@@ -550,7 +550,7 @@ index 52d36b2484..dc8d2d01f7 100644
      def test_build_ext(self):
          cmd = support.missing_compiler_executable()
          if cmd is not None:
-@@ -315,6 +317,8 @@
+@@ -328,6 +330,8 @@
          cmd.run()
          self.assertEqual(cmd.compiler, 'unix')
  
@@ -706,10 +706,10 @@ index b8ac482994..d72fd1a4fa 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/os.py b/Lib/os.py
-index 52d3f1d741..13f7e9ae25 100644
+index 253cad1a59..b69d814e7a 100644
 --- a/Lib/os.py
 +++ b/Lib/os.py
-@@ -32,7 +32,7 @@
+@@ -34,7 +34,7 @@
  __all__ = ["altsep", "curdir", "pardir", "sep", "pathsep", "linesep",
             "defpath", "name", "path", "devnull", "SEEK_SET", "SEEK_CUR",
             "SEEK_END", "fsencode", "fsdecode", "get_exec_path", "fdopen",
@@ -718,7 +718,7 @@ index 52d3f1d741..13f7e9ae25 100644
  
  def _exists(name):
      return name in globals()
-@@ -824,6 +824,13 @@
+@@ -826,6 +826,13 @@
  fsencode, fsdecode = _fscodec()
  del _fscodec
  
@@ -11404,7 +11404,7 @@ index a065ab0b5d..0f59dcc038 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 85b9ea0785..a4533c5d3e 100644
+index 5c2c2f0509..ecc298abec 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -737,6 +737,9 @@
@@ -11559,10 +11559,10 @@ index 83519988e3..454e9a1f70 100644
      """Run a Python subprocess with the given arguments.
  
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index b0ade1ed3b..7169df9334 100644
+index aec56da8e2..2486238860 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
-@@ -511,6 +511,8 @@
+@@ -515,6 +515,8 @@
              self._basetest_create_connection(conn_fut)
  
      @support.skip_unless_bind_unix_socket
@@ -11571,7 +11571,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -603,6 +605,8 @@
+@@ -607,6 +609,8 @@
          self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -11580,7 +11580,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_ssl_connection(self):
          with test_utils.run_test_server(use_ssl=True) as httpd:
              create_connection = functools.partial(
-@@ -837,6 +841,8 @@
+@@ -841,6 +845,8 @@
          return server, path
  
      @support.skip_unless_bind_unix_socket
@@ -11589,7 +11589,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_server(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_unix_server(lambda: proto)
-@@ -865,6 +871,8 @@
+@@ -869,6 +875,8 @@
          server.close()
  
      @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
@@ -11598,7 +11598,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_server_path_socket_error(self):
          proto = MyProto(loop=self.loop)
          sock = socket.socket()
-@@ -930,6 +938,8 @@
+@@ -934,6 +942,8 @@
  
      @support.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -11607,7 +11607,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_server_ssl(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -960,6 +970,8 @@
+@@ -964,6 +974,8 @@
          server.close()
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -11616,7 +11616,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, host, port = self._make_ssl_server(
-@@ -990,6 +1002,8 @@
+@@ -994,6 +1006,8 @@
  
      @support.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -11625,7 +11625,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1050,6 +1064,8 @@
+@@ -1054,6 +1068,8 @@
  
      @support.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -11634,7 +11634,7 @@ index b0ade1ed3b..7169df9334 100644
      def test_create_unix_server_ssl_verified(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1696,6 +1712,7 @@
+@@ -1700,6 +1716,7 @@
              next(it)
  
  
@@ -11737,10 +11737,10 @@ index 5487b7afef..1ddb3b3928 100644
  
      ignore_warnings = mock.patch.object(log.logger, "warning")
 diff --git a/Lib/test/test_base64.py b/Lib/test/test_base64.py
-index 2a4cc2acad..2cb0dfce2c 100644
+index 7dba6635d4..1b03cf62ea 100644
 --- a/Lib/test/test_base64.py
 +++ b/Lib/test/test_base64.py
-@@ -651,7 +651,7 @@
+@@ -652,7 +652,7 @@
      def test_ErrorHeritage(self):
          self.assertTrue(issubclass(binascii.Error, ValueError))
  
@@ -11844,10 +11844,10 @@ index 04f6e1e049..8f4ca3e2d7 100644
                                      "workers must be greater or equal to 0"):
              compileall.compile_dir(self.directory, workers=-1)
 diff --git a/Lib/test/test_concurrent_futures.py b/Lib/test/test_concurrent_futures.py
-index e01f2e4b78..47ddb423ac 100644
+index ac72298165..3374fedd4a 100644
 --- a/Lib/test/test_concurrent_futures.py
 +++ b/Lib/test/test_concurrent_futures.py
-@@ -154,6 +154,7 @@
+@@ -153,6 +153,7 @@
      executor_type = futures.ThreadPoolExecutor
  
  
@@ -11855,7 +11855,7 @@ index e01f2e4b78..47ddb423ac 100644
  class ProcessPoolForkMixin(ExecutorMixin):
      executor_type = futures.ProcessPoolExecutor
      ctx = "fork"
-@@ -164,11 +165,13 @@
+@@ -163,11 +164,13 @@
          return super().get_context()
  
  
@@ -12062,7 +12062,7 @@ index 9ad05fadef..05d1ba1f82 100644
      """Test loading extension modules with multi-phase initialization (PEP 489)
      """
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index 50459e0792..57ec02a53a 100644
+index bea4342e7f..9e3ba450e5 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -600,7 +600,7 @@
@@ -12087,7 +12087,7 @@ index f362f1b13a..6398708b1d 100644
          args = sys.executable, '-m', 'json.tool'
          with Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE) as proc:
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 37655a5ccc..58566cb5d5 100644
+index 90bf2a4d3a..ac5ae24a02 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -1730,9 +1730,21 @@
@@ -12233,7 +12233,7 @@ index 6558952308..a121e8c2dd 100644
  
  from test import support
 diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
-index 4a076e3bbf..b1b1ed03d8 100644
+index 11454b2e88..c9118518a9 100644
 --- a/Lib/test/test_os.py
 +++ b/Lib/test/test_os.py
 @@ -852,6 +852,7 @@
@@ -12580,10 +12580,10 @@ index 458998a62f..577cf5f385 100644
          cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
          with os.popen(cmd) as p:
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index 286e333a8a..25a5ebe49d 100644
+index bcb7e498e1..ba19f06972 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -1618,6 +1618,8 @@
+@@ -1660,6 +1660,8 @@
          self.assertEqual(['pol'], os.listdir(rv))
  
  
@@ -12592,7 +12592,7 @@ index 286e333a8a..25a5ebe49d 100644
  class TestWhich(unittest.TestCase):
  
      def setUp(self):
-@@ -2454,6 +2456,7 @@
+@@ -2496,6 +2498,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -12794,7 +12794,7 @@ index a0bd741c36..62fbd9f171 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index b2afd127df..1487bdbc8a 100644
+index 80acb06e4f..33f72fbe47 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -31,6 +31,9 @@
@@ -13104,10 +13104,10 @@ index 519a9432ab..63008a88fe 100644
  URL = 'http://www.example.com'
  CMD_NAME = 'test'
 diff --git a/Lib/test/test_zipfile.py b/Lib/test/test_zipfile.py
-index f03c044eae..1ae4db3be1 100644
+index 61bca8651c..5f2ccbcc85 100644
 --- a/Lib/test/test_zipfile.py
 +++ b/Lib/test/test_zipfile.py
-@@ -1122,6 +1122,7 @@
+@@ -1139,6 +1139,7 @@
              self.skipTest('requires write access to the installed location')
          unlink(filename)
  
@@ -13115,7 +13115,7 @@ index f03c044eae..1ae4db3be1 100644
      def test_write_pyfile(self):
          self.requiresWriteAccess(os.path.dirname(__file__))
          with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
-@@ -1166,6 +1167,7 @@
+@@ -1183,6 +1184,7 @@
              self.assertCompiledIn('email/__init__.py', names)
              self.assertCompiledIn('email/mime/text.py', names)
  
@@ -13136,7 +13136,7 @@ index 7d36340741..0466e5b5ee 100644
          """
          Check that warnings argument of TextTestRunner correctly affects the
 diff --git a/Lib/webbrowser.py b/Lib/webbrowser.py
-index 0af36c4301..351580244f 100755
+index 1ef179a91a..843745076b 100755
 --- a/Lib/webbrowser.py
 +++ b/Lib/webbrowser.py
 @@ -574,6 +574,57 @@
@@ -13627,7 +13627,7 @@ index 0af36c4301..351580244f 100755
 +    -I$(srcdir)/Modules/_decimal/libmpdec \
 +    -DCONFIG_32=1 -DANSI=1
 diff --git a/Modules/_ctypes/callproc.c b/Modules/_ctypes/callproc.c
-index 77492e650e..0bbfc3c66d 100644
+index 4027bdb622..2beea4aa0d 100644
 --- a/Modules/_ctypes/callproc.c
 +++ b/Modules/_ctypes/callproc.c
 @@ -813,6 +813,7 @@
@@ -32006,7 +32006,7 @@ index 4e97337811..bb8d8f9590 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 850769fd95..1933cf9a5b 100644
+index 2f791d1df9..3b83e1f4db 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -20,6 +20,8 @@
@@ -32109,7 +32109,23 @@ index 850769fd95..1933cf9a5b 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -4348,7 +4377,12 @@
+@@ -1389,6 +1418,7 @@
+     d = PyDict_New();
+     if (d == NULL)
+         return NULL;
++#if !TARGET_OS_TV && !TARGET_OS_WATCH
+ #ifdef MS_WINDOWS
+     /* _wenviron must be initialized in this way if the program is started
+        through main() instead of wmain(). */
+@@ -1444,6 +1474,7 @@
+         Py_DECREF(k);
+         Py_DECREF(v);
+     }
++#endif
+     return d;
+ }
+ 
+@@ -4408,7 +4439,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -32122,7 +32138,7 @@ index 850769fd95..1933cf9a5b 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -4625,7 +4659,7 @@
+@@ -4690,7 +4726,7 @@
  static int
  utime_dir_fd(utime_t *ut, int dir_fd, const char *path, int follow_symlinks)
  {
@@ -32131,7 +32147,7 @@ index 850769fd95..1933cf9a5b 100644
      int flags = follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW;
      UTIME_TO_TIMESPEC;
      return utimensat(dir_fd, path, time, flags);
-@@ -4651,7 +4685,7 @@
+@@ -4716,7 +4752,7 @@
  static int
  utime_fd(utime_t *ut, int fd)
  {
@@ -32140,7 +32156,7 @@ index 850769fd95..1933cf9a5b 100644
      UTIME_TO_TIMESPEC;
      return futimens(fd, time);
  #else
-@@ -4674,7 +4708,7 @@
+@@ -4739,7 +4775,7 @@
  static int
  utime_nofollow_symlinks(utime_t *ut, const char *path)
  {
@@ -32149,7 +32165,7 @@ index 850769fd95..1933cf9a5b 100644
      UTIME_TO_TIMESPEC;
      return utimensat(DEFAULT_DIR_FD, path, time, AT_SYMLINK_NOFOLLOW);
  #else
-@@ -4690,7 +4724,7 @@
+@@ -4755,7 +4791,7 @@
  static int
  utime_default(utime_t *ut, const char *path)
  {
@@ -32289,7 +32305,7 @@ index 43f5264d86..8802eff67c 100644
  
  /* Fill buffer with size pseudo-random bytes generated by getentropy():
 diff --git a/Python/marshal.c b/Python/marshal.c
-index c6a06e8c23..af3f5153e0 100644
+index d3fee32380..108674a84c 100644
 --- a/Python/marshal.c
 +++ b/Python/marshal.c
 @@ -14,6 +14,10 @@
@@ -33997,10 +34013,10 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index 0914e24704..141e9e48c9 100755
+index a979363acf..85e7ce5f73 100755
 --- a/configure
 +++ b/configure
-@@ -3259,6 +3259,15 @@
+@@ -3271,6 +3271,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -34016,7 +34032,7 @@ index 0914e24704..141e9e48c9 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3309,6 +3318,15 @@
+@@ -3321,6 +3330,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -34032,7 +34048,7 @@ index 0914e24704..141e9e48c9 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3384,6 +3402,13 @@
+@@ -3396,6 +3414,13 @@
      define_xopen_source=no;;
    Darwin/1[0-9].*)
      define_xopen_source=no;;
@@ -34046,7 +34062,7 @@ index 0914e24704..141e9e48c9 100755
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -6147,11 +6172,17 @@
+@@ -6165,11 +6190,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -34069,7 +34085,7 @@ index 0914e24704..141e9e48c9 100755
  fi
  
  
-@@ -6902,8 +6933,6 @@
+@@ -6920,8 +6951,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -34078,7 +34094,7 @@ index 0914e24704..141e9e48c9 100755
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -Wextra" >&5
  $as_echo_n "checking for -Wextra... " >&6; }
       ac_save_cc="$CC"
-@@ -11419,6 +11448,10 @@
+@@ -11437,6 +11466,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34089,7 +34105,7 @@ index 0914e24704..141e9e48c9 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18656,7 +18689,17 @@
+@@ -18674,7 +18707,17 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -34108,13 +34124,13 @@ index 0914e24704..141e9e48c9 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18673,4 +18716,3 @@
+@@ -18691,4 +18734,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index 7051dc109a..7af306ffd0 100644
+index e57ef7c38b..330e4feb8e 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -379,6 +379,15 @@
@@ -34163,7 +34179,7 @@ index 7051dc109a..7af306ffd0 100644
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -1180,11 +1205,17 @@
+@@ -1186,11 +1211,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -34186,7 +34202,7 @@ index 7051dc109a..7af306ffd0 100644
  fi
  AC_SUBST(READELF)
  
-@@ -1563,8 +1594,6 @@
+@@ -1569,8 +1600,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -34195,7 +34211,7 @@ index 7051dc109a..7af306ffd0 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3504,6 +3533,10 @@
+@@ -3510,6 +3539,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34206,7 +34222,7 @@ index 7051dc109a..7af306ffd0 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5634,7 +5667,17 @@
+@@ -5640,7 +5673,17 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -34225,7 +34241,7 @@ index 7051dc109a..7af306ffd0 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5651,4 +5694,3 @@
+@@ -5657,4 +5700,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
