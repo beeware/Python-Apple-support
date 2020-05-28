@@ -33,6 +33,33 @@ jobs:
       env:
         BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
       run: make -e ${{ matrix.target }}
+    - name: Upload build artefact
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ matrix.target }}
+        path: ./dist/Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Set build variables
+      env:
+        TAG_NAME: ${{ github.ref }}
+      run: |
+        export TAG=$(basename $TAG_NAME)
+        echo "TAG=${TAG}"
+        export TAG_VERSION="${TAG%-*}"
+        export TAG_BUILD="${TAG#*-}"
+        echo "PY_VERSION=${TAG_VERSION}"
+        echo "BUILD_NUMBER=${TAG_BUILD}"
+        echo "::set-env name=TAG::${TAG}"
+        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
+        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+    - name: Download build artefacts
+      uses: actions/download-artifact@v2
+    - name: Display structure of downloaded files
+      run: ls -R
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -43,12 +70,39 @@ jobs:
         release_name: ${{ github.ref }}
         draft: true
         prerelease: false
-    - name: Upload Release Asset to Github
+    - name: Upload macOS Release Asset to Github
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
-        asset_name: Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_path: ./macOS/Python-${{ env.PY_VERSION }}-macOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-macOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_content_type: application/gzip
+    - name: Upload iOS Release Asset to Github
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./iOS/Python-${{ env.PY_VERSION }}-iOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-iOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_content_type: application/gzip
+    - name: Upload tvOS Release Asset to Github
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./tvOS/Python-${{ env.PY_VERSION }}-tvOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-tvOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_content_type: application/gzip
+    - name: Upload watchOS Release Asset to Github
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./watchOS/Python-${{ env.PY_VERSION }}-watchOS-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-watchOS-support.${{ env.BUILD_NUMBER }}.tar.gz
         asset_content_type: application/gzip
