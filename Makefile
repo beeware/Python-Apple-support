@@ -343,9 +343,12 @@ dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK
 ifeq ($1,macOS)
 	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
 	mv build/$1/Support/VERSIONS build/$1/python/VERSIONS
-	tar zcvf $$@ -C build/$1/python `ls -A build/$1/python`
+	tar zcvf $$@ -X patch/Python/exclude.macOS -C build/$1/python `ls -A build/$1/python`
 else
-	tar zcvf $$@ -C build/$1/Support `ls -A build/$1/Support`
+	# Build a "full" tarball with all content for test purposes
+	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-b$(BUILD_NUMBER).tar.gz -X patch/Python/test-exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
+	# Build a distributable tarball
+	tar zcvf $$@ -X patch/Python/exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
 endif
 
 # Build OpenSSL
@@ -431,16 +434,7 @@ endif
 	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
 
 	# Copy the standard library from the simulator build
-ifneq ($(TEST),)
 	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
-	# Remove the pieces of the resources directory that aren't needed:
-	rm -f $$(PYTHON_RESOURCES-$1)/lib/libpython$(PYTHON_VER).a
-	rm -rf $$(PYTHON_RESOURCES-$1)/lib/pkgconfig
-else
-	mkdir -p $$(PYTHON_RESOURCES-$1)/lib
-	cd $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib/python$(PYTHON_VER) && \
-		zip -x@$(PROJECT_DIR)/patch/Python/lib-exclude.lst -r $(PROJECT_DIR)/$$(PYTHON_RESOURCES-$1)/lib/python$(subst .,,$(PYTHON_VER)) *
-endif
 
 	# Copy fat library
 	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/libPython.a
