@@ -1,0 +1,54 @@
+# This is the DEV workflow.
+# Run this Action on creating a new tag matching "<version>-b<build>"
+# e.g., 3.7-b1
+name: Build support package
+on:
+  push:
+    tags:
+    - '*-b*'
+
+jobs:
+  build:
+    runs-on: macOS-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set build variables
+      env:
+        TAG_NAME: ${{ github.ref }}
+      run: |
+        export TAG=$(basename $TAG_NAME)
+        echo "TAG=${TAG}"
+        export TAG_VERSION="${TAG%-*}"
+        export TAG_BUILD="${TAG#*-}"
+        echo "PY_VERSION=${TAG_VERSION}"
+        echo "BUILD_NUMBER=${TAG_BUILD}"
+        echo "::set-env name=TAG::${TAG}"
+        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
+        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+    - name: Build project
+      env:
+        BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
+      run: make -e ${{ matrix.target }}
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ${{ github.ref }}
+        draft: true
+        prerelease: false
+    - name: Upload Release Asset to Github
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_content_type: application/gzip

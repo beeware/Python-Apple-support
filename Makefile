@@ -25,7 +25,7 @@
 # Current director
 PROJECT_DIR=$(shell pwd)
 
-BUILD_NUMBER=1
+BUILD_NUMBER=custom
 
 MACOSX_DEPLOYMENT_TARGET=10.8
 
@@ -86,9 +86,6 @@ update-patch:
 	# Requireds patchutils (installable via `brew install patchutils`)
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) | filterdiff -X $(PROJECT_DIR)/patch/Python/diff-exclude.lst -p 1 --clean > $(PROJECT_DIR)/patch/Python/Python.patch
-
-upload: $(foreach os,$(OS),$(os))
-	python tools/upload.py b$(BUILD_NUMBER)
 
 ###########################################################################
 # OpenSSL
@@ -327,12 +324,12 @@ XZ_FRAMEWORK-$1=build/$1/Support/XZ
 PYTHON_FRAMEWORK-$1=build/$1/Support/Python
 PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
 
-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
+$1: dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz
 
 clean-$1:
 	rm -rf build/$1
 
-dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
+dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
 	mkdir -p dist
 	echo "Python version: $(PYTHON_VERSION) " > build/$1/Support/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> build/$1/Support/VERSIONS
@@ -346,7 +343,7 @@ ifeq ($1,macOS)
 	tar zcvf $$@ -X patch/Python/exclude.macOS -C build/$1/python `ls -A build/$1/python`
 else
 	# Build a "full" tarball with all content for test purposes
-	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-b$(BUILD_NUMBER).tar.gz -X patch/Python/test-exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
+	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test-exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
 	# Build a distributable tarball
 	tar zcvf $$@ -X patch/Python/exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
 endif
@@ -413,7 +410,7 @@ build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target)
 
 $1: Python-$1
 
-Python-$1: dist/Python-$(PYTHON_VER)-$1-support.b$(BUILD_NUMBER).tar.gz
+Python-$1: dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz
 
 # Build Python
 $$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
