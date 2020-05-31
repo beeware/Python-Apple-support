@@ -277,7 +277,7 @@ ifeq ($2,macOS)
 	# A locally hosted Python requires a full Setup.local configuration
 	# because there's no PYTHON_HOST_PLATFORM to cause Setup.local to be
 	# generated
-	cat $$(PYTHON_DIR-$1)/Modules/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
+	cat $(PROJECT_DIR)/patch/Python/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
 	# Make a fully embedded macOS build
 	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
