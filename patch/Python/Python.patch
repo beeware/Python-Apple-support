@@ -1,5 +1,5 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 10d7deaecd..3fe0869081 100644
+index e23500d433..411e78ada2 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
 @@ -3088,6 +3088,13 @@
@@ -17,7 +17,7 @@ index 10d7deaecd..3fe0869081 100644
  .. function:: execl(path, arg0, arg1, ...)
                execle(path, arg0, arg1, ..., env)
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index f9ace66295..4cc682aae8 100644
+index 69737820f3..f95e5b080c 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -723,10 +723,10 @@ index 66a16a6839..dd6444892d 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/os.py b/Lib/os.py
-index b93f95d98e..7b720dbc10 100644
+index 9853e37c61..7d569e55d5 100644
 --- a/Lib/os.py
 +++ b/Lib/os.py
-@@ -32,7 +32,7 @@
+@@ -34,7 +34,7 @@
  __all__ = ["altsep", "curdir", "pardir", "sep", "pathsep", "linesep",
             "defpath", "name", "path", "devnull", "SEEK_SET", "SEEK_CUR",
             "SEEK_END", "fsencode", "fsdecode", "get_exec_path", "fdopen",
@@ -735,7 +735,7 @@ index b93f95d98e..7b720dbc10 100644
  
  def _exists(name):
      return name in globals()
-@@ -830,6 +830,13 @@
+@@ -832,6 +832,13 @@
  fsencode, fsdecode = _fscodec()
  del _fscodec
  
@@ -11421,7 +11421,7 @@ index 878658827c..0bc557f9e0 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index d1b6de5785..be92dae3e0 100644
+index 3f99be551c..447fd60f35 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -686,6 +686,9 @@
@@ -11764,10 +11764,10 @@ index 66a6bc1680..305c4ac734 100644
  
      ignore_warnings = mock.patch.object(log.logger, "warning")
 diff --git a/Lib/test/test_base64.py b/Lib/test/test_base64.py
-index 2a4cc2acad..2cb0dfce2c 100644
+index 7dba6635d4..1b03cf62ea 100644
 --- a/Lib/test/test_base64.py
 +++ b/Lib/test/test_base64.py
-@@ -651,7 +651,7 @@
+@@ -652,7 +652,7 @@
      def test_ErrorHeritage(self):
          self.assertTrue(issubclass(binascii.Error, ValueError))
  
@@ -11857,7 +11857,7 @@ index 95cdc8db7e..d0b16bb5a4 100644
          code = """if 1:
              import os, sys
 diff --git a/Lib/test/test_compileall.py b/Lib/test/test_compileall.py
-index 2e2552303f..ab04a0d078 100644
+index 07c31cedb1..cccbda6566 100644
 --- a/Lib/test/test_compileall.py
 +++ b/Lib/test/test_compileall.py
 @@ -172,7 +172,8 @@
@@ -11871,10 +11871,10 @@ index 2e2552303f..ab04a0d078 100644
                                      "workers must be greater or equal to 0"):
              compileall.compile_dir(self.directory, workers=-1)
 diff --git a/Lib/test/test_concurrent_futures.py b/Lib/test/test_concurrent_futures.py
-index ad68909161..5273b06ab4 100644
+index b42670e16a..ba455da328 100644
 --- a/Lib/test/test_concurrent_futures.py
 +++ b/Lib/test/test_concurrent_futures.py
-@@ -151,6 +151,7 @@
+@@ -150,6 +150,7 @@
      executor_type = futures.ThreadPoolExecutor
  
  
@@ -11882,7 +11882,7 @@ index ad68909161..5273b06ab4 100644
  class ProcessPoolForkMixin(ExecutorMixin):
      executor_type = futures.ProcessPoolExecutor
      ctx = "fork"
-@@ -161,11 +162,13 @@
+@@ -160,11 +161,13 @@
          return super().get_context()
  
  
@@ -11897,10 +11897,10 @@ index ad68909161..5273b06ab4 100644
      executor_type = futures.ProcessPoolExecutor
      ctx = "forkserver"
 diff --git a/Lib/test/test_doctest.py b/Lib/test/test_doctest.py
-index 4a3c488738..0fb782c679 100644
+index 5f891c50d8..21adddc9fa 100644
 --- a/Lib/test/test_doctest.py
 +++ b/Lib/test/test_doctest.py
-@@ -2729,7 +2729,12 @@
+@@ -2733,7 +2733,12 @@
      TestResults(failed=1, attempted=1)
      """
  
@@ -12097,7 +12097,7 @@ index 9ad05fadef..05d1ba1f82 100644
      """Test loading extension modules with multi-phase initialization (PEP 489)
      """
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index 42002b9acf..9533cc5bb6 100644
+index 7d50037bd7..b508070260 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -591,7 +591,7 @@
@@ -12134,7 +12134,7 @@ index af99f52c63..2b901e180b 100644
          proc = subprocess.Popen([sys.executable,
                                   KEYWORD_FILE,
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 546cea98c1..f662f5edf3 100644
+index c24a302868..976ab38633 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -1735,9 +1735,21 @@
@@ -12280,7 +12280,7 @@ index 6558952308..a121e8c2dd 100644
  
  from test import support
 diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
-index df4bad7a8c..b670ab83d5 100644
+index 411e5aa507..ca91743a04 100644
 --- a/Lib/test/test_os.py
 +++ b/Lib/test/test_os.py
 @@ -696,6 +696,7 @@
@@ -12832,7 +12832,7 @@ index a0bd741c36..62fbd9f171 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index 9f494dab40..3786dd61b8 100644
+index d024158e18..709528dabf 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -38,6 +38,9 @@
@@ -13182,7 +13182,7 @@ index 3c4005671f..8bd3bbc952 100644
          """
          Check that warnings argument of TextTestRunner correctly affects the
 diff --git a/Lib/webbrowser.py b/Lib/webbrowser.py
-index 82bff835fd..93d5060fc5 100755
+index e052e51cde..a6c782d2f6 100755
 --- a/Lib/webbrowser.py
 +++ b/Lib/webbrowser.py
 @@ -569,6 +569,57 @@
@@ -34003,7 +34003,7 @@ index 2e911b7be2..f8647322bc 100644
 +    return ret;
 +}
 diff --git a/aclocal.m4 b/aclocal.m4
-index 85a0dbba27..e1e76282b7 100644
+index 69205776ed..da05d2b19d 100644
 --- a/aclocal.m4
 +++ b/aclocal.m4
 @@ -156,7 +156,7 @@
@@ -34065,10 +34065,10 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index b769d59629..e2e023f846 100755
+index 57b36e29b9..6748ceeaca 100755
 --- a/configure
 +++ b/configure
-@@ -3256,6 +3256,15 @@
+@@ -3260,6 +3260,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -34084,7 +34084,7 @@ index b769d59629..e2e023f846 100755
  	*)
  		# for now, limit cross builds to known configurations
  		MACHDEP="unknown"
-@@ -3297,6 +3306,15 @@
+@@ -3301,6 +3310,15 @@
  			_host_cpu=$host_cpu
  		esac
  		;;
@@ -34100,7 +34100,7 @@ index b769d59629..e2e023f846 100755
  	*-*-cygwin*)
  		_host_cpu=
  		;;
-@@ -3372,6 +3390,13 @@
+@@ -3376,6 +3394,13 @@
      define_xopen_source=no;;
    Darwin/1[0-9].*)
      define_xopen_source=no;;
@@ -34114,7 +34114,7 @@ index b769d59629..e2e023f846 100755
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -6179,11 +6204,17 @@
+@@ -6183,11 +6208,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -34137,7 +34137,7 @@ index b769d59629..e2e023f846 100755
  fi
  
  
-@@ -6902,8 +6933,6 @@
+@@ -6906,8 +6937,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -34146,7 +34146,7 @@ index b769d59629..e2e023f846 100755
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -Wextra" >&5
  $as_echo_n "checking for -Wextra... " >&6; }
       ac_save_cc="$CC"
-@@ -11421,6 +11450,10 @@
+@@ -11447,6 +11476,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34157,7 +34157,7 @@ index b769d59629..e2e023f846 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18655,7 +18688,17 @@
+@@ -18681,7 +18714,17 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -34176,13 +34176,13 @@ index b769d59629..e2e023f846 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18672,4 +18715,3 @@
+@@ -18698,4 +18741,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index 49acff3136..e8b5f627db 100644
+index f9dabd86c2..75d2b2cbc7 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -379,6 +379,15 @@
@@ -34263,7 +34263,7 @@ index 49acff3136..e8b5f627db 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3521,6 +3550,10 @@
+@@ -3536,6 +3565,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34274,7 +34274,7 @@ index 49acff3136..e8b5f627db 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5705,7 +5738,17 @@
+@@ -5720,7 +5753,17 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -34293,7 +34293,7 @@ index 49acff3136..e8b5f627db 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5722,4 +5765,3 @@
+@@ -5737,4 +5780,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
