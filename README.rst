@@ -1,6 +1,8 @@
 Python Apple Support
 ====================
 
+**Python 2.7 has reached End Of Life. This repository branch is no longer maintained.**
+
 **This repository branch builds a packaged version of Python 2.7.14**.
 Other Python versions are available by cloning other branches of the main
 repository.
