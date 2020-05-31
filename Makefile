@@ -30,7 +30,7 @@ BUILD_NUMBER=custom
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.8.0
+PYTHON_VERSION=3.8.3
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.1.1
@@ -227,16 +227,12 @@ endif
 
 # Build OpenSSL
 $$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/Makefile
-	# Installing multiple times causes problems with the man directory.
-	# Since we're just overwriting anyway, and we're not going to keep the man files
-	# delete the man directory (if it exists) first.
-	rm -rf $(PROJECT_DIR)/build/$2/openssl/man
-	# Make the build
+	# Make the build, and install just the software (not the docs)
 	cd $$(OPENSSL_DIR-$1) && \
 		CC="$$(CC-$1)" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		make all && make install
+		make all && make install_sw
 
 # Unpack BZip2
 $$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
@@ -276,17 +272,22 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOS
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
-
 	# Configure target Python
 ifeq ($2,macOS)
-	# Make a fully embedded macOS build
+	# A locally hosted Python requires a full Setup.local configuration
+	# because there's no PYTHON_HOST_PLATFORM to cause Setup.local to be
+	# generated
 	cat $$(PYTHON_DIR-$1)/Modules/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
+	# Make a fully embedded macOS build
 	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-doc-strings --enable-ipv6 --without-ensurepip \
 		$$(PYTHON_CONFIGURE-$2)
 else
+	# Copy in the embedded and platform/arch configuration
+	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
+	if [ -e "$(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1)" ]; then \
+		cp -f $(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1) $$(PYTHON_DIR-$1)/Modules/Setup.$2-$$(ARCH-$1); fi
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
