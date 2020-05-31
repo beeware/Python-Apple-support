@@ -1,6 +1,8 @@
 Python Apple Support
 ====================
 
+**Python 3.4 has reached End Of Life. This repository branch is no longer maintained.**
+
 **This repository branch builds a packaged version of Python 3.4.8**.
 Other Python versions are available by cloning other branches of the main
 repository.
