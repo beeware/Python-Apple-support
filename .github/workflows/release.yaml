@@ -1,0 +1,92 @@
+# This is the DEV workflow.
+# Run this Action on creating a new tag matching "<version>-b<build>"
+# e.g., 3.7-b1
+name: Build support package
+on:
+  push:
+    tags:
+    - '*-b*'
+
+jobs:
+  make-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set build variables
+      env:
+        TAG_NAME: ${{ github.ref }}
+      run: |
+        export TAG=$(basename $TAG_NAME)
+        echo "TAG=${TAG}"
+        export TAG_VERSION="${TAG%-*}"
+        export TAG_BUILD="${TAG#*-}"
+        echo "PY_VERSION=${TAG_VERSION}"
+        echo "BUILD_NUMBER=${TAG_BUILD}"
+        echo "::set-env name=TAG::${TAG}"
+        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
+        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ${{ github.ref }}
+        draft: true
+        prerelease: false
+        body: |
+          Build ${{ env.BUILD_NUMBER }} of the BeeWare support package for Python ${{ env.PY_VERSION }}.
+
+          Includes:
+          * Python ${{ env.PY_VERSION }}.?
+          * ...
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+  build:
+    runs-on: macOS-latest
+    needs: make-release
+    strategy:
+      max-parallel: 4
+      matrix:
+        target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set build variables
+      env:
+        TAG_NAME: ${{ github.ref }}
+      run: |
+        export TAG=$(basename $TAG_NAME)
+        echo "TAG=${TAG}"
+        export TAG_VERSION="${TAG%-*}"
+        export TAG_BUILD="${TAG#*-}"
+        echo "PY_VERSION=${TAG_VERSION}"
+        echo "BUILD_NUMBER=${TAG_BUILD}"
+        echo "::set-env name=TAG::${TAG}"
+        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
+        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+    - name: Build ${{ matrix.target }}
+      env:
+        BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
+      run: |
+        # 2020-05-29: The iOS 13.4 SDK changed the implementation of FD_SET
+        # to use a weak linked symbol (__darwin_check_fd_set_overflow).
+        # This means any support package built against that SDK is incompatible
+        # with linking against an earlier SDK.
+        # However, you can't get the iOS 13.4 SDK on macOS Mojave (10.14),
+        # because the latest XCode supported on Mojave (11.3.1) only provided
+        # SDK 13.2.
+        # So: We force the use of XCode 11.3.1, which ships with the 13.2 SDK.
+        # For a list of SDKs available on Github Actions, see:
+        # https://github.com/actions/virtual-environments/blob/master/images/macos/macos-10.15-Readme.md
+        sudo xcode-select --switch /Applications/Xcode_11.3.1.app
+        make -e ${{ matrix.target }}
+    - name: Upload ${{ matrix.target }} release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.make-release.outputs.upload_url }}
+        asset_path: ./dist/Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_name: Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
+        asset_content_type: application/gzip
