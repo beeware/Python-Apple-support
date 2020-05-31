@@ -1,0 +1,47 @@
+# This is a list of Python standard library path patterns
+# we exclude from the embedded device Python-Apple-support tarballs.
+# It is used by `tar -X` during the Makefile build.
+#
+# Remove binaries; not needed for
+Python/Resources/bin
+# Remove includes; use the version packaged in Headers
+Python/Resources/include
+# Remove the Resources version of libpython;
+# we use the version packaged at the root level
+Python/Resources/lib/libpython3.*.a
+# Remove lib/pkgconfig files. These are used for compiling C extension modules.
+Python/Resources/lib/pkgconfig
+# Remove standard library test suites.
+Python/Resources/lib/python*/ctypes/test
+Python/Resources/lib/python*/distutils/tests
+Python/Resources/lib/python*/lib2to3/tests
+Python/Resources/lib/python*/sqlite3/test
+Python/Resources/lib/python*/test
+# Remove compiled test and example modules.
+Python/Resources/lib/python*/lib-dynload/_test*.so
+Python/Resources/lib/python*/lib-dynload/_ctypes_test*.so
+Python/Resources/lib/python*/lib-dynload/xxlimited*.so
+Python/Resources/lib/python*/lib-dynload/_xxtestfuzz.so
+# Remove wsgiref web app module; it's unusual that mobile apps would
+# start a web app server with it.
+Python/Resources/lib/python*/wsgiref
+# Remove command-line curses toolkit.
+Python/Resources/lib/python*/curses
+# Remove config-* directory, which is used for compiling C extension modules.
+Python/Resources/lib/python*/config-*
+# Remove ensurepip. If user code needs pip, it can add it to
+Python/Resources/lib/python*/ensurepip
+# Remove Tcl/Tk GUI code. We don't build against Tcl/Tk at the moment, so this
+# will not work.
+Python/Resources/lib/python*/idlelib
+Python/Resources/lib/python*/tkinter
+Python/Resources/lib/python*/turtle.py
+Python/Resources/lib/python*/turtledemo
+# Remove site-packages directory. The template unpacks user code and
+# dependencies to a different path.
+Python/Resources/lib/python*/site-packages
+# Remove share/ directory, which contains user documentation (man pages).
+Python/Resources/share
+# Remove pyc files. These take up space, but since most stdlib modules are
+# never imported by user code, they mostly have no value.
+Python/Resources/*/*.pyc
