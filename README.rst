@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.8.0**.
+**This repository branch builds a packaged version of Python 3.8.3**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
