@@ -83,7 +83,7 @@ jobs:
 
         # 2020-06-24: The Homebrew copy of gettext leaks into the macOS build
         # if it is present. Uninstall gettext to make sure that doesn't happen.
-        sudo brew uninstall --ignore-dependencies gettext
+        brew uninstall --ignore-dependencies gettext
 
         # Do the build for the requested target.
         make -e ${{ matrix.target }}
