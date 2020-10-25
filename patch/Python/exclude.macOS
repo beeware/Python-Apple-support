@@ -26,9 +26,6 @@ lib/python*/lib-dynload/_test*.so
 lib/python*/lib-dynload/_ctypes_test*.so
 lib/python*/lib-dynload/xxlimited*.so
 lib/python*/lib-dynload/_xxtestfuzz*.so
-lib/python*/lib-dynload/_curses*.so
-# Remove command-line curses toolkit.
-lib/python*/curses
 # Remove config-* directory, which is used for compiling C extension modules.
 lib/python*/config-*
 # Remove ensurepip. If user code needs pip, it can add it to
