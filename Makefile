@@ -341,16 +341,11 @@ dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-
 	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/Support/VERSIONS
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/Support/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> build/$1/Support/VERSIONS
-ifeq ($1,macOS)
-	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
-	mv build/$1/Support/VERSIONS build/$1/python/VERSIONS
-	tar zcvf $$@ -X patch/Python/exclude.macOS -C build/$1/python `ls -A build/$1/python`
-else
+
 	# Build a "full" tarball with all content for test purposes
 	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test-exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
 	# Build a distributable tarball
 	tar zcvf $$@ -X patch/Python/exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
-endif
 
 # Build OpenSSL
 OpenSSL-$1: $$(OPENSSL_FRAMEWORK-$1)
