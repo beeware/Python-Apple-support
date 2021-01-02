@@ -21,9 +21,9 @@ jobs:
         export TAG_BUILD="${TAG#*-}"
         echo "PY_VERSION=${TAG_VERSION}"
         echo "BUILD_NUMBER=${TAG_BUILD}"
-        echo "::set-env name=TAG::${TAG}"
-        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
-        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+        echo "TAG=${TAG}" >> $GITHUB_ENV
+        echo "PY_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
+        echo "BUILD_NUMBER=${TAG_BUILD}" >> $GITHUB_ENV
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -62,9 +62,9 @@ jobs:
         export TAG_BUILD="${TAG#*-}"
         echo "PY_VERSION=${TAG_VERSION}"
         echo "BUILD_NUMBER=${TAG_BUILD}"
-        echo "::set-env name=TAG::${TAG}"
-        echo "::set-env name=PY_VERSION::${TAG_VERSION}"
-        echo "::set-env name=BUILD_NUMBER::${TAG_BUILD}"
+        echo "TAG=${TAG}" >> $GITHUB_ENV
+        echo "PY_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
+        echo "BUILD_NUMBER=${TAG_BUILD}" >> $GITHUB_ENV
     - name: Build ${{ matrix.target }}
       env:
         BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
@@ -83,7 +83,10 @@ jobs:
 
         # 2020-06-24: The Homebrew copy of gettext leaks into the macOS build
         # if it is present. Uninstall gettext to make sure that doesn't happen.
-        brew uninstall --ignore-dependencies gettext
+        # 2021-01-02: Uninstall curl as well. We need curl to download the
+        # source bundles, but Homebrew's curl has a runtime dependency on
+        # gettext. However macOS provides a version of curl that works fine.
+        brew uninstall --ignore-dependencies gettext curl
 
         # Do the build for the requested target.
         make -e ${{ matrix.target }}
