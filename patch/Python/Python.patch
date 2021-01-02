@@ -12074,7 +12074,7 @@ index 9ad05fadef..05d1ba1f82 100644
      """Test loading extension modules with multi-phase initialization (PEP 489)
      """
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index f29c16cb47..8521120d51 100644
+index 4ba46563b9..9aad49bbbd 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -572,7 +572,7 @@
