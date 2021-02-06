@@ -7,16 +7,14 @@ _ctypes _ctypes/_ctypes.c \
     _ctypes/callproc.c \
     _ctypes/stgdict.c \
     _ctypes/cfield.c \
-    _ctypes/libffi_apple/prep_cif.c \
-    _ctypes/libffi_apple/types.c \
-    _ctypes/libffi_apple/raw_api.c \
-    _ctypes/libffi_apple/java_raw_api.c \
-    _ctypes/libffi_apple/closures.c \
-    _ctypes/libffi_apple/x86/ffi64_x86_64.c \
-    _ctypes/libffi_apple/x86/ffiw64_x86_64.c \
-    _ctypes/libffi_apple/x86/unix64_x86_64.S \
-    _ctypes/libffi_apple/x86/win64_x86_64.S \
-    -I$(srcdir)/Modules/_ctypes/libffi_apple/include
+    _ctypes/malloc_closure.c \
+    -I$(src_dir)/Modules/_ctypes/darwin \
+    -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/ffi \
+    -DPy_BUILD_CORE_MODULE -DUSING_MALLOC_CLOSURE_DOT_C=1 -DMACOSX \
+    -DUSING_APPLE_OS_LIBFFI=1 -DHAVE_FFI_PREP_CIF_VAR=1 \
+    -DHAVE_FFI_PREP_CLOSURE_LOC=1 -DHAVE_FFI_CLOSURE_ALLOC=1 \
+    -lffi
+
 
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
@@ -28,7 +26,7 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/fnt.c \
     _decimal/libmpdec/fourstep.c \
     _decimal/libmpdec/io.c \
-    _decimal/libmpdec/memory.c \
+    _decimal/libmpdec/mpalloc.c \
     _decimal/libmpdec/mpdecimal.c \
     _decimal/libmpdec/numbertheory.c \
     _decimal/libmpdec/sixstep.c \

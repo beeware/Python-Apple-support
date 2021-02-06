@@ -22,12 +22,12 @@ _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
-_functools -DPy_BUILD_CORE -I$(srcdir)/Include/internal _functoolsmodule.c
+_functools -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _functoolsmodule.c
 _hashlib _hashopenssl.c -I$(srcdir)/../Support/OpenSSL/Headers -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _heapq _heapqmodule.c
-_io -DPy_BUILD_CORE -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
+_io -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
 _json -I$(srcdir)/Include/internal -DPy_BUILD_CORE_BUILTIN _json.c
-_locale _localemodule.c
+_locale _localemodule.c  # -lintl
 _lsprof _lsprof.o rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../Support/XZ/Headers -L$(srcdir)/../Support/XZ/ -lxz
 _md5 md5module.c
@@ -35,15 +35,15 @@ _multibytecodec cjkcodecs/multibytecodec.c
 _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
 _opcode _opcode.c
 _operator _operator.c
-_pickle _pickle.c
+_pickle _pickle.c -DPy_BUILD_CORE_MODULE
 _posixsubprocess _posixsubprocess.c
 _queue _queuemodule.c
-_random _randommodule.c
+_random _randommodule.c -DPy_BUILD_CORE_MODULE
 _sha1 sha1module.c
 _sha3 _sha3/sha3module.c
-_sha256 sha256module.c
-_sha512 sha512module.c
-_signal -DPy_BUILD_CORE -I$(srcdir)/Include/internal signalmodule.c
+_sha256 sha256module.c -DPy_BUILD_CORE_MODULE
+_sha512 sha512module.c -DPy_BUILD_CORE_MODULE
+_signal -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal signalmodule.c
 _socket socketmodule.c
 _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 \
     _sqlite/cache.c \
@@ -61,8 +61,8 @@ _stat _stat.c
 _statistics _statisticsmodule.c
 _struct _struct.c
 _symtable symtablemodule.c
-_thread -DPy_BUILD_CORE -I$(srcdir)/Include/internal _threadmodule.c
-_tracemalloc _tracemalloc.c hashtable.c
+_thread -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _threadmodule.c
+_tracemalloc _tracemalloc.c
 _weakref _weakref.c
 _uuid _uuidmodule.c
 atexit atexitmodule.c
@@ -75,10 +75,10 @@ faulthandler faulthandler.c
 fcntl fcntlmodule.c
 grp grpmodule.c
 itertools itertoolsmodule.c
-math mathmodule.c
+math mathmodule.c -DPy_BUILD_CORE_MODULE
 mmap mmapmodule.c
 parser parsermodule.c
-posix -DPy_BUILD_CORE -I$(srcdir)/Include/internal posixmodule.c
+posix -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal posixmodule.c
 pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
     expat/xmlrole.c \
@@ -90,7 +90,7 @@ resource resource.c
 select selectmodule.c
 syslog syslogmodule.c
 termios termios.c
-time -DPy_BUILD_CORE -I$(srcdir)/Include/internal timemodule.c
+time -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal timemodule.c
 unicodedata unicodedata.c
 zlib zlibmodule.c -I$(prefix)/include -lz
 
