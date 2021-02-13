@@ -6,4 +6,6 @@ build/*
 downloads/*
 diff/*
 dist/*
-.env
+.envrc
+.vscode/
+local/*

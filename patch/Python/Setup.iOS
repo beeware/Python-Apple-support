@@ -1,6 +1,6 @@
 
 #####################################################################
-# macOS x86_64: Platform specific configuration
+# iOS: Platform specific configuration
 #####################################################################
 _ctypes _ctypes/_ctypes.c \
     _ctypes/callbacks.c \
@@ -8,12 +8,13 @@ _ctypes _ctypes/_ctypes.c \
     _ctypes/stgdict.c \
     _ctypes/cfield.c \
     _ctypes/malloc_closure.c \
-    -I$(src_dir)/Modules/_ctypes/darwin \
-    -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/ffi \
-    -DPy_BUILD_CORE_MODULE -DUSING_MALLOC_CLOSURE_DOT_C=1 -DMACOSX \
-    -DUSING_APPLE_OS_LIBFFI=1 -DHAVE_FFI_PREP_CIF_VAR=1 \
+    -I$(srcdir)/Modules/_ctypes/darwin \
+    -I$(srcdir)/../Support/libFFI/Headers \
+    -DPy_BUILD_CORE_MODULE \
+    -DHAVE_FFI_PREP_CIF_VAR=1 \
     -DHAVE_FFI_PREP_CLOSURE_LOC=1 -DHAVE_FFI_CLOSURE_ALLOC=1 \
-    -lffi
+    -L$(srcdir)/../Support/libFFI \
+    -lFFI
 
 
 _decimal _decimal/_decimal.c \
