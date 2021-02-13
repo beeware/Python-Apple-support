@@ -290,23 +290,7 @@ $$(XZ_DIR-$1)/src/liblzma/.libs/liblzma.a: $$(XZ_DIR-$1)/Makefile
 
 # No need to build libFFI on macOS
 ifneq ($2,macOS)
-
-# libFFI has it's own internal build directories for each Apple platform
-ifeq ($$(ARCH-$1),x86_64)
-LIBFFI_BUILD_DIR-$1=build_iphonesimulator-x86_64
-else ifeq ($$(ARCH-$1),i386)
-LIBFFI_BUILD_DIR-$1=build_iphonesimulator-i386
-else ifeq ($$(ARCH-$1),arm64)
-LIBFFI_BUILD_DIR-$1=build_iphoneos-arm64
-else ifeq ($$(ARCH-$1),armv7)
-LIBFFI_BUILD_DIR-$1=build_iphoneos-armv7
-else ifeq ($$(ARCH-$1),armv7k)
-LIBFFI_BUILD_DIR-$1=build_iphoneos-armv7
-else
-# This is a canary - it should never occur, so if you see it,
-# you've got a problem.
-LIBFFI_BUILD_DIR-$1=build_other
-endif
+LIBFFI_BUILD_DIR-$1=build_$$(SDK-$1)-$$(ARCH-$1)
 
 # Build LibFFI
 $$(LIBFFI_DIR-$1)/libffi.$1.a: $$(LIBFFI_DIR-$1)/darwin_common
@@ -492,7 +476,7 @@ $$(LIBFFI_DIR-$1)/darwin_common: downloads/libffi-$(LIBFFI_VERSION).tgz
 	# presumably be in libffi 3.4 or whatever comes next)
 	cd $$(LIBFFI_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/libffi/libffi.patch
 	# Configure the build
-	cd $$(LIBFFI_DIR-$1) && python generate-darwin-source-and-headers.py --only-ios
+	cd $$(LIBFFI_DIR-$1) && python generate-darwin-source-and-headers.py --only-$(shell echo $1 | tr '[:upper:]' '[:lower:]')
 
 $$(LIBFFI_FRAMEWORK-$1): $$(LIBFFI_DIR-$1)/libffi.a
 	# Create framework directory structure
@@ -500,7 +484,7 @@ $$(LIBFFI_FRAMEWORK-$1): $$(LIBFFI_DIR-$1)/libffi.a
 
 	# Copy the headers.
 	cp -f -r $$(LIBFFI_DIR-$1)/darwin_common/include $$(LIBFFI_FRAMEWORK-$1)/Headers
-	cp -f -r $$(LIBFFI_DIR-$1)/darwin_ios/include/* $$(LIBFFI_FRAMEWORK-$1)/Headers
+	cp -f -r $$(LIBFFI_DIR-$1)/darwin_$(shell echo $1 | tr '[:upper:]' '[:lower:]')/include/* $$(LIBFFI_FRAMEWORK-$1)/Headers
 
 	# Create the fat library
 	xcrun libtool -no_warning_for_no_symbols -static \

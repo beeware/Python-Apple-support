@@ -2681,15 +2681,30 @@ index 4aa7e6559a..511d77024c 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 12f72f525f..a2355bf93f 100644
+index 12f72f525f..ec487c6d0e 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
-@@ -56,6 +56,28 @@
+@@ -56,6 +56,8 @@
   */
  #if defined(__APPLE__)
  
 +#include "TargetConditionals.h"
 +
+ #if defined(__has_builtin) && __has_builtin(__builtin_available)
+ #  define HAVE_FSTATAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
+ #  define HAVE_FACCESSAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
+@@ -169,7 +171,6 @@
+ disguised Unix interface).  Refer to the library manual and\n\
+ corresponding Unix manual entries for more information on calls.");
+ 
+-
+ #ifdef HAVE_SYS_UIO_H
+ #  include <sys/uio.h>
+ #endif
+@@ -326,6 +327,26 @@
+ #  endif  /* _MSC_VER */
+ #endif  /* ! __WATCOMC__ || __QNX__ */
+ 
 +// iOS/tvOS/watchOS *define* a number of POSIX functions, but you can't use them
 +// because iOS isn't a conventional multiprocess environment.
 +#if TARGET_OS_IPHONE
@@ -2710,18 +2725,65 @@ index 12f72f525f..a2355bf93f 100644
 +#  undef HAVE_WAITPID
 +#endif
 +
- #if defined(__has_builtin) && __has_builtin(__builtin_available)
- #  define HAVE_FSTATAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
- #  define HAVE_FACCESSAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
-@@ -169,7 +191,6 @@
- disguised Unix interface).  Refer to the library manual and\n\
- corresponding Unix manual entries for more information on calls.");
+ _Py_IDENTIFIER(__fspath__);
  
--
- #ifdef HAVE_SYS_UIO_H
- #  include <sys/uio.h>
- #endif
-@@ -1509,7 +1530,9 @@
+ /*[clinic input]
+@@ -549,27 +570,33 @@
+         }
+     }
+ }
++#endif
+ 
+ void
+ PyOS_BeforeFork(void)
+ {
++#ifdef HAVE_FORK
+     run_at_forkers(_PyInterpreterState_GET()->before_forkers, 1);
+ 
+     _PyImport_AcquireLock();
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Parent(void)
+ {
++#ifdef HAVE_FORK
+     if (_PyImport_ReleaseLock() <= 0)
+         Py_FatalError("failed releasing import lock after fork");
+ 
+     run_at_forkers(_PyInterpreterState_GET()->after_forkers_parent, 0);
++#endif
+ }
+ 
+ void
+ PyOS_AfterFork_Child(void)
+ {
++#ifdef HAVE_FORK
+     _PyRuntimeState *runtime = &_PyRuntime;
+     _PyGILState_Reinit(runtime);
+     _PyEval_ReInitThreads(runtime);
+@@ -579,8 +606,10 @@
+     _PyInterpreterState_DeleteExceptMain(runtime);
+ 
+     run_at_forkers(_PyInterpreterState_GET()->after_forkers_child, 0);
++#endif
+ }
+ 
++#ifdef HAVE_FORK
+ static int
+ register_at_forker(PyObject **lst, PyObject *func)
+ {
+@@ -600,9 +629,7 @@
+ void
+ PyOS_AfterFork(void)
+ {
+-#ifdef HAVE_FORK
+     PyOS_AfterFork_Child();
+-#endif
+ }
+ 
+ 
+@@ -1509,7 +1536,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -2731,7 +2793,7 @@ index 12f72f525f..a2355bf93f 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1525,6 +1548,7 @@
+@@ -1525,6 +1554,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -2739,7 +2801,7 @@ index 12f72f525f..a2355bf93f 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1580,6 +1604,7 @@
+@@ -1580,6 +1610,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -2747,7 +2809,7 @@ index 12f72f525f..a2355bf93f 100644
      return d;
  }
  
-@@ -4739,7 +4764,12 @@
+@@ -4739,7 +4770,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -2760,7 +2822,7 @@ index 12f72f525f..a2355bf93f 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -13332,6 +13362,7 @@
+@@ -13332,6 +13368,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2768,7 +2830,7 @@ index 12f72f525f..a2355bf93f 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13392,6 +13423,7 @@
+@@ -13392,6 +13429,7 @@
  #endif
  
      return result;

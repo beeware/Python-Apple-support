@@ -33,4 +33,4 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/sixstep.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
-    -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
+    -DCONFIG_32=1 -DANSI=1
