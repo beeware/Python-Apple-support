@@ -2,7 +2,7 @@
 # we exclude from the embedded device Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
 #
-# Remove binaries; not needed for
+# Remove binaries; not needed for embedded builds
 Python/Resources/bin
 # Remove includes; use the version packaged in Headers
 Python/Resources/include
@@ -21,12 +21,13 @@ Python/Resources/lib/python*/test
 Python/Resources/lib/python*/lib-dynload/_test*.so
 Python/Resources/lib/python*/lib-dynload/_ctypes_test*.so
 Python/Resources/lib/python*/lib-dynload/xxlimited*.so
-Python/Resources/lib/python*/lib-dynload/_xxtestfuzz.so
+Python/Resources/lib/python*/lib-dynload/_xx*.so
 # Remove wsgiref web app module; it's unusual that mobile apps would
 # start a web app server with it.
 Python/Resources/lib/python*/wsgiref
 # Remove command-line curses toolkit.
 Python/Resources/lib/python*/curses
+Python/Resources/lib/python*/lib-dynload/_curses*.so
 # Remove config-* directory, which is used for compiling C extension modules.
 Python/Resources/lib/python*/config-*
 # Remove ensurepip. If user code needs pip, it can add it to
@@ -37,6 +38,7 @@ Python/Resources/lib/python*/idlelib
 Python/Resources/lib/python*/tkinter
 Python/Resources/lib/python*/turtle.py
 Python/Resources/lib/python*/turtledemo
+Python/Resources/lib/python*/lib-dynload/_tkinter*.so
 # Remove site-packages directory. The template unpacks user code and
 # dependencies to a different path.
 Python/Resources/lib/python*/site-packages
