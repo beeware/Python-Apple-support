@@ -1,6 +1,6 @@
 
 #####################################################################
-# macOS x86_64: Platform specific configuration
+# macOS: Platform specific configuration
 #####################################################################
 _ctypes _ctypes/_ctypes.c \
     _ctypes/callbacks.c \

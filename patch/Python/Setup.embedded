@@ -22,12 +22,12 @@ _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
     -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI
-_functools -DPy_BUILD_CORE -I$(srcdir)/Include/internal _functoolsmodule.c
+_functools -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _functoolsmodule.c
 _hashlib _hashopenssl.c -I$(srcdir)/../Support/OpenSSL/Headers -L$(srcdir)/../Support/OpenSSL -lOpenSSL -DUSE_SSL
 _heapq _heapqmodule.c
-_io -DPy_BUILD_CORE -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
+_io -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
 _json -I$(srcdir)/Include/internal -DPy_BUILD_CORE_BUILTIN _json.c
-_locale _localemodule.c
+_locale _localemodule.c  # -lintl
 _lsprof _lsprof.o rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../Support/XZ/Headers -L$(srcdir)/../Support/XZ/ -lxz
 _md5 md5module.c
