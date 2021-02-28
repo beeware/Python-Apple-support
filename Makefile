@@ -1,10 +1,10 @@
 #
 # Useful targets:
-# - all                       - build everything
-# - macOS                     - build everything for macOS
-# - iOS                       - build everything for iOS
-# - tvOS                      - build everything for tvOS
-# - watchOS                   - build everything for watchOS
+# - all             - build everything
+# - macOS           - build everything for macOS
+# - iOS             - build everything for iOS
+# - tvOS            - build everything for tvOS
+# - watchOS         - build everything for watchOS
 # - OpenSSL-macOS   - build OpenSSL for macOS
 # - OpenSSL-iOS     - build OpenSSL for iOS
 # - OpenSSL-tvOS    - build OpenSSL for tvOS
@@ -46,6 +46,7 @@ OS=macOS iOS tvOS watchOS
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64
+PYTHON_TARGETS-macOS=macOS
 CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 
 # iOS targets
@@ -88,7 +89,7 @@ update-patch:
 	# Generate a diff from the clone of the python/cpython Github repository
 	# Requireds patchutils (installable via `brew install patchutils`)
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
-	cd $(PYTHON_REPO_DIR) && git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) | filterdiff -X $(PROJECT_DIR)/patch/Python/diff-exclude.lst -p 1 --clean > $(PROJECT_DIR)/patch/Python/Python.patch
+	cd $(PYTHON_REPO_DIR) && git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) | filterdiff -X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean > $(PROJECT_DIR)/patch/Python/Python.patch
 
 ###########################################################################
 # OpenSSL
@@ -99,8 +100,9 @@ update-patch:
 # Clean the OpenSSL project
 clean-OpenSSL:
 	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
+		build/*/openssl \
 		build/*/libssl.a build/*/libcrypto.a \
-		build/*/OpenSSL
+		build/*/Support/OpenSSL
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
@@ -114,9 +116,10 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 ###########################################################################
 
 # Clean the bzip2 project
-clean-bzip2:
+clean-BZip2:
 	rm -rf build/*/bzip2-$(BZIP2_VERSION)-* \
-		build/*/bzip2
+		build/*/bzip2 \
+		build/*/Support/BZip2
 
 # Download original BZip2 source code archive.
 downloads/bzip2-$(BZIP2_VERSION).tgz:
@@ -128,9 +131,10 @@ downloads/bzip2-$(BZIP2_VERSION).tgz:
 ###########################################################################
 
 # Clean the XZ project
-clean-xz:
+clean-XZ:
 	rm -rf build/*/xz-$(XZ_VERSION)-* \
-		build/*/xz
+		build/*/xz \
+		build/*/Support/XZ
 
 # Download original XZ source code archive.
 downloads/xz-$(XZ_VERSION).tgz:
@@ -147,14 +151,15 @@ clean-Python:
 		build/*/Python-$(PYTHON_VERSION)-* \
 		build/*/libpython$(PYTHON_VER)m.a \
 		build/*/pyconfig-*.h \
-		build/*/Python
+		build/*/Support/Python
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
 	mkdir -p downloads
 	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
-PYTHON_DIR-macOS=build/macOS/Python-$(PYTHON_VERSION)-macosx.x86_64
+# Some Python targets needed to identify the host build
+PYTHON_DIR-macOS=build/macOS/Python-$(PYTHON_VERSION)-macOS
 PYTHON_HOST=$(PYTHON_DIR-macOS)/dist/lib/libpython$(PYTHON_VER)m.a
 
 # Build for specified target (from $(TARGETS))
@@ -186,14 +191,6 @@ LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
 OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
 BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
 XZ_DIR-$1=build/$2/xz-$(XZ_VERSION)-$1
-PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
-pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
-
-ifeq ($2,macOS)
-PYTHON_HOST_DEP-$1=
-else
-PYTHON_HOST-$1=$(PYTHON_HOST)
-endif
 
 # Unpack OpenSSL
 $$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
@@ -215,7 +212,7 @@ endif
 ifeq ($2,macOS)
 	cd $$(OPENSSL_DIR-$1) && \
 	CC="$$(CC-$1)" MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) \
-		./Configure darwin64-x86_64-cc no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
+		./Configure darwin64-$$(ARCH-$1)-cc no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=$(PROJECT_DIR)/build/$2/openssl
 else
 	cd $$(OPENSSL_DIR-$1) && \
 		CC="$$(CC-$1)" \
@@ -264,6 +261,13 @@ $$(XZ_DIR-$1)/Makefile: downloads/xz-$(XZ_VERSION).tgz
 $$(XZ_DIR-$1)/src/liblzma/.libs/liblzma.a: $$(XZ_DIR-$1)/Makefile
 	cd $$(XZ_DIR-$1) && make && make install
 
+# macOS builds are compiled as a single build. As a result, the macOS Python
+# build is configured in the `build` macro, rather than the `build-target` macro.
+ifneq ($2,macOS)
+PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
+pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
+PYTHON_HOST-$1=$(PYTHON_HOST)
+
 # Unpack Python
 $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOST-$1)
 	# Unpack target Python
@@ -271,31 +275,19 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOS
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	# Configure target Python
-ifeq ($2,macOS)
-	# A locally hosted Python requires a full Setup.local configuration
-	# because there's no PYTHON_HOST_PLATFORM to cause Setup.local to be
-	# generated
-	cat $(PROJECT_DIR)/patch/Python/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
-	# Make a fully embedded macOS build
-	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
-		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
-		--without-doc-strings --enable-ipv6 --without-ensurepip \
-		$$(PYTHON_CONFIGURE-$2)
-else
 	# Copy in the embedded and platform/arch configuration
 	cp -f $(PROJECT_DIR)/patch/Python/Setup.embedded $$(PYTHON_DIR-$1)/Modules/Setup.embedded
 	if [ -e "$(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1)" ]; then \
 		cp -f $(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1) $$(PYTHON_DIR-$1)/Modules/Setup.$2-$$(ARCH-$1); fi
+	# Configure target Python
 	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
-		--build=x86_64-apple-darwin$(shell uname -r) \
+		--build=x86_64-apple-darwin \
 		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
 		--without-doc-strings --enable-ipv6 --without-ensurepip \
 		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
 		$$(PYTHON_CONFIGURE-$2)
-endif
 
 # Build Python
 $$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ $$(PYTHON_DIR-$1)/Makefile
@@ -305,6 +297,8 @@ $$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$2/Support/OpenSSL b
 build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)m/pyconfig.h
 	cp -f $$^ $$@
 
+endif
+
 # Dump vars (for test)
 vars-$1:
 	@echo "ARCH-$1: $$(ARCH-$1)"
@@ -312,6 +306,12 @@ vars-$1:
 	@echo "SDK-$1: $$(SDK-$1)"
 	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
 	@echo "CC-$1: $$(CC-$1)"
+	@echo "OPENSSL_DIR-$1: $$(OPENSSL_DIR-$1)"
+	@echo "BZIP2_DIR-$1: $$(BZIP2_DIR-$1)"
+	@echo "XZ_DIR-$1: $$(XZ_DIR-$1)"
+	@echo "PYTHON_DIR-$1: $$(PYTHON_DIR-$1)"
+	@echo "pyconfig.h-$1: $$(pyconfig.h-$1)"
+
 endef
 
 #
@@ -340,16 +340,11 @@ dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-
 	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/Support/VERSIONS
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/Support/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> build/$1/Support/VERSIONS
-ifeq ($1,macOS)
-	cp -r build/$1/Python-$(PYTHON_VERSION)-macosx.x86_64/dist build/$1/python
-	mv build/$1/Support/VERSIONS build/$1/python/VERSIONS
-	tar zcvf $$@ -X patch/Python/exclude.macOS -C build/$1/python `ls -A build/$1/python`
-else
+
 	# Build a "full" tarball with all content for test purposes
-	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test-exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
+	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C build/$1/Support `ls -A build/$1/Support`
 	# Build a distributable tarball
-	tar zcvf $$@ -X patch/Python/exclude.embedded -C build/$1/Support `ls -A build/$1/Support`
-endif
+	tar zcvf $$@ -X patch/Python/release.exclude -C build/$1/Support `ls -A build/$1/Support`
 
 # Build OpenSSL
 OpenSSL-$1: $$(OPENSSL_FRAMEWORK-$1)
@@ -411,22 +406,55 @@ build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target)
 	mkdir -p build/$1
 	xcrun lipo -create -o $$@ $$^
 
+# macOS builds a single Python target; thus it needs to be
+# configured in the `build` macro, not the `build-target` macro.
+ifeq ($1,macOS)
+# Some targets that are needed for consistency between macOS and other builds,
+# but are no-ops on macOS.
+build/$1/$$(pyconfig.h-$1):
+
+# Unpack Python
+$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
+	# Unpack target Python
+	mkdir -p $$(PYTHON_DIR-$1)
+	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
+	# Apply target Python patches
+	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# A locally hosted Python requires a full Setup.local configuration
+	# because there's no PYTHON_HOST_PLATFORM to cause Setup.local to be
+	# generated
+	cat $(PROJECT_DIR)/patch/Python/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.macOS-x86_64 > $$(PYTHON_DIR-$1)/Modules/Setup.local
+	# Configure target Python
+	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
+		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
+		--without-doc-strings --enable-ipv6 --without-ensurepip \
+		$$(PYTHON_CONFIGURE-$1)
+
+# Build Python
+$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER)m.a: build/$1/Support/OpenSSL build/$1/Support/BZip2 build/$1/Support/XZ $$(PYTHON_DIR-$1)/Makefile
+	# Build target Python
+	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$1)/dist/bin:$(PATH)" make all install
+
+else
+# The Python targets are the same as they are for every other library
+PYTHON_TARGETS-$1=$$(TARGETS-$1)
+
+endif
+
 $1: Python-$1
 
 Python-$1: dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz
 
 # Build Python
-$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER)m.a $$(foreach target,$$(TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
+$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER)m.a $$(foreach target,$$(PYTHON_TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
 	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 
 	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
 	# We ship a master pyconfig.h for iOS, tvOS and watchOS that delegates to architecture
 	# specific versions; on macOS, we can use the original version as-is.
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$1)))/dist/include/python$(PYTHON_VER)m $$(PYTHON_FRAMEWORK-$1)/Headers
+ifneq ($1,macOS)
 	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
-ifeq ($1,macOS)
-	mv $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig-x86_64.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
-else
 	cp -f $(PROJECT_DIR)/patch/Python/pyconfig-$1.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
 endif
 	# Copy Python.h and pyconfig.h into the resources include directory
@@ -434,19 +462,25 @@ endif
 	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)m
 
 	# Copy the standard library from the simulator build
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
 
 	# Copy fat library
 	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/libPython.a
 
 
 # Build libpython fat library
-build/$1/libpython$(PYTHON_VER)m.a: $$(foreach target,$$(TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER)m.a)
+build/$1/libpython$(PYTHON_VER)m.a: $$(foreach target,$$(PYTHON_TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER)m.a)
 	# Create a fat binary for the libPython library
 	mkdir -p build/$1
 	xcrun lipo -create -output $$@ $$^
 
 vars-$1: $$(foreach target,$$(TARGETS-$1),vars-$$(target))
+	@echo "OPENSSL_FRAMEWORK-$1: $$(OPENSSL_FRAMEWORK-$1)"
+	@echo "BZIP2_FRAMEWORK-$1: $$(BZIP2_FRAMEWORK-$1)"
+	@echo "XZ_FRAMEWORK-$1: $$(XZ_FRAMEWORK-$1)"
+	@echo "PYTHON_FRAMEWORK-$1: $$(PYTHON_FRAMEWORK-$1)"
+	@echo "PYTHON_RESOURCES-$1: $$(PYTHON_RESOURCES-$1)"
+	@echo "PYTHON_TARGETS-$1: $$(PYTHON_TARGETS-$1)"
 
 endef
 
