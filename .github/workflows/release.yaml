@@ -69,18 +69,6 @@ jobs:
       env:
         BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
       run: |
-        # 2020-05-29: The iOS 13.4 SDK changed the implementation of FD_SET
-        # to use a weak linked symbol (__darwin_check_fd_set_overflow).
-        # This means any support package built against that SDK is incompatible
-        # with linking against an earlier SDK.
-        # However, you can't get the iOS 13.4 SDK on macOS Mojave (10.14),
-        # because the latest XCode supported on Mojave (11.3.1) only provided
-        # SDK 13.2.
-        # So: We force the use of XCode 11.3.1, which ships with the 13.2 SDK.
-        # For a list of SDKs available on Github Actions, see:
-        # https://github.com/actions/virtual-environments/blob/master/images/macos/macos-10.15-Readme.md
-        sudo xcode-select --switch /Applications/Xcode_11.3.1.app
-
         # 2020-06-24: The Homebrew copy of gettext leaks into the macOS build
         # if it is present. Uninstall gettext to make sure that doesn't happen.
         # 2021-01-02: Uninstall curl as well. We need curl to download the
