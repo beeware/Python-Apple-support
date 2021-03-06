@@ -1,5 +1,5 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 6e287abb6f..b71c4e7b1b 100644
+index 9d206f46ae..51846163d7 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
 @@ -3160,6 +3160,13 @@
@@ -17,7 +17,7 @@ index 6e287abb6f..b71c4e7b1b 100644
  .. data:: MFD_CLOEXEC
            MFD_ALLOW_SEALING
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index e37cc980e9..af94fc0b37 100644
+index 3150aa6070..d37e0d3a97 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -217,7 +217,7 @@ index 56285b5ff8..f78a152ade 100644
  def three_way_cmp(x, y):
      """Return -1 if x < y, 0 if x == y and 1 if x > y"""
 diff --git a/Lib/ctypes/test/test_parameters.py b/Lib/ctypes/test/test_parameters.py
-index e4c25fd880..811af9dfd6 100644
+index 38af7ac13d..db0d4986d6 100644
 --- a/Lib/ctypes/test/test_parameters.py
 +++ b/Lib/ctypes/test/test_parameters.py
 @@ -140,7 +140,7 @@
@@ -532,7 +532,7 @@ index 0c2510e161..6c3c43f11d 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/distutils/tests/test_build_ext.py b/Lib/distutils/tests/test_build_ext.py
-index 1b034c9302..8e89e1ebc6 100644
+index 808c0dc287..b4813efe0c 100644
 --- a/Lib/distutils/tests/test_build_ext.py
 +++ b/Lib/distutils/tests/test_build_ext.py
 @@ -52,6 +52,8 @@
@@ -726,7 +726,7 @@ index b794159f86..449cf932b6 100644
  if _exists("fork") and not _exists("spawnv") and _exists("execv"):
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index e9f50ab622..2654ce8675 100755
+index 6258827d0e..af32c6c70c 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -613,7 +613,7 @@
@@ -753,10 +753,10 @@ index 9e617afb00..41305298d3 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index f1d829a6f1..ecfd92e713 100644
+index ddf1128fdd..a8ade2456d 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -758,6 +758,9 @@
+@@ -762,6 +762,9 @@
                   pass_fds=(), *, user=None, group=None, extra_groups=None,
                   encoding=None, errors=None, text=None, umask=-1):
          """Create new Popen instance."""
@@ -766,7 +766,7 @@ index f1d829a6f1..ecfd92e713 100644
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1832,7 +1835,7 @@
+@@ -1836,7 +1839,7 @@
              else:
                  self.returncode = waitstatus_to_exitcode(sts)
  
@@ -775,7 +775,7 @@ index f1d829a6f1..ecfd92e713 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1841,6 +1844,8 @@
+@@ -1845,6 +1848,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -785,10 +785,10 @@ index f1d829a6f1..ecfd92e713 100644
                  if not self._waitpid_lock.acquire(False):
                      # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index bf04ac541e..24ff6035bf 100644
+index e3f79bfde5..2850eaeb5e 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
-@@ -79,6 +79,33 @@
+@@ -84,6 +84,33 @@
          'scripts': '{userbase}/bin',
          'data': '{userbase}',
          },
@@ -822,7 +822,7 @@ index bf04ac541e..24ff6035bf 100644
      }
  
  _SCHEME_KEYS = ('stdlib', 'platstdlib', 'purelib', 'platlib', 'include',
-@@ -180,6 +207,8 @@
+@@ -185,6 +212,8 @@
      if os.name == 'posix':
          # the default scheme for posix is posix_prefix
          return 'posix_prefix'
@@ -831,7 +831,7 @@ index bf04ac541e..24ff6035bf 100644
      return os.name
  
  
-@@ -200,6 +229,11 @@
+@@ -205,6 +234,11 @@
      if sys.platform == "darwin" and sys._framework:
          return joinuser("~", "Library", sys._framework,
                          "%d.%d" % sys.version_info[:2])
@@ -1440,7 +1440,7 @@ index fc2a7a4fca..0871b05ac8 100644
          args = sys.executable, '-m', 'json.tool'
          process = subprocess.run(args, input=self.data, capture_output=True, text=True, check=True)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 410eae2208..b899113309 100644
+index a6cd291c9a..2ad76905b8 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -1764,9 +1764,21 @@
@@ -1586,7 +1586,7 @@ index 6558952308..a121e8c2dd 100644
  
  from test import support
 diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
-index bf1cb5f511..47320b8df0 100644
+index 35933e9c8c..c0c902162f 100644
 --- a/Lib/test/test_os.py
 +++ b/Lib/test/test_os.py
 @@ -854,6 +854,7 @@
@@ -1664,7 +1664,7 @@ index bf1cb5f511..47320b8df0 100644
          """Check if stty returns the same results
  
 diff --git a/Lib/test/test_pdb.py b/Lib/test/test_pdb.py
-index 8016f81e5a..9d4859dcb5 100644
+index 6c4eaf318e..5a492215d0 100644
 --- a/Lib/test/test_pdb.py
 +++ b/Lib/test/test_pdb.py
 @@ -1231,6 +1231,7 @@
@@ -1704,10 +1704,10 @@ index 1d538b9898..3c09f7a603 100644
  TESTFN2 = TESTFN + "2"
  
 diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
-index a3b06feb65..b944f798b3 100644
+index 9f04c79e09..8c92a660ed 100644
 --- a/Lib/test/test_platform.py
 +++ b/Lib/test/test_platform.py
-@@ -7,7 +7,6 @@
+@@ -9,7 +9,6 @@
  
  from test import support
  
@@ -1715,7 +1715,7 @@ index a3b06feb65..b944f798b3 100644
  class PlatformTest(unittest.TestCase):
      def clear_caches(self):
          platform._platform_cache.clear()
-@@ -18,6 +17,7 @@
+@@ -20,6 +19,7 @@
          res = platform.architecture()
  
      @support.skip_unless_symlink
@@ -1723,7 +1723,7 @@ index a3b06feb65..b944f798b3 100644
      def test_architecture_via_symlink(self): # issue3762
          with support.PythonSymlink() as py:
              cmd = "-c", "import platform; print(platform.architecture())"
-@@ -220,7 +220,7 @@
+@@ -254,7 +254,7 @@
      def test_mac_ver(self):
          res = platform.mac_ver()
  
@@ -1758,7 +1758,7 @@ index ab1bc77655..60be660d25 100644
  
      def _do_test_commandline(self, cmdline, expected):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index bfbcbab3b6..a8b5970f32 100644
+index f4edb8bd95..12ead59a8a 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -60,15 +60,21 @@
@@ -2147,7 +2147,7 @@ index 5ca43461d9..1a66b1d258 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index 7373fe29c4..65f78bc006 100644
+index e8f9699ef7..d2f14cc6c9 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -41,6 +41,9 @@
@@ -2227,7 +2227,7 @@ index d79151355e..68e2a27f52 100644
          # Force the POSIX locale
          env = os.environ.copy()
 diff --git a/Lib/test/test_sysconfig.py b/Lib/test/test_sysconfig.py
-index 44e44bf5ea..9b89fb13ac 100644
+index 0ca5c9390d..32430b41eb 100644
 --- a/Lib/test/test_sysconfig.py
 +++ b/Lib/test/test_sysconfig.py
 @@ -229,10 +229,12 @@
@@ -2280,7 +2280,7 @@ index c21cdf8eb7..5cc9808f82 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_traceback.py b/Lib/test/test_traceback.py
-index 8549ba2b75..846d5ec394 100644
+index 5bb3a58b2a..47f9b5e8f9 100644
 --- a/Lib/test/test_traceback.py
 +++ b/Lib/test/test_traceback.py
 @@ -5,7 +5,9 @@
@@ -2543,10 +2543,10 @@ index 6023c1e138..ae5803c4c8 100755
  #
  # Platform support for Windows
 diff --git a/Modules/_ctypes/callproc.c b/Modules/_ctypes/callproc.c
-index b0a36a3024..8997d4549c 100644
+index f2506de544..707347b622 100644
 --- a/Modules/_ctypes/callproc.c
 +++ b/Modules/_ctypes/callproc.c
-@@ -1471,14 +1471,14 @@
+@@ -1458,14 +1458,14 @@
  
           if (!PyArg_ParseTuple(args, "O", &name))
               return NULL;
@@ -2565,7 +2565,7 @@ index b0a36a3024..8997d4549c 100644
           Py_DECREF(name2);
  
 diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
-index 5356417dd7..28c47b3883 100644
+index d64e0a1cfa..38770238b2 100644
 --- a/Modules/_posixsubprocess.c
 +++ b/Modules/_posixsubprocess.c
 @@ -566,11 +566,15 @@
@@ -2584,7 +2584,7 @@ index 5356417dd7..28c47b3883 100644
          if (errno != ENOENT && errno != ENOTDIR && saved_errno == 0) {
              saved_errno = errno;
          }
-@@ -845,7 +849,12 @@
+@@ -841,7 +845,12 @@
          need_after_fork = 1;
      }
  
@@ -2681,7 +2681,7 @@ index 4aa7e6559a..511d77024c 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 12f72f525f..ec487c6d0e 100644
+index 5e33502721..61875c8c7f 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -56,6 +56,8 @@
@@ -2690,10 +2690,10 @@ index 12f72f525f..ec487c6d0e 100644
  
 +#include "TargetConditionals.h"
 +
- #if defined(__has_builtin) && __has_builtin(__builtin_available)
- #  define HAVE_FSTATAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
- #  define HAVE_FACCESSAT_RUNTIME __builtin_available(macOS 10.10, iOS 8.0, *)
-@@ -169,7 +171,6 @@
+ #if defined(__has_builtin)
+ #if __has_builtin(__builtin_available)
+ #define HAVE_BUILTIN_AVAILABLE 1
+@@ -175,7 +177,6 @@
  disguised Unix interface).  Refer to the library manual and\n\
  corresponding Unix manual entries for more information on calls.");
  
@@ -2701,7 +2701,7 @@ index 12f72f525f..ec487c6d0e 100644
  #ifdef HAVE_SYS_UIO_H
  #  include <sys/uio.h>
  #endif
-@@ -326,6 +327,26 @@
+@@ -332,6 +333,26 @@
  #  endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
@@ -2728,7 +2728,7 @@ index 12f72f525f..ec487c6d0e 100644
  _Py_IDENTIFIER(__fspath__);
  
  /*[clinic input]
-@@ -549,27 +570,33 @@
+@@ -555,27 +576,33 @@
          }
      }
  }
@@ -2762,7 +2762,7 @@ index 12f72f525f..ec487c6d0e 100644
      _PyRuntimeState *runtime = &_PyRuntime;
      _PyGILState_Reinit(runtime);
      _PyEval_ReInitThreads(runtime);
-@@ -579,8 +606,10 @@
+@@ -585,8 +612,10 @@
      _PyInterpreterState_DeleteExceptMain(runtime);
  
      run_at_forkers(_PyInterpreterState_GET()->after_forkers_child, 0);
@@ -2773,7 +2773,7 @@ index 12f72f525f..ec487c6d0e 100644
  static int
  register_at_forker(PyObject **lst, PyObject *func)
  {
-@@ -600,9 +629,7 @@
+@@ -606,9 +635,7 @@
  void
  PyOS_AfterFork(void)
  {
@@ -2783,7 +2783,7 @@ index 12f72f525f..ec487c6d0e 100644
  }
  
  
-@@ -1509,7 +1536,9 @@
+@@ -1515,7 +1542,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -2793,7 +2793,7 @@ index 12f72f525f..ec487c6d0e 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1525,6 +1554,7 @@
+@@ -1531,6 +1560,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -2801,7 +2801,7 @@ index 12f72f525f..ec487c6d0e 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1580,6 +1610,7 @@
+@@ -1586,6 +1616,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -2809,7 +2809,7 @@ index 12f72f525f..ec487c6d0e 100644
      return d;
  }
  
-@@ -4739,7 +4770,12 @@
+@@ -4745,7 +4776,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -2822,7 +2822,7 @@ index 12f72f525f..ec487c6d0e 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -13332,6 +13368,7 @@
+@@ -13338,6 +13374,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2830,7 +2830,7 @@ index 12f72f525f..ec487c6d0e 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13392,6 +13429,7 @@
+@@ -13398,6 +13435,7 @@
  #endif
  
      return result;
@@ -4677,7 +4677,7 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index 2d379feb4b..3e25ead85e 100755
+index 1252335472..06a463641d 100755
 --- a/configure
 +++ b/configure
 @@ -3301,6 +3301,15 @@
@@ -4769,7 +4769,7 @@ index 2d379feb4b..3e25ead85e 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18965,7 +18998,7 @@
+@@ -18960,7 +18993,7 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -4778,13 +4778,13 @@ index 2d379feb4b..3e25ead85e 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18982,4 +19015,3 @@
+@@ -18977,4 +19010,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index c968d149c2..b7ffaa9c47 100644
+index 972287a9c4..b989796488 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -391,6 +391,15 @@
@@ -4876,7 +4876,7 @@ index c968d149c2..b7ffaa9c47 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5825,7 +5858,7 @@
+@@ -5821,7 +5854,7 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -4885,7 +4885,7 @@ index c968d149c2..b7ffaa9c47 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5842,4 +5875,3 @@
+@@ -5838,4 +5871,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
