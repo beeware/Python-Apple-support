@@ -1,5 +1,5 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 1a6ff40bf0..f77124656f 100644
+index 45213a664e..2acf3a582a 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
 @@ -3147,6 +3147,13 @@
@@ -17,7 +17,7 @@ index 1a6ff40bf0..f77124656f 100644
  .. data:: MFD_CLOEXEC
            MFD_ALLOW_SEALING
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index a93a6c186f..6d6640eff4 100644
+index 7ce274652d..fda0d3ac5a 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -223,7 +223,7 @@ index 56285b5ff8..f78a152ade 100644
  def three_way_cmp(x, y):
      """Return -1 if x < y, 0 if x == y and 1 if x > y"""
 diff --git a/Lib/ctypes/test/test_parameters.py b/Lib/ctypes/test/test_parameters.py
-index e4c25fd880..811af9dfd6 100644
+index 38af7ac13d..db0d4986d6 100644
 --- a/Lib/ctypes/test/test_parameters.py
 +++ b/Lib/ctypes/test/test_parameters.py
 @@ -140,7 +140,7 @@
@@ -11404,10 +11404,10 @@ index 9fa21cca38..e346fb4390 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 5c2c2f0509..ecc298abec 100644
+index eecb1e7f25..1d3b59c73a 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -737,6 +737,9 @@
+@@ -741,6 +741,9 @@
                   restore_signals=True, start_new_session=False,
                   pass_fds=(), *, encoding=None, errors=None, text=None):
          """Create new Popen instance."""
@@ -11417,7 +11417,7 @@ index 5c2c2f0509..ecc298abec 100644
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1721,7 +1724,7 @@
+@@ -1725,7 +1728,7 @@
                  raise SubprocessError("Unknown child exit status!")
  
  
@@ -11426,7 +11426,7 @@ index 5c2c2f0509..ecc298abec 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1730,6 +1733,8 @@
+@@ -1734,6 +1737,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -12233,7 +12233,7 @@ index 6558952308..a121e8c2dd 100644
  
  from test import support
 diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
-index 2a4ae1573e..c91e97e75c 100644
+index 5302b1ce57..ff7a7675c7 100644
 --- a/Lib/test/test_os.py
 +++ b/Lib/test/test_os.py
 @@ -852,6 +852,7 @@
@@ -12317,7 +12317,7 @@ index 2a4ae1573e..c91e97e75c 100644
          """Check if stty returns the same results
  
 diff --git a/Lib/test/test_pdb.py b/Lib/test/test_pdb.py
-index 9c9471a8cc..cfa6866dd1 100644
+index f77c355077..643dec376a 100644
 --- a/Lib/test/test_pdb.py
 +++ b/Lib/test/test_pdb.py
 @@ -1231,6 +1231,7 @@
@@ -12800,7 +12800,7 @@ index a0bd741c36..62fbd9f171 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index 2d3ab93555..b417233e12 100644
+index 4661d1e252..27a841e889 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -31,6 +31,9 @@
@@ -13639,10 +13639,10 @@ index 6023c1e138..ae5803c4c8 100755
 +    -I$(srcdir)/Modules/_decimal/libmpdec \
 +    -DCONFIG_32=1 -DANSI=1
 diff --git a/Modules/_ctypes/callproc.c b/Modules/_ctypes/callproc.c
-index a9b8675cd9..b99d451f82 100644
+index de75918d49..9e0189b657 100644
 --- a/Modules/_ctypes/callproc.c
 +++ b/Modules/_ctypes/callproc.c
-@@ -813,6 +813,7 @@
+@@ -800,6 +800,7 @@
                                    ffi_type **atypes,
                                    ffi_type *restype,
                                    void *resmem,
@@ -13650,7 +13650,7 @@ index a9b8675cd9..b99d451f82 100644
                                    int argcount)
  {
      PyThreadState *_save = NULL; /* For Py_BLOCK_THREADS and Py_UNBLOCK_THREADS */
-@@ -836,11 +837,12 @@
+@@ -823,11 +824,12 @@
      if ((flags & FUNCFLAG_CDECL) == 0)
          cc = FFI_STDCALL;
  #endif
@@ -13668,7 +13668,7 @@ index a9b8675cd9..b99d451f82 100644
          PyErr_SetString(PyExc_RuntimeError,
                          "ffi_prep_cif failed");
          return -1;
-@@ -1213,6 +1215,9 @@
+@@ -1200,6 +1202,9 @@
  
      if (-1 == _call_function_pointer(flags, pProc, avalues, atypes,
                                       rtype, resbuf,
