@@ -344,7 +344,7 @@ dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-
 	# Build a "full" tarball with all content for test purposes
 	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C build/$1/Support `ls -A build/$1/Support`
 	# Build a distributable tarball
-	tar zcvf $$@ -X patch/Python/release.exclude -C build/$1/Support `ls -A build/$1/Support`
+	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$1.exclude -C build/$1/Support `ls -A build/$1/Support`
 
 # Build OpenSSL
 OpenSSL-$1: $$(OPENSSL_FRAMEWORK-$1)

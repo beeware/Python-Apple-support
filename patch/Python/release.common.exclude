@@ -1,5 +1,5 @@
-# This is a list of Python standard library path patterns
-# we exclude from the embedded device Python-Apple-support tarballs.
+# This is a list of support package path patterns that we exclude
+# from all Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
 #
 # Remove binaries; not needed for embedded builds
@@ -25,9 +25,6 @@ Python/Resources/lib/python*/lib-dynload/_xx*.so
 # Remove wsgiref web app module; it's unusual that mobile apps would
 # start a web app server with it.
 Python/Resources/lib/python*/wsgiref
-# Remove command-line curses toolkit.
-Python/Resources/lib/python*/curses
-Python/Resources/lib/python*/lib-dynload/_curses*.so
 # Remove config-* directory, which is used for compiling C extension modules.
 Python/Resources/lib/python*/config-*
 # Remove ensurepip. If user code needs pip, it can add it to
