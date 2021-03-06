@@ -1,0 +1,7 @@
+# This is a list of support package path patterns that we exclude
+# from watchOS Python-Apple-support tarballs.
+# It is used by `tar -X` during the Makefile build.
+#
+# Remove command-line curses toolkit.
+Python/Resources/lib/python*/curses
+Python/Resources/lib/python*/lib-dynload/_curses*.so
