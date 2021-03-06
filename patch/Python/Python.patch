@@ -240,7 +240,7 @@ index 56285b5ff8..f78a152ade 100644
  def three_way_cmp(x, y):
      """Return -1 if x < y, 0 if x == y and 1 if x > y"""
 diff --git a/Lib/ctypes/test/test_parameters.py b/Lib/ctypes/test/test_parameters.py
-index e4c25fd880..811af9dfd6 100644
+index 531894fdec..8b8a86f139 100644
 --- a/Lib/ctypes/test/test_parameters.py
 +++ b/Lib/ctypes/test/test_parameters.py
 @@ -140,7 +140,7 @@
@@ -542,7 +542,7 @@ index a2941f3fe0..83dafd2981 100644
          pt = POINT(15, 25)
          left = c_long.in_dll(dll, 'left')
 diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
-index 97973bce00..0ed9540719 100644
+index 0c2510e161..6c3c43f11d 100644
 --- a/Lib/ctypes/util.py
 +++ b/Lib/ctypes/util.py
 @@ -67,7 +67,7 @@
@@ -13673,10 +13673,10 @@ index b04ec7b65a..a8b4569c08 100755
 +    -I$(srcdir)/Modules/_decimal/libmpdec \
 +    -DCONFIG_32=1 -DANSI=1
 diff --git a/Modules/_ctypes/callproc.c b/Modules/_ctypes/callproc.c
-index 73413531bd..417301541d 100644
+index 9cbf9801ad..313127b692 100644
 --- a/Modules/_ctypes/callproc.c
 +++ b/Modules/_ctypes/callproc.c
-@@ -767,6 +767,7 @@
+@@ -754,6 +754,7 @@
                                    ffi_type **atypes,
                                    ffi_type *restype,
                                    void *resmem,
@@ -13684,7 +13684,7 @@ index 73413531bd..417301541d 100644
                                    int argcount)
  {
      PyThreadState *_save = NULL; /* For Py_BLOCK_THREADS and Py_UNBLOCK_THREADS */
-@@ -793,11 +794,12 @@
+@@ -780,11 +781,12 @@
      if ((flags & FUNCFLAG_CDECL) == 0)
          cc = FFI_STDCALL;
  #endif
@@ -13702,7 +13702,7 @@ index 73413531bd..417301541d 100644
          PyErr_SetString(PyExc_RuntimeError,
                          "ffi_prep_cif failed");
          return -1;
-@@ -1200,6 +1202,9 @@
+@@ -1187,6 +1189,9 @@
  
      if (-1 == _call_function_pointer(flags, pProc, avalues, atypes,
                                       rtype, resbuf,
