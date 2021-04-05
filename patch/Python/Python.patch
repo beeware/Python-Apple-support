@@ -753,7 +753,7 @@ index 9e617afb00..41305298d3 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index ddf1128fdd..a8ade2456d 100644
+index 0311e3a1f8..ca01e9aa16 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -762,6 +762,9 @@
@@ -766,7 +766,7 @@ index ddf1128fdd..a8ade2456d 100644
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1836,7 +1839,7 @@
+@@ -1834,7 +1837,7 @@
              else:
                  self.returncode = waitstatus_to_exitcode(sts)
  
@@ -775,7 +775,7 @@ index ddf1128fdd..a8ade2456d 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1845,6 +1848,8 @@
+@@ -1843,6 +1846,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -1123,7 +1123,7 @@ index 5150d5770f..6e0f0bfd5e 100644
  
      @support.reap_threads
 diff --git a/Lib/test/test_cmd_line.py b/Lib/test/test_cmd_line.py
-index 051c092eb6..e69bf09c93 100644
+index a3560b4b1f..082f74ce76 100644
 --- a/Lib/test/test_cmd_line.py
 +++ b/Lib/test/test_cmd_line.py
 @@ -67,6 +67,7 @@
@@ -1150,7 +1150,7 @@ index 051c092eb6..e69bf09c93 100644
      def test_undecodable_code(self):
          undecodable = b"\xff"
          env = os.environ.copy()
-@@ -239,6 +242,7 @@
+@@ -273,6 +276,7 @@
                           'False False False\n'
                           'False False True\n')
  
@@ -1158,7 +1158,7 @@ index 051c092eb6..e69bf09c93 100644
      def test_unbuffered_output(self):
          # Test expected operation of the '-u' switch
          for stream in ('stdout', 'stderr'):
-@@ -297,6 +301,7 @@
+@@ -331,6 +335,7 @@
          # for empty and unset PYTHONPATH
          self.assertEqual(out1, out2)
  
@@ -1166,7 +1166,7 @@ index 051c092eb6..e69bf09c93 100644
      def test_displayhook_unencodable(self):
          for encoding in ('ascii', 'latin-1', 'utf-8'):
              env = os.environ.copy()
-@@ -315,6 +320,7 @@
+@@ -349,6 +354,7 @@
              escaped = repr(text).encode(encoding, 'backslashreplace')
              self.assertIn(escaped, data)
  
@@ -1174,7 +1174,7 @@ index 051c092eb6..e69bf09c93 100644
      def check_input(self, code, expected):
          with tempfile.NamedTemporaryFile("wb+") as stdin:
              sep = os.linesep.encode('ASCII')
-@@ -390,6 +396,7 @@
+@@ -424,6 +430,7 @@
      @unittest.skipIf(os.name != 'posix', "test needs POSIX semantics")
      @unittest.skipIf(sys.platform == "vxworks",
                           "test needs preexec support in subprocess.Popen")
@@ -1415,7 +1415,7 @@ index abd612fcd9..ebf7bc9aa5 100644
      """Test loading extension modules with multi-phase initialization (PEP 489)
      """
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index d2e387728b..e261c971e1 100644
+index 1f0210f857..3c689d7493 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -602,7 +602,7 @@
@@ -1664,7 +1664,7 @@ index 35933e9c8c..c0c902162f 100644
          """Check if stty returns the same results
  
 diff --git a/Lib/test/test_pdb.py b/Lib/test/test_pdb.py
-index 6c4eaf318e..5a492215d0 100644
+index 0da449e33e..212930ec25 100644
 --- a/Lib/test/test_pdb.py
 +++ b/Lib/test/test_pdb.py
 @@ -1231,6 +1231,7 @@
@@ -1933,10 +1933,10 @@ index 458998a62f..577cf5f385 100644
          cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
          with os.popen(cmd) as p:
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index e19af64be0..3be0625aff 100644
+index e378033acd..6b77a61a20 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -1679,6 +1679,8 @@
+@@ -1681,6 +1681,8 @@
              check_chown(dirname, uid, gid)
  
  
@@ -1945,7 +1945,7 @@ index e19af64be0..3be0625aff 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -2511,6 +2513,7 @@
+@@ -2548,6 +2550,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -2097,7 +2097,7 @@ index aefba4f397..fd3f1108cf 100755
  class RecvmsgIntoSCMRightsStreamTest(RecvmsgIntoMixin, SCMRightsTest,
                                       SendrecvmsgUnixStreamTestBase):
 diff --git a/Lib/test/test_socketserver.py b/Lib/test/test_socketserver.py
-index c663cc9588..8d5a936f04 100644
+index c9455adfd8..3ada09dcba 100644
 --- a/Lib/test/test_socketserver.py
 +++ b/Lib/test/test_socketserver.py
 @@ -8,6 +8,7 @@
@@ -2175,7 +2175,7 @@ index 2accad1aee..4824b6c8d0 100644
              import distutils.text_file
              import distutils.unixccompiler
 diff --git a/Lib/test/test_sys.py b/Lib/test/test_sys.py
-index d79151355e..68e2a27f52 100644
+index ed9b1770ab..ec3157d230 100644
 --- a/Lib/test/test_sys.py
 +++ b/Lib/test/test_sys.py
 @@ -108,6 +108,7 @@
@@ -2302,7 +2302,7 @@ index 5bb3a58b2a..47f9b5e8f9 100644
          # Test that tracebacks are correctly printed for encoded source files:
          # - correct line number (Issue2384)
 diff --git a/Lib/test/test_unicodedata.py b/Lib/test/test_unicodedata.py
-index b552d2bd17..6471bbc39e 100644
+index edfd860fd5..edbc8ce641 100644
 --- a/Lib/test/test_unicodedata.py
 +++ b/Lib/test/test_unicodedata.py
 @@ -8,6 +8,7 @@
@@ -2543,10 +2543,10 @@ index 6023c1e138..ae5803c4c8 100755
  #
  # Platform support for Windows
 diff --git a/Modules/_ctypes/callproc.c b/Modules/_ctypes/callproc.c
-index f2506de544..707347b622 100644
+index 18984d15ab..5ce47c4b0a 100644
 --- a/Modules/_ctypes/callproc.c
 +++ b/Modules/_ctypes/callproc.c
-@@ -1458,14 +1458,14 @@
+@@ -1461,14 +1461,14 @@
  
           if (!PyArg_ParseTuple(args, "O", &name))
               return NULL;
@@ -2681,7 +2681,7 @@ index 4aa7e6559a..511d77024c 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 5e33502721..61875c8c7f 100644
+index f83150f1ef..e696c09cb1 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -56,6 +56,8 @@
@@ -2783,7 +2783,7 @@ index 5e33502721..61875c8c7f 100644
  }
  
  
-@@ -1515,7 +1542,9 @@
+@@ -1521,7 +1548,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -2793,7 +2793,7 @@ index 5e33502721..61875c8c7f 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1531,6 +1560,7 @@
+@@ -1537,6 +1566,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -2801,7 +2801,7 @@ index 5e33502721..61875c8c7f 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1586,6 +1616,7 @@
+@@ -1592,6 +1622,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -2809,7 +2809,7 @@ index 5e33502721..61875c8c7f 100644
      return d;
  }
  
-@@ -4745,7 +4776,12 @@
+@@ -4751,7 +4782,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -2822,7 +2822,7 @@ index 5e33502721..61875c8c7f 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -13338,6 +13374,7 @@
+@@ -13347,6 +13383,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2830,7 +2830,7 @@ index 5e33502721..61875c8c7f 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13398,6 +13435,7 @@
+@@ -13407,6 +13444,7 @@
  #endif
  
      return result;
@@ -4615,10 +4615,10 @@ index c4538bd373..c385a04ea3 100644
 +    return ret;
 +}
 diff --git a/aclocal.m4 b/aclocal.m4
-index b5f9cb0e8d..c0f0e031eb 100644
+index 04342a4982..b027647376 100644
 --- a/aclocal.m4
 +++ b/aclocal.m4
-@@ -156,7 +156,7 @@
+@@ -365,7 +365,7 @@
  AC_ARG_VAR([$1][_LIBS], [linker flags for $1, overriding pkg-config])dnl
  
  pkg_failed=no
@@ -4627,7 +4627,7 @@ index b5f9cb0e8d..c0f0e031eb 100644
  
  _PKG_CONFIG([$1][_CFLAGS], [cflags], [$2])
  _PKG_CONFIG([$1][_LIBS], [libs], [$2])
-@@ -166,11 +166,11 @@
+@@ -375,11 +375,11 @@
  See the pkg-config man page for more details.])
  
  if test $pkg_failed = yes; then
@@ -4641,7 +4641,7 @@ index b5f9cb0e8d..c0f0e031eb 100644
  	        $1[]_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "$2" 2>&1`
          fi
  	# Put the nasty error message in config.log where it belongs
-@@ -187,7 +187,7 @@
+@@ -396,7 +396,7 @@
  _PKG_TEXT])[]dnl
          ])
  elif test $pkg_failed = untried; then
@@ -4677,7 +4677,7 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index 1252335472..06a463641d 100755
+index c7a7291fea..c7bd520c96 100755
 --- a/configure
 +++ b/configure
 @@ -3301,6 +3301,15 @@
@@ -4769,7 +4769,7 @@ index 1252335472..06a463641d 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18960,7 +18993,7 @@
+@@ -18961,7 +18994,7 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -4778,16 +4778,16 @@ index 1252335472..06a463641d 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18977,4 +19010,3 @@
+@@ -18978,4 +19011,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index 972287a9c4..b989796488 100644
+index 45e0af4493..2701b68cc3 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -391,6 +391,15 @@
+@@ -398,6 +398,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -4803,7 +4803,7 @@ index 972287a9c4..b989796488 100644
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -440,6 +449,15 @@
+@@ -447,6 +456,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -4819,7 +4819,7 @@ index 972287a9c4..b989796488 100644
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -512,6 +530,13 @@
+@@ -519,6 +537,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -4833,7 +4833,7 @@ index 972287a9c4..b989796488 100644
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -1207,11 +1232,17 @@
+@@ -1214,11 +1239,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -4856,7 +4856,7 @@ index 972287a9c4..b989796488 100644
  fi
  AC_SUBST(READELF)
  
-@@ -1594,8 +1625,6 @@
+@@ -1601,8 +1632,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -4865,7 +4865,7 @@ index 972287a9c4..b989796488 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3644,6 +3673,10 @@
+@@ -3651,6 +3680,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -4876,7 +4876,7 @@ index 972287a9c4..b989796488 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5821,7 +5854,7 @@
+@@ -5828,7 +5861,7 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -4885,7 +4885,7 @@ index 972287a9c4..b989796488 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5838,4 +5871,3 @@
+@@ -5845,4 +5878,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
