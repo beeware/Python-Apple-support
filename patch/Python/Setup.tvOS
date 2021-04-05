@@ -11,8 +11,7 @@ _ctypes _ctypes/_ctypes.c \
     -I$(srcdir)/Modules/_ctypes/darwin \
     -I$(srcdir)/../Support/libFFI/Headers \
     -DPy_BUILD_CORE_MODULE \
-    -DHAVE_FFI_PREP_CIF_VAR=1 \
-    -DHAVE_FFI_PREP_CLOSURE_LOC=1 -DHAVE_FFI_CLOSURE_ALLOC=1 \
+    -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
     -L$(srcdir)/../Support/libFFI \
     -lFFI
 
