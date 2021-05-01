@@ -18,10 +18,7 @@ Python/Resources/lib/python*/lib2to3/tests
 Python/Resources/lib/python*/sqlite3/test
 Python/Resources/lib/python*/test
 # Remove compiled test and example modules.
-Python/Resources/lib/python*/lib-dynload/_test*.so
-Python/Resources/lib/python*/lib-dynload/_ctypes_test*.so
-Python/Resources/lib/python*/lib-dynload/xxlimited*.so
-Python/Resources/lib/python*/lib-dynload/_xx*.so
+Python/Resources/lib/python*/lib-dynload/*.so
 # Remove wsgiref web app module; it's unusual that mobile apps would
 # start a web app server with it.
 Python/Resources/lib/python*/wsgiref

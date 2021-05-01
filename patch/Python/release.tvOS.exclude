@@ -4,4 +4,3 @@
 #
 # Remove command-line curses toolkit.
 Python/Resources/lib/python*/curses
-Python/Resources/lib/python*/lib-dynload/_curses*.so
