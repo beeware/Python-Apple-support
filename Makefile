@@ -33,11 +33,15 @@ BUILD_NUMBER=custom
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
+# PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
+# PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
+# PYTHON_VER is the major/minor version (e.g., 3.10)
 PYTHON_VERSION=3.9.4
+PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.1.1
-OPENSSL_REVISION=i
+OPENSSL_REVISION=j
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 BZIP2_VERSION=1.0.8
@@ -175,7 +179,7 @@ clean-Python:
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
 	mkdir -p downloads
-	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
+	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
 
 # Some Python targets needed to identify the host build
 PYTHON_DIR-macOS=build/macOS/Python-$(PYTHON_VERSION)-macOS
