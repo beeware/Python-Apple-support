@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.8.9**.
+**This repository branch builds a packaged version of Python 3.8.11**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -12,11 +12,11 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project.
 
-The binaries support x86_64 for macOS; arm64 for iOS and appleTV devices;
-and armv7k for watchOS. This should enable the code to run on:
+The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
+devices; and armv7k for watchOS. This should enable the code to run on:
 
-* MacBook
-* iMac
+* MacBook (including MacBooks using Apple Silicon)
+* iMac (including iMacs using Apple Silicon)
 * Mac Pro
 * iPhone (5s or later)
 * iPad (5th gen or later)
@@ -71,7 +71,7 @@ to build a specific package; or, to build all supported packages::
 For details on how to add these binary packages to your project, see the
 package-specific documentation linked above.
 
-.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.9
-.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.9
-.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.9
-.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.9
+.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.8
+.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.8
+.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.8
+.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.8

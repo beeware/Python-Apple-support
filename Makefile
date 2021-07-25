@@ -48,7 +48,7 @@ BZIP2_VERSION=1.0.8
 
 XZ_VERSION=5.2.5
 
-LIBFFI_VERSION=3.3
+LIBFFI_VERSION=3.4.2
 
 # Supported OS
 OS=macOS iOS tvOS watchOS
@@ -492,12 +492,6 @@ $$(LIBFFI_DIR-$1)/darwin_common: downloads/libffi-$(LIBFFI_VERSION).tgz
 	# Unpack sources
 	mkdir -p $$(LIBFFI_DIR-$1)
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$1)
-	# Apply libffi patches. Apple builds of libffi use a utility script; that
-	# script doesn't work with Python3 using the out-of-the-box version in
-	# libffi 3.3. This patch adds some changes that will be included in libFFI
-	# 3.4 (whenever that is released), plus some extra targets to support
-	# tvOS and watchOS.
-	cd $$(LIBFFI_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/libffi/libffi.patch
 	# Configure the build
 	cd $$(LIBFFI_DIR-$1) && python generate-darwin-source-and-headers.py --only-$(shell echo $1 | tr '[:upper:]' '[:lower:]')
 
