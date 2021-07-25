@@ -12,11 +12,11 @@ It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project.
 
-The binaries support x86_64 for macOS; arm64 for iOS and appleTV devices;
-and armv7k for watchOS. This should enable the code to run on:
+The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
+devices; and armv7k for watchOS. This should enable the code to run on:
 
-* MacBook
-* iMac
+* MacBook (including MacBooks using Apple Silicon)
+* iMac (including iMacs using Apple Silicon)
 * Mac Pro
 * iPhone (5s or later)
 * iPad (5th gen or later)
