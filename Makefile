@@ -30,7 +30,7 @@ BUILD_NUMBER=custom
 MACOSX_DEPLOYMENT_TARGET=10.8
 
 # Version of packages that will be compiled by this meta-package
-PYTHON_VERSION=3.6.13
+PYTHON_VERSION=3.6.14
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 OPENSSL_VERSION_NUMBER=1.0.2
