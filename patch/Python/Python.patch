@@ -12677,7 +12677,7 @@ index 8815c83998..91e6195ff0 100644
          # Get sys.path in isolated mode (python3 -I)
          popen = subprocess.Popen([sys.executable, '-I', '-c',
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 41ba53b481..00b1932c69 100644
+index 5f4b019c04..fa2e5b65ce 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -901,6 +901,12 @@
@@ -12702,7 +12702,7 @@ index 41ba53b481..00b1932c69 100644
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3156,7 +3162,8 @@
+@@ -3158,7 +3164,8 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -12712,7 +12712,7 @@ index 41ba53b481..00b1932c69 100644
      @unittest.skipIf(sys.platform.startswith("aix"), "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3167,7 +3174,8 @@
+@@ -3169,7 +3176,8 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -12722,7 +12722,7 @@ index 41ba53b481..00b1932c69 100644
      @unittest.skipIf(sys.platform.startswith("aix"), "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3180,7 +3188,8 @@
+@@ -3182,7 +3190,8 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -12732,7 +12732,7 @@ index 41ba53b481..00b1932c69 100644
      @unittest.skipIf(sys.platform.startswith("aix"), "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3194,7 +3203,8 @@
+@@ -3196,7 +3205,8 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -12742,7 +12742,7 @@ index 41ba53b481..00b1932c69 100644
      @unittest.skipIf(sys.platform.startswith("aix"), "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3952,28 +3962,38 @@
+@@ -3954,28 +3964,38 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -12860,7 +12860,7 @@ index 4025c2354a..f8d50642d8 100644
              import distutils.text_file
              import distutils.unixccompiler
 diff --git a/Lib/test/test_sys.py b/Lib/test/test_sys.py
-index 84927a393f..76287412f0 100644
+index 0478f20cd3..9f849f531d 100644
 --- a/Lib/test/test_sys.py
 +++ b/Lib/test/test_sys.py
 @@ -108,6 +108,7 @@
