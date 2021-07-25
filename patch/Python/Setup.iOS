@@ -1,22 +1,20 @@
 
 #####################################################################
-# macOS: Platform specific configuration
+# iOS: Platform specific configuration
 #####################################################################
 _ctypes _ctypes/_ctypes.c \
     _ctypes/callbacks.c \
     _ctypes/callproc.c \
     _ctypes/stgdict.c \
     _ctypes/cfield.c \
-    _ctypes/libffi_apple/prep_cif.c \
-    _ctypes/libffi_apple/types.c \
-    _ctypes/libffi_apple/raw_api.c \
-    _ctypes/libffi_apple/java_raw_api.c \
-    _ctypes/libffi_apple/closures.c \
-    _ctypes/libffi_apple/x86/ffi64_x86_64.c \
-    _ctypes/libffi_apple/x86/ffiw64_x86_64.c \
-    _ctypes/libffi_apple/x86/unix64_x86_64.S \
-    _ctypes/libffi_apple/x86/win64_x86_64.S \
-    -I$(srcdir)/Modules/_ctypes/libffi_apple/include
+    _ctypes/malloc_closure.c \
+    -I$(srcdir)/Modules/_ctypes/darwin \
+    -I$(srcdir)/../Support/libFFI/Headers \
+    -DPy_BUILD_CORE \
+    -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
+    -L$(srcdir)/../Support/libFFI \
+    -lFFI
+
 
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
