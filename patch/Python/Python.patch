@@ -1,8 +1,8 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 9d206f46ae..51846163d7 100644
+index 2295ffc82f..a403afa93f 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
-@@ -3160,6 +3160,13 @@
+@@ -3161,6 +3161,13 @@
  
     .. versionadded:: 3.8
  
@@ -17,7 +17,7 @@ index 9d206f46ae..51846163d7 100644
  .. data:: MFD_CLOEXEC
            MFD_ALLOW_SEALING
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index 3150aa6070..d37e0d3a97 100644
+index 762da9b1b4..d70366fdc9 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -441,7 +441,7 @@ index c20951f4ce..fde0eef1c7 100644
  class StringPtrTestCase(unittest.TestCase):
  
 diff --git a/Lib/ctypes/test/test_unicode.py b/Lib/ctypes/test/test_unicode.py
-index c200af7b65..ea3945d56b 100644
+index 60c75424b7..8c008b466b 100644
 --- a/Lib/ctypes/test/test_unicode.py
 +++ b/Lib/ctypes/test/test_unicode.py
 @@ -1,3 +1,4 @@
@@ -458,9 +458,9 @@ index c200af7b65..ea3945d56b 100644
          wcslen = dll.my_wcslen
          wcslen.argtypes = [ctypes.c_wchar_p]
  
-@@ -26,7 +27,7 @@
-         self.assertEqual(buf[::2], 'a\xe4\xfc')
-         self.assertEqual(buf[6:5:-1], "")
+@@ -34,7 +35,7 @@
+         t.unicode = "foo\0bar\0\0"
+ 
  
 -func = ctypes.CDLL(_ctypes_test.__file__)._testfunc_p_p
 +func = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))._testfunc_p_p
@@ -686,10 +686,10 @@ index bf0d4333f9..09ba51bcea 100644
          util._environ_checked = 0
          os.environ.pop('HOME', None)
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 25a3f8c0e0..560307ffad 100644
+index fe31f437da..55f13e1120 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
-@@ -21,7 +21,7 @@
+@@ -49,7 +49,7 @@
  
  # Bootstrap-related code ######################################################
  _CASE_INSENSITIVE_PLATFORMS_STR_KEY = 'win',
@@ -726,10 +726,10 @@ index b794159f86..449cf932b6 100644
  if _exists("fork") and not _exists("spawnv") and _exists("execv"):
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 6258827d0e..af32c6c70c 100755
+index 0bce4381cc..1027075a09 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -613,7 +613,7 @@
+@@ -614,7 +614,7 @@
          default in case the command should fail.
  
      """
@@ -753,7 +753,7 @@ index 9e617afb00..41305298d3 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 0311e3a1f8..ca01e9aa16 100644
+index 4effc1d8b3..d0068215e3 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -762,6 +762,9 @@
@@ -844,7 +844,7 @@ index e3f79bfde5..2850eaeb5e 100644
      return joinuser("~", ".local")
  
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index aee3737ffc..b7060d9d1a 100644
+index 229e1ac0a2..22e6cf1a03 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
 @@ -782,8 +782,8 @@
@@ -1057,7 +1057,7 @@ index 71de82dfc7..53d5b774a5 100644
          # See asyncio issue 168.  This test is derived from the example
          # subprocess_attach_read_pipe.py, but we configure the
 diff --git a/Lib/test/test_asyncio/test_subprocess.py b/Lib/test/test_asyncio/test_subprocess.py
-index 6657a88e65..27555ec15e 100644
+index 693cc41290..dd285b0d6b 100644
 --- a/Lib/test/test_asyncio/test_subprocess.py
 +++ b/Lib/test/test_asyncio/test_subprocess.py
 @@ -103,6 +103,7 @@
@@ -1103,7 +1103,7 @@ index 1dbeac41dc..73e63d1c31 100644
      def tearDown(self):
          if os.path.exists(support.TESTFN):
 diff --git a/Lib/test/test_capi.py b/Lib/test/test_capi.py
-index 5150d5770f..6e0f0bfd5e 100644
+index b21c3acf39..afaad816cf 100644
 --- a/Lib/test/test_capi.py
 +++ b/Lib/test/test_capi.py
 @@ -54,6 +54,7 @@
@@ -1340,7 +1340,7 @@ index 22c75bae98..49c44f3de0 100644
      # Regex to parse:
      # 'GNU gdb (GDB; SUSE Linux Enterprise 12) 7.7\n' -> 7.7
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index 8df0b5251f..69912c4643 100644
+index b33fedaafc..bcfdfafe88 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -398,7 +398,7 @@
@@ -1352,7 +1352,7 @@ index 8df0b5251f..69912c4643 100644
              # On Mac OS the HFS+ filesystem replaces bytes that aren't valid
              # UTF-8 into a percent-encoded value.
              for name in os.listdir(self.tempdir):
-@@ -598,6 +598,7 @@
+@@ -599,6 +599,7 @@
  
  @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0,
          "This test can't be run reliably as root (issue #13308).")
@@ -1440,10 +1440,10 @@ index fc2a7a4fca..0871b05ac8 100644
          args = sys.executable, '-m', 'json.tool'
          process = subprocess.run(args, input=self.data, capture_output=True, text=True, check=True)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index a6cd291c9a..2ad76905b8 100644
+index 8a3ffb5584..56dce73895 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
-@@ -1764,9 +1764,21 @@
+@@ -1767,9 +1767,21 @@
      # just need a name - file can't be present, or we'll get an
      # 'address already in use' error.
      os.remove(fn)
@@ -1465,7 +1465,7 @@ index a6cd291c9a..2ad76905b8 100644
  class UnixSocketHandlerTest(SocketHandlerTest):
  
      """Test for SocketHandler with unix sockets."""
-@@ -1848,6 +1860,8 @@
+@@ -1851,6 +1863,8 @@
          self.assertEqual(self.log_output, "spam\neggs\n")
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -1474,7 +1474,7 @@ index a6cd291c9a..2ad76905b8 100644
  class UnixDatagramHandlerTest(DatagramHandlerTest):
  
      """Test for DatagramHandler using Unix sockets."""
-@@ -1932,6 +1946,8 @@
+@@ -1935,6 +1949,8 @@
          self.assertEqual(self.log_output, b'<11>h\xc3\xa4m-sp\xc3\xa4m')
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -1664,10 +1664,10 @@ index 35933e9c8c..c0c902162f 100644
          """Check if stty returns the same results
  
 diff --git a/Lib/test/test_pdb.py b/Lib/test/test_pdb.py
-index 0da449e33e..212930ec25 100644
+index 1c007a2b6f..b4a35facd9 100644
 --- a/Lib/test/test_pdb.py
 +++ b/Lib/test/test_pdb.py
-@@ -1231,6 +1231,7 @@
+@@ -1293,6 +1293,7 @@
      def tearDown(self):
          support.unlink(support.TESTFN)
  
@@ -1675,7 +1675,7 @@ index 0da449e33e..212930ec25 100644
      def _run_pdb(self, pdb_args, commands):
          self.addCleanup(support.rmtree, '__pycache__')
          cmd = [sys.executable, '-m', 'pdb'] + pdb_args
-@@ -1323,6 +1324,7 @@
+@@ -1385,6 +1386,7 @@
              ('bœr', 1),
          )
  
@@ -1954,10 +1954,10 @@ index e378033acd..6b77a61a20 100644
                           'need os.get_terminal_size()')
      def test_stty_match(self):
 diff --git a/Lib/test/test_site.py b/Lib/test/test_site.py
-index ffba139dbe..b41d185666 100644
+index 3d25d7e473..3f9859a90f 100644
 --- a/Lib/test/test_site.py
 +++ b/Lib/test/test_site.py
-@@ -197,6 +197,7 @@
+@@ -200,6 +200,7 @@
  
      @unittest.skipUnless(site.ENABLE_USER_SITE, "requires access to PEP 370 "
                            "user-site (site.ENABLE_USER_SITE)")
@@ -1965,15 +1965,7 @@ index ffba139dbe..b41d185666 100644
      def test_s_option(self):
          # (ncoghlan) Change this to use script_helper...
          usersite = site.USER_SITE
-@@ -387,6 +388,7 @@
-         """Restore sys.path"""
-         sys.path[:] = self.sys_path
- 
-+    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
-     def test_abs_paths(self):
-         # Make sure all imported modules have their __file__ and __cached__
-         # attributes as absolute paths.  Arranging to put the Lib directory on
-@@ -520,6 +522,7 @@
+@@ -474,6 +475,7 @@
  
  class StartupImportTests(unittest.TestCase):
  
@@ -1982,7 +1974,7 @@ index ffba139dbe..b41d185666 100644
          # Get sys.path in isolated mode (python3 -I)
          popen = subprocess.Popen([sys.executable, '-I', '-c',
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index aefba4f397..fd3f1108cf 100755
+index 595cae6b64..59ac05ff77 100755
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -1033,6 +1033,12 @@
@@ -2007,7 +1999,7 @@ index aefba4f397..fd3f1108cf 100755
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3500,7 +3506,8 @@
+@@ -3499,7 +3505,8 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -2017,7 +2009,7 @@ index aefba4f397..fd3f1108cf 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3511,7 +3518,8 @@
+@@ -3510,7 +3517,8 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -2027,7 +2019,7 @@ index aefba4f397..fd3f1108cf 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3524,7 +3532,8 @@
+@@ -3523,7 +3531,8 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -2037,7 +2029,7 @@ index aefba4f397..fd3f1108cf 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3538,7 +3547,8 @@
+@@ -3537,7 +3546,8 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -2047,7 +2039,7 @@ index aefba4f397..fd3f1108cf 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3562,7 +3572,8 @@
+@@ -3561,7 +3571,8 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -2057,7 +2049,7 @@ index aefba4f397..fd3f1108cf 100755
      def testFDPassEmpty(self):
          # Try to pass an empty FD array.  Can receive either no array
          # or an empty array.
-@@ -4382,28 +4393,38 @@
+@@ -4381,28 +4392,38 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -2147,10 +2139,10 @@ index 5ca43461d9..1a66b1d258 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index e8f9699ef7..d2f14cc6c9 100644
+index ed04813384..29ffb444c1 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
-@@ -41,6 +41,9 @@
+@@ -42,6 +42,9 @@
  
  mswindows = (sys.platform == "win32")
  
@@ -2258,10 +2250,10 @@ index fcc706ede5..47836af2d8 100644
  # TEST_FILES may need to be tweaked for systems depending on the maximum
  # number of files that can be opened at one time (see ulimit -n)
 diff --git a/Lib/test/test_threading.py b/Lib/test/test_threading.py
-index c21cdf8eb7..5cc9808f82 100644
+index a57085b75d..d8e9cd079b 100644
 --- a/Lib/test/test_threading.py
 +++ b/Lib/test/test_threading.py
-@@ -986,6 +986,8 @@
+@@ -995,6 +995,8 @@
              os.set_blocking(r, False)
          return (r, w)
  
@@ -2270,7 +2262,7 @@ index c21cdf8eb7..5cc9808f82 100644
      def test_threads_join(self):
          # Non-daemon threads should be joined at subinterpreter shutdown
          # (issue #18808)
-@@ -1014,6 +1016,8 @@
+@@ -1023,6 +1025,8 @@
          # The thread was joined properly.
          self.assertEqual(os.read(r, 1), b"x")
  
@@ -2681,10 +2673,10 @@ index 4aa7e6559a..511d77024c 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index f83150f1ef..e696c09cb1 100644
+index c984e2e93f..32d8ca8788 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
-@@ -56,6 +56,8 @@
+@@ -57,6 +57,8 @@
   */
  #if defined(__APPLE__)
  
@@ -2693,7 +2685,7 @@ index f83150f1ef..e696c09cb1 100644
  #if defined(__has_builtin)
  #if __has_builtin(__builtin_available)
  #define HAVE_BUILTIN_AVAILABLE 1
-@@ -175,7 +177,6 @@
+@@ -176,7 +178,6 @@
  disguised Unix interface).  Refer to the library manual and\n\
  corresponding Unix manual entries for more information on calls.");
  
@@ -2701,7 +2693,7 @@ index f83150f1ef..e696c09cb1 100644
  #ifdef HAVE_SYS_UIO_H
  #  include <sys/uio.h>
  #endif
-@@ -332,6 +333,26 @@
+@@ -333,6 +334,26 @@
  #  endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
@@ -2728,7 +2720,7 @@ index f83150f1ef..e696c09cb1 100644
  _Py_IDENTIFIER(__fspath__);
  
  /*[clinic input]
-@@ -555,27 +576,33 @@
+@@ -556,27 +577,33 @@
          }
      }
  }
@@ -2762,7 +2754,7 @@ index f83150f1ef..e696c09cb1 100644
      _PyRuntimeState *runtime = &_PyRuntime;
      _PyGILState_Reinit(runtime);
      _PyEval_ReInitThreads(runtime);
-@@ -585,8 +612,10 @@
+@@ -586,8 +613,10 @@
      _PyInterpreterState_DeleteExceptMain(runtime);
  
      run_at_forkers(_PyInterpreterState_GET()->after_forkers_child, 0);
@@ -2773,7 +2765,7 @@ index f83150f1ef..e696c09cb1 100644
  static int
  register_at_forker(PyObject **lst, PyObject *func)
  {
-@@ -606,9 +635,7 @@
+@@ -607,9 +636,7 @@
  void
  PyOS_AfterFork(void)
  {
@@ -2783,7 +2775,7 @@ index f83150f1ef..e696c09cb1 100644
  }
  
  
-@@ -1521,7 +1548,9 @@
+@@ -1522,7 +1549,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -2793,7 +2785,7 @@ index f83150f1ef..e696c09cb1 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1537,6 +1566,7 @@
+@@ -1538,6 +1567,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -2801,7 +2793,7 @@ index f83150f1ef..e696c09cb1 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1592,6 +1622,7 @@
+@@ -1593,6 +1623,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -2809,7 +2801,7 @@ index f83150f1ef..e696c09cb1 100644
      return d;
  }
  
-@@ -4751,7 +4782,12 @@
+@@ -4818,7 +4849,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -2822,7 +2814,7 @@ index f83150f1ef..e696c09cb1 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -13347,6 +13383,7 @@
+@@ -13414,6 +13450,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2830,7 +2822,7 @@ index f83150f1ef..e696c09cb1 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13407,6 +13444,7 @@
+@@ -13474,6 +13511,7 @@
  #endif
  
      return result;
@@ -4677,10 +4669,10 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index c7a7291fea..c7bd520c96 100755
+index ffa61c1dc5..54b2eb6d54 100755
 --- a/configure
 +++ b/configure
-@@ -3301,6 +3301,15 @@
+@@ -3304,6 +3304,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -4696,7 +4688,7 @@ index c7a7291fea..c7bd520c96 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3351,6 +3360,15 @@
+@@ -3354,6 +3363,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -4712,7 +4704,7 @@ index c7a7291fea..c7bd520c96 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3426,6 +3444,13 @@
+@@ -3429,6 +3447,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -4726,7 +4718,7 @@ index c7a7291fea..c7bd520c96 100755
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -6206,11 +6231,17 @@
+@@ -6209,11 +6234,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -4749,7 +4741,7 @@ index c7a7291fea..c7bd520c96 100755
  fi
  
  
-@@ -6961,8 +6992,6 @@
+@@ -6967,8 +6998,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -4758,7 +4750,7 @@ index c7a7291fea..c7bd520c96 100755
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -Wextra" >&5
  $as_echo_n "checking for -Wextra... " >&6; }
       ac_save_cc="$CC"
-@@ -11661,6 +11690,10 @@
+@@ -11669,6 +11698,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -4769,7 +4761,7 @@ index c7a7291fea..c7bd520c96 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18961,7 +18994,7 @@
+@@ -18985,7 +19018,7 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -4778,16 +4770,16 @@ index c7a7291fea..c7bd520c96 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18978,4 +19011,3 @@
+@@ -19002,4 +19035,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index 45e0af4493..2701b68cc3 100644
+index 8fe5fa5742..849e4cc45b 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -398,6 +398,15 @@
+@@ -400,6 +400,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -4803,7 +4795,7 @@ index 45e0af4493..2701b68cc3 100644
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -447,6 +456,15 @@
+@@ -449,6 +458,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -4819,7 +4811,7 @@ index 45e0af4493..2701b68cc3 100644
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -519,6 +537,13 @@
+@@ -521,6 +539,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -4833,7 +4825,7 @@ index 45e0af4493..2701b68cc3 100644
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -1214,11 +1239,17 @@
+@@ -1216,11 +1241,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -4856,7 +4848,7 @@ index 45e0af4493..2701b68cc3 100644
  fi
  AC_SUBST(READELF)
  
-@@ -1601,8 +1632,6 @@
+@@ -1606,8 +1637,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -4865,7 +4857,7 @@ index 45e0af4493..2701b68cc3 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3651,6 +3680,10 @@
+@@ -3658,6 +3687,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -4876,7 +4868,7 @@ index 45e0af4493..2701b68cc3 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5828,7 +5861,7 @@
+@@ -5851,7 +5884,7 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -4885,7 +4877,7 @@ index 45e0af4493..2701b68cc3 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5845,4 +5878,3 @@
+@@ -5868,4 +5901,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
