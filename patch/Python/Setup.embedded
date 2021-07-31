@@ -28,7 +28,7 @@ _heapq _heapqmodule.c
 _io -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
 _json -I$(srcdir)/Include/internal -DPy_BUILD_CORE_BUILTIN _json.c
 _locale _localemodule.c  # -lintl
-_lsprof _lsprof.o rotatingtree.c
+_lsprof _lsprof.c rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../Support/XZ/Headers -L$(srcdir)/../Support/XZ/ -lxz
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
@@ -65,8 +65,8 @@ _thread -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _threadmodule.c
 _tracemalloc _tracemalloc.c
 _weakref _weakref.c
 _uuid _uuidmodule.c
-atexit atexitmodule.c
 array arraymodule.c
+atexit atexitmodule.c
 audioop audioop.c
 binascii binascii.c
 cmath cmathmodule.c _math.c
@@ -112,7 +112,6 @@ zlib zlibmodule.c -I$(prefix)/include -lz
 #_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
 #_posixshmem _multiprocessing/posixshmem.c
-#_scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
 #ossaudiodev
