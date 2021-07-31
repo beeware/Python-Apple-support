@@ -15,8 +15,8 @@ incorporated into an XCode project.
 The binaries support x86_64 for macOS; arm64 for iOS and appleTV devices;
 and armv7k for watchOS. This should enable the code to run on:
 
-* MacBook
-* iMac
+* MacBook (MacBooks using Apple Silicon will run under Rosetta x86 emulation)
+* iMac (iMacs using Apple Silicon will run under Rosetta x86 emulation)
 * Mac Pro
 * iPhone (5s or later)
 * iPad (5th gen or later)
