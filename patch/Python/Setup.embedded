@@ -26,7 +26,7 @@ _heapq _heapqmodule.c
 _io -DPy_BUILD_CORE -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesio.c _io/bufferedio.c _io/textio.c _io/stringio.c
 _json _json.c
 _locale _localemodule.c
-_lsprof _lsprof.o rotatingtree.c
+_lsprof _lsprof.c rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../Support/XZ/Headers -L$(srcdir)/../Support/XZ/ -lxz
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
@@ -60,8 +60,8 @@ _symtable symtablemodule.c
 _thread -DPy_BUILD_CORE _threadmodule.c
 _tracemalloc _tracemalloc.c hashtable.c
 _weakref _weakref.c
-atexit atexitmodule.c
 array arraymodule.c
+atexit atexitmodule.c
 audioop audioop.c
 binascii binascii.c
 cmath cmathmodule.c _math.c
@@ -73,7 +73,7 @@ itertools itertoolsmodule.c
 math mathmodule.c
 mmap mmapmodule.c
 parser parsermodule.c
-posix -DPy_BUILD_CORE posixmodule.c
+posix posixmodule.c
 pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
     expat/xmlrole.c \
@@ -106,7 +106,6 @@ zlib zlibmodule.c -I$(prefix)/include -lz
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
-#_scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
 #ossaudiodev
