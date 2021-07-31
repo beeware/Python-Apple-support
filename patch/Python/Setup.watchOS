@@ -15,7 +15,6 @@ _ctypes _ctypes/_ctypes.c \
     -L$(srcdir)/../Support/libFFI \
     -lFFI
 
-
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
     _decimal/libmpdec/constants.c \
