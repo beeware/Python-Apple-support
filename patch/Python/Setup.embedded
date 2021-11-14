@@ -77,7 +77,6 @@ grp grpmodule.c
 itertools itertoolsmodule.c
 math mathmodule.c -DPy_BUILD_CORE_MODULE
 mmap mmapmodule.c
-parser parsermodule.c
 posix -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal posixmodule.c
 pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
