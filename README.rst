@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.9.4**.
+**This repository branch builds a packaged version of Python 3.10.0**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -71,7 +71,7 @@ to build a specific package; or, to build all supported packages::
 For details on how to add these binary packages to your project, see the
 package-specific documentation linked above.
 
-.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.9
-.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.9
-.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.9
-.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.9
+.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.10
+.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.10
+.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.10
+.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.10
