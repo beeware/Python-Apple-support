@@ -1,6 +1,12 @@
 Python Apple Support
 ====================
 
+**THIS IS AN ARCHIVE OF AN OLD STATE OF THE PROJECT**
+In March 2022, the decision was made to deprecate the tooling in this
+support package that allowed for the building of NumPy as a binary library.
+This tooling was error prone, and was not kept up to date. A more
+comprehensive approach for supporting binaries dependencies is required.
+
 **This repository branch builds a packaged version of Python 3.10.0**.
 Other Python versions are available by cloning other branches of the main
 repository.
