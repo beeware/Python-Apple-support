@@ -17,6 +17,7 @@ devices; and armv7k for watchOS. This should enable the code to run on:
 
 * MacBook (including MacBooks using Apple Silicon)
 * iMac (including iMacs using Apple Silicon)
+* Mac Mini (including M1 Apple Silicon Mac minis)
 * Mac Pro
 * iPhone (5s or later)
 * iPad (5th gen or later)
@@ -50,26 +51,6 @@ This should:
 
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
-
-Binary packages
----------------
-
-These tools are also able to compile the following packages that have binary
-components:
-
-* `numpy <patch/numpy/README.rst>`__
-
-These binary components are not compiled by default. However, the build
-infrastructure of this project can compile them on request. You can run::
-
-    make <name of package>
-
-to build a specific package; or, to build all supported packages::
-
-    make app_packages
-
-For details on how to add these binary packages to your project, see the
-package-specific documentation linked above.
 
 .. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.9
 .. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.9
