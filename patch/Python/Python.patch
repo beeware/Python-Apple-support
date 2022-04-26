@@ -34065,7 +34065,7 @@ index ba37cf99e2..9815c16a5c 100755
  		;;
  	*)
 diff --git a/configure b/configure
-index 829dd69bb8..d9d71e5872 100755
+index 455481bc50..ffb14d2f4a 100755
 --- a/configure
 +++ b/configure
 @@ -3260,6 +3260,15 @@
@@ -34114,7 +34114,7 @@ index 829dd69bb8..d9d71e5872 100755
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -6183,11 +6208,17 @@
+@@ -6185,11 +6210,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -34137,7 +34137,7 @@ index 829dd69bb8..d9d71e5872 100755
  fi
  
  
-@@ -6906,8 +6937,6 @@
+@@ -6908,8 +6939,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -34146,7 +34146,7 @@ index 829dd69bb8..d9d71e5872 100755
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -Wextra" >&5
  $as_echo_n "checking for -Wextra... " >&6; }
       ac_save_cc="$CC"
-@@ -11450,6 +11479,10 @@
+@@ -11452,6 +11481,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34157,7 +34157,7 @@ index 829dd69bb8..d9d71e5872 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -18684,7 +18717,17 @@
+@@ -18686,7 +18719,17 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -34176,13 +34176,13 @@ index 829dd69bb8..d9d71e5872 100755
  fi
  
  echo "creating Makefile" >&6
-@@ -18701,4 +18744,3 @@
+@@ -18703,4 +18746,3 @@
      echo "" >&6
      echo "" >&6
  fi
 -
 diff --git a/configure.ac b/configure.ac
-index f1cc8e9bcb..8898ecf484 100644
+index 1afcba3307..db2afe7e5f 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -379,6 +379,15 @@
@@ -34231,7 +34231,7 @@ index f1cc8e9bcb..8898ecf484 100644
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -1202,11 +1227,17 @@
+@@ -1204,11 +1229,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -34254,7 +34254,7 @@ index f1cc8e9bcb..8898ecf484 100644
  fi
  AC_SUBST(READELF)
  
-@@ -1564,8 +1595,6 @@
+@@ -1566,8 +1597,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -34263,7 +34263,7 @@ index f1cc8e9bcb..8898ecf484 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3539,6 +3568,10 @@
+@@ -3541,6 +3570,10 @@
  	fi
  	;;
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -34274,7 +34274,7 @@ index f1cc8e9bcb..8898ecf484 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5723,7 +5756,17 @@
+@@ -5725,7 +5758,17 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
@@ -34293,7 +34293,7 @@ index f1cc8e9bcb..8898ecf484 100644
  fi
  
  echo "creating Makefile" >&AS_MESSAGE_FD
-@@ -5740,4 +5783,3 @@
+@@ -5742,4 +5785,3 @@
      echo "" >&AS_MESSAGE_FD
      echo "" >&AS_MESSAGE_FD
  fi
