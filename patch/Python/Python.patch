@@ -1,8 +1,8 @@
 diff --git a/Doc/library/os.rst b/Doc/library/os.rst
-index 237ca4b4b5..21b95ec997 100644
+index 2a1ea05c5c..ec5e12b859 100644
 --- a/Doc/library/os.rst
 +++ b/Doc/library/os.rst
-@@ -3293,6 +3293,13 @@
+@@ -3295,6 +3295,13 @@
  
     .. versionadded:: 3.8
  
@@ -17,7 +17,7 @@ index 237ca4b4b5..21b95ec997 100644
  .. data:: MFD_CLOEXEC
            MFD_ALLOW_SEALING
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index 21a96a4bd5..192ada1347 100644
+index ab9f1d88a0..93f4e90926 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,6 +25,11 @@
@@ -62,10 +62,10 @@ index f9d27cb89d..da172b345a 100644
  try:
      CALLBACK_FUNCTYPE = WINFUNCTYPE
 diff --git a/Lib/ctypes/test/test_bitfields.py b/Lib/ctypes/test/test_bitfields.py
-index 992b8c4da3..e99c3e21a2 100644
+index 66acd62e68..95216920e6 100644
 --- a/Lib/ctypes/test/test_bitfields.py
 +++ b/Lib/ctypes/test/test_bitfields.py
-@@ -24,7 +24,7 @@
+@@ -25,7 +25,7 @@
                  ("R", c_short, 6),
                  ("S", c_short, 7)]
  
@@ -176,7 +176,7 @@ index e0b9b54e97..a5b1b55294 100644
  class CFuncPtrTestCase(unittest.TestCase):
      def test_basic(self):
 diff --git a/Lib/ctypes/test/test_functions.py b/Lib/ctypes/test/test_functions.py
-index d3c6536f27..fedeb14d6a 100644
+index bdb044e594..624ce9a388 100644
 --- a/Lib/ctypes/test/test_functions.py
 +++ b/Lib/ctypes/test/test_functions.py
 @@ -7,6 +7,7 @@
@@ -686,7 +686,7 @@ index d4a01c6e91..d687e2f44f 100644
          util._environ_checked = 0
          os.environ.pop('HOME', None)
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 9a73c7b43a..3c2fe9e840 100644
+index 49bcaea78d..891356e54d 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -726,10 +726,58 @@ index d26cfc9993..b4db279e00 100644
  if _exists("fork") and not _exists("spawnv") and _exists("execv"):
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 134fbae6b1..19c7eef8e9 100755
+index e32f9c11cd..78afc8a9da 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -605,7 +605,7 @@
+@@ -449,6 +449,47 @@
+     # If that also doesn't work return the default values
+     return release, versioninfo, machine
+ 
++def iOS_ver():
++    """ Get iOS/tvOS version information, and return it as a
++        tuple (system, release). All tuple entries are strings.
++
++        Equivalent of:
++        system = [[UIDevice currentDevice].model] UTF8String]
++        release = [[UIDevice currentDevice].systemVersion] UTF8String]
++
++    """
++    from ctypes import cast, cdll, c_void_p, c_char_p
++    from ctypes import util
++    objc = cdll.LoadLibrary(util.find_library(b'objc'))
++    uikit = cdll.LoadLibrary(util.find_library(b'UIKit'))
++
++    objc.objc_getClass.restype = c_void_p
++    objc.objc_getClass.argtypes = [c_char_p]
++    objc.objc_msgSend.restype = c_void_p
++    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++    objc.sel_registerName.restype = c_void_p
++    objc.sel_registerName.argtypes = [c_char_p]
++
++    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
++    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
++    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++
++    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
++    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++
++    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
++    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
++
++    # UTF8String returns a const char*;
++    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
++    objc.objc_msgSend.restype = c_char_p
++
++    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
++    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
++
++    return system, release
++
++
+ def _java_getprop(name, default):
+ 
+     from java.lang import System
+@@ -605,7 +646,7 @@
          default in case the command should fail.
  
      """
@@ -738,6 +786,39 @@ index 134fbae6b1..19c7eef8e9 100755
          # XXX Others too ?
          return default
  
+@@ -744,6 +785,13 @@
+             csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
+             return 'Alpha' if cpu_number >= 128 else 'VAX'
+ 
++    # iOS, tvOS and watchOS processor is the same as machine
++    def get_ios():
++        return ''
++
++    get_tvos = get_ios
++    get_watchos = get_ios
++
+     def from_subprocess():
+         """
+         Fall back to `uname -p`
+@@ -1203,11 +1251,13 @@
+         system, release, version = system_alias(system, release, version)
+ 
+     if system == 'Darwin':
+-        # macOS (darwin kernel)
+-        macos_release = mac_ver()[0]
+-        if macos_release:
+-            system = 'macOS'
+-            release = macos_release
++        if sys.platform in ('ios', 'tvos'):
++            system, release = iOS_ver()
++        else:
++            macos_release = mac_ver()[0]
++            if macos_release:
++                system = 'macOS'
++                release = macos_release
+ 
+     if system == 'Windows':
+         # MS platforms
 diff --git a/Lib/site.py b/Lib/site.py
 index 939893eb5e..8c550ed95a 100644
 --- a/Lib/site.py
@@ -753,20 +834,74 @@ index 939893eb5e..8c550ed95a 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index ccb46a6337..9d57c2af8f 100644
+index ccb46a6337..6193bcbeaf 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -759,6 +759,9 @@
+@@ -71,9 +71,13 @@
+     _mswindows = True
+ except ModuleNotFoundError:
+     _mswindows = False
+-    import _posixsubprocess
+-    import select
+-    import selectors
++    try:
++        import _posixsubprocess
++        import select
++        import selectors
++    except ModuleNotFoundError:
++        # iOS *has* subprocesses, but doesn't support them.
++        _posixsubprocess = None
+ else:
+     from _winapi import (CREATE_NEW_CONSOLE, CREATE_NEW_PROCESS_GROUP,
+                          STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+@@ -208,7 +212,7 @@
+             return "%s(%d)" % (self.__class__.__name__, int(self))
+ 
+         __del__ = Close
+-else:
++elif _posixsubprocess:
+     # When select or poll has indicated that the file is writable,
+     # we can write up to _PIPE_BUF bytes without risk of blocking.
+     # POSIX defines PIPE_BUF as >= 512.
+@@ -236,7 +240,7 @@
+ 
+     def _cleanup():
+         pass
+-else:
++elif _posixsubprocess:
+     # This lists holds Popen instances for which the underlying process had not
+     # exited at the time its __del__ method got called: those processes are
+     # wait()ed for synchronously from _cleanup() when a new Popen object is
+@@ -255,6 +259,9 @@
+                     # This can happen if two threads create a new Popen instance.
+                     # It's harmless that it was already removed, so ignore.
+                     pass
++else:
++    def _cleanup():
++        pass
+ 
+ PIPE = -1
+ STDOUT = -2
+@@ -656,7 +663,7 @@
+     Prefer an implementation which can use vfork() in some cases for best
+     performance.
+     """
+-    if _mswindows or not hasattr(os, 'posix_spawn'):
++    if _mswindows or _posixsubprocess is None or not hasattr(os, 'posix_spawn'):
+         # os.posix_spawn() is not available
+         return False
+ 
+@@ -759,6 +766,9 @@
                   pass_fds=(), *, user=None, group=None, extra_groups=None,
                   encoding=None, errors=None, text=None, umask=-1, pipesize=-1):
          """Create new Popen instance."""
-+        if not os.allows_subprocesses:
-+            raise RuntimeError("Subprocesses are not supported on this platform.")
++        if not _mswindows and _posixsubprocess is None:
++            raise RuntimeError(f"Subprocesses are not supported on {sys.platform}")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1855,7 +1858,7 @@
+@@ -1855,7 +1865,7 @@
              else:
                  self.returncode = waitstatus_to_exitcode(sts)
  
@@ -775,7 +910,7 @@ index ccb46a6337..9d57c2af8f 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1864,6 +1867,8 @@
+@@ -1864,6 +1874,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -785,7 +920,7 @@ index ccb46a6337..9d57c2af8f 100644
                  if not self._waitpid_lock.acquire(False):
                      # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index 95b48f6429..1fbff900a2 100644
+index daf9f00006..327a5178ca 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -56,6 +56,33 @@
@@ -881,10 +1016,10 @@ index 6d699c8486..8a4085d4da 100644
      """Run a Python subprocess with the given arguments.
  
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 778dd43f68..2cdb5ade08 100644
+index bed7b5d30b..4a614f6070 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
-@@ -521,6 +521,8 @@
+@@ -541,6 +541,8 @@
              self._basetest_create_connection(conn_fut)
  
      @socket_helper.skip_unless_bind_unix_socket
@@ -893,7 +1028,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -613,6 +615,8 @@
+@@ -633,6 +635,8 @@
          self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -902,7 +1037,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_ssl_connection(self):
          with test_utils.run_test_server(use_ssl=True) as httpd:
              create_connection = functools.partial(
-@@ -624,6 +628,8 @@
+@@ -644,6 +648,8 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -911,7 +1046,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_ssl_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -847,6 +853,8 @@
+@@ -867,6 +873,8 @@
          return server, path
  
      @socket_helper.skip_unless_bind_unix_socket
@@ -920,7 +1055,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_server(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_unix_server(lambda: proto)
-@@ -875,6 +883,8 @@
+@@ -895,6 +903,8 @@
          server.close()
  
      @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
@@ -929,7 +1064,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_server_path_socket_error(self):
          proto = MyProto(loop=self.loop)
          sock = socket.socket()
-@@ -940,6 +950,8 @@
+@@ -960,6 +970,8 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -938,7 +1073,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_server_ssl(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -970,6 +982,8 @@
+@@ -990,6 +1002,8 @@
          server.close()
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -947,7 +1082,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, host, port = self._make_ssl_server(
-@@ -1000,6 +1014,8 @@
+@@ -1020,6 +1034,8 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -956,7 +1091,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1060,6 +1076,8 @@
+@@ -1080,6 +1096,8 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -965,7 +1100,7 @@ index 778dd43f68..2cdb5ade08 100644
      def test_create_unix_server_ssl_verified(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1722,6 +1740,7 @@
+@@ -1742,6 +1760,7 @@
              next(it)
  
  
@@ -974,7 +1109,7 @@ index 778dd43f68..2cdb5ade08 100644
  
      def check_terminated(self, returncode):
 diff --git a/Lib/test/test_asyncio/test_streams.py b/Lib/test/test_asyncio/test_streams.py
-index 6eaa289944..e717028160 100644
+index 227b2279e1..7b8ed82778 100644
 --- a/Lib/test/test_asyncio/test_streams.py
 +++ b/Lib/test/test_asyncio/test_streams.py
 @@ -5,6 +5,7 @@
@@ -1030,7 +1165,7 @@ index 6eaa289944..e717028160 100644
          # See asyncio issue 168.  This test is derived from the example
          # subprocess_attach_read_pipe.py, but we configure the
 diff --git a/Lib/test/test_asyncio/test_subprocess.py b/Lib/test/test_asyncio/test_subprocess.py
-index 3cf88188ec..a93be1153a 100644
+index 14fa6dd76f..72c86b93c4 100644
 --- a/Lib/test/test_asyncio/test_subprocess.py
 +++ b/Lib/test/test_asyncio/test_subprocess.py
 @@ -104,6 +104,7 @@
@@ -1042,10 +1177,10 @@ index 3cf88188ec..a93be1153a 100644
  
      def test_stdin_stdout(self):
 diff --git a/Lib/test/test_asyncio/test_unix_events.py b/Lib/test/test_asyncio/test_unix_events.py
-index 643638564e..cfe1f8b506 100644
+index 2f68459d30..580e9660a6 100644
 --- a/Lib/test/test_asyncio/test_unix_events.py
 +++ b/Lib/test/test_asyncio/test_unix_events.py
-@@ -275,6 +275,8 @@
+@@ -276,6 +276,8 @@
  
  @unittest.skipUnless(hasattr(socket, 'AF_UNIX'),
                       'UNIX Sockets are not supported')
@@ -1054,7 +1189,7 @@ index 643638564e..cfe1f8b506 100644
  class SelectorEventLoopUnixSocketTests(test_utils.TestCase):
  
      def setUp(self):
-@@ -1133,6 +1135,7 @@
+@@ -1134,6 +1136,7 @@
              NotImplementedError, watcher._do_waitpid, f)
  
  
@@ -1075,7 +1210,7 @@ index 418492432a..22b12e4a1a 100644
      def tearDown(self):
          if os.path.exists(os_helper.TESTFN):
 diff --git a/Lib/test/test_capi.py b/Lib/test/test_capi.py
-index 5f78c33702..a138e79a2a 100644
+index 7b208c9006..03384ea599 100644
 --- a/Lib/test/test_capi.py
 +++ b/Lib/test/test_capi.py
 @@ -61,6 +61,7 @@
@@ -1086,8 +1221,8 @@ index 5f78c33702..a138e79a2a 100644
      def test_no_FatalError_infinite_loop(self):
          with support.SuppressCrashReport():
              p = subprocess.Popen([sys.executable, "-c",
-@@ -763,6 +764,7 @@
-         self.assertFalse(hasattr(binascii.Error, "foobar"))
+@@ -802,6 +803,7 @@
+         self.assertEqual(main_attr_id, subinterp_attr_id)
  
  
 +@unittest.skipUnless(threading, 'Threading required for this test.')
@@ -1095,7 +1230,7 @@ index 5f78c33702..a138e79a2a 100644
  
      @threading_helper.reap_threads
 diff --git a/Lib/test/test_cmd_line.py b/Lib/test/test_cmd_line.py
-index cbf9ff2a86..bffe6f2c6b 100644
+index d299f766dc..ebeead6832 100644
 --- a/Lib/test/test_cmd_line.py
 +++ b/Lib/test/test_cmd_line.py
 @@ -68,6 +68,7 @@
@@ -1114,7 +1249,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
      def test_showrefcount(self):
          def run_python(*args):
              # this is similar to assert_python_ok but doesn't strip
-@@ -167,6 +169,7 @@
+@@ -178,6 +180,7 @@
      # arguments as unicode (using wmain() instead of main()).
      @unittest.skipIf(sys.platform == 'win32',
                       'Windows has a native unicode API')
@@ -1122,7 +1257,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
      def test_undecodable_code(self):
          undecodable = b"\xff"
          env = os.environ.copy()
-@@ -282,6 +285,7 @@
+@@ -293,6 +296,7 @@
                           'False False False\n'
                           'False False True\n')
  
@@ -1130,7 +1265,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
      def test_unbuffered_output(self):
          # Test expected operation of the '-u' switch
          for stream in ('stdout', 'stderr'):
-@@ -340,6 +344,7 @@
+@@ -351,6 +355,7 @@
          # for empty and unset PYTHONPATH
          self.assertEqual(out1, out2)
  
@@ -1138,7 +1273,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
      def test_displayhook_unencodable(self):
          for encoding in ('ascii', 'latin-1', 'utf-8'):
              env = os.environ.copy()
-@@ -358,6 +363,7 @@
+@@ -369,6 +374,7 @@
              escaped = repr(text).encode(encoding, 'backslashreplace')
              self.assertIn(escaped, data)
  
@@ -1146,7 +1281,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
      def check_input(self, code, expected):
          with tempfile.NamedTemporaryFile("wb+") as stdin:
              sep = os.linesep.encode('ASCII')
-@@ -433,6 +439,7 @@
+@@ -444,6 +450,7 @@
      @unittest.skipIf(os.name != 'posix', "test needs POSIX semantics")
      @unittest.skipIf(sys.platform == "vxworks",
                           "test needs preexec support in subprocess.Popen")
@@ -1155,7 +1290,7 @@ index cbf9ff2a86..bffe6f2c6b 100644
          code = """if 1:
              import os, sys
 diff --git a/Lib/test/test_compileall.py b/Lib/test/test_compileall.py
-index cc51b8c06a..bf34313788 100644
+index 33f0c93932..2808d02cc4 100644
 --- a/Lib/test/test_compileall.py
 +++ b/Lib/test/test_compileall.py
 @@ -225,7 +225,8 @@
@@ -1169,10 +1304,10 @@ index cc51b8c06a..bf34313788 100644
                                      "workers must be greater or equal to 0"):
              compileall.compile_dir(self.directory, workers=-1)
 diff --git a/Lib/test/test_concurrent_futures.py b/Lib/test/test_concurrent_futures.py
-index 99651f5f4e..eebdf85787 100644
+index 50fa1f189b..0897e65ec8 100644
 --- a/Lib/test/test_concurrent_futures.py
 +++ b/Lib/test/test_concurrent_futures.py
-@@ -154,6 +154,7 @@
+@@ -160,6 +160,7 @@
      executor_type = futures.ThreadPoolExecutor
  
  
@@ -1180,7 +1315,7 @@ index 99651f5f4e..eebdf85787 100644
  class ProcessPoolForkMixin(ExecutorMixin):
      executor_type = futures.ProcessPoolExecutor
      ctx = "fork"
-@@ -168,6 +169,7 @@
+@@ -174,6 +175,7 @@
          return super().get_context()
  
  
@@ -1188,7 +1323,7 @@ index 99651f5f4e..eebdf85787 100644
  class ProcessPoolSpawnMixin(ExecutorMixin):
      executor_type = futures.ProcessPoolExecutor
      ctx = "spawn"
-@@ -180,6 +182,7 @@
+@@ -186,6 +188,7 @@
          return super().get_context()
  
  
@@ -1197,10 +1332,10 @@ index 99651f5f4e..eebdf85787 100644
      executor_type = futures.ProcessPoolExecutor
      ctx = "forkserver"
 diff --git a/Lib/test/test_doctest.py b/Lib/test/test_doctest.py
-index 828a0ff567..bec1299e4d 100644
+index 1098a7b9f4..1dad236b5b 100644
 --- a/Lib/test/test_doctest.py
 +++ b/Lib/test/test_doctest.py
-@@ -2839,7 +2839,12 @@
+@@ -2854,7 +2854,12 @@
      TestResults(failed=1, attempted=1)
      """
  
@@ -1227,10 +1362,10 @@ index 528147802b..73a10334db 100644
  
      @unittest.skipUnless(hasattr(signal, "setitimer"), "requires setitimer()")
 diff --git a/Lib/test/test_faulthandler.py b/Lib/test/test_faulthandler.py
-index ee3f41a108..c47ec0e700 100644
+index e0f09e821d..acbe4ed050 100644
 --- a/Lib/test/test_faulthandler.py
 +++ b/Lib/test/test_faulthandler.py
-@@ -55,6 +55,7 @@
+@@ -45,6 +45,7 @@
      finally:
          os_helper.unlink(filename)
  
@@ -1238,7 +1373,7 @@ index ee3f41a108..c47ec0e700 100644
  class FaultHandlerTests(unittest.TestCase):
      def get_output(self, code, filename=None, fd=None):
          """
-@@ -411,6 +412,7 @@
+@@ -401,6 +402,7 @@
          finally:
              sys.stderr = orig_stderr
  
@@ -1246,7 +1381,7 @@ index ee3f41a108..c47ec0e700 100644
      def test_disabled_by_default(self):
          # By default, the module should be disabled
          code = "import faulthandler; print(faulthandler.is_enabled())"
-@@ -419,6 +421,7 @@
+@@ -409,6 +411,7 @@
          output = subprocess.check_output(args)
          self.assertEqual(output.rstrip(), b"False")
  
@@ -1254,7 +1389,7 @@ index ee3f41a108..c47ec0e700 100644
      def test_sys_xoptions(self):
          # Test python -X faulthandler
          code = "import faulthandler; print(faulthandler.is_enabled())"
-@@ -431,6 +434,7 @@
+@@ -421,6 +424,7 @@
          output = subprocess.check_output(args, env=env)
          self.assertEqual(output.rstrip(), b"True")
  
@@ -1263,7 +1398,7 @@ index ee3f41a108..c47ec0e700 100644
          # empty env var
          code = "import faulthandler; print(faulthandler.is_enabled())"
 diff --git a/Lib/test/test_fcntl.py b/Lib/test/test_fcntl.py
-index 83ee7a5b0d..aa6385cfc9 100644
+index fc8c39365f..00e988fdcc 100644
 --- a/Lib/test/test_fcntl.py
 +++ b/Lib/test/test_fcntl.py
 @@ -25,7 +25,7 @@
@@ -1288,7 +1423,7 @@ index 01408d838a..2e024d17bb 100644
          """Generic buffered read method test harness to validate EINTR behavior.
  
 diff --git a/Lib/test/test_gc.py b/Lib/test/test_gc.py
-index 1528cf6e20..bcbe40c427 100644
+index 6c28b2b677..4480dc8ca0 100644
 --- a/Lib/test/test_gc.py
 +++ b/Lib/test/test_gc.py
 @@ -681,6 +681,8 @@
@@ -1301,7 +1436,7 @@ index 1528cf6e20..bcbe40c427 100644
              p = subprocess.Popen([sys.executable, "-Wd", "-c", code],
                  stdout=subprocess.PIPE,
 diff --git a/Lib/test/test_gdb.py b/Lib/test/test_gdb.py
-index 22c75bae98..49c44f3de0 100644
+index 5f554897f8..18955cb173 100644
 --- a/Lib/test/test_gdb.py
 +++ b/Lib/test/test_gdb.py
 @@ -33,6 +33,8 @@
@@ -1314,7 +1449,7 @@ index 22c75bae98..49c44f3de0 100644
      # Regex to parse:
      # 'GNU gdb (GDB; SUSE Linux Enterprise 12) 7.7\n' -> 7.7
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index 69790ec746..28a5758cc3 100644
+index 1cc020f635..5b477cacc4 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -400,7 +400,7 @@
@@ -1389,10 +1524,10 @@ index 8fd556dbed..bbefcee9f8 100644
      # Test loading extension modules with multi-phase initialization (PEP 489).
  
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index 32c29ea5dc..9890c62d9e 100644
+index fb83762cb6..568866ec16 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
-@@ -608,7 +608,7 @@
+@@ -601,7 +601,7 @@
          # On Windows and Mac OSX this test consumes large resources; It takes
          # a long time to build the >2 GiB file and takes >2 GiB of disk space
          # therefore the resource must be enabled to run this test.
@@ -1402,7 +1537,7 @@ index 32c29ea5dc..9890c62d9e 100644
                  'largefile',
                  'test requires %s bytes and a long time to run' % self.LARGE)
 diff --git a/Lib/test/test_json/test_tool.py b/Lib/test/test_json/test_tool.py
-index 0386690cad..b67c76dc98 100644
+index 1d7fca6efb..00bba81def 100644
 --- a/Lib/test/test_json/test_tool.py
 +++ b/Lib/test/test_json/test_tool.py
 @@ -85,6 +85,7 @@
@@ -1414,10 +1549,10 @@ index 0386690cad..b67c76dc98 100644
          args = sys.executable, '-m', 'json.tool'
          process = subprocess.run(args, input=self.data, capture_output=True, text=True, check=True)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index af841d64e3..0e92986f7c 100644
+index 8212cf7a9a..657a44a8ac 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
-@@ -1775,9 +1775,21 @@
+@@ -1776,9 +1776,21 @@
      # just need a name - file can't be present, or we'll get an
      # 'address already in use' error.
      os.remove(fn)
@@ -1439,7 +1574,7 @@ index af841d64e3..0e92986f7c 100644
  class UnixSocketHandlerTest(SocketHandlerTest):
  
      """Test for SocketHandler with unix sockets."""
-@@ -1859,6 +1871,8 @@
+@@ -1860,6 +1872,8 @@
          self.assertEqual(self.log_output, "spam\neggs\n")
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -1448,7 +1583,7 @@ index af841d64e3..0e92986f7c 100644
  class UnixDatagramHandlerTest(DatagramHandlerTest):
  
      """Test for DatagramHandler using Unix sockets."""
-@@ -1943,6 +1957,8 @@
+@@ -1944,6 +1958,8 @@
          self.assertEqual(self.log_output, b'<11>h\xc3\xa4m-sp\xc3\xa4m')
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -1560,10 +1695,10 @@ index 6558952308..a121e8c2dd 100644
  
  from test import support
 diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
-index 684e308ad3..d211567ed7 100644
+index 7f7d14ef0a..5cd553ef96 100644
 --- a/Lib/test/test_os.py
 +++ b/Lib/test/test_os.py
-@@ -995,6 +995,7 @@
+@@ -992,6 +992,7 @@
      @unittest.skipUnless(unix_shell and os.path.exists(unix_shell),
                           'requires a shell')
      @unittest.skipUnless(hasattr(os, 'popen'), "needs os.popen()")
@@ -1571,7 +1706,7 @@ index 684e308ad3..d211567ed7 100644
      def test_update2(self):
          os.environ.clear()
          os.environ.update(HELLO="World")
-@@ -1005,6 +1006,7 @@
+@@ -1002,6 +1003,7 @@
      @unittest.skipUnless(unix_shell and os.path.exists(unix_shell),
                           'requires a shell')
      @unittest.skipUnless(hasattr(os, 'popen'), "needs os.popen()")
@@ -1579,7 +1714,7 @@ index 684e308ad3..d211567ed7 100644
      def test_os_popen_iter(self):
          with os.popen("%s -c 'echo \"line1\nline2\nline3\"'"
                        % unix_shell) as popen:
-@@ -1956,6 +1958,7 @@
+@@ -1953,6 +1955,7 @@
  
  @unittest.skipUnless(hasattr(os, 'execv'),
                       "need os.execv()")
@@ -1587,7 +1722,7 @@ index 684e308ad3..d211567ed7 100644
  class ExecTests(unittest.TestCase):
      @unittest.skipIf(USING_LINUXTHREADS,
                       "avoid triggering a linuxthreads bug: see issue #4970")
-@@ -2280,6 +2283,7 @@
+@@ -2277,6 +2280,7 @@
          self.assertRaises(OverflowError, os.setreuid, 0, self.UID_OVERFLOW)
  
      @unittest.skipUnless(hasattr(os, 'setreuid'), 'test needs os.setreuid()')
@@ -1595,7 +1730,7 @@ index 684e308ad3..d211567ed7 100644
      def test_setreuid_neg1(self):
          # Needs to accept -1.  We run this in a subprocess to avoid
          # altering the test runner's process state (issue8045).
-@@ -2288,6 +2292,7 @@
+@@ -2285,6 +2289,7 @@
                  'import os,sys;os.setreuid(-1,-1);sys.exit(0)'])
  
      @unittest.skipUnless(hasattr(os, 'setregid'), 'test needs os.setregid()')
@@ -1603,7 +1738,7 @@ index 684e308ad3..d211567ed7 100644
      def test_setregid(self):
          if os.getuid() != 0 and not HAVE_WHEEL_GROUP:
              self.assertRaises(OSError, os.setregid, 0, 0)
-@@ -2297,6 +2302,7 @@
+@@ -2294,6 +2299,7 @@
          self.assertRaises(OverflowError, os.setregid, 0, self.GID_OVERFLOW)
  
      @unittest.skipUnless(hasattr(os, 'setregid'), 'test needs os.setregid()')
@@ -1611,7 +1746,7 @@ index 684e308ad3..d211567ed7 100644
      def test_setregid_neg1(self):
          # Needs to accept -1.  We run this in a subprocess to avoid
          # altering the test runner's process state (issue8045).
-@@ -2927,6 +2933,7 @@
+@@ -2924,6 +2930,7 @@
  
  class PidTests(unittest.TestCase):
      @unittest.skipUnless(hasattr(os, 'getppid'), "test needs os.getppid")
@@ -1619,7 +1754,7 @@ index 684e308ad3..d211567ed7 100644
      def test_getppid(self):
          p = subprocess.Popen([sys.executable, '-c',
                                'import os; print(os.getppid())'],
-@@ -2953,6 +2960,9 @@
+@@ -2950,6 +2957,9 @@
          self.assertEqual(os.waitstatus_to_exitcode(status), exitcode)
          self.assertEqual(pid2, pid)
  
@@ -1629,7 +1764,7 @@ index 684e308ad3..d211567ed7 100644
      def test_waitpid(self):
          self.check_waitpid(code='pass', exitcode=0)
  
-@@ -3622,6 +3632,7 @@
+@@ -3619,6 +3629,7 @@
          self.assertGreaterEqual(size.columns, 0)
          self.assertGreaterEqual(size.lines, 0)
  
@@ -1638,7 +1773,7 @@ index 684e308ad3..d211567ed7 100644
          """Check if stty returns the same results
  
 diff --git a/Lib/test/test_pdb.py b/Lib/test/test_pdb.py
-index a9afca867c..2ec38074be 100644
+index 6ac1a4a3c3..698e04ded1 100644
 --- a/Lib/test/test_pdb.py
 +++ b/Lib/test/test_pdb.py
 @@ -1356,6 +1356,7 @@
@@ -1658,7 +1793,7 @@ index a9afca867c..2ec38074be 100644
          # open the file as binary so we can force \r\n newline
          with open(os_helper.TESTFN, 'wb') as f:
 diff --git a/Lib/test/test_pipes.py b/Lib/test/test_pipes.py
-index 6a13b36d1c..bf7bafc6f6 100644
+index 6335e7cbe0..6173e68c02 100644
 --- a/Lib/test/test_pipes.py
 +++ b/Lib/test/test_pipes.py
 @@ -1,6 +1,7 @@
@@ -1668,7 +1803,7 @@ index 6a13b36d1c..bf7bafc6f6 100644
 +import sys
  import unittest
  import shutil
- from test.support import run_unittest, reap_children, unix_shell
+ from test.support import reap_children, unix_shell
 @@ -10,6 +11,9 @@
  if os.name != 'posix':
      raise unittest.SkipTest('pipes module only works on posix')
@@ -1709,7 +1844,7 @@ index 1a688775f4..7bb9a783d4 100644
              # information is returned
              output = subprocess.check_output(['sw_vers'], text=True)
 diff --git a/Lib/test/test_poll.py b/Lib/test/test_poll.py
-index de62350696..ded034bcb9 100644
+index 82bbb3af9f..3a35332919 100644
 --- a/Lib/test/test_poll.py
 +++ b/Lib/test/test_poll.py
 @@ -120,6 +120,7 @@
@@ -1734,10 +1869,10 @@ index cac2f6177f..f24ca18099 100644
  
      def _do_test_commandline(self, cmdline, expected):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index e4666884ce..212534495d 100644
+index 974edd766c..16b7f4d504 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
-@@ -63,15 +63,21 @@
+@@ -64,15 +64,21 @@
          # no side-effects which we need to cleanup (e.g., fork, wait, abort)
          NO_ARG_FUNCTIONS = [ "ctermid", "getcwd", "getcwdb", "uname",
                               "times", "getloadavg",
@@ -1762,7 +1897,7 @@ index e4666884ce..212534495d 100644
  
      @unittest.skipUnless(hasattr(posix, 'getresuid'),
                           'test needs posix.getresuid()')
-@@ -765,9 +771,10 @@
+@@ -766,9 +772,10 @@
              check_stat(uid, gid)
              self.assertRaises(OSError, chown_func, first_param, 0, -1)
              check_stat(uid, gid)
@@ -1776,7 +1911,7 @@ index e4666884ce..212534495d 100644
          # test illegal types
          for t in str, float:
              self.assertRaises(TypeError, chown_func, first_param, t(uid), gid)
-@@ -1044,6 +1051,7 @@
+@@ -1045,6 +1052,7 @@
              os.chdir(curdir)
              os_helper.rmtree(base_path)
  
@@ -1784,7 +1919,7 @@ index e4666884ce..212534495d 100644
      @unittest.skipUnless(hasattr(posix, 'getgrouplist'), "test needs posix.getgrouplist()")
      @unittest.skipUnless(hasattr(pwd, 'getpwuid'), "test needs pwd.getpwuid()")
      @unittest.skipUnless(hasattr(os, 'getuid'), "test needs os.getuid()")
-@@ -1055,6 +1063,7 @@
+@@ -1056,6 +1064,7 @@
  
      @unittest.skipUnless(hasattr(os, 'getegid'), "test needs os.getegid()")
      @unittest.skipUnless(hasattr(os, 'popen'), "test needs os.popen()")
@@ -1792,7 +1927,7 @@ index e4666884ce..212534495d 100644
      def test_getgroups(self):
          with os.popen('id -G 2>/dev/null') as idg:
              groups = idg.read().strip()
-@@ -1335,7 +1344,7 @@
+@@ -1114,7 +1123,7 @@
          self.assertIsInstance(hi, int)
          self.assertGreaterEqual(hi, lo)
          # OSX evidently just returns 15 without checking the argument.
@@ -1802,10 +1937,10 @@ index e4666884ce..212534495d 100644
              self.assertRaises(OSError, posix.sched_get_priority_max, -23)
  
 diff --git a/Lib/test/test_pty.py b/Lib/test/test_pty.py
-index 0c17812757..93b03b43f1 100644
+index 0243b8a30b..ca78db1663 100644
 --- a/Lib/test/test_pty.py
 +++ b/Lib/test/test_pty.py
-@@ -211,6 +211,7 @@
+@@ -210,6 +210,7 @@
          s2 = _readline(master_fd)
          self.assertEqual(b'For my pet fish, Eric.\n', normalize_output(s2))
  
@@ -1948,10 +2083,10 @@ index fa74e7770e..7314a9b9ef 100644
          # Get sys.path in isolated mode (python3 -I)
          popen = subprocess.Popen([sys.executable, '-I', '-c',
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 12af22fa3c..3c14e1cae7 100755
+index 5c15648b60..c7a43d1081 100755
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
-@@ -1033,6 +1033,12 @@
+@@ -1030,6 +1030,12 @@
              with self.assertRaises(OSError, msg=explanation):
                  socket.gethostbyaddr(addr)
  
@@ -1964,7 +2099,7 @@ index 12af22fa3c..3c14e1cae7 100755
      @unittest.skipUnless(hasattr(socket, 'sethostname'), "test needs socket.sethostname()")
      @unittest.skipUnless(hasattr(socket, 'gethostname'), "test needs socket.gethostname()")
      def test_sethostname(self):
-@@ -1145,7 +1151,7 @@
+@@ -1142,7 +1148,7 @@
          # I've ordered this by protocols that have both a tcp and udp
          # protocol, at least for modern Linuxes.
          if (sys.platform.startswith(('freebsd', 'netbsd', 'gnukfreebsd'))
@@ -1973,7 +2108,7 @@ index 12af22fa3c..3c14e1cae7 100755
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3501,7 +3507,8 @@
+@@ -3498,7 +3504,8 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -1983,7 +2118,7 @@ index 12af22fa3c..3c14e1cae7 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3512,7 +3519,8 @@
+@@ -3509,7 +3516,8 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -1993,7 +2128,7 @@ index 12af22fa3c..3c14e1cae7 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3525,7 +3533,8 @@
+@@ -3522,7 +3530,8 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -2003,7 +2138,7 @@ index 12af22fa3c..3c14e1cae7 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3539,7 +3548,8 @@
+@@ -3536,7 +3545,8 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -2013,7 +2148,7 @@ index 12af22fa3c..3c14e1cae7 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3563,7 +3573,8 @@
+@@ -3560,7 +3570,8 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -2023,7 +2158,7 @@ index 12af22fa3c..3c14e1cae7 100755
      def testFDPassEmpty(self):
          # Try to pass an empty FD array.  Can receive either no array
          # or an empty array.
-@@ -4383,28 +4394,38 @@
+@@ -4380,28 +4391,38 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -2113,7 +2248,7 @@ index a0cb605c16..7aa460d560 100644
          sub = subprocess.Popen([sys.executable,
                          os.path.join(os.path.dirname(__file__),
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index f0f0e6f606..f0a755fc56 100644
+index 7bb0492969..872ddc4c17 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -50,6 +50,9 @@
@@ -2141,7 +2276,7 @@ index 007d68817c..b49f38fe2d 100644
              import distutils.text_file
              import distutils.unixccompiler
 diff --git a/Lib/test/test_sys.py b/Lib/test/test_sys.py
-index 1fd5247a91..96d412db29 100644
+index 35da72c432..4c1e14a91b 100644
 --- a/Lib/test/test_sys.py
 +++ b/Lib/test/test_sys.py
 @@ -110,6 +110,7 @@
@@ -2204,7 +2339,7 @@ index 9408657c91..093c29f8f0 100644
          with PythonSymlink() as py:
              cmd = "-c", "import sysconfig; print(sysconfig.get_platform())"
 diff --git a/Lib/test/test_tempfile.py b/Lib/test/test_tempfile.py
-index 3a3f6a999c..2cae62b43d 100644
+index 2b0ec46a10..edc24ef30a 100644
 --- a/Lib/test/test_tempfile.py
 +++ b/Lib/test/test_tempfile.py
 @@ -21,7 +21,7 @@
@@ -2217,10 +2352,10 @@ index 3a3f6a999c..2cae62b43d 100644
  # TEST_FILES may need to be tweaked for systems depending on the maximum
  # number of files that can be opened at one time (see ulimit -n)
 diff --git a/Lib/test/test_threading.py b/Lib/test/test_threading.py
-index c51de6f4b8..1dcc49bbdf 100644
+index c54806e594..6884bb0f38 100644
 --- a/Lib/test/test_threading.py
 +++ b/Lib/test/test_threading.py
-@@ -1109,6 +1109,8 @@
+@@ -1142,6 +1142,8 @@
              os.set_blocking(r, False)
          return (r, w)
  
@@ -2229,7 +2364,7 @@ index c51de6f4b8..1dcc49bbdf 100644
      def test_threads_join(self):
          # Non-daemon threads should be joined at subinterpreter shutdown
          # (issue #18808)
-@@ -1137,6 +1139,8 @@
+@@ -1170,6 +1172,8 @@
          # The thread was joined properly.
          self.assertEqual(os.read(r, 1), b"x")
  
@@ -2239,7 +2374,7 @@ index c51de6f4b8..1dcc49bbdf 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_traceback.py b/Lib/test/test_traceback.py
-index c25628bc49..75bf1b36dd 100644
+index 18cd4aba24..c1a2812894 100644
 --- a/Lib/test/test_traceback.py
 +++ b/Lib/test/test_traceback.py
 @@ -6,7 +6,9 @@
@@ -2252,7 +2387,7 @@ index c25628bc49..75bf1b36dd 100644
  from test import support
  from test.support import Error, captured_output, cpython_only, ALWAYS_EQ
  from test.support.os_helper import TESTFN, unlink
-@@ -120,6 +122,7 @@
+@@ -130,6 +132,7 @@
              str_name = '.'.join([X.__module__, X.__qualname__])
          self.assertEqual(err[0], "%s: %s\n" % (str_name, str_value))
  
@@ -2348,10 +2483,10 @@ index d6a8333427..2064a563ac 100755
          node = self.uuid._netstat_getnode()
          self.check_node(node, 'netstat')
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index 098ba17af5..71b384fc62 100644
+index 94d626598b..b53d3a97d0 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
-@@ -172,6 +172,7 @@
+@@ -178,6 +178,7 @@
                  builder.upgrade_dependencies(fake_context)
  
      @requireVenvCreate
@@ -2359,7 +2494,7 @@ index 098ba17af5..71b384fc62 100644
      def test_prefixes(self):
          """
          Test that the prefix values are as expected.
-@@ -309,6 +310,7 @@
+@@ -315,6 +316,7 @@
      # point to the venv being used to run the test, and we lose the link
      # to the source build - so Python can't initialise properly.
      @requireVenvCreate
@@ -2367,7 +2502,7 @@ index 098ba17af5..71b384fc62 100644
      def test_executable(self):
          """
          Test that the sys.executable value is as expected.
-@@ -322,6 +324,7 @@
+@@ -328,6 +330,7 @@
          self.assertEqual(out.strip(), envpy.encode())
  
      @unittest.skipUnless(can_symlink(), 'Needs symlinks')
@@ -2375,7 +2510,7 @@ index 098ba17af5..71b384fc62 100644
      def test_executable_symlinks(self):
          """
          Test that the sys.executable value is as expected.
-@@ -407,6 +410,7 @@
+@@ -413,6 +416,7 @@
  @requireVenvCreate
  class EnsurePipTest(BaseTest):
      """Test venv module installation of pip."""
@@ -2383,7 +2518,7 @@ index 098ba17af5..71b384fc62 100644
      def assert_pip_not_installed(self):
          envpy = os.path.join(os.path.realpath(self.env_dir),
                               self.bindir, self.exe)
-@@ -536,6 +540,7 @@
+@@ -542,6 +546,7 @@
  
      # Issue #26610: pip/pep425tags.py requires ctypes
      @unittest.skipUnless(ctypes, 'pip requires ctypes')
@@ -2407,10 +2542,10 @@ index 673cc995d3..76870d0111 100644
  CMD_NAME = 'test'
  
 diff --git a/Lib/test/test_zipfile.py b/Lib/test/test_zipfile.py
-index bfc981c0d1..42d153070d 100644
+index 6e06ee6a60..bb0dd04a50 100644
 --- a/Lib/test/test_zipfile.py
 +++ b/Lib/test/test_zipfile.py
-@@ -1153,6 +1153,7 @@
+@@ -1162,6 +1162,7 @@
              self.skipTest('requires write access to the installed location')
          unlink(filename)
  
@@ -2418,7 +2553,7 @@ index bfc981c0d1..42d153070d 100644
      def test_write_pyfile(self):
          self.requiresWriteAccess(os.path.dirname(__file__))
          with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
-@@ -1197,6 +1198,7 @@
+@@ -1206,6 +1207,7 @@
              self.assertCompiledIn('email/__init__.py', names)
              self.assertCompiledIn('email/mime/text.py', names)
  
@@ -2533,7 +2668,7 @@ index a58159a277..0d6a26861d 100644
  
      if (pid != 0) {
 diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
-index 350f4cf6b8..e9ae840d3d 100644
+index 4af8702068..98825e5156 100644
 --- a/Modules/faulthandler.c
 +++ b/Modules/faulthandler.c
 @@ -1,3 +1,7 @@
@@ -2553,11 +2688,11 @@ index 350f4cf6b8..e9ae840d3d 100644
 +#  undef HAVE_SIGALTSTACK
 +#endif /* TVOS || WATCHOS */
 +
- /* Allocate at maximum 100 MiB of the stack to raise the stack overflow */
- #define STACK_OVERFLOW_MAX_SIZE (100 * 1024 * 1024)
- 
+ /* Using an alternative stack requires sigaltstack()
+    and sigaction() SA_ONSTACK */
+ #if defined(HAVE_SIGALTSTACK) && defined(HAVE_SIGACTION)
 diff --git a/Modules/makesetup b/Modules/makesetup
-index fefe3fd129..e4ca74c610 100755
+index 1a767838c9..708c65b25f 100755
 --- a/Modules/makesetup
 +++ b/Modules/makesetup
 @@ -133,7 +133,7 @@
@@ -2601,7 +2736,7 @@ index fefe3fd129..e4ca74c610 100755
  			*)     continue;;
  			esac
 diff --git a/Modules/mathmodule.c b/Modules/mathmodule.c
-index a2a2db29be..a2de52143c 100644
+index 4534176adc..0255bcfd72 100644
 --- a/Modules/mathmodule.c
 +++ b/Modules/mathmodule.c
 @@ -66,6 +66,10 @@
@@ -2616,7 +2751,7 @@ index a2a2db29be..a2de52143c 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 25ddc82cb8..dedc8ea8fa 100644
+index 03de470323..e211bd4742 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -63,6 +63,8 @@
@@ -2762,7 +2897,7 @@ index 25ddc82cb8..dedc8ea8fa 100644
      return result;
  }
  #endif
-@@ -13581,6 +13616,7 @@
+@@ -13591,6 +13626,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2770,7 +2905,7 @@ index 25ddc82cb8..dedc8ea8fa 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13641,6 +13677,7 @@
+@@ -13651,6 +13687,7 @@
  #endif
  
      return result;
@@ -4555,36 +4690,72 @@ index 4125240606..317a576566 100644
 +    return ret;
 +}
 diff --git a/config.sub b/config.sub
-index ba37cf99e2..9815c16a5c 100755
+index d74fb6deac..249b391d71 100755
 --- a/config.sub
 +++ b/config.sub
-@@ -249,7 +249,7 @@
- 	| alpha64 | alpha64ev[4-8] | alpha64ev56 | alpha64ev6[78] | alpha64pca5[67] \
- 	| am33_2.0 \
- 	| arc | arceb \
--	| arm | arm[bl]e | arme[lb] | armv[2-8] | armv[3-8][lb] | armv6m | armv[78][arm] \
-+	| arm | arm[bl]e | arme[lb] | armv[2-8] | armv[3-8][lb] | armv6m | armv[78][armk] \
- 	| avr | avr32 \
- 	| ba \
- 	| be32 | be64 \
-@@ -1526,6 +1526,12 @@
- 		;;
- 	-ios)
- 		;;
-+	-ios*)
-+		;;
-+	-tvos*)
-+		;;
-+	-watchos*)
-+		;;
- 	-none)
- 		;;
- 	*)
+@@ -1723,7 +1723,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
+ 	     | hiux* | abug | nacl* | netware* | windows* \
+-	     | os9* | macos* | osx* | ios* \
++	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
 diff --git a/configure b/configure
-index 1baa145e3e..950ccbfd25 100755
+index 19f1bd59ba..e201564956 100755
 --- a/configure
 +++ b/configure
-@@ -3334,6 +3334,15 @@
+@@ -793,7 +793,6 @@
+ docdir
+ oldincludedir
+ includedir
+-runstatedir
+ localstatedir
+ sharedstatedir
+ sysconfdir
+@@ -917,7 +916,6 @@
+ sysconfdir='${prefix}/etc'
+ sharedstatedir='${prefix}/com'
+ localstatedir='${prefix}/var'
+-runstatedir='${localstatedir}/run'
+ includedir='${prefix}/include'
+ oldincludedir='/usr/include'
+ docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
+@@ -1170,15 +1168,6 @@
+   | -silent | --silent | --silen | --sile | --sil)
+     silent=yes ;;
+ 
+-  -runstatedir | --runstatedir | --runstatedi | --runstated \
+-  | --runstate | --runstat | --runsta | --runst | --runs \
+-  | --run | --ru | --r)
+-    ac_prev=runstatedir ;;
+-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+-  | --run=* | --ru=* | --r=*)
+-    runstatedir=$ac_optarg ;;
+-
+   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
+     ac_prev=sbindir ;;
+   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
+@@ -1316,7 +1305,7 @@
+ for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
+ 		datadir sysconfdir sharedstatedir localstatedir includedir \
+ 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
+-		libdir localedir mandir runstatedir
++		libdir localedir mandir
+ do
+   eval ac_val=\$$ac_var
+   # Remove trailing slashes.
+@@ -1469,7 +1458,6 @@
+   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
+   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
+   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
+   --libdir=DIR            object code libraries [EPREFIX/lib]
+   --includedir=DIR        C header files [PREFIX/include]
+   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
+@@ -3344,6 +3332,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -4600,7 +4771,7 @@ index 1baa145e3e..950ccbfd25 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3384,6 +3393,15 @@
+@@ -3394,6 +3391,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -4616,7 +4787,7 @@ index 1baa145e3e..950ccbfd25 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3459,6 +3477,13 @@
+@@ -3469,6 +3475,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -4630,7 +4801,20 @@ index 1baa145e3e..950ccbfd25 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6226,11 +6251,17 @@
+@@ -5389,6 +5402,12 @@
+ case $ac_sys_system in #(
+   Darwin*) :
+     MULTIARCH="" ;; #(
++  iOS*) :
++    MULTIARCH="" ;; #(
++  tvOS*) :
++    MULTIARCH="" ;; #(
++  watchOS*) :
++    MULTIARCH="" ;; #(
+   FreeBSD*) :
+     MULTIARCH="" ;; #(
+   *) :
+@@ -6249,11 +6268,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -4653,7 +4837,16 @@ index 1baa145e3e..950ccbfd25 100755
  fi
  
  
-@@ -11669,6 +11700,10 @@
+@@ -7051,8 +7076,6 @@
+ # tweak BASECFLAGS based on compiler and platform
+ case $GCC in
+ yes)
+-    CFLAGS_NODIST="$CFLAGS_NODIST -std=c99"
+-
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -Wextra" >&5
+ $as_echo_n "checking for -Wextra... " >&6; }
+      ac_save_cc="$CC"
+@@ -11911,6 +11934,10 @@
  then
  	case $ac_sys_system/$ac_sys_release in
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -4664,7 +4857,7 @@ index 1baa145e3e..950ccbfd25 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -19098,7 +19133,7 @@
+@@ -19367,7 +19394,7 @@
  echo "creating Modules/Setup.local" >&6
  if test ! -f Modules/Setup.local
  then
@@ -4674,7 +4867,7 @@ index 1baa145e3e..950ccbfd25 100755
  
  echo "creating Makefile" >&6
 diff --git a/configure.ac b/configure.ac
-index 3e6c07c279..499983d1bc 100644
+index 763fc697be..a4378560b3 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -400,6 +400,15 @@
@@ -4723,7 +4916,17 @@ index 3e6c07c279..499983d1bc 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -1203,11 +1228,17 @@
+@@ -875,6 +900,9 @@
+ AC_MSG_CHECKING([for multiarch])
+ AS_CASE([$ac_sys_system],
+   [Darwin*], [MULTIARCH=""],
++  [iOS*], [MULTIARCH=""],
++  [tvOS*], [MULTIARCH=""],
++  [watchOS*], [MULTIARCH=""],
+   [FreeBSD*], [MULTIARCH=""],
+   [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
+ )
+@@ -1210,11 +1238,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -4746,7 +4949,7 @@ index 3e6c07c279..499983d1bc 100644
  fi
  AC_SUBST(READELF)
  
-@@ -1603,8 +1634,6 @@
+@@ -1610,8 +1644,6 @@
  # tweak BASECFLAGS based on compiler and platform
  case $GCC in
  yes)
@@ -4755,7 +4958,7 @@ index 3e6c07c279..499983d1bc 100644
      AC_MSG_CHECKING(for -Wextra)
       ac_save_cc="$CC"
       CC="$CC -Wextra -Werror"
-@@ -3645,6 +3674,10 @@
+@@ -3672,6 +3704,10 @@
  then
  	case $ac_sys_system/$ac_sys_release in
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -4766,7 +4969,7 @@ index 3e6c07c279..499983d1bc 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -5945,7 +5978,7 @@
+@@ -6013,7 +6049,7 @@
  echo "creating Modules/Setup.local" >&AS_MESSAGE_FD
  if test ! -f Modules/Setup.local
  then
