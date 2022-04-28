@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.10.0**.
+**This repository branch builds a packaged version of Python 3.10.4**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -13,20 +13,20 @@ selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
-devices; and armv7k for watchOS. This should enable the code to run on:
+devices; and arm64_32 for watchOS. This should enable the code to run on:
 
 * MacBook (including MacBooks using Apple Silicon)
 * iMac (including iMacs using Apple Silicon)
 * Mac Mini (including M1 Apple Silicon Mac minis)
 * Mac Pro
-* iPhone (5s or later)
+* iPhone (6s or later)
 * iPad (5th gen or later)
 * iPad Air (all models)
 * iPad Mini (2 or later)
 * iPad Pro (all models)
-* iPod Touch (6th gen or later)
+* iPod Touch (7th gen or later)
 * Apple TV (4th gen or later)
-* Apple Watch
+* Apple Watch (4th gen or later)
 
 Quickstart
 ----------
