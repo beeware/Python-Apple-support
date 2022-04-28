@@ -144,7 +144,7 @@ downloads/bzip2-$(BZIP2_VERSION).tgz:
 clean-XZ:
 	rm -rf build/*/xz-$(XZ_VERSION)-* \
 		build/*/xz \
-		build/*/Support/XZ
+		build/*/Support/XZ.xcframework
 
 # Download original XZ source code archive.
 downloads/xz-$(XZ_VERSION).tgz:
@@ -426,10 +426,22 @@ $$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_DIR-$
 	mkdir -p build/$(os)/bzip2/lib/$(sdk)
 	xcrun --sdk $(sdk) libtool -static -o $$@ $$^
 
+###########################################################################
+# SDK: XZ (LZMA)
+###########################################################################
+
+XZ_FATLIB-$$(sdk)=build/$(os)/xz/lib/$(sdk)/liblzma.a
+
+$$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
+	mkdir -p build/$(os)/xz/lib/$(sdk)
+	xcrun --sdk $(sdk) libtool -static -o $$@ $$^
+
 # Dump environment variables (for debugging purposes)
 vars-$(sdk):
 	@echo "SDK_TARGETS-$(sdk): $$(SDK_TARGETS-$(sdk))"
 	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
+	@echo "BZIP2_FATLIB-$(sdk): $$(BZIP2_FATLIB-$(sdk))"
+	@echo "XZ_FATLIB-$(sdk): $$(XZ_FATLIB-$(sdk))"
 
 endef # build-sdk
 
@@ -456,7 +468,7 @@ $(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 clean-$(os):
 	rm -rf build/$(os)
 
-dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_XCFRAMEWORK-$(os)) $$(XZ_FRAMEWORK-$(os)) $$(OPENSSL_FRAMEWORK-$(os)) $$(LIBFFI_FRAMEWORK-$(os)) $$(PYTHON_FRAMEWORK-$(os))
+dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_XCFRAMEWORK-$(os)) $$(XZ_XCFRAMEWORK-$(os)) $$(OPENSSL_FRAMEWORK-$(os)) $$(LIBFFI_FRAMEWORK-$(os)) $$(PYTHON_FRAMEWORK-$(os))
 	mkdir -p dist
 	echo "Python version: $(PYTHON_VERSION) " > build/$(os)/Support/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> build/$(os)/Support/VERSIONS
@@ -520,24 +532,14 @@ $$(BZIP2_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(BZIP2_FATLIB-$$(sd
 # Build: XZ (LZMA)
 ###########################################################################
 
-XZ_FRAMEWORK-$(os)=build/$(os)/Support/XZ
+XZ_XCFRAMEWORK-$(os)=build/$(os)/Support/XZ.xcframework
 
-XZ-$(os): $$(XZ_FRAMEWORK-$(os))
+XZ-$(os): $$(XZ_XCFRAMEWORK-$(os))
 
-$$(XZ_FRAMEWORK-$(os)): build/$(os)/xz/lib/liblzma.a
-	# Create framework directory structure
-	mkdir -p $$(XZ_FRAMEWORK-$(os))
-
-	# Copy the headers
-	cp -f -r build/$(os)/xz/include $$(XZ_FRAMEWORK-$(os))/Headers
-
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(XZ_FRAMEWORK-$(os))/libxz.a $$^
-
-build/$(os)/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$(os)),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
-	mkdir -p build/$(os)
-	xcrun lipo -create -o $$@ $$^
+$$(XZ_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(XZ_FATLIB-$$(sdk)))
+	mkdir -p $$(XZ_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(XZ_FATLIB-$$(sdk)) -headers build/$(os)/xz/include)
 
 ###########################################################################
 # Build: libFFI
@@ -609,7 +611,7 @@ $$(PYTHON_DIR-$(os))/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
 		$$(PYTHON_CONFIGURE-$(os))
 
 # Build Python
-$$(PYTHON_DIR-$(os))/dist/lib/libpython$(PYTHON_VER).a: $$(BZIP2_XCFRAMEWORK-$(os)) $$(XZ_FRAMEWORK-$(os)) $$(OPENSSL_FRAMEWORK-$(os)) $$(LIBFFI_FRAMEWORK-$(os))  $$(PYTHON_DIR-$(os))/Makefile
+$$(PYTHON_DIR-$(os))/dist/lib/libpython$(PYTHON_VER).a: $$(BZIP2_XCFRAMEWORK-$(os)) $$(XZ_XCFRAMEWORK-$(os)) $$(OPENSSL_FRAMEWORK-$(os)) $$(LIBFFI_FRAMEWORK-$(os))  $$(PYTHON_DIR-$(os))/Makefile
 	# Build target Python
 	cd $$(PYTHON_DIR-$(os)) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$(os))/dist/bin:$(PATH)" make all install
 
@@ -653,7 +655,7 @@ vars-$(os): $$(foreach target,$$(TARGETS-$(os)),vars-$$(target)) $$(foreach arch
 	@echo "ARCHES-$(os): $$(ARCHES-$(os))"
 	@echo "OPENSSL_FRAMEWORK-$(os): $$(OPENSSL_FRAMEWORK-$(os))"
 	@echo "BZIP2_XCFRAMEWORK-$(os): $$(BZIP2_XCFRAMEWORK-$(os))"
-	@echo "XZ_FRAMEWORK-$(os): $$(XZ_FRAMEWORK-$(os))"
+	@echo "XZ_XCFRAMEWORK-$(os): $$(XZ_XCFRAMEWORK-$(os))"
 	@echo "LIBFFI_FRAMEWORK-$(os): $$(LIBFFI_FRAMEWORK-$(os))"
 	@echo "PYTHON_FRAMEWORK-$(os): $$(PYTHON_FRAMEWORK-$(os))"
 	@echo "LIBFFI_DIR-$(os): $$(LIBFFI_DIR-$(os))"
