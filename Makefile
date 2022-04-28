@@ -62,6 +62,8 @@ OS_LIST=macOS iOS tvOS watchOS
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 PYTHON_TARGETS-macOS=macOS
 CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+CFLAGS-macosx.x86_64=
+CFLAGS-macosx.arm64=
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
@@ -71,17 +73,19 @@ CFLAGS-iphonesimulator.x86_64=
 CFLAGS-iphonesimulator.arm64=
 
 # tvOS targets
-TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
+TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
 CFLAGS-tvOS=-mtvos-version-min=9.0 -fembed-bitcode
 CFLAGS-appletvos.arm64=
 CFLAGS-appletvsimulator.x86_64=
+CFLAGS-appletvsimulator.arm64=
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
-TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
+TARGETS-watchOS=wwatchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 CFLAGS-watchOS=-mwatchos-version-min=4.0 -fembed-bitcode
-CFLAGS-watchsimulator.i386=
-CFLAGS-watchos.armv7k=
+CFLAGS_watchsimulator.x86_64=
+CFLAGS-watchsimulator.arm64=
+CFLAGS-watchos.arm64_32=
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # override machine types for arm64
