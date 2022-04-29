@@ -299,15 +299,25 @@ else
 
 endif
 
-$$(OPENSSL_SSL_LIB-$(target)) $$(OPENSSL_CRYPTO_LIB-$(target)): $$(OPENSSL_DIR-$(target))/Makefile
-	@echo ">>> Build and install OpenSSL for $(target)"
+$$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/Makefile
+	@echo ">>> Build OpenSSL for $(target)"
 	# Make and install just the software (not the docs)
 	cd $$(OPENSSL_DIR-$(target)) && \
 		CC="$$(CC-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
-		make install_sw \
+		make depend _all\
 			2>&1 | tee ../openssl-$(target).build.log
+
+$$(OPENSSL_SSL_LIB-$(target)) $$(OPENSSL_CRYPTO_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
+	@echo ">>> Install OpenSSL for $(target)"
+	# Install just the software (not the docs)
+	cd $$(OPENSSL_DIR-$(target)) && \
+		CC="$$(CC-$(target))" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+		make install_sw \
+			2>&1 | tee ../openssl-$(target).install.log
 
 ###########################################################################
 # Target: BZip2
@@ -586,6 +596,11 @@ OPENSSL_XCFRAMEWORK-$(os)=build/$(os)/Support/OpenSSL.xcframework
 
 $$(OPENSSL_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATLIB-$$(sdk)))
 	@echo ">>> Create OpenSSL.XCFramework on $(os)"
+	# The OpenSSL Makefile leaves the build in a "dirty" state; running the same build
+	# twice in a row results in parts of the build being repeated, which then causes
+	# other targets in *this* Makefile to trigger. To avoid problems, delete the
+	# XCFramework every time and rebuild it.
+	rm -rf $$(OPENSSL_XCFRAMEWORK-$(os))
 	mkdir -p $$(OPENSSL_XCFRAMEWORK-$(os))
 	xcodebuild -create-xcframework \
 		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(OPENSSL_FATLIB-$$(sdk)) -headers build/$(os)/openssl/$$(sdk)/include)
