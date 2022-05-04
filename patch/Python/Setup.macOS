@@ -34,3 +34,7 @@ _decimal _decimal/_decimal.c \
     -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
 
 _scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
+
+_curses _cursesmodule.c -lcurses -ltermcap
+
+_curses_panel _curses_panel.c -lpanel -lncurses
