@@ -1,4 +1,3 @@
-
 #####################################################################
 # tvOS: Platform specific configuration
 #####################################################################
@@ -9,10 +8,10 @@ _ctypes _ctypes/_ctypes.c \
     _ctypes/cfield.c \
     _ctypes/malloc_closure.c \
     -I$(srcdir)/Modules/_ctypes/darwin \
-    -I$(srcdir)/../Support/libFFI/Headers \
+    -I$(srcdir)/../Support/libFFI.xcframework/{{slice}}/Headers \
     -DPy_BUILD_CORE_MODULE \
     -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
-    -L$(srcdir)/../Support/libFFI \
+    -L$(srcdir)/../Support/libFFI.xcframework/{{slice}} \
     -lFFI
 
 _decimal _decimal/_decimal.c \

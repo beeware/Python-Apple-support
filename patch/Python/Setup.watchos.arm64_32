@@ -1,18 +1,6 @@
 #####################################################################
-# iOS: Platform specific configuration
+# watchOS ARM64_32: Target specific configuration
 #####################################################################
-_ctypes _ctypes/_ctypes.c \
-    _ctypes/callbacks.c \
-    _ctypes/callproc.c \
-    _ctypes/stgdict.c \
-    _ctypes/cfield.c \
-    _ctypes/malloc_closure.c \
-    -I$(srcdir)/Modules/_ctypes/darwin \
-    -I$(srcdir)/../Support/libFFI.xcframework/{{slice}}/Headers \
-    -DPy_BUILD_CORE_MODULE \
-    -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
-    -L$(srcdir)/../Support/libFFI.xcframework/{{slice}} \
-    -lFFI
 
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
@@ -30,4 +18,4 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/sixstep.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
-    -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
+    -DCONFIG_32=1 -DANSI=1

@@ -4555,22 +4555,18 @@ index 4125240606..317a576566 100644
 +    return ret;
 +}
 diff --git a/config.sub b/config.sub
-index d74fb6deac..8483d5138c 100755
+index d74fb6deac..249b391d71 100755
 --- a/config.sub
 +++ b/config.sub
-@@ -1505,6 +1505,12 @@
- 			;;
- 		esac
- 		;;
-+	-ios*)
-+		;;
-+	-tvos*)
-+		;;
-+	-watchos*)
-+		;;
- 	*)
- 		# No normalization, but not necessarily accepted, that comes below.
- 		;;
+@@ -1723,7 +1723,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
+ 	     | hiux* | abug | nacl* | netware* | windows* \
+-	     | os9* | macos* | osx* | ios* \
++	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
 diff --git a/configure b/configure
 index 19f1bd59ba..e201564956 100755
 --- a/configure
