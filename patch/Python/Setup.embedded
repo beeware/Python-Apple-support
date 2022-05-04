@@ -37,6 +37,7 @@ _opcode _opcode.c
 _operator _operator.c
 _pickle _pickle.c -DPy_BUILD_CORE_MODULE
 _posixsubprocess _posixsubprocess.c
+_posixshmem -I$(srcdir)/Modules/_multiprocessing posixshmem.c
 _queue _queuemodule.c
 _random _randommodule.c -DPy_BUILD_CORE_MODULE
 _sha1 sha1module.c
@@ -65,6 +66,7 @@ _thread -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _threadmodule.c
 _tracemalloc _tracemalloc.c
 _weakref _weakref.c
 _uuid _uuidmodule.c
+_zoneinfo _zoneinfo.c -DPy_BUILD_CORE_MODULE
 array arraymodule.c
 atexit atexitmodule.c
 audioop audioop.c
@@ -77,7 +79,6 @@ grp grpmodule.c
 itertools itertoolsmodule.c
 math mathmodule.c -DPy_BUILD_CORE_MODULE
 mmap mmapmodule.c
-parser parsermodule.c
 posix -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal posixmodule.c
 pwd pwdmodule.c
 pyexpat expat/xmlparse.c \
@@ -111,7 +112,6 @@ zlib zlibmodule.c -I$(prefix)/include -lz
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
-#_posixshmem _multiprocessing/posixshmem.c
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
 #ossaudiodev
