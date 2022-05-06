@@ -214,7 +214,7 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 # Setup: libFFI
 ###########################################################################
 
-# Clean the LibFFI project
+# Clean the libFFI project
 clean-libFFI:
 	@echo ">>> Clean libFFI build products"
 	rm -rf build/*/libffi-$(LIBFFI_VERSION) \
@@ -393,15 +393,14 @@ endif
 
 $$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/Makefile
 	@echo ">>> Build OpenSSL for $(target)"
-	# Make and install just the software (not the docs)
 	cd $$(OPENSSL_DIR-$(target)) && \
 		CC="$$(CC-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
-		make depend _all\
+		make depend _all \
 			2>&1 | tee -a ../openssl-$(target).build.log
 
-$$(OPENSSL_SSL_LIB-$(target)) $$(OPENSSL_CRYPTO_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
+$$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
 	cd $$(OPENSSL_DIR-$(target)) && \
@@ -423,7 +422,7 @@ LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 LIBFFI_DIR-$(target)=$$(LIBFFI_DIR-$(os))/build_$$(SDK-$(target))-$$(ARCH-$(target))
 LIBFFI_LIB-$(target)=$$(LIBFFI_DIR-$(target))/.libs/libffi.a
 
-$$(LIBFFI_LIB-$(target)): $$(LIBFFI_DIR-$(os))/darwin_common
+$$(LIBFFI_LIB-$(target)): $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h
 	@echo ">>> Build libFFI for $(target)"
 	cd $$(LIBFFI_DIR-$(target)) && \
 		make \
@@ -582,22 +581,23 @@ $$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_LIB-$$(targ
 
 OPENSSL_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libOpenSSL.a
 
-$$(OPENSSL_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)) $$(OPENSSL_CRYPTO_LIB-$$(target)))
+$$(OPENSSL_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)))
 	@echo ">>> Build OpenSSL fat library for $(sdk)"
 	mkdir -p build/$(os)/openssl/$(sdk)/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ \
+		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)) $$(OPENSSL_CRYPTO_LIB-$$(target))) \
 		2>&1 | tee -a build/$(os)/openssl-$(sdk).libtool.log
 	# Copy headers from the first target associated with the SDK
 	cp -r $$(OPENSSL_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/openssl/$(sdk)
 
 ###########################################################################
-# SDK: LibFFI
+# SDK: libFFI
 ###########################################################################
 
 LIBFFI_FATLIB-$(sdk)=$$(LIBFFI_DIR-$(os))/_install/$(sdk)/libFFI.a
 
 $$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB-$$(target)))
-	@echo ">>> Build LibFFI fat library for $(sdk)"
+	@echo ">>> Build libFFI fat library for $(sdk)"
 	mkdir -p $$(LIBFFI_DIR-$(os))/_install/$(sdk)
 	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
 		2>&1 | tee -a build/$(os)/libffi-$(sdk).libtool.log
@@ -739,8 +739,7 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-# Unpack LibFFI and generate source & headers
-$$(LIBFFI_DIR-$(os))/darwin_common: downloads/libffi-$(LIBFFI_VERSION).tgz Python-macOS
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz Python-macOS
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
