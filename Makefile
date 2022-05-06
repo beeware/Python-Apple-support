@@ -438,7 +438,14 @@ endif
 # macOS builds are compiled as a single universal2 build. As a result,
 # the macOS Python build is configured in the `build` macro, rather than the
 # `build-target` macro.
-ifneq ($(os),macOS)
+ifeq ($(os),macOS)
+
+# These constants will be the same for all macOS targets
+PYTHON_DIR-$(target)=build/$(os)/Python-$(PYTHON_VERSION)-$(os)
+PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER).a
+# PYCONFIG_H-$(target) not defined, as there's no header shim needed
+
+else
 
 PYTHON_DIR-$(target)=build/$(os)/Python-$(PYTHON_VERSION)-$(target)
 PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER).a
@@ -518,7 +525,8 @@ vars-$(target):
 	@echo "LIBFFI_DIR-$(target): $$(LIBFFI_DIR-$(target))"
 	@echo "LIBFFI_LIB-$(target): $$(LIBFFI_LIB-$(target))"
 	@echo "PYTHON_DIR-$(target): $$(PYTHON_DIR-$(target))"
-	@echo "pyconfig.h-$(target): $$(pyconfig.h-$(target))"
+	@echo "PYTHON_LIB-$(target): $$(PYTHON_LIB-$(target))"
+	@echo "PYCONFIG_H-$(target): $$(PYCONFIG_H-$(target))"
 	@echo
 
 endef # build-target
@@ -603,16 +611,22 @@ $$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB
 # SDK: Python
 ###########################################################################
 
-ifeq ($(os),macOS)
-
-# There's no SDK-level build; redirect some constants to the OS-level build
-PYTHON_DIR-$(sdk)=build/$(os)/Python-$(PYTHON_VERSION)-$(os)
-PYTHON_FATLIB-$(sdk)=$$(PYTHON_DIR-$(sdk))/_install/lib/libpython$(PYTHON_VER).a
-
-else
-
 PYTHON_DIR-$(sdk)=build/$(os)/python/$(sdk)
 PYTHON_FATLIB-$(sdk)=$$(PYTHON_DIR-$(sdk))/lib/libPython.a
+
+ifeq ($(os),macOS)
+# There's a single OS-level build for macOS; the fat library is a direct copy of
+# OS build, and the headers are the unmodifed headers produced by the OS build.
+
+$$(PYTHON_FATLIB-$(sdk)): $$(PYTHON_LIB-$$(firstword $$(SDK_TARGETS-$(sdk))))
+	@echo ">>> Build Python fat library for $(sdk)"
+	# Copy the OS-level library
+	mkdir -p build/$(os)/python/$(sdk)/lib
+	cp $$(PYTHON_LIB-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_FATLIB-$(sdk))
+	# Copy headers from the OS-level build
+	cp -r $$(PYTHON_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/python/$(sdk)
+
+else
 
 $$(PYTHON_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for $(sdk)"
@@ -764,7 +778,12 @@ ifeq ($(os),macOS)
 # On macOS, there's a single target and a single output dir,
 # rather than a target for each architecture.
 PYTHON_TARGETS-$(os)=macOS
-PYTHON_DIR-$(os)=build/$(os)/Python-$(PYTHON_VERSION)-$(os)
+
+# For convenience on macOS, define an OS-level PYTHON_DIR and PYTHON_LIB.
+# They are proxies of the values set for the first target, since all target
+# constants should have the same value for macOS builds
+PYTHON_DIR-$(os)=$$(PYTHON_DIR-$$(firstword $$(TARGETS-$(os))))
+PYTHON_LIB-$(os)=$$(PYTHON_LIB-$$(firstword $$(TARGETS-$(os))))
 
 $$(PYTHON_DIR-$(os))/Makefile: \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
@@ -798,7 +817,7 @@ $$(PYTHON_DIR-$(os))/python.exe: \
 		make all \
 		2>&1 | tee -a ../python-$(os).build.log
 
-$$(PYTHON_FATLIB-macosx): $$(PYTHON_DIR-$(os))/python.exe
+$$(PYTHON_LIB-$(os)): $$(PYTHON_DIR-$(os))/python.exe
 	@echo ">>> Install Python for $(os)"
 	cd $$(PYTHON_DIR-$(os)) && \
 		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$(os))/_install/bin:$(PATH)" \
@@ -817,7 +836,7 @@ $$(PYTHON_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(
 	@echo ">>> Create Python.XCFramework on $(os)"
 	mkdir -p $$(PYTHON_XCFRAMEWORK-$(os))
 	xcodebuild -create-xcframework \
-		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_DIR-$$(sdk))/_install/include/python$(PYTHON_VER)) \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_DIR-$$(sdk))/include/python$(PYTHON_VER)) \
 		2>&1 | tee -a build/$(os)/python-$(os).xcframework.log
  	# Copy the standard library from the first target listed
 	mkdir -p $$(PYTHON_RESOURCES-$(os))
@@ -877,6 +896,7 @@ vars-$(os): $$(foreach target,$$(TARGETS-$(os)),vars-$$(target)) $$(foreach sdk,
 	@echo "PYTHON_RESOURCES-$(os): $$(PYTHON_RESOURCES-$(os))"
 	@echo "PYTHON_TARGETS-$(os): $$(PYTHON_TARGETS-$(os))"
 	@echo "PYTHON_DIR-$(os): $$(PYTHON_DIR-$(os))"
+	@echo "PYTHON_LIB-$(os): $$(PYTHON_LIB-$(os))"
 	@echo
 
 endef # build
