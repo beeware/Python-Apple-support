@@ -36,9 +36,7 @@ PROJECT_DIR=$(shell pwd)
 BUILD_NUMBER=custom
 
 # This version limit will only be honored on x86_64 builds.
-# arm64/M1 builds are only supporteded on macOS 11.0 or greater.
-MACOSX_DEPLOYMENT_TARGET-x86_64=10.8
-MACOSX_DEPLOYMENT_TARGET-arm64=11.0
+MACOSX_DEPLOYMENT_TARGET=10.15
 
 # Version of packages that will be compiled by this meta-package
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
@@ -64,10 +62,12 @@ OS_LIST=macOS iOS tvOS watchOS
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-CFLAGS-macOS=
-CFLAGS-macosx.x86_64=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET-x86_64)
-CFLAGS-macosx.arm64=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET-arm64)
+CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+CFLAGS-macosx.x86_64=
+CFLAGS-macosx.arm64=
 SLICE-macosx=macos-arm64_x86_64
+SDK_ROOT-macosx=$(shell xcrun --sdk macosx --show-sdk-path)
+CC-macosx=xcrun --sdk macosx clang --sysroot=$(SDK_ROOT-macosx) $(CFLAGS-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
@@ -105,6 +105,8 @@ MACHINE_SIMPLE-arm64=arm
 # override machine types for arm64_32
 MACHINE_DETAILED-arm64_32=aarch64
 MACHINE_SIMPLE-arm64_32=arm
+
+
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -800,8 +802,9 @@ $$(PYTHON_DIR-$(os))/Makefile: \
 			> $$(PYTHON_DIR-$(os))/Modules/Setup.local
 	# Configure target Python
 	cd $$(PYTHON_DIR-$(os)) && \
-		MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET-$$(ARCH-$(target))) \
+		MACOSX_DEPLOYMENT_TARGET=$(MACOSX_DEPLOYMENT_TARGET) \
 		./configure \
+			CC="$(CC-macosx)" LD="$(CC-macosx)" \
 			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(os))/_install" \
 			--without-doc-strings --enable-ipv6 --without-ensurepip --enable-universalsdk --with-universal-archs=universal2 \
 			--with-openssl=../openssl/macosx \
