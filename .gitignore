@@ -9,3 +9,7 @@ dist/*
 .envrc
 .vscode/
 local/*
+*.dist-info
+__pycache__
+tests/testbed/macOS
+tests/testbed/iOS

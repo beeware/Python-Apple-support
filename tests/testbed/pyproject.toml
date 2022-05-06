@@ -1,0 +1,44 @@
+[tool.briefcase]
+project_name = "Testbed"
+bundle = "org.beeware"
+version = "0.0.1"
+url = "https://beeware.org"
+license = "BSD license"
+author = 'Russell Keith-Magee'
+author_email = "russell@beeware.org"
+
+[tool.briefcase.app.testbed]
+formal_name = "Testbed"
+description = "A testbed for the Apple Support packages."
+icon = "src/testbed/resources/testbed"
+sources = ['src/testbed']
+requires = [
+]
+
+
+[tool.briefcase.app.testbed.macOS]
+requires = [
+    "rubicon-objc",
+    "std-nslog",
+]
+template_branch = "m1-compile"
+support_package = "../../dist/Python-3.10-macOS-support.custom.tar.gz"
+
+[tool.briefcase.app.testbed.linux]
+requires = []
+system_requires = []
+
+[tool.briefcase.app.testbed.windows]
+requires = []
+
+# Mobile deployments
+[tool.briefcase.app.testbed.iOS]
+requires = [
+    "rubicon-objc",
+]
+template = "../../../../templates/briefcase-iOS-Xcode-template"
+# template_branch = "m1-compile"
+support_package = "../../dist/Python-3.10-iOS-support.custom.tar.gz"
+
+[tool.briefcase.app.testbed.android]
+requires = []
