@@ -1,6 +1,8 @@
 ###########################################################################
 # Common tests
 ###########################################################################
+import os
+
 from .utils import assert_
 
 
@@ -25,6 +27,49 @@ def test_ctypes():
     full = NSURL.URLWithString("contributing", relativeToURL=base)
     absolute = full.absoluteURL
     assert_(absolute.description == "https://beeware.org/contributing")
+
+def test_dbm():
+    "The DBM module is accessible"
+    import dbm
+
+    cache_name = f'{os.path.dirname(__file__)}/dbm'
+    try:
+        with dbm.open(cache_name, 'c') as db:
+            db['hello'] = 'world'
+
+            assert_(db['hello'] == b'world')
+    finally:
+        os.remove(f'{cache_name}.db')
+
+
+def test_dbm_dumb():
+    "The dumb DBM module has been compiled and works"
+    from dbm import dumb as ddbm
+
+    cache_name = f'{os.path.dirname(__file__)}/ddbm'
+    try:
+        with ddbm.open(cache_name, 'c') as db:
+            db['hello'] = 'world'
+
+            assert_(db['hello'] == b'world')
+    finally:
+        os.remove(f'{cache_name}.bak')
+        os.remove(f'{cache_name}.dat')
+        os.remove(f'{cache_name}.dir')
+
+
+def test_dbm_ndbm():
+    "The ndbm DBM module has been compiled and works"
+    from dbm import ndbm
+
+    cache_name = f'{os.path.dirname(__file__)}/ndbm'
+    try:
+        with ndbm.open(cache_name, 'c') as db:
+            db['hello'] = 'world'
+
+            assert_(db['hello'] == b'world')
+    finally:
+        os.remove(f'{cache_name}.db')
 
 
 def test_decimal():

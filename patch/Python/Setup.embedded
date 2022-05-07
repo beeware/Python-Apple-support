@@ -18,6 +18,7 @@ _collections _collectionsmodule.c
 _contextvars _contextvarsmodule.c
 _crypt _cryptmodule.c
 _csv _csv.c
+_dbm _dbmmodule.c -DHAVE_NDBM_H
 _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
@@ -108,7 +109,6 @@ zlib zlibmodule.c -I$(prefix)/include -lz
 #####################################################################
 #_curses _cursesmodule.c -lcurses -ltermcap
 #_curses_panel _curses_panel.c -lpanel -lncurses
-#_dbm _dbmmodule.c
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
 #nis nismodule.c -lnsl
