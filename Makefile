@@ -5,7 +5,7 @@
 # - iOS             - build everything for iOS
 # - tvOS            - build everything for tvOS
 # - watchOS         - build everything for watchOS
-# - BZip2           - build Bzip2 for all platforms
+# - BZip2           - build BZip2 for all platforms
 # - BZip2-macOS     - build BZip2 for macOS
 # - BZip2-iOS       - build BZip2 for iOS
 # - BZip2-tvOS      - build BZip2 for tvOS
@@ -35,9 +35,6 @@ PROJECT_DIR=$(shell pwd)
 
 BUILD_NUMBER=custom
 
-# This version limit will only be honored on x86_64 builds.
-MACOSX_DEPLOYMENT_TARGET=10.15
-
 # Version of packages that will be compiled by this meta-package
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
@@ -46,23 +43,23 @@ PYTHON_VERSION=3.10.4
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
-OPENSSL_VERSION_NUMBER=1.1.1
-OPENSSL_REVISION=o
-OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
-
 BZIP2_VERSION=1.0.8
 
 XZ_VERSION=5.2.5
 
+OPENSSL_VERSION_NUMBER=1.1.1
+OPENSSL_REVISION=o
+OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
+
 LIBFFI_VERSION=3.4.2
 
-# Supported OS
+# Supported OS and products
 PRODUCTS=BZip2 XZ OpenSSL libFFI Python
 OS_LIST=macOS iOS tvOS watchOS
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+CFLAGS-macOS=-mmacosx-version-min=10.15
 CFLAGS-macosx.x86_64=
 CFLAGS-macosx.arm64=
 SLICE-macosx=macos-arm64_x86_64
@@ -106,8 +103,6 @@ MACHINE_SIMPLE-arm64=arm
 MACHINE_DETAILED-arm64_32=aarch64
 MACHINE_SIMPLE-arm64_32=arm
 
-
-
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
 
@@ -117,7 +112,7 @@ all: $(OS_LIST)
 .PHONY: \
 	all clean distclean update-patch vars \
 	$(foreach product,$(PRODUCTS),$(foreach os,$(OS_LIST),$(product) $(product)-$(os) clean-$(product))) \
-	$(foreach os,$(OS_LIST),$(os) vars-$(os))
+	$(foreach os,$(OS_LIST),$(os) clean-$(os) vars-$(os))
 
 # Clean all builds
 clean:
@@ -328,7 +323,6 @@ $$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tgz
 	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$(target))
 	# Configure the build
 	cd $$(XZ_DIR-$(target)) && \
-		MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET-$$(ARCH-$(target))) \
 		./configure \
 			CC="$$(CC-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
@@ -373,7 +367,6 @@ endif
 ifeq ($(os),macOS)
 	cd $$(OPENSSL_DIR-$(target)) && \
 		CC="$$(CC-$(target))" \
-		MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET-$$(ARCH-$(target))) \
 		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
 			--prefix="$(PROJECT_DIR)/$$(OPENSSL_DIR-$(target))/_install" \
 			--openssldir=/etc/ssl \
@@ -391,8 +384,8 @@ endif
 	# The OpenSSL Makefile is... interesting. Invoking `make all` or `make
 	# install` *modifies the Makefile*. Therefore, we can't use the Makefile as
 	# a build dependency, because building/installing dirties the target that
-	# was a dependency. To compensate, create a dummy file as a marker for
-	# whether OpenSSL has been configured, and use *that* as a reference.
+	# was used as a dependency. To compensate, create a dummy file as a marker
+	# for whether OpenSSL has been configured, and use *that* as a reference.
 	date > $$(OPENSSL_DIR-$(target))/is_configured
 
 $$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/is_configured
@@ -535,7 +528,6 @@ vars-$(target):
 	@echo
 
 endef # build-target
-
 
 ###########################################################################
 # Build for specified sdk (extracted from the base names in $(TARGETS-*))
@@ -801,7 +793,6 @@ $$(PYTHON_DIR-$(os))/Makefile: \
 			> $$(PYTHON_DIR-$(os))/Modules/Setup.local
 	# Configure target Python
 	cd $$(PYTHON_DIR-$(os)) && \
-		MACOSX_DEPLOYMENT_TARGET=$(MACOSX_DEPLOYMENT_TARGET) \
 		./configure \
 			CC="$(CC-macosx)" LD="$(CC-macosx)" \
 			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(os))/_install" \
@@ -879,7 +870,10 @@ $(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 
 clean-$(os):
 	@echo ">>> Clean $(os) build products"
-	rm -rf build/$(os)
+	rm -rf \
+		build/$(os) \
+		dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz \
+		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz \
 
 ###########################################################################
 # Build: Debug
