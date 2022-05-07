@@ -115,12 +115,9 @@ HOST_ARCH=$(shell uname -m)
 all: $(OS_LIST)
 
 .PHONY: \
-	distclean update-patch \
-	all $(PRODUCTS) \
-	clean $(foreach product,$(PRODUCTS),clean-$(product)) \
-	$(foreach os,$(OS_LIST),Python-$(os)) \
-	build/macOS/Support/libFFI.xcframework \
-	vars $(foreach os,$(OS_LIST),vars-$(os))
+	all clean distclean update-patch vars \
+	$(foreach product,$(PRODUCTS),$(foreach os,$(OS_LIST),$(product) $(product)-$(os) clean-$(product))) \
+	$(foreach os,$(OS_LIST),$(os) vars-$(os))
 
 # Clean all builds
 clean:
@@ -464,7 +461,7 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
-		Python-macOS \
+		$$(PYTHON_XCFRAMEWORK-macOS) \
 		downloads/Python-$(PYTHON_VERSION).tgz
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
@@ -743,7 +740,7 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz Python-macOS
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
