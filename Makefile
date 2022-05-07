@@ -354,7 +354,7 @@ OPENSSL_DIR-$(target)=build/$(os)/openssl-$(OPENSSL_VERSION)-$(target)
 OPENSSL_SSL_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libssl.a
 OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libcrypto.a
 
-$$(OPENSSL_DIR-$(target))/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
+$$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tgz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_DIR-$(target))
 	tar zxf downloads/openssl-$(OPENSSL_VERSION).tgz --strip-components 1 -C $$(OPENSSL_DIR-$(target))
@@ -390,16 +390,23 @@ else
 			--prefix="$(PROJECT_DIR)/$$(OPENSSL_DIR-$(target))/_install" \
 			--openssldir=/etc/ssl \
 			2>&1 | tee -a ../openssl-$(target).config.log
-
 endif
+	# The OpenSSL Makefile is... interesting. Invoking `make all` or `make
+	# install` *modifies the Makefile*. Therefore, we can't use the Makefile as
+	# a build dependency, because building/installing dirties the target that
+	# was a dependency. To compensate, create a dummy file as a marker for
+	# whether OpenSSL has been configured, and use *that* as a reference.
+	date > $$(OPENSSL_DIR-$(target))/is_configured
 
-$$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/Makefile
+$$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/is_configured
 	@echo ">>> Build OpenSSL for $(target)"
+	# OpenSSL's `all` target modifies the Makefile;
+	# use the raw targets that make up all and it's dependencies
 	cd $$(OPENSSL_DIR-$(target)) && \
 		CC="$$(CC-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
-		make depend _all \
+		make all \
 			2>&1 | tee -a ../openssl-$(target).build.log
 
 $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
@@ -718,11 +725,6 @@ OPENSSL_XCFRAMEWORK-$(os)=build/$(os)/Support/OpenSSL.xcframework
 
 $$(OPENSSL_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATLIB-$$(sdk)))
 	@echo ">>> Create OpenSSL.XCFramework on $(os)"
-	# The OpenSSL Makefile leaves the build in a "dirty" state; running the same build
-	# twice in a row results in parts of the build being repeated, which then causes
-	# other targets in *this* Makefile to trigger. To avoid problems, delete the
-	# XCFramework every time and rebuild it.
-	rm -rf $$(OPENSSL_XCFRAMEWORK-$(os))
 	mkdir -p $$(OPENSSL_XCFRAMEWORK-$(os))
 	xcodebuild -create-xcframework \
 		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(OPENSSL_FATLIB-$$(sdk)) -headers build/$(os)/openssl/$$(sdk)/include) \
