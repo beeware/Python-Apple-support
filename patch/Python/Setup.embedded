@@ -16,7 +16,6 @@ _codecs_kr cjkcodecs/_codecs_kr.c
 _codecs_tw cjkcodecs/_codecs_tw.c
 _collections _collectionsmodule.c
 _contextvars _contextvarsmodule.c
-_crypt _cryptmodule.c
 _csv _csv.c
 _dbm _dbmmodule.c -DHAVE_NDBM_H
 _datetime _datetimemodule.c
@@ -68,7 +67,6 @@ _uuid _uuidmodule.c
 _zoneinfo _zoneinfo.c -DPy_BUILD_CORE_MODULE
 array arraymodule.c
 atexit atexitmodule.c
-audioop audioop.c
 binascii binascii.c
 cmath cmathmodule.c _math.c
 errno errnomodule.c
@@ -111,7 +109,14 @@ zlib zlibmodule.c -I$(prefix)/include -lz
 #_curses_panel _curses_panel.c -lpanel -lncurses
 #_gdbm _gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
 #_tkinter _tkinter.c tkappinit.c -DWITH_APPINIT -I... -L...
+#readline readline.c -lreadline -ltermcap
+
+#####################################################################
+# Modules that exist, but are deprecated by PEP594 and will be
+# removed in Python 3.13
+#####################################################################
+_crypt _cryptmodule.c
+audioop audioop.c
 #nis nismodule.c -lnsl
 #ossaudiodev
-#readline readline.c -lreadline -ltermcap
 #spwd spwdmodule.c
