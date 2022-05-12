@@ -726,10 +726,58 @@ index d26cfc9993..b4db279e00 100644
  if _exists("fork") and not _exists("spawnv") and _exists("execv"):
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index e32f9c11cd..281e2680e6 100755
+index e32f9c11cd..78afc8a9da 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -605,7 +605,7 @@
+@@ -449,6 +449,47 @@
+     # If that also doesn't work return the default values
+     return release, versioninfo, machine
+ 
++def iOS_ver():
++    """ Get iOS/tvOS version information, and return it as a
++        tuple (system, release). All tuple entries are strings.
++
++        Equivalent of:
++        system = [[UIDevice currentDevice].model] UTF8String]
++        release = [[UIDevice currentDevice].systemVersion] UTF8String]
++
++    """
++    from ctypes import cast, cdll, c_void_p, c_char_p
++    from ctypes import util
++    objc = cdll.LoadLibrary(util.find_library(b'objc'))
++    uikit = cdll.LoadLibrary(util.find_library(b'UIKit'))
++
++    objc.objc_getClass.restype = c_void_p
++    objc.objc_getClass.argtypes = [c_char_p]
++    objc.objc_msgSend.restype = c_void_p
++    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++    objc.sel_registerName.restype = c_void_p
++    objc.sel_registerName.argtypes = [c_char_p]
++
++    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
++    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
++    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++
++    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
++    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++
++    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
++    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
++
++    # UTF8String returns a const char*;
++    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
++    objc.objc_msgSend.restype = c_char_p
++
++    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
++    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
++
++    return system, release
++
++
+ def _java_getprop(name, default):
+ 
+     from java.lang import System
+@@ -605,7 +646,7 @@
          default in case the command should fail.
  
      """
@@ -738,6 +786,39 @@ index e32f9c11cd..281e2680e6 100755
          # XXX Others too ?
          return default
  
+@@ -744,6 +785,13 @@
+             csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
+             return 'Alpha' if cpu_number >= 128 else 'VAX'
+ 
++    # iOS, tvOS and watchOS processor is the same as machine
++    def get_ios():
++        return ''
++
++    get_tvos = get_ios
++    get_watchos = get_ios
++
+     def from_subprocess():
+         """
+         Fall back to `uname -p`
+@@ -1203,11 +1251,13 @@
+         system, release, version = system_alias(system, release, version)
+ 
+     if system == 'Darwin':
+-        # macOS (darwin kernel)
+-        macos_release = mac_ver()[0]
+-        if macos_release:
+-            system = 'macOS'
+-            release = macos_release
++        if sys.platform in ('ios', 'tvos'):
++            system, release = iOS_ver()
++        else:
++            macos_release = mac_ver()[0]
++            if macos_release:
++                system = 'macOS'
++                release = macos_release
+ 
+     if system == 'Windows':
+         # MS platforms
 diff --git a/Lib/site.py b/Lib/site.py
 index 939893eb5e..8c550ed95a 100644
 --- a/Lib/site.py
@@ -753,20 +834,74 @@ index 939893eb5e..8c550ed95a 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index ccb46a6337..9d57c2af8f 100644
+index ccb46a6337..6193bcbeaf 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -759,6 +759,9 @@
+@@ -71,9 +71,13 @@
+     _mswindows = True
+ except ModuleNotFoundError:
+     _mswindows = False
+-    import _posixsubprocess
+-    import select
+-    import selectors
++    try:
++        import _posixsubprocess
++        import select
++        import selectors
++    except ModuleNotFoundError:
++        # iOS *has* subprocesses, but doesn't support them.
++        _posixsubprocess = None
+ else:
+     from _winapi import (CREATE_NEW_CONSOLE, CREATE_NEW_PROCESS_GROUP,
+                          STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+@@ -208,7 +212,7 @@
+             return "%s(%d)" % (self.__class__.__name__, int(self))
+ 
+         __del__ = Close
+-else:
++elif _posixsubprocess:
+     # When select or poll has indicated that the file is writable,
+     # we can write up to _PIPE_BUF bytes without risk of blocking.
+     # POSIX defines PIPE_BUF as >= 512.
+@@ -236,7 +240,7 @@
+ 
+     def _cleanup():
+         pass
+-else:
++elif _posixsubprocess:
+     # This lists holds Popen instances for which the underlying process had not
+     # exited at the time its __del__ method got called: those processes are
+     # wait()ed for synchronously from _cleanup() when a new Popen object is
+@@ -255,6 +259,9 @@
+                     # This can happen if two threads create a new Popen instance.
+                     # It's harmless that it was already removed, so ignore.
+                     pass
++else:
++    def _cleanup():
++        pass
+ 
+ PIPE = -1
+ STDOUT = -2
+@@ -656,7 +663,7 @@
+     Prefer an implementation which can use vfork() in some cases for best
+     performance.
+     """
+-    if _mswindows or not hasattr(os, 'posix_spawn'):
++    if _mswindows or _posixsubprocess is None or not hasattr(os, 'posix_spawn'):
+         # os.posix_spawn() is not available
+         return False
+ 
+@@ -759,6 +766,9 @@
                   pass_fds=(), *, user=None, group=None, extra_groups=None,
                   encoding=None, errors=None, text=None, umask=-1, pipesize=-1):
          """Create new Popen instance."""
-+        if not os.allows_subprocesses:
-+            raise RuntimeError("Subprocesses are not supported on this platform.")
++        if not _mswindows and _posixsubprocess is None:
++            raise RuntimeError(f"Subprocesses are not supported on {sys.platform}")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1855,7 +1858,7 @@
+@@ -1855,7 +1865,7 @@
              else:
                  self.returncode = waitstatus_to_exitcode(sts)
  
@@ -775,7 +910,7 @@ index ccb46a6337..9d57c2af8f 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1864,6 +1867,8 @@
+@@ -1864,6 +1874,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
