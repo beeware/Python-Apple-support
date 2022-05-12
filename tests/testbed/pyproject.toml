@@ -20,7 +20,6 @@ requires = [
     "rubicon-objc",
     "std-nslog",
 ]
-template_branch = "m1-compile"
 support_package = "../../dist/Python-3.10-macOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.linux]
@@ -35,7 +34,6 @@ requires = [
     "rubicon-objc",
     "std-nslog",
 ]
-template_branch = "m1-compile"
 support_package = "../../dist/Python-3.10-iOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.android]
