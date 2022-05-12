@@ -15,7 +15,6 @@ sources = ['src/testbed']
 requires = [
 ]
 
-
 [tool.briefcase.app.testbed.macOS]
 requires = [
     "rubicon-objc",
@@ -25,11 +24,10 @@ template_branch = "m1-compile"
 support_package = "../../dist/Python-3.10-macOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.linux]
-requires = []
-system_requires = []
+supported = false
 
 [tool.briefcase.app.testbed.windows]
-requires = []
+supported = false
 
 # Mobile deployments
 [tool.briefcase.app.testbed.iOS]
@@ -41,4 +39,4 @@ template_branch = "m1-compile"
 support_package = "../../dist/Python-3.10-iOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.android]
-requires = []
+supported = false
