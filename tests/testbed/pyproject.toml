@@ -35,9 +35,9 @@ requires = []
 [tool.briefcase.app.testbed.iOS]
 requires = [
     "rubicon-objc",
+    "std-nslog",
 ]
-template = "../../../../templates/briefcase-iOS-Xcode-template"
-# template_branch = "m1-compile"
+template_branch = "m1-compile"
 support_package = "../../dist/Python-3.10-iOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.android]
