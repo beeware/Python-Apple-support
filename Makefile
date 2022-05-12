@@ -68,7 +68,7 @@ CC-macosx=xcrun --sdk macosx clang --sysroot=$(SDK_ROOT-macosx) $(CFLAGS-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-CFLAGS-iOS=-mios-version-min=13.0 -fembed-bitcode
+CFLAGS-iOS=-mios-version-min=12.0 -fembed-bitcode
 CFLAGS-iphoneos.arm64=
 CFLAGS-iphonesimulator.x86_64=
 CFLAGS-iphonesimulator.arm64=
