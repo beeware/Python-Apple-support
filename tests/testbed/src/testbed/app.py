@@ -1,12 +1,12 @@
 """
 A testbed for the Apple Support packages.
 """
+import importlib
 import platform
 import sys
 import traceback
 
 from . import common
-from . import macos
 
 
 def discover_tests(module):
@@ -24,10 +24,15 @@ def main():
     print(f"Python {platform.python_version()} Apple Support verification suite")
     print(f"Running on {platform.platform()}")
     print("=" * 80)
-    # Discover the suite
+    # Discover the common test suite
     suite = discover_tests(common)
-    if sys.platform == "darwin":
-        suite.extend(discover_tests(macos))
+
+    # Discover the platform-specific tests
+    try:
+        module = importlib.import_module(f".{sys.platform}", "testbed")
+        suite.extend(discover_tests(module))
+    except ModuleNotFoundError:
+        print(f"No platform-specific tests for {sys.platform}")
 
     # Run the suite
     failures = 0
@@ -52,4 +57,4 @@ def main():
 
     print("=" * 80)
     print(f"Tests complete; {tests} tests, {failures} failures.")
-    sys.exit(int(failures != 0))
+    sys.exit(failures)
