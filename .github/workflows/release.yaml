@@ -39,7 +39,10 @@ jobs:
 
           Includes:
           * Python ${{ env.PY_VERSION }}.?
-          * ...
+          * OpenSSL 1.1.1?
+          * BZip2 1.0.8
+          * XZ 5.2.5
+          * LibFFI 3.4.2
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
