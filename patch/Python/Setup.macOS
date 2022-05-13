@@ -1,4 +1,3 @@
-
 #####################################################################
 # macOS: Platform specific configuration
 #####################################################################
@@ -10,9 +9,13 @@ _ctypes _ctypes/_ctypes.c \
     _ctypes/malloc_closure.c \
     -I$(srcdir)/Modules/_ctypes/darwin \
     -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/ffi \
-    -DPy_BUILD_CORE -DUSING_MALLOC_CLOSURE_DOT_C=1 -DMACOSX \
-    -DUSING_APPLE_OS_LIBFFI=1 -DHAVE_FFI_PREP_CIF_VAR=1 \
-    -DHAVE_FFI_PREP_CLOSURE_LOC=1 -DHAVE_FFI_CLOSURE_ALLOC=1 \
+    -DPy_BUILD_CORE \
+    -DHAVE_FFI_CLOSURE_ALLOC=1 \
+    -DHAVE_FFI_PREP_CIF_VAR=1 \
+    -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
+    -DMACOSX \
+    -DUSING_APPLE_OS_LIBFFI=1 \
+    -DUSING_MALLOC_CLOSURE_DOT_C=1 \
     -lffi
 
 _decimal _decimal/_decimal.c \
@@ -33,4 +36,11 @@ _decimal _decimal/_decimal.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
     -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
 
+_posixshmem -I$(srcdir)/Modules/_multiprocessing _multiprocessing/posixshmem.c
+_posixsubprocess _posixsubprocess.c
+
 _scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
+
+_curses _cursesmodule.c -lcurses -ltermcap
+
+_curses_panel _curses_panel.c -lpanel -lncurses

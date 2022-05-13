@@ -5,21 +5,26 @@
 # - iOS             - build everything for iOS
 # - tvOS            - build everything for tvOS
 # - watchOS         - build everything for watchOS
-# - OpenSSL-macOS   - build OpenSSL for macOS
-# - OpenSSL-iOS     - build OpenSSL for iOS
-# - OpenSSL-tvOS    - build OpenSSL for tvOS
-# - OpenSSL-watchOS - build OpenSSL for watchOS
+# - BZip2           - build BZip2 for all platforms
 # - BZip2-macOS     - build BZip2 for macOS
 # - BZip2-iOS       - build BZip2 for iOS
 # - BZip2-tvOS      - build BZip2 for tvOS
 # - BZip2-watchOS   - build BZip2 for watchOS
+# - XZ              - build XZ for all platforms
 # - XZ-macOS        - build XZ for macOS
 # - XZ-iOS          - build XZ for iOS
 # - XZ-tvOS         - build XZ for tvOS
 # - XZ-watchOS      - build XZ for watchOS
+# - OpenSSL         - build OpenSSL for all platforms
+# - OpenSSL-macOS   - build OpenSSL for macOS
+# - OpenSSL-iOS     - build OpenSSL for iOS
+# - OpenSSL-tvOS    - build OpenSSL for tvOS
+# - OpenSSL-watchOS - build OpenSSL for watchOS
+# - libFFI          - build libFFI for all platforms (except macOS)
 # - libFFI-iOS      - build libFFI for iOS
 # - libFFI-tvOS     - build libFFI for tvOS
 # - libFFI-watchOS  - build libFFI for watchOS
+# - Python          - build Python for all platforms
 # - Python-macOS    - build Python for macOS
 # - Python-iOS      - build Python for iOS
 # - Python-tvOS     - build Python for tvOS
@@ -30,8 +35,6 @@ PROJECT_DIR=$(shell pwd)
 
 BUILD_NUMBER=custom
 
-MACOSX_DEPLOYMENT_TARGET=10.8
-
 # Version of packages that will be compiled by this meta-package
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
@@ -40,49 +43,76 @@ PYTHON_VERSION=3.8.13
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
-OPENSSL_VERSION_NUMBER=1.1.1
-OPENSSL_REVISION=n
-OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
-
 BZIP2_VERSION=1.0.8
 
 XZ_VERSION=5.2.5
 
+OPENSSL_VERSION_NUMBER=1.1.1
+OPENSSL_REVISION=o
+OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
+
 LIBFFI_VERSION=3.4.2
 
-# Supported OS
-OS=macOS iOS tvOS watchOS
+# Supported OS and products
+PRODUCTS=BZip2 XZ OpenSSL libFFI Python
+OS_LIST=macOS iOS tvOS watchOS
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-PYTHON_TARGETS-macOS=macOS
-CFLAGS-macOS=-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+CFLAGS-macOS=-mmacosx-version-min=10.15
+CFLAGS-macosx.x86_64=
+CFLAGS-macosx.arm64=
+SLICE-macosx=macos-arm64_x86_64
+SDK_ROOT-macosx=$(shell xcrun --sdk macosx --show-sdk-path)
+CC-macosx=xcrun --sdk macosx clang --sysroot=$(SDK_ROOT-macosx) $(CFLAGS-macOS)
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphoneos.arm64
-CFLAGS-iOS=-mios-version-min=8.0 -fembed-bitcode
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+CFLAGS-iOS=-mios-version-min=12.0 -fembed-bitcode
 CFLAGS-iphoneos.arm64=
 CFLAGS-iphonesimulator.x86_64=
+CFLAGS-iphonesimulator.arm64=
+SLICE-iphoneos=ios-arm64
+SLICE-iphonesimulator=ios-arm64_x86_64-simulator
 
 # tvOS targets
-TARGETS-tvOS=appletvsimulator.x86_64 appletvos.arm64
+TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
 CFLAGS-tvOS=-mtvos-version-min=9.0 -fembed-bitcode
 CFLAGS-appletvos.arm64=
 CFLAGS-appletvsimulator.x86_64=
+CFLAGS-appletvsimulator.arm64=
+SLICE-appletvos=tvos-arm64
+SLICE-appletvsimulator=tvos-arm64_x86_64-simulator
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
-TARGETS-watchOS=watchsimulator.i386 watchos.armv7k
+TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 CFLAGS-watchOS=-mwatchos-version-min=4.0 -fembed-bitcode
-CFLAGS-watchsimulator.i386=
-CFLAGS-watchos.armv7k=
+CFLAGS_watchsimulator.x86_64=
+CFLAGS-watchsimulator.arm64=
+CFLAGS-watchos.arm64_32=
+SLICE-watchos=watchos-arm64_32
+SLICE-watchsimulator=watchos-arm64_x86_64-simulator
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # override machine types for arm64
 MACHINE_DETAILED-arm64=aarch64
 MACHINE_SIMPLE-arm64=arm
 
-all: $(foreach os,$(OS),$(os))
+# override machine types for arm64_32
+MACHINE_DETAILED-arm64_32=aarch64
+MACHINE_SIMPLE-arm64_32=arm
+
+# The architecture of the machine doing the build
+HOST_ARCH=$(shell uname -m)
+
+# Build for all operating systems
+all: $(OS_LIST)
+
+.PHONY: \
+	all clean distclean update-patch vars \
+	$(foreach product,$(PRODUCTS),$(foreach os,$(OS_LIST),$(product) $(product)-$(os) clean-$(product))) \
+	$(foreach os,$(OS_LIST),$(os) clean-$(os) vars-$(os))
 
 # Clean all builds
 clean:
@@ -92,7 +122,12 @@ clean:
 distclean: clean
 	rm -rf downloads
 
-downloads: downloads/openssl-$(OPENSSL_VERSION).tgz downloads/bzip2-$(BZIP2_VERSION).tgz downloads/xz-$(XZ_VERSION).tgz downloads/libffi-$(LIBFFI_VERSION).tgz downloads/Python-$(PYTHON_VERSION).tgz
+downloads: \
+		downloads/bzip2-$(BZIP2_VERSION).tgz \
+		downloads/xz-$(XZ_VERSION).tgz \
+		downloads/openssl-$(OPENSSL_VERSION).tgz \
+		downloads/libffi-$(LIBFFI_VERSION).tgz \
+		downloads/Python-$(PYTHON_VERSION).tgz
 
 update-patch:
 	# Generate a diff from the clone of the python/cpython Github repository
@@ -101,460 +136,775 @@ update-patch:
 	cd $(PYTHON_REPO_DIR) && git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) | filterdiff -X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean > $(PROJECT_DIR)/patch/Python/Python.patch
 
 ###########################################################################
-# OpenSSL
+# Setup: BZip2
+###########################################################################
+
+# Clean the bzip2 project
+clean-BZip2:
+	@echo ">>> Clean BZip2 build products"
+	rm -rf build/*/bzip2-$(BZIP2_VERSION)-* \
+		build/*/bzip2 \
+		build/*/bzip2-*.log \
+		build/*/Support/BZip2.xcframework
+
+# Download original BZip2 source code archive.
+downloads/bzip2-$(BZIP2_VERSION).tgz:
+	@echo ">>> Download BZip2 sources"
+	mkdir -p downloads
+	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then \
+		curl --fail -L https://sourceware.org/pub/bzip2/bzip2-$(BZIP2_VERSION).tar.gz \
+			-o downloads/bzip2-$(BZIP2_VERSION).tgz; \
+	fi
+
+###########################################################################
+# Setup: XZ (LZMA)
+###########################################################################
+
+# Clean the XZ project
+clean-XZ:
+	@echo ">>> Clean XZ build products"
+	rm -rf build/*/xz-$(XZ_VERSION)-* \
+		build/*/xz \
+		build/*/xz-*.log \
+		build/*/Support/XZ.xcframework
+
+# Download original XZ source code archive.
+downloads/xz-$(XZ_VERSION).tgz:
+	@echo ">>> Download XZ sources"
+	mkdir -p downloads
+	if [ ! -e downloads/xz-$(XZ_VERSION).tgz ]; then \
+		curl --fail -L http://tukaani.org/xz/xz-$(XZ_VERSION).tar.gz \
+			-o downloads/xz-$(XZ_VERSION).tgz; \
+	fi
+
+###########################################################################
+# Setup: OpenSSL
 # These build instructions adapted from the scripts developed by
 # Felix Shchulze (@x2on) https://github.com/x2on/OpenSSL-for-iPhone
 ###########################################################################
 
 # Clean the OpenSSL project
 clean-OpenSSL:
+	@echo ">>> Clean OpenSSL build products"
 	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
 		build/*/openssl \
-		build/*/libssl.a build/*/libcrypto.a \
-		build/*/Support/OpenSSL
+		build/*/openssl-*.log \
+		build/*/Support/OpenSSL.xcframework
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
+	@echo ">>> Download OpenSSL sources"
 	mkdir -p downloads
-	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
-	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz -o downloads/openssl-$(OPENSSL_VERSION).tgz; fi
-
-
-###########################################################################
-# BZip2
-###########################################################################
-
-# Clean the bzip2 project
-clean-BZip2:
-	rm -rf build/*/bzip2-$(BZIP2_VERSION)-* \
-		build/*/bzip2 \
-		build/*/Support/BZip2
-
-# Download original BZip2 source code archive.
-downloads/bzip2-$(BZIP2_VERSION).tgz:
-	mkdir -p downloads
-	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then curl --fail -L https://sourceware.org/pub/bzip2/bzip2-$(BZIP2_VERSION).tar.gz -o downloads/bzip2-$(BZIP2_VERSION).tgz; fi
+	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then \
+		curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz \
+			-o downloads/openssl-$(OPENSSL_VERSION).tgz; \
+	fi
+	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then \
+		curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz \
+			-o downloads/openssl-$(OPENSSL_VERSION).tgz; \
+	fi
 
 ###########################################################################
-# XZ (LZMA)
+# Setup: libFFI
 ###########################################################################
 
-# Clean the XZ project
-clean-XZ:
-	rm -rf build/*/xz-$(XZ_VERSION)-* \
-		build/*/xz \
-		build/*/Support/XZ
-
-# Download original XZ source code archive.
-downloads/xz-$(XZ_VERSION).tgz:
-	mkdir -p downloads
-	if [ ! -e downloads/xz-$(XZ_VERSION).tgz ]; then curl --fail -L http://tukaani.org/xz/xz-$(XZ_VERSION).tar.gz -o downloads/xz-$(XZ_VERSION).tgz; fi
-
-###########################################################################
-# LIBFFI
-###########################################################################
-
-# Clean the LibFFI project
+# Clean the libFFI project
 clean-libFFI:
+	@echo ">>> Clean libFFI build products"
 	rm -rf build/*/libffi-$(LIBFFI_VERSION) \
-		build/*/Support/libFFI
+		build/*/libffi-*.log \
+		build/*/Support/libFFI.xcframework
 
 # Download original XZ source code archive.
 downloads/libffi-$(LIBFFI_VERSION).tgz:
+	@echo ">>> Download libFFI sources"
 	mkdir -p downloads
-	if [ ! -e downloads/libffi-$(LIBFFI_VERSION).tgz ]; then curl --fail -L http://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)/libffi-$(LIBFFI_VERSION).tar.gz -o downloads/libffi-$(LIBFFI_VERSION).tgz; fi
+	if [ ! -e downloads/libffi-$(LIBFFI_VERSION).tgz ]; then \
+		curl --fail -L http://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)/libffi-$(LIBFFI_VERSION).tar.gz \
+			-o downloads/libffi-$(LIBFFI_VERSION).tgz; \
+	fi
 
 ###########################################################################
-# Python
+# Setup: Python
 ###########################################################################
 
 # Clean the Python project
 clean-Python:
+	@echo ">>> Clean Python build products"
 	rm -rf \
 		build/*/Python-$(PYTHON_VERSION)-* \
-		build/*/libpython$(PYTHON_VER).a \
-		build/*/pyconfig-*.h \
+		build/*/python \
+		build/*/python-*.log \
+		build/*/Support/Python.xcframework \
 		build/*/Support/Python
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
+	@echo ">>> Download Python sources"
 	mkdir -p downloads
-	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then curl -L https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz > downloads/Python-$(PYTHON_VERSION).tgz; fi
+	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then \
+		curl --fail -L https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz \
+			-o downloads/Python-$(PYTHON_VERSION).tgz; \
+	fi
 
-# Some Python targets needed to identify the host build
-PYTHON_DIR-macOS=build/macOS/Python-$(PYTHON_VERSION)-macOS
-PYTHON_HOST=$(PYTHON_DIR-macOS)/dist/lib/libpython$(PYTHON_VER).a
-
-# Build for specified target (from $(TARGETS))
+###########################################################################
+# Build for specified target (from $(TARGETS-*))
+###########################################################################
 #
 # Parameters:
-# - $1 - target
-# - $2 - OS
+# - $1 - target (e.g., iphonesimulator.x86_64, iphoneos.arm64)
+# - $2 - OS (e.g., iOS, tvOS)
+#
+###########################################################################
 define build-target
-ARCH-$1=$$(subst .,,$$(suffix $1))
-ifdef MACHINE_DETAILED-$$(ARCH-$1)
-MACHINE_DETAILED-$1=$$(MACHINE_DETAILED-$$(ARCH-$1))
+target=$1
+os=$2
+
+# $(target) can be broken up into is composed of $(SDK).$(ARCH)
+SDK-$(target)=$$(basename $(target))
+ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
+
+ifdef MACHINE_DETAILED-$$(ARCH-$(target))
+MACHINE_DETAILED-$(target)=$$(MACHINE_DETAILED-$$(ARCH-$(target)))
 else
-MACHINE_DETAILED-$1=$$(ARCH-$1)
+MACHINE_DETAILED-$(target)=$$(ARCH-$(target))
 endif
-ifdef MACHINE_SIMPLE-$$(ARCH-$1)
-MACHINE_SIMPLE-$1=$$(MACHINE_SIMPLE-$$(ARCH-$1))
+ifdef MACHINE_SIMPLE-$$(ARCH-$(target))
+MACHINE_SIMPLE-$(target)=$$(MACHINE_SIMPLE-$$(ARCH-$(target)))
 else
-MACHINE_SIMPLE-$1=$$(ARCH-$1)
+MACHINE_SIMPLE-$(target)=$$(ARCH-$(target))
 endif
-SDK-$1=$$(basename $1)
 
-SDK_ROOT-$1=$$(shell xcrun --sdk $$(SDK-$1) --show-sdk-path)
-CC-$1=xcrun --sdk $$(SDK-$1) clang \
-	-arch $$(ARCH-$1) \
-	--sysroot=$$(SDK_ROOT-$1) \
-	$$(CFLAGS-$2) $$(CFLAGS-$1)
-LDFLAGS-$1=-arch $$(ARCH-$1) -isysroot=$$(SDK_ROOT-$1)
+ifeq ($$(findstring simulator,$$(SDK-$(target))),)
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
+else
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$(shell echo $(os) | tr '[:upper:]' '[:lower:]')-simulator
+endif
 
-OPENSSL_DIR-$1=build/$2/openssl-$(OPENSSL_VERSION)-$1
-BZIP2_DIR-$1=build/$2/bzip2-$(BZIP2_VERSION)-$1
-XZ_DIR-$1=build/$2/xz-$(XZ_VERSION)-$1
-LIBFFI_DIR-$1=build/$2/libffi-$(LIBFFI_VERSION)
+SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
+CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang \
+	-target $$(TARGET_TRIPLE-$(target)) \
+	--sysroot=$$(SDK_ROOT-$(target)) \
+	$$(CFLAGS-$(os)) $$(CFLAGS-$(target))
+LDFLAGS-$(target)=-arch $$(ARCH-$(target)) -isysroot=$$(SDK_ROOT-$(target))
 
-# Unpack OpenSSL
-$$(OPENSSL_DIR-$1)/Makefile: downloads/openssl-$(OPENSSL_VERSION).tgz
-	# Unpack sources
-	mkdir -p $$(OPENSSL_DIR-$1)
-	tar zxf downloads/openssl-$(OPENSSL_VERSION).tgz --strip-components 1 -C $$(OPENSSL_DIR-$1)
-ifeq ($$(findstring simulator,$$(SDK-$1)),)
+###########################################################################
+# Target: BZip2
+###########################################################################
+
+BZIP2_DIR-$(target)=build/$(os)/bzip2-$(BZIP2_VERSION)-$(target)
+BZIP2_LIB-$(target)=$$(BZIP2_DIR-$(target))/_install/lib/libbz2.a
+
+$$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
+	@echo ">>> Unpack BZip2 sources for $(target)"
+	mkdir -p $$(BZIP2_DIR-$(target))
+	tar zxf downloads/bzip2-$(BZIP2_VERSION).tgz --strip-components 1 -C $$(BZIP2_DIR-$(target))
+	# Touch the makefile to ensure that Make identifies it as up to date.
+	touch $$(BZIP2_DIR-$(target))/Makefile
+
+$$(BZIP2_LIB-$(target)): $$(BZIP2_DIR-$(target))/Makefile
+	@echo ">>> Build BZip2 for $(target)"
+	cd $$(BZIP2_DIR-$(target)) && \
+		make install \
+			PREFIX="$(PROJECT_DIR)/$$(BZIP2_DIR-$(target))/_install" \
+			CC="$$(CC-$(target))" \
+			2>&1 | tee -a ../bzip2-$(target).build.log
+
+###########################################################################
+# Target: XZ (LZMA)
+###########################################################################
+
+XZ_DIR-$(target)=build/$(os)/xz-$(XZ_VERSION)-$(target)
+XZ_LIB-$(target)=$$(XZ_DIR-$(target))/_install/lib/liblzma.a
+
+$$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tgz
+	@echo ">>> Unpack XZ sources for $(target)"
+	mkdir -p $$(XZ_DIR-$(target))
+	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$(target))
+	# Configure the build
+	cd $$(XZ_DIR-$(target)) && \
+		./configure \
+			CC="$$(CC-$(target))" \
+			LDFLAGS="$$(LDFLAGS-$(target))" \
+			--disable-shared --enable-static \
+			--host=$$(MACHINE_SIMPLE-$(target))-apple-darwin \
+			--prefix="$(PROJECT_DIR)/$$(XZ_DIR-$(target))/_install" \
+			2>&1 | tee -a ../xz-$(target).config.log
+
+$$(XZ_LIB-$(target)): $$(XZ_DIR-$(target))/Makefile
+	@echo ">>> Build and install XZ for $(target)"
+	cd $$(XZ_DIR-$(target)) && \
+		make install \
+			2>&1 | tee -a ../xz-$(target).build.log
+
+###########################################################################
+# Target: OpenSSL
+###########################################################################
+
+OPENSSL_DIR-$(target)=build/$(os)/openssl-$(OPENSSL_VERSION)-$(target)
+OPENSSL_SSL_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libssl.a
+OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libcrypto.a
+
+$$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tgz
+	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
+	mkdir -p $$(OPENSSL_DIR-$(target))
+	tar zxf downloads/openssl-$(OPENSSL_VERSION).tgz --strip-components 1 -C $$(OPENSSL_DIR-$(target))
+
+ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 	# Tweak ui_openssl.c
-	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_DIR-$1)/crypto/ui/ui_openssl.c
+	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_DIR-$(target))/crypto/ui/ui_openssl.c
 endif
-ifeq ($$(findstring iphone,$$(SDK-$1)),)
+
+ifeq ($$(findstring iphone,$$(SDK-$(target))),)
 	# Patch apps/speed.c and apps/ocsp.c to not use fork() since it's not available on tvOS
-	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/speed.c
-	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$1)/apps/ocsp.c
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$(target))/apps/speed.c
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_DIR-$(target))/apps/ocsp.c
 	# Patch Configure to build for tvOS or watchOS, not iOS
-	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$2/' $$(OPENSSL_DIR-$1)/Configure
+	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$(os)/' $$(OPENSSL_DIR-$(target))/Configure
 endif
 
-	# Configure the build
-ifeq ($2,macOS)
-	cd $$(OPENSSL_DIR-$1) && \
-	CC="$$(CC-$1)" MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) \
-		./Configure darwin64-$$(ARCH-$1)-cc no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=/etc/ssl
+	# Configure the OpenSSL build
+ifeq ($(os),macOS)
+	cd $$(OPENSSL_DIR-$(target)) && \
+		CC="$$(CC-$(target))" \
+		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
+			--prefix="$(PROJECT_DIR)/$$(OPENSSL_DIR-$(target))/_install" \
+			--openssldir=/etc/ssl \
+			2>&1 | tee -a ../openssl-$(target).config.log
 else
-	cd $$(OPENSSL_DIR-$1) && \
-		CC="$$(CC-$1)" \
-		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
-		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		./Configure iphoneos-cross no-asm no-tests --prefix=$(PROJECT_DIR)/build/$2/openssl --openssldir=/etc/ssl
+	cd $$(OPENSSL_DIR-$(target)) && \
+		CC="$$(CC-$(target))" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+		./Configure iphoneos-cross no-asm no-tests \
+			--prefix="$(PROJECT_DIR)/$$(OPENSSL_DIR-$(target))/_install" \
+			--openssldir=/etc/ssl \
+			2>&1 | tee -a ../openssl-$(target).config.log
+endif
+	# The OpenSSL Makefile is... interesting. Invoking `make all` or `make
+	# install` *modifies the Makefile*. Therefore, we can't use the Makefile as
+	# a build dependency, because building/installing dirties the target that
+	# was used as a dependency. To compensate, create a dummy file as a marker
+	# for whether OpenSSL has been configured, and use *that* as a reference.
+	date > $$(OPENSSL_DIR-$(target))/is_configured
+
+$$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/is_configured
+	@echo ">>> Build OpenSSL for $(target)"
+	# OpenSSL's `all` target modifies the Makefile;
+	# use the raw targets that make up all and it's dependencies
+	cd $$(OPENSSL_DIR-$(target)) && \
+		CC="$$(CC-$(target))" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+		make all \
+			2>&1 | tee -a ../openssl-$(target).build.log
+
+$$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
+	@echo ">>> Install OpenSSL for $(target)"
+	# Install just the software (not the docs)
+	cd $$(OPENSSL_DIR-$(target)) && \
+		CC="$$(CC-$(target))" \
+		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+		make install_sw \
+			2>&1 | tee -a ../openssl-$(target).install.log
+
+###########################################################################
+# Target: libFFI
+###########################################################################
+
+# macOS builds use the system libFFI, so there's no need to do
+# a per-target build on macOS
+ifneq ($(os),macOS)
+
+LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
+LIBFFI_DIR-$(target)=$$(LIBFFI_DIR-$(os))/build_$$(SDK-$(target))-$$(ARCH-$(target))
+LIBFFI_LIB-$(target)=$$(LIBFFI_DIR-$(target))/.libs/libffi.a
+
+$$(LIBFFI_LIB-$(target)): $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h
+	@echo ">>> Build libFFI for $(target)"
+	cd $$(LIBFFI_DIR-$(target)) && \
+		make \
+			2>&1 | tee -a ../../libffi-$(target).build.log
+
 endif
 
-# Build OpenSSL
-$$(OPENSSL_DIR-$1)/libssl.a $$(OPENSSL_DIR-$1)/libcrypto.a: $$(OPENSSL_DIR-$1)/Makefile
-	# Make the build, and install just the software (not the docs)
-	cd $$(OPENSSL_DIR-$1) && \
-		CC="$$(CC-$1)" \
-		CROSS_TOP="$$(dir $$(SDK_ROOT-$1)).." \
-		CROSS_SDK="$$(notdir $$(SDK_ROOT-$1))" \
-		make all && make install_sw
+###########################################################################
+# Target: Python
+###########################################################################
 
-# Unpack BZip2
-$$(BZIP2_DIR-$1)/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
-	# Unpack sources
-	mkdir -p $$(BZIP2_DIR-$1)
-	tar zxf downloads/bzip2-$(BZIP2_VERSION).tgz --strip-components 1 -C $$(BZIP2_DIR-$1)
-	# Patch sources to use correct compiler
-	sed -ie 's#CC=gcc#CC=$$(CC-$1)#' $$(BZIP2_DIR-$1)/Makefile
-	# Patch sources to use correct install directory
-	sed -ie 's#PREFIX=/usr/local#PREFIX=$(PROJECT_DIR)/build/$2/bzip2#' $$(BZIP2_DIR-$1)/Makefile
+# macOS builds are compiled as a single universal2 build. As a result,
+# the macOS Python build is configured in the `build` macro, rather than the
+# `build-target` macro.
+ifeq ($(os),macOS)
 
-# Build BZip2
-$$(BZIP2_DIR-$1)/libbz2.a: $$(BZIP2_DIR-$1)/Makefile
-	cd $$(BZIP2_DIR-$1) && make install
+# These constants will be the same for all macOS targets
+PYTHON_DIR-$(target)=build/$(os)/Python-$(PYTHON_VERSION)-$(os)
+PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER).a
+# PYCONFIG_H-$(target) not defined, as there's no header shim needed
 
-# Unpack XZ
-$$(XZ_DIR-$1)/Makefile: downloads/xz-$(XZ_VERSION).tgz
-	# Unpack sources
-	mkdir -p $$(XZ_DIR-$1)
-	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$1)
-	# Configure the build
-	cd $$(XZ_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
-		CC="$$(CC-$1)" \
-		LDFLAGS="$$(LDFLAGS-$1)" \
-		--disable-shared --enable-static \
-		--host=$$(MACHINE_SIMPLE-$1)-apple-darwin \
-		--prefix=$(PROJECT_DIR)/build/$2/xz
+else
 
-# Build XZ
-$$(XZ_DIR-$1)/src/liblzma/.libs/liblzma.a: $$(XZ_DIR-$1)/Makefile
-	cd $$(XZ_DIR-$1) && make && make install
+PYTHON_DIR-$(target)=build/$(os)/Python-$(PYTHON_VERSION)-$(target)
+PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER).a
+PYCONFIG_H-$(target)=build/$(os)/python/$$(SDK-$(target))/include/python$(PYTHON_VER)/pyconfig-$$(ARCH-$(target)).h
 
-# macOS builds use their own libFFI, and are compiled as a single
-# universal2 build. As a result, the macOS Python build is configured
-# in the `build` macro, rather than the `build-target` macro.
-ifneq ($2,macOS)
-LIBFFI_BUILD_DIR-$1=build_$$(SDK-$1)-$$(ARCH-$1)
-PYTHON_DIR-$1=build/$2/Python-$(PYTHON_VERSION)-$1
-pyconfig.h-$1=pyconfig-$$(ARCH-$1).h
-PYTHON_HOST-$1=$(PYTHON_HOST)
-
-# Build LibFFI
-$$(LIBFFI_DIR-$1)/libffi.$1.a: $$(LIBFFI_DIR-$1)/darwin_common
-	cd $$(LIBFFI_DIR-$1)/$$(LIBFFI_BUILD_DIR-$1) && make
-
-	# Copy in the lib to a non-BUILD_DIR dependent location;
-	# include the target in the final filename for disambiguation
-	cp $$(LIBFFI_DIR-$1)/$$(LIBFFI_BUILD_DIR-$1)/.libs/libffi.a $$(LIBFFI_DIR-$1)/libffi.$1.a
-
-# Unpack Python
-$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOST-$1)
-	# Unpack target Python
-	mkdir -p $$(PYTHON_DIR-$1)
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
+$$(PYTHON_DIR-$(target))/Makefile: \
+		$$(BZIP2_XCFRAMEWORK-$(os)) \
+		$$(XZ_XCFRAMEWORK-$(os)) \
+		$$(OPENSSL_XCFRAMEWORK-$(os)) \
+		$$(LIBFFI_XCFRAMEWORK-$(os)) \
+		$$(PYTHON_XCFRAMEWORK-macOS) \
+		downloads/Python-$(PYTHON_VERSION).tgz
+	@echo ">>> Unpack and configure Python for $(target)"
+	mkdir -p $$(PYTHON_DIR-$(target))
+	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(target))
 	# Apply target Python patches
-	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	# Copy in the embedded module configuration
-	cat $(PROJECT_DIR)/patch/Python/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.$2 > $$(PYTHON_DIR-$1)/Modules/Setup.local
+	cd $$(PYTHON_DIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# Generate the embedded module configuration
+	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
+		$(PROJECT_DIR)/patch/Python/Setup.$(os) \
+		$(PROJECT_DIR)/patch/Python/Setup.$(target) | \
+			sed -e "s/{{slice}}/$$(SLICE-$$(SDK-$(target)))/g" \
+			> $$(PYTHON_DIR-$(target))/Modules/Setup.local
 	# Configure target Python
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
-		CC="$$(CC-$1)" LD="$$(CC-$1)" \
-		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
-		--build=x86_64-apple-darwin \
-		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
-		--without-doc-strings --enable-ipv6 --without-ensurepip \
-		ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
-		$$(PYTHON_CONFIGURE-$2)
+	cd $$(PYTHON_DIR-$(target)) && \
+		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
+		./configure \
+			CC="$$(CC-$(target))" LD="$$(CC-$(target))" \
+			--host=$$(MACHINE_DETAILED-$(target))-apple-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
+			--build=$(HOST_ARCH)-apple-darwin \
+			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(target))/_install" \
+			--without-doc-strings --enable-ipv6 --without-ensurepip \
+			--with-openssl=../openssl/$$(SDK-$(target)) \
+			ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
+			$$(PYTHON_CONFIGURE-$(os)) \
+			2>&1 | tee -a ../python-$(target).config.log
 
-# Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$2/Support/OpenSSL build/$2/Support/BZip2 build/$2/Support/XZ build/$2/Support/libFFI $$(PYTHON_DIR-$1)/Makefile
-	# Build target Python
-	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH)" make all install
+$$(PYTHON_DIR-$(target))/python.exe: $$(PYTHON_DIR-$(target))/Makefile
+	@echo ">>> Build Python for $(target)"
+	cd $$(PYTHON_DIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
+		make all \
+		2>&1 | tee -a ../python-$(target).build.log
 
-build/$2/$$(pyconfig.h-$1): $$(PYTHON_DIR-$1)/dist/include/python$(PYTHON_VER)/pyconfig.h
-	cp -f $$^ $$@
+$$(PYTHON_LIB-$(target)): $$(PYTHON_DIR-$(target))/python.exe
+	@echo ">>> Install Python for $(target)"
+	cd $$(PYTHON_DIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
+		make install \
+		2>&1 | tee -a ../python-$(target).install.log
+
+$$(PYCONFIG_H-$(target)): $$(PYTHON_LIB-$(target))
+	@echo ">>> Install pyconfig headers for $(target)"
+	cp $(PROJECT_DIR)/patch/Python/pyconfig-$(os).h build/$(os)/python/$$(SDK-$(target))/include/python$(PYTHON_VER)/pyconfig.h
+	cp $$(PYTHON_DIR-$(target))/_install/include/python$(PYTHON_VER)/pyconfig.h $$(PYCONFIG_H-$(target))
 
 endif
 
-# Dump vars (for test)
-vars-$1:
-	@echo "ARCH-$1: $$(ARCH-$1)"
-	@echo "MACHINE_DETAILED-$1: $$(MACHINE_DETAILED-$1)"
-	@echo "SDK-$1: $$(SDK-$1)"
-	@echo "SDK_ROOT-$1: $$(SDK_ROOT-$1)"
-	@echo "CC-$1: $$(CC-$1)"
-	@echo "LIBFFI_BUILD_DIR-$1: $$(LIBFFI_BUILD_DIR-$1)"
-	@echo "OPENSSL_DIR-$1: $$(OPENSSL_DIR-$1)"
-	@echo "BZIP2_DIR-$1: $$(BZIP2_DIR-$1)"
-	@echo "XZ_DIR-$1: $$(XZ_DIR-$1)"
-	@echo "LIBFFI_DIR-$1: $$(LIBFFI_DIR-$1)"
-	@echo "PYTHON_DIR-$1: $$(PYTHON_DIR-$1)"
-	@echo "pyconfig.h-$1: $$(pyconfig.h-$1)"
+###########################################################################
+# Target: Debug
+###########################################################################
 
-endef
+vars-$(target):
+	@echo ">>> Environment variables for $(target)"
+	@echo "ARCH-$(target): $$(ARCH-$(target))"
+	@echo "MACHINE_DETAILED-$(target): $$(MACHINE_DETAILED-$(target))"
+	@echo "SDK-$(target): $$(SDK-$(target))"
+	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
+	@echo "CC-$(target): $$(CC-$(target))"
+	@echo "BZIP2_DIR-$(target): $$(BZIP2_DIR-$(target))"
+	@echo "BZIP2_LIB-$(target): $$(BZIP2_LIB-$(target))"
+	@echo "XZ_DIR-$(target): $$(XZ_DIR-$(target))"
+	@echo "XZ_LIB-$(target): $$(XZ_LIB-$(target))"
+	@echo "OPENSSL_DIR-$(target): $$(OPENSSL_DIR-$(target))"
+	@echo "OPENSSL_SSL_LIB-$(target): $$(OPENSSL_SSL_LIB-$(target))"
+	@echo "OPENSSL_CRYPTO_LIB-$(target): $$(OPENSSL_CRYPTO_LIB-$(target))"
+	@echo "LIBFFI_DIR-$(target): $$(LIBFFI_DIR-$(target))"
+	@echo "LIBFFI_LIB-$(target): $$(LIBFFI_LIB-$(target))"
+	@echo "PYTHON_DIR-$(target): $$(PYTHON_DIR-$(target))"
+	@echo "PYTHON_LIB-$(target): $$(PYTHON_LIB-$(target))"
+	@echo "PYCONFIG_H-$(target): $$(PYCONFIG_H-$(target))"
+	@echo
 
+endef # build-target
+
+###########################################################################
+# Build for specified sdk (extracted from the base names in $(TARGETS-*))
+###########################################################################
 #
-# Build for specified OS (from $(OS))
 # Parameters:
-# - $1 - OS
-define build
-$$(foreach target,$$(TARGETS-$1),$$(eval $$(call build-target,$$(target),$1)))
+# - $1 sdk (e.g., iphoneos, iphonesimulator)
+# - $2 OS (e.g., iOS, tvOS)
+#
+###########################################################################
+define build-sdk
+sdk=$1
+os=$2
 
-OPENSSL_FRAMEWORK-$1=build/$1/Support/OpenSSL
-BZIP2_FRAMEWORK-$1=build/$1/Support/BZip2
-XZ_FRAMEWORK-$1=build/$1/Support/XZ
-LIBFFI_FRAMEWORK-$1=build/$1/Support/libFFI
-PYTHON_FRAMEWORK-$1=build/$1/Support/Python
-PYTHON_RESOURCES-$1=$$(PYTHON_FRAMEWORK-$1)/Resources
+SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
+SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
-$1: dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz
+###########################################################################
+# SDK: BZip2
+###########################################################################
 
-clean-$1:
-	rm -rf build/$1
+BZIP2_FATLIB-$(sdk)=build/$(os)/bzip2/$(sdk)/lib/libbzip2.a
 
-dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz: $$(BZIP2_FRAMEWORK-$1) $$(XZ_FRAMEWORK-$1) $$(OPENSSL_FRAMEWORK-$1) $$(LIBFFI_FRAMEWORK-$1) $$(PYTHON_FRAMEWORK-$1)
-	mkdir -p dist
-	echo "Python version: $(PYTHON_VERSION) " > build/$1/Support/VERSIONS
-	echo "Build: $(BUILD_NUMBER)" >> build/$1/Support/VERSIONS
-	echo "---------------------" >> build/$1/Support/VERSIONS
-ifeq ($1,macOS)
-	echo "libFFI: macOS native" >> build/$1/Support/VERSIONS
+$$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_LIB-$$(target)))
+	@echo ">>> Build BZip2 fat library for $(sdk)"
+	mkdir -p build/$(os)/bzip2/$(sdk)/lib
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
+		2>&1 | tee -a build/$(os)/bzip2-$(sdk).libtool.log
+	# Copy headers from the first target associated with the SDK
+	cp -r $$(BZIP2_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/bzip2/$(sdk)
+
+###########################################################################
+# SDK: XZ (LZMA)
+###########################################################################
+
+XZ_FATLIB-$(sdk)=build/$(os)/xz/$(sdk)/lib/libxz.a
+
+$$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_LIB-$$(target)))
+	@echo ">>> Build XZ fat library for $(sdk)"
+	mkdir -p build/$(os)/xz/$(sdk)/lib
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
+		2>&1 | tee -a build/$(os)/xz-$(sdk).libtool.log
+	# Copy headers from the first target associated with the SDK
+	cp -r $$(XZ_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/xz/$(sdk)
+
+###########################################################################
+# SDK: OpenSSL
+###########################################################################
+
+OPENSSL_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libOpenSSL.a
+
+$$(OPENSSL_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)))
+	@echo ">>> Build OpenSSL fat library for $(sdk)"
+	mkdir -p build/$(os)/openssl/$(sdk)/lib
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ \
+		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)) $$(OPENSSL_CRYPTO_LIB-$$(target))) \
+		2>&1 | tee -a build/$(os)/openssl-$(sdk).libtool.log
+	# Copy headers from the first target associated with the SDK
+	cp -r $$(OPENSSL_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/openssl/$(sdk)
+
+###########################################################################
+# SDK: libFFI
+###########################################################################
+
+LIBFFI_FATLIB-$(sdk)=$$(LIBFFI_DIR-$(os))/_install/$(sdk)/libFFI.a
+
+$$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB-$$(target)))
+	@echo ">>> Build libFFI fat library for $(sdk)"
+	mkdir -p $$(LIBFFI_DIR-$(os))/_install/$(sdk)
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
+		2>&1 | tee -a build/$(os)/libffi-$(sdk).libtool.log
+	# Copy headers from the first target associated with the SDK
+	cp -f -r $$(LIBFFI_DIR-$(os))/darwin_common/include \
+		$$(LIBFFI_DIR-$(os))/_install/$(sdk)
+	cp -f -r $$(LIBFFI_DIR-$(os))/darwin_$(shell echo $(os) | tr '[:upper:]' '[:lower:]')/include/* \
+		$$(LIBFFI_DIR-$(os))/_install/$(sdk)/include
+
+###########################################################################
+# SDK: Python
+###########################################################################
+
+PYTHON_DIR-$(sdk)=build/$(os)/python/$(sdk)
+PYTHON_FATLIB-$(sdk)=$$(PYTHON_DIR-$(sdk))/lib/libPython.a
+
+ifeq ($(os),macOS)
+# There's a single OS-level build for macOS; the fat library is a direct copy of
+# OS build, and the headers are the unmodifed headers produced by the OS build.
+
+$$(PYTHON_FATLIB-$(sdk)): $$(PYTHON_LIB-$$(firstword $$(SDK_TARGETS-$(sdk))))
+	@echo ">>> Build Python fat library for $(sdk)"
+	# Copy the OS-level library
+	mkdir -p build/$(os)/python/$(sdk)/lib
+	cp $$(PYTHON_LIB-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_FATLIB-$(sdk))
+	# Copy headers from the OS-level build
+	cp -r $$(PYTHON_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/python/$(sdk)
+
 else
-	echo "libFFI: $(LIBFFI_VERSION)" >> build/$1/Support/VERSIONS
+
+$$(PYTHON_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
+	@echo ">>> Build Python fat library for $(sdk)"
+	mkdir -p build/$(os)/python/$(sdk)/lib
+	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
+		2>&1 | tee -a build/$(os)/python-$(sdk).libtool.log
+	# Copy headers from the first target associated with the SDK
+	cp -r $$(PYTHON_DIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/_install/include build/$(os)/python/$(sdk)
+
 endif
-	echo "BZip2: $(BZIP2_VERSION)" >> build/$1/Support/VERSIONS
-	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$1/Support/VERSIONS
-	echo "XZ: $(XZ_VERSION)" >> build/$1/Support/VERSIONS
 
-	# Build a "full" tarball with all content for test purposes
-	tar zcvf dist/Python-$(PYTHON_VER)-$1-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C build/$1/Support `ls -A build/$1/Support`
-	# Build a distributable tarball
-	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$1.exclude -C build/$1/Support `ls -A build/$1/Support`
+###########################################################################
+# SDK: Debug
+###########################################################################
 
-# Build OpenSSL
-OpenSSL-$1: $$(OPENSSL_FRAMEWORK-$1)
+vars-$(sdk):
+	@echo ">>> Environment variables for $(sdk)"
+	@echo "SDK_TARGETS-$(sdk): $$(SDK_TARGETS-$(sdk))"
+	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
+	@echo "BZIP2_FATLIB-$(sdk): $$(BZIP2_FATLIB-$(sdk))"
+	@echo "XZ_FATLIB-$(sdk): $$(XZ_FATLIB-$(sdk))"
+	@echo "OPENSSL_FATLIB-$(sdk): $$(OPENSSL_FATLIB-$(sdk))"
+	@echo "LIBFFI_FATLIB-$(sdk): $$(LIBFFI_FATLIB-$(sdk))"
+	@echo "PYTHON_DIR-$(sdk): $$(PYTHON_DIR-$(sdk))"
+	@echo "PYTHON_FATLIB-$(sdk): $$(PYTHON_FATLIB-$(sdk))"
+	@echo
 
-$$(OPENSSL_FRAMEWORK-$1): build/$1/libssl.a build/$1/libcrypto.a
-	# Create framework directory structure
-	mkdir -p $$(OPENSSL_FRAMEWORK-$1)
+endef # build-sdk
 
-	# Copy the headers
-	cp -f -r $$(OPENSSL_DIR-$$(firstword $$(TARGETS-$1)))/include $$(OPENSSL_FRAMEWORK-$1)/Headers
+###########################################################################
+# Build for specified OS (from $(OS_LIST))
+###########################################################################
+#
+# Parameters:
+# - $1 - OS (e.g., iOS, tvOS)
+#
+###########################################################################
+define build
+os=$1
 
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(OPENSSL_FRAMEWORK-$1)/libOpenSSL.a $$^
+###########################################################################
+# Build: Macro Expansions
+###########################################################################
+
+# Expand the build-target macro for target on this OS
+$$(foreach target,$$(TARGETS-$(os)),$$(eval $$(call build-target,$$(target),$(os))))
+
+# Expand the build-sdk macro for all the sdks on this OS (e.g., iphoneos, iphonesimulator)
+SDKS-$(os)=$$(sort $$(basename $$(TARGETS-$(os))))
+$$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
+
+###########################################################################
+# Build: BZip2
+###########################################################################
+
+BZIP2_XCFRAMEWORK-$(os)=build/$(os)/Support/BZip2.xcframework
+
+$$(BZIP2_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(BZIP2_FATLIB-$$(sdk)))
+	@echo ">>> Create BZip2.XCFramework on $(os)"
+	mkdir -p $$(BZIP2_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(BZIP2_FATLIB-$$(sdk)) -headers build/$(os)/bzip2/$$(sdk)/include) \
+		2>&1 | tee -a build/$(os)/bzip2-$(os).xcframework.log
+
+BZip2-$(os): $$(BZIP2_XCFRAMEWORK-$(os))
+
+###########################################################################
+# Build: XZ (LZMA)
+###########################################################################
+
+XZ_XCFRAMEWORK-$(os)=build/$(os)/Support/XZ.xcframework
+
+$$(XZ_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(XZ_FATLIB-$$(sdk)))
+	@echo ">>> Create XZ.XCFramework on $(os)"
+	mkdir -p $$(XZ_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(XZ_FATLIB-$$(sdk)) -headers build/$(os)/xz/$$(sdk)/include) \
+		2>&1 | tee -a build/$(os)/xz-$(os).xcframework.log
+
+XZ-$(os): $$(XZ_XCFRAMEWORK-$(os))
+
+###########################################################################
+# Build: OpenSSL
+###########################################################################
+
+OPENSSL_XCFRAMEWORK-$(os)=build/$(os)/Support/OpenSSL.xcframework
+
+$$(OPENSSL_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATLIB-$$(sdk)))
+	@echo ">>> Create OpenSSL.XCFramework on $(os)"
+	mkdir -p $$(OPENSSL_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(OPENSSL_FATLIB-$$(sdk)) -headers build/$(os)/openssl/$$(sdk)/include) \
+		2>&1 | tee -a build/$(os)/openssl-$(os).xcframework.log
+
+OpenSSL-$(os): $$(OPENSSL_XCFRAMEWORK-$(os))
+
+###########################################################################
+# Build: libFFI
+###########################################################################
+
+# macOS uses the system-provided libFFI, so there's no need to package
+# a libFFI framework for macOS.
+ifneq ($(os),macOS)
+
+LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
+LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
+
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
+	@echo ">>> Unpack and configure libFFI sources on $(os)"
+	mkdir -p $$(LIBFFI_DIR-$(os))
+	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
+	# Patch the build to add support for new platforms
+	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
+	# Configure the build
+	cd $$(LIBFFI_DIR-$(os)) && \
+		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
+		python3 generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
+		2>&1 | tee -a ../libffi-$(os).config.log
+
+$$(LIBFFI_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(sdk)))
+	@echo ">>> Create libFFI.XCFramework on $(os)"
+	mkdir -p $$(LIBFFI_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(LIBFFI_FATLIB-$$(sdk)) -headers $$(LIBFFI_DIR-$(os))/_install/$$(sdk)/include) \
+		2>&1 | tee -a build/$(os)/libffi-$(os).xcframework.log
+
+libFFI-$(os): $$(LIBFFI_XCFRAMEWORK-$(os))
+
+endif
 
 
-build/$1/libssl.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libssl.a)
-	mkdir -p build/$1
-	xcrun lipo -create -output $$@ $$^
+###########################################################################
+# Build: Python
+###########################################################################
 
-build/$1/libcrypto.a: $$(foreach target,$$(TARGETS-$1),$$(OPENSSL_DIR-$$(target))/libcrypto.a)
-	mkdir -p build/$1
-	xcrun lipo -create -output $$@ $$^
-
-# Build BZip2
-BZip2-$1: $$(BZIP2_FRAMEWORK-$1)
-
-$$(BZIP2_FRAMEWORK-$1): build/$1/bzip2/lib/libbz2.a
-	# Create framework directory structure
-	mkdir -p $$(BZIP2_FRAMEWORK-$1)
-
-	# Copy the headers
-	cp -f -r build/$1/bzip2/include $$(BZIP2_FRAMEWORK-$1)/Headers
-
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(BZIP2_FRAMEWORK-$1)/libbzip2.a $$^
-
-
-build/$1/bzip2/lib/libbz2.a: $$(foreach target,$$(TARGETS-$1),$$(BZIP2_DIR-$$(target))/libbz2.a)
-	mkdir -p build/$1
-	xcrun lipo -create -o $$@ $$^
-
-# Build XZ
-XZ-$1: $$(XZ_FRAMEWORK-$1)
-
-$$(XZ_FRAMEWORK-$1): build/$1/xz/lib/liblzma.a
-	# Create framework directory structure
-	mkdir -p $$(XZ_FRAMEWORK-$1)
-
-	# Copy the headers
-	cp -f -r build/$1/xz/include $$(XZ_FRAMEWORK-$1)/Headers
-
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(XZ_FRAMEWORK-$1)/libxz.a $$^
-
-build/$1/xz/lib/liblzma.a: $$(foreach target,$$(TARGETS-$1),$$(XZ_DIR-$$(target))/src/liblzma/.libs/liblzma.a)
-	mkdir -p build/$1
-	xcrun lipo -create -o $$@ $$^
-
-# Build libFFI
-libFFI-$1: $$(LIBFFI_FRAMEWORK-$1)
+PYTHON_XCFRAMEWORK-$(os)=build/$(os)/Support/Python.xcframework
+PYTHON_RESOURCES-$(os)=build/$(os)/Support/Python/Resources/lib
 
 # macOS builds a single Python universal2 target; thus it needs to be
 # configured in the `build` macro, not the `build-target` macro.
-# macOS also uses the system-provided libFFI, so there's no need to package
-# a libFFI framework for macOS.
-ifeq ($1,macOS)
-# Some targets that are needed for consistency between macOS and other builds,
-# but are no-ops on macOS.
-$$(LIBFFI_FRAMEWORK-$1):
+ifeq ($(os),macOS)
 
-build/$1/$$(pyconfig.h-$1):
+# On macOS, there's a single target and a single output dir,
+# rather than a target for each architecture.
+PYTHON_TARGETS-$(os)=macOS
 
-# Unpack Python
-$$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz
-	# Unpack target Python
-	mkdir -p $$(PYTHON_DIR-$1)
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$1)
+# For convenience on macOS, define an OS-level PYTHON_DIR and PYTHON_LIB.
+# They are proxies of the values set for the first target, since all target
+# constants should have the same value for macOS builds
+PYTHON_DIR-$(os)=$$(PYTHON_DIR-$$(firstword $$(TARGETS-$(os))))
+PYTHON_LIB-$(os)=$$(PYTHON_LIB-$$(firstword $$(TARGETS-$(os))))
+
+$$(PYTHON_DIR-$(os))/Makefile: \
+		$$(BZIP2_XCFRAMEWORK-$(os)) \
+		$$(XZ_XCFRAMEWORK-$(os)) \
+		$$(OPENSSL_XCFRAMEWORK-$(os)) \
+		downloads/Python-$(PYTHON_VERSION).tgz
+	@echo ">>> Unpack and configure Python for $(os)"
+	mkdir -p $$(PYTHON_DIR-$(os))
+	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(os))
 	# Apply target Python patches
-	cd $$(PYTHON_DIR-$1) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	# Copy in the embedded module configuration
-	cat $(PROJECT_DIR)/patch/Python/Setup.embedded $(PROJECT_DIR)/patch/Python/Setup.$1 > $$(PYTHON_DIR-$1)/Modules/Setup.local
+	cd $$(PYTHON_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
+		$(PROJECT_DIR)/patch/Python/Setup.$(os) | \
+			sed -e "s/{{slice}}/$$(SLICE-macosx)/g" \
+			> $$(PYTHON_DIR-$(os))/Modules/Setup.local
 	# Configure target Python
-	cd $$(PYTHON_DIR-$1) && MACOSX_DEPLOYMENT_TARGET=$$(MACOSX_DEPLOYMENT_TARGET) ./configure \
-		--prefix=$(PROJECT_DIR)/$$(PYTHON_DIR-$1)/dist \
-		--without-doc-strings --enable-ipv6 --without-ensurepip --enable-universalsdk --with-universal-archs=universal2 \
-		$$(PYTHON_CONFIGURE-$1)
+	cd $$(PYTHON_DIR-$(os)) && \
+		./configure \
+			CC="$(CC-macosx)" LD="$(CC-macosx)" \
+			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(os))/_install" \
+			--without-doc-strings --enable-ipv6 --without-ensurepip --enable-universalsdk --with-universal-archs=universal2 \
+			--with-openssl=../openssl/macosx \
+			$$(PYTHON_CONFIGURE-$(os)) \
+			2>&1 | tee -a ../python-$(os).config.log
 
-# Build Python
-$$(PYTHON_DIR-$1)/dist/lib/libpython$(PYTHON_VER).a: build/$1/Support/OpenSSL build/$1/Support/BZip2 build/$1/Support/XZ build/$1/Support/libFFI $$(PYTHON_DIR-$1)/Makefile
-	# Build target Python
-	cd $$(PYTHON_DIR-$1) && PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$1)/dist/bin:$(PATH)" make all install
+$$(PYTHON_DIR-$(os))/python.exe: \
+		$$(PYTHON_DIR-$(os))/Makefile
+	@echo ">>> Build Python for $(os)"
+	cd $$(PYTHON_DIR-$(os)) && \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$(os))/_install/bin:$(PATH)" \
+		make all \
+		2>&1 | tee -a ../python-$(os).build.log
+
+$$(PYTHON_LIB-$(os)): $$(PYTHON_DIR-$(os))/python.exe
+	@echo ">>> Install Python for $(os)"
+	cd $$(PYTHON_DIR-$(os)) && \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$(os))/_install/bin:$(PATH)" \
+		make install \
+		2>&1 | tee -a ../python-$(os).install.log
 
 else
-# The LibFFI folder is shared between all architectures for the OS
-LIBFFI_DIR-$1=build/$1/libffi-$(LIBFFI_VERSION)
-# The Python targets are the same as they are for every other library
-PYTHON_TARGETS-$1=$$(TARGETS-$1)
 
-# Unpack LibFFI and generate source & headers
-$$(LIBFFI_DIR-$1)/darwin_common: downloads/libffi-$(LIBFFI_VERSION).tgz
-	# Unpack sources
-	mkdir -p $$(LIBFFI_DIR-$1)
-	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$1)
-	# Configure the build
-	cd $$(LIBFFI_DIR-$1) && python generate-darwin-source-and-headers.py --only-$(shell echo $1 | tr '[:upper:]' '[:lower:]')
-
-$$(LIBFFI_FRAMEWORK-$1): $$(LIBFFI_DIR-$1)/libffi.a
-	# Create framework directory structure
-	mkdir -p $$(LIBFFI_FRAMEWORK-$1)
-
-	# Copy the headers.
-	cp -f -r $$(LIBFFI_DIR-$1)/darwin_common/include $$(LIBFFI_FRAMEWORK-$1)/Headers
-	cp -f -r $$(LIBFFI_DIR-$1)/darwin_$(shell echo $1 | tr '[:upper:]' '[:lower:]')/include/* $$(LIBFFI_FRAMEWORK-$1)/Headers
-
-	# Create the fat library
-	xcrun libtool -no_warning_for_no_symbols -static \
-		-o $$(LIBFFI_FRAMEWORK-$1)/libFFI.a $$^
-
-$$(LIBFFI_DIR-$1)/libffi.a: $$(foreach target,$$(TARGETS-$1),$$(LIBFFI_DIR-$1)/libffi.$$(target).a)
-	xcrun lipo -create -o $$@ $$^
+# The targets for Python on OSes other than macOS
+# are the same as they are for every other library
+PYTHON_TARGETS-$(os)=$$(TARGETS-$(os))
 
 endif
 
-$1: Python-$1
+$$(PYTHON_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(sdk))) $$(foreach target,$$(PYTHON_TARGETS-$(os)),$$(PYCONFIG_H-$$(target)))
+	@echo ">>> Create Python.XCFramework on $(os)"
+	mkdir -p $$(PYTHON_XCFRAMEWORK-$(os))
+	xcodebuild -create-xcframework \
+		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_DIR-$$(sdk))/include/python$(PYTHON_VER)) \
+		2>&1 | tee -a build/$(os)/python-$(os).xcframework.log
+ 	# Copy the standard library from the first target listed
+	mkdir -p $$(PYTHON_RESOURCES-$(os))
+	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$(os))))/_install/lib/python$(PYTHON_VER) \
+		$$(PYTHON_RESOURCES-$(os))
 
-Python-$1: dist/Python-$(PYTHON_VER)-$1-support.$(BUILD_NUMBER).tar.gz
+Python-$(os): $$(PYTHON_XCFRAMEWORK-$(os))
 
-# Build Python
-$$(PYTHON_FRAMEWORK-$1): build/$1/libpython$(PYTHON_VER).a $$(foreach target,$$(PYTHON_TARGETS-$1),build/$1/$$(pyconfig.h-$$(target)))
-	mkdir -p $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+###########################################################################
+# Build
+###########################################################################
 
-	# Copy the headers. The headers are the same for every platform, except for pyconfig.h
-	# We ship a master pyconfig.h for iOS, tvOS and watchOS that delegates to architecture
-	# specific versions; on macOS, we can use the original version as-is.
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$1)))/dist/include/python$(PYTHON_VER) $$(PYTHON_FRAMEWORK-$1)/Headers
-ifneq ($1,macOS)
-	cp -f $$(filter %.h,$$^) $$(PYTHON_FRAMEWORK-$1)/Headers
-	cp -f $(PROJECT_DIR)/patch/Python/pyconfig-$1.h $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig.h
+dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
+		$$(BZIP2_XCFRAMEWORK-$(os)) \
+		$$(XZ_XCFRAMEWORK-$(os)) \
+		$$(OPENSSL_XCFRAMEWORK-$(os)) \
+		$$(LIBFFI_XCFRAMEWORK-$(os)) \
+		$$(PYTHON_XCFRAMEWORK-$(os))
+	@echo ">>> Create final distribution artefact for $(os)"
+	mkdir -p dist
+	echo "Python version: $(PYTHON_VERSION) " > build/$(os)/Support/VERSIONS
+	echo "Build: $(BUILD_NUMBER)" >> build/$(os)/Support/VERSIONS
+	echo "---------------------" >> build/$(os)/Support/VERSIONS
+ifeq ($(os),macOS)
+	echo "libFFI: macOS native" >> build/$(os)/Support/VERSIONS
+else
+	echo "libFFI: $(LIBFFI_VERSION)" >> build/$(os)/Support/VERSIONS
 endif
-	# Copy Python.h and pyconfig.h into the resources include directory
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/pyconfig*.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
-	cp -f -r $$(PYTHON_FRAMEWORK-$1)/Headers/Python.h $$(PYTHON_RESOURCES-$1)/include/python$(PYTHON_VER)
+	echo "BZip2: $(BZIP2_VERSION)" >> build/$(os)/Support/VERSIONS
+	echo "OpenSSL: $(OPENSSL_VERSION)" >> build/$(os)/Support/VERSIONS
+	echo "XZ: $(XZ_VERSION)" >> build/$(os)/Support/VERSIONS
 
-	# Copy the standard library from the simulator build
-	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$1)))/dist/lib $$(PYTHON_RESOURCES-$1)
+	# Build a "full" tarball with all content for test purposes
+	tar zcvf dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C build/$(os)/Support `ls -A build/$(os)/Support`
+	# Build a distributable tarball
+	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$(os).exclude -C build/$(os)/Support `ls -A build/$(os)/Support`
 
-	# Copy fat library
-	cp -f $$(filter %.a,$$^) $$(PYTHON_FRAMEWORK-$1)/libPython.a
+$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 
+clean-$(os):
+	@echo ">>> Clean $(os) build products"
+	rm -rf \
+		build/$(os) \
+		dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz \
+		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz \
 
-# Build libpython fat library
-build/$1/libpython$(PYTHON_VER).a: $$(foreach target,$$(PYTHON_TARGETS-$1),$$(PYTHON_DIR-$$(target))/dist/lib/libpython$(PYTHON_VER).a)
-	# Create a fat binary for the libPython library
-	mkdir -p build/$1
-	xcrun lipo -create -output $$@ $$^
+###########################################################################
+# Build: Debug
+###########################################################################
 
-vars-$1: $$(foreach target,$$(TARGETS-$1),vars-$$(target))
-	@echo "OPENSSL_FRAMEWORK-$1: $$(OPENSSL_FRAMEWORK-$1)"
-	@echo "BZIP2_FRAMEWORK-$1: $$(BZIP2_FRAMEWORK-$1)"
-	@echo "XZ_FRAMEWORK-$1: $$(XZ_FRAMEWORK-$1)"
-	@echo "LIBFFI_FRAMEWORK-$1: $$(LIBFFI_FRAMEWORK-$1)"
-	@echo "PYTHON_FRAMEWORK-$1: $$(PYTHON_FRAMEWORK-$1)"
-	@echo "LIBFFI_DIR-$1: $$(LIBFFI_DIR-$1)"
-	@echo "PYTHON_RESOURCES-$1: $$(PYTHON_RESOURCES-$1)"
-	@echo "PYTHON_TARGETS-$1: $$(PYTHON_TARGETS-$1)"
+vars-$(os): $$(foreach target,$$(TARGETS-$(os)),vars-$$(target)) $$(foreach sdk,$$(SDKS-$(os)),vars-$$(sdk))
+	@echo ">>> Environment variables for $(os)"
+	@echo "SDKS-$(os): $$(SDKS-$(os))"
+	@echo "BZIP2_XCFRAMEWORK-$(os): $$(BZIP2_XCFRAMEWORK-$(os))"
+	@echo "XZ_XCFRAMEWORK-$(os): $$(XZ_XCFRAMEWORK-$(os))"
+	@echo "OPENSSL_XCFRAMEWORK-$(os): $$(OPENSSL_XCFRAMEWORK-$(os))"
+	@echo "LIBFFI_XCFRAMEWORK-$(os): $$(LIBFFI_XCFRAMEWORK-$(os))"
+	@echo "LIBFFI_DIR-$(os): $$(LIBFFI_DIR-$(os))"
+	@echo "PYTHON_XCFRAMEWORK-$(os): $$(PYTHON_XCFRAMEWORK-$(os))"
+	@echo "PYTHON_RESOURCES-$(os): $$(PYTHON_RESOURCES-$(os))"
+	@echo "PYTHON_TARGETS-$(os): $$(PYTHON_TARGETS-$(os))"
+	@echo "PYTHON_DIR-$(os): $$(PYTHON_DIR-$(os))"
+	@echo "PYTHON_LIB-$(os): $$(PYTHON_LIB-$(os))"
+	@echo
 
-endef
+endef # build
 
-$(foreach os,$(OS),$(eval $(call build,$(os))))
+# Dump environment variables (for debugging purposes)
+vars: $(foreach os,$(OS_LIST),vars-$(os))
+
+# Expand cross-platform build targets for each output product
+XZ: $(foreach os,$(OS_LIST),XZ-$(os))
+BZip2: $(foreach os,$(OS_LIST),BZip2-$(os))
+OpenSSL: $(foreach os,$(OS_LIST),OpenSSL-$(os))
+libFFI: $(foreach os,$(OS_LIST),libFFI-$(os))
+Python: $(foreach os,$(OS_LIST),Python-$(os))
+
+# Expand the build macro for every OS
+$(foreach os,$(OS_LIST),$(eval $(call build,$(os))))

@@ -11369,10 +11369,59 @@ index 253cad1a59..b69d814e7a 100644
 +set -v
 +include=`xcrun --sdk watchos --show-sdk-path`/usr/include python$EXE ../../Tools/scripts/h2py.py -i '(u_long)' `xcrun --sdk watchos --show-sdk-path`/usr/include/netinet/in.h
 diff --git a/Lib/platform.py b/Lib/platform.py
-index b7e7bc439e..c71a20f882 100755
+index b7e7bc439e..b2860d4bdd 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -605,7 +605,7 @@
+@@ -445,6 +445,48 @@
+     # If that also doesn't work return the default values
+     return release, versioninfo, machine
+ 
++
++def iOS_ver():
++    """ Get iOS/tvOS version information, and return it as a
++        tuple (system, release). All tuple entries are strings.
++
++        Equivalent of:
++        system = [[UIDevice currentDevice].model] UTF8String]
++        release = [[UIDevice currentDevice].systemVersion] UTF8String]
++
++    """
++    from ctypes import cast, cdll, c_void_p, c_char_p
++    from ctypes import util
++    objc = cdll.LoadLibrary(util.find_library(b'objc'))
++    uikit = cdll.LoadLibrary(util.find_library(b'UIKit'))
++
++    objc.objc_getClass.restype = c_void_p
++    objc.objc_getClass.argtypes = [c_char_p]
++    objc.objc_msgSend.restype = c_void_p
++    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++    objc.sel_registerName.restype = c_void_p
++    objc.sel_registerName.argtypes = [c_char_p]
++
++    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
++    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
++    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++
++    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
++    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++
++    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
++    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
++
++    # UTF8String returns a const char*;
++    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
++    objc.objc_msgSend.restype = c_char_p
++
++    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
++    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
++
++    return system, release
++
++
+ def _java_getprop(name, default):
+ 
+     from java.lang import System
+@@ -605,7 +647,7 @@
  
      """ Interface to the system's uname command.
      """
@@ -11381,7 +11430,7 @@ index b7e7bc439e..c71a20f882 100755
          # XXX Others too ?
          return default
  
-@@ -627,7 +627,7 @@
+@@ -627,7 +669,7 @@
          default in case the command should fail.
  
      """
@@ -11405,20 +11454,74 @@ index 9fa21cca38..e346fb4390 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index d4d04a5c34..c5ac3d1525 100644
+index d4d04a5c34..b742063be5 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -741,6 +741,9 @@
+@@ -66,9 +66,13 @@
+     _mswindows = True
+ except ModuleNotFoundError:
+     _mswindows = False
+-    import _posixsubprocess
+-    import select
+-    import selectors
++    try:
++        import _posixsubprocess
++        import select
++        import selectors
++    except ModuleNotFoundError:
++        # iOS *has* subprocesses, but doesn't support them.
++        _posixsubprocess = None
+ else:
+     from _winapi import (CREATE_NEW_CONSOLE, CREATE_NEW_PROCESS_GROUP,
+                          STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+@@ -203,7 +207,7 @@
+             return "%s(%d)" % (self.__class__.__name__, int(self))
+ 
+         __del__ = Close
+-else:
++elif _posixsubprocess:
+     # When select or poll has indicated that the file is writable,
+     # we can write up to _PIPE_BUF bytes without risk of blocking.
+     # POSIX defines PIPE_BUF as >= 512.
+@@ -231,7 +235,7 @@
+ 
+     def _cleanup():
+         pass
+-else:
++elif _posixsubprocess:
+     # This lists holds Popen instances for which the underlying process had not
+     # exited at the time its __del__ method got called: those processes are
+     # wait()ed for synchronously from _cleanup() when a new Popen object is
+@@ -250,6 +254,9 @@
+                     # This can happen if two threads create a new Popen instance.
+                     # It's harmless that it was already removed, so ignore.
+                     pass
++else:
++    def _cleanup():
++        pass
+ 
+ PIPE = -1
+ STDOUT = -2
+@@ -648,7 +655,7 @@
+     Prefer an implementation which can use vfork() in some cases for best
+     performance.
+     """
+-    if _mswindows or not hasattr(os, 'posix_spawn'):
++    if _mswindows or _posixsubprocess is None or not hasattr(os, 'posix_spawn'):
+         # os.posix_spawn() is not available
+         return False
+ 
+@@ -741,6 +748,9 @@
                   restore_signals=True, start_new_session=False,
                   pass_fds=(), *, encoding=None, errors=None, text=None):
          """Create new Popen instance."""
-+        if not os.allows_subprocesses:
-+            raise RuntimeError("Subprocesses are not supported on this platform.")
++        if not _mswindows and _posixsubprocess is None:
++            raise RuntimeError(f"Subprocesses are not supported on {sys.platform}")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1723,7 +1726,7 @@
+@@ -1723,7 +1733,7 @@
                  raise SubprocessError("Unknown child exit status!")
  
  
@@ -11427,7 +11530,7 @@ index d4d04a5c34..c5ac3d1525 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1732,6 +1735,8 @@
+@@ -1732,6 +1742,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -15729,7 +15832,7 @@ index 04342a4982..b027647376 100644
  [The pkg-config script could not be found or is too old.  Make sure it
  is in your PATH or set the PKG_CONFIG environment variable to the full
 diff --git a/config.sub b/config.sub
-index ba37cf99e2..9815c16a5c 100755
+index ba37cf99e2..9630a92627 100755
 --- a/config.sub
 +++ b/config.sub
 @@ -249,7 +249,7 @@
@@ -15741,6 +15844,15 @@ index ba37cf99e2..9815c16a5c 100755
  	| avr | avr32 \
  	| ba \
  	| be32 | be64 \
+@@ -376,7 +376,7 @@
+ 	| alpha-* | alphaev[4-8]-* | alphaev56-* | alphaev6[78]-* \
+ 	| alpha64-* | alpha64ev[4-8]-* | alpha64ev56-* | alpha64ev6[78]-* \
+ 	| alphapca5[67]-* | alpha64pca5[67]-* | arc-* | arceb-* \
+-	| arm-*  | armbe-* | armle-* | armeb-* | armv*-* \
++	| arm-*  | armbe-* | armle-* | armeb-* | armv*-* | arm64-* \
+ 	| avr-* | avr32-* \
+ 	| ba-* \
+ 	| be32-* | be64-* \
 @@ -1526,6 +1526,12 @@
  		;;
  	-ios)
