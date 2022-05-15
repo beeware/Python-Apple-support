@@ -36,6 +36,7 @@ _multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
 _opcode _opcode.c
 _operator _operator.c
 _pickle _pickle.c -DPy_BUILD_CORE
+_posixsubprocess _posixsubprocess.c
 _queue _queuemodule.c
 _random _randommodule.c
 _sha1 sha1module.c

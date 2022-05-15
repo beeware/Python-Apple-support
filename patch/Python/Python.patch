@@ -707,7 +707,7 @@ index 509f99ae8e..2005b88e94 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/os.py b/Lib/os.py
-index 253cad1a59..b69d814e7a 100644
+index 253cad1a59..b2a6fbfb08 100644
 --- a/Lib/os.py
 +++ b/Lib/os.py
 @@ -34,7 +34,7 @@
@@ -724,7 +724,7 @@ index 253cad1a59..b69d814e7a 100644
  del _fscodec
  
 +
-+if sys.platform in ('iOS', 'tvos', 'watchos'):
++if sys.platform in ('ios', 'tvos', 'watchos'):
 +    allows_subprocesses = False
 +else:
 +    allows_subprocesses = True
@@ -11454,74 +11454,20 @@ index 9fa21cca38..e346fb4390 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index d4d04a5c34..b742063be5 100644
+index d4d04a5c34..0e76349e81 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -66,9 +66,13 @@
-     _mswindows = True
- except ModuleNotFoundError:
-     _mswindows = False
--    import _posixsubprocess
--    import select
--    import selectors
-+    try:
-+        import _posixsubprocess
-+        import select
-+        import selectors
-+    except ModuleNotFoundError:
-+        # iOS *has* subprocesses, but doesn't support them.
-+        _posixsubprocess = None
- else:
-     from _winapi import (CREATE_NEW_CONSOLE, CREATE_NEW_PROCESS_GROUP,
-                          STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-@@ -203,7 +207,7 @@
-             return "%s(%d)" % (self.__class__.__name__, int(self))
- 
-         __del__ = Close
--else:
-+elif _posixsubprocess:
-     # When select or poll has indicated that the file is writable,
-     # we can write up to _PIPE_BUF bytes without risk of blocking.
-     # POSIX defines PIPE_BUF as >= 512.
-@@ -231,7 +235,7 @@
- 
-     def _cleanup():
-         pass
--else:
-+elif _posixsubprocess:
-     # This lists holds Popen instances for which the underlying process had not
-     # exited at the time its __del__ method got called: those processes are
-     # wait()ed for synchronously from _cleanup() when a new Popen object is
-@@ -250,6 +254,9 @@
-                     # This can happen if two threads create a new Popen instance.
-                     # It's harmless that it was already removed, so ignore.
-                     pass
-+else:
-+    def _cleanup():
-+        pass
- 
- PIPE = -1
- STDOUT = -2
-@@ -648,7 +655,7 @@
-     Prefer an implementation which can use vfork() in some cases for best
-     performance.
-     """
--    if _mswindows or not hasattr(os, 'posix_spawn'):
-+    if _mswindows or _posixsubprocess is None or not hasattr(os, 'posix_spawn'):
-         # os.posix_spawn() is not available
-         return False
- 
-@@ -741,6 +748,9 @@
+@@ -741,6 +741,9 @@
                   restore_signals=True, start_new_session=False,
                   pass_fds=(), *, encoding=None, errors=None, text=None):
          """Create new Popen instance."""
-+        if not _mswindows and _posixsubprocess is None:
++        if not os.allows_subprocesses:
 +            raise RuntimeError(f"Subprocesses are not supported on {sys.platform}")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1723,7 +1733,7 @@
+@@ -1723,7 +1726,7 @@
                  raise SubprocessError("Unknown child exit status!")
  
  
@@ -11530,7 +11476,7 @@ index d4d04a5c34..b742063be5 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1732,6 +1742,8 @@
+@@ -1732,6 +1735,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
