@@ -723,7 +723,7 @@ index 66a16a6839..dd6444892d 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/os.py b/Lib/os.py
-index 9853e37c61..7d569e55d5 100644
+index 9853e37c61..cabea71cca 100644
 --- a/Lib/os.py
 +++ b/Lib/os.py
 @@ -34,7 +34,7 @@
@@ -740,7 +740,7 @@ index 9853e37c61..7d569e55d5 100644
  del _fscodec
  
 +
-+if sys.platform in ('iOS', 'tvos', 'watchos'):
++if sys.platform in ('ios', 'tvos', 'watchos'):
 +    allows_subprocesses = False
 +else:
 +    allows_subprocesses = True
@@ -11421,7 +11421,7 @@ index 878658827c..0bc557f9e0 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 3f99be551c..447fd60f35 100644
+index 3f99be551c..6a4ad34d5c 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -686,6 +686,9 @@
@@ -11429,7 +11429,7 @@ index 3f99be551c..447fd60f35 100644
                   pass_fds=(), *, encoding=None, errors=None, text=None):
          """Create new Popen instance."""
 +        if not os.allows_subprocesses:
-+            raise RuntimeError("Subprocesses are not supported on this platform.")
++            raise RuntimeError(f"Subprocesses are not supported on {sys.platform}")
 +
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
