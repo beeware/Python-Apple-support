@@ -37,7 +37,6 @@ _decimal _decimal/_decimal.c \
     -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
 
 _posixshmem -I$(srcdir)/Modules/_multiprocessing _multiprocessing/posixshmem.c
-_posixsubprocess _posixsubprocess.c
 
 _scproxy _scproxy.c -framework SystemConfiguration -framework CoreFoundation
 
