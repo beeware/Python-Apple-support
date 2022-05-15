@@ -21,6 +21,7 @@ requires = [
     "std-nslog",
 ]
 support_package = "../../dist/Python-3.9-macOS-support.custom.tar.gz"
+template = "../../../../templates/briefcase-macOS-Xcode-template"
 
 [tool.briefcase.app.testbed.linux]
 supported = false
@@ -35,6 +36,7 @@ requires = [
     "std-nslog",
 ]
 support_package = "../../dist/Python-3.9-iOS-support.custom.tar.gz"
+template = "../../../../templates/briefcase-iOS-Xcode-template"
 
 [tool.briefcase.app.testbed.android]
 supported = false

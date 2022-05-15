@@ -24,7 +24,6 @@ The following standard library modules are available on macOS, but not the other
 Apple platforms:
     * curses
     * posixshmem
-    * posixsubprocess
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
 devices; and arm64_32 for watchOS. It also supports device simulators on both

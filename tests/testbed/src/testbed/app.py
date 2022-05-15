@@ -48,11 +48,11 @@ def main():
                 print(f"{sys_platform}: {test.__name__}", end="...")
             test()
             print(" ok")
-        except Exception as e:
+        except Exception:
             failures += 1
             print(" FAILED!")
             print("-" * 80)
-            traceback.print_exception(e)
+            traceback.print_exc()
             print("-" * 80)
 
     print("=" * 80)
