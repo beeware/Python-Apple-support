@@ -20,7 +20,7 @@ requires = [
     "rubicon-objc",
     "std-nslog",
 ]
-support_package = "../../dist/Python-3.10-macOS-support.custom.tar.gz"
+support_package = "../../dist/Python-3.11-macOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.linux]
 supported = false
@@ -34,7 +34,7 @@ requires = [
     "rubicon-objc",
     "std-nslog",
 ]
-support_package = "../../dist/Python-3.10-iOS-support.custom.tar.gz"
+support_package = "../../dist/Python-3.11-iOS-support.custom.tar.gz"
 
 [tool.briefcase.app.testbed.android]
 supported = false

@@ -17,7 +17,7 @@ _codecs_tw cjkcodecs/_codecs_tw.c
 _collections _collectionsmodule.c
 _contextvars _contextvarsmodule.c
 _csv _csv.c
-_dbm _dbmmodule.c -DHAVE_NDBM_H
+_dbm _dbmmodule.c -DUSE_NDBM
 _datetime _datetimemodule.c
 _elementtree _elementtree.c \
     -I$(srcdir)/Modules/expat
@@ -32,7 +32,7 @@ _lsprof _lsprof.c rotatingtree.c
 _lzma _lzmamodule.c -I$(srcdir)/../Support/XZ.xcframework/{{slice}}/Headers -L$(srcdir)/../Support/XZ.xcframework/{{slice}} -lxz
 _md5 md5module.c
 _multibytecodec cjkcodecs/multibytecodec.c
-_multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
+_multiprocessing -I$(srcdir)/Modules/_multiprocessing _multiprocessing/multiprocessing.c _multiprocessing/semaphore.c
 _opcode _opcode.c
 _operator _operator.c
 _pickle _pickle.c -DPy_BUILD_CORE_MODULE
@@ -55,7 +55,7 @@ _sqlite3 -I$(srcdir)/Modules/_sqlite -DMODULE_NAME='\"sqlite3\"' -DSQLITE_OMIT_L
     _sqlite/row.c \
     _sqlite/statement.c \
     _sqlite/util.c
-_sre _sre.c
+_sre -I$(srcdir)/Modules/_sre _sre/sre.c
 _ssl _ssl.c -I$(srcdir)/../Support/OpenSSL.xcframework/{{slice}}/Headers -L$(srcdir)/../Support/OpenSSL.xcframework/{{slice}} -lOpenSSL -DUSE_SSL
 _stat _stat.c
 _statistics _statisticsmodule.c
@@ -63,19 +63,20 @@ _struct _struct.c
 _symtable symtablemodule.c
 _thread -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal _threadmodule.c
 _tracemalloc _tracemalloc.c
+_typing _typingmodule.c
 _weakref _weakref.c
 _uuid _uuidmodule.c
 _zoneinfo _zoneinfo.c -DPy_BUILD_CORE_MODULE
-array arraymodule.c
+array arraymodule.c -DPy_BUILD_CORE_MODULE
 atexit atexitmodule.c
 binascii binascii.c
-cmath cmathmodule.c _math.c
+cmath cmathmodule.c
 errno errnomodule.c
 faulthandler faulthandler.c
 fcntl fcntlmodule.c
 grp grpmodule.c
 itertools itertoolsmodule.c
-math mathmodule.c -DPy_BUILD_CORE_MODULE
+math mathmodule.c
 mmap mmapmodule.c
 posix -DPy_BUILD_CORE_BUILTIN -I$(srcdir)/Include/internal posixmodule.c
 pwd pwdmodule.c

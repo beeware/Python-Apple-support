@@ -1,7 +1,7 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.10.4**.
+**This repository branch builds a packaged version of Python 3.11.0b1**.
 Other Python versions are available by cloning other branches of the main
 repository.
 
@@ -69,7 +69,7 @@ This should:
 The build products will be in the `build` directory; the compiled frameworks
 will be in the `dist` directory.
 
-.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.10
-.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.10
-.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.10
-.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.10
+.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.11
+.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.11
+.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.11
+.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.11
