@@ -1,6 +1,9 @@
 #####################################################################
 # iOS: Platform specific configuration
 #####################################################################
+
+*static*
+
 _ctypes _ctypes/_ctypes.c \
     _ctypes/callbacks.c \
     _ctypes/callproc.c \
@@ -10,10 +13,10 @@ _ctypes _ctypes/_ctypes.c \
     -I$(srcdir)/Modules/_ctypes/darwin \
     -I$(srcdir)/../Support/libFFI.xcframework/{{slice}}/Headers \
     -DPy_BUILD_CORE \
-    -DHAVE_FFI_CLOSURE_ALLOC=1 \
-    -DHAVE_FFI_PREP_CIF_VAR=1 \
-    -DHAVE_FFI_PREP_CLOSURE_LOC=1 \
-    -DUSING_MALLOC_CLOSURE_DOT_C=1 \
+    -DHAVE_FFI_CLOSURE_ALLOC \
+    -DHAVE_FFI_PREP_CIF_VAR \
+    -DHAVE_FFI_PREP_CLOSURE_LOC \
+    -DUSING_MALLOC_CLOSURE_DOT_C \
     -L$(srcdir)/../Support/libFFI.xcframework/{{slice}} \
     -lFFI
 
@@ -33,4 +36,4 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/sixstep.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
-    -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
+    -DCONFIG_64 -DANSI -DHAVE_UINT128_T

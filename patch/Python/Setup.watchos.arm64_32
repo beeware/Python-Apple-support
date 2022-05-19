@@ -2,6 +2,8 @@
 # watchOS ARM64_32: Target specific configuration
 #####################################################################
 
+*static*
+
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
     _decimal/libmpdec/constants.c \
@@ -18,4 +20,4 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/sixstep.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
-    -DCONFIG_32=1 -DANSI=1
+    -DCONFIG_32 -DANSI

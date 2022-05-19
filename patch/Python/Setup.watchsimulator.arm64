@@ -2,6 +2,8 @@
 # watchOS Simulator ARM64: Target specific configuration
 #####################################################################
 
+*static*
+
 _decimal _decimal/_decimal.c \
     _decimal/libmpdec/basearith.c \
     _decimal/libmpdec/constants.c \
@@ -18,4 +20,4 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/sixstep.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
-    -DCONFIG_64=1 -DANSI=1 -DHAVE_UINT128_T=1
+    -DCONFIG_64 -DANSI -DHAVE_UINT128_T
