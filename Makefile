@@ -232,6 +232,7 @@ downloads/libffi-$(LIBFFI_VERSION).tgz:
 clean-Python:
 	@echo ">>> Clean Python build products"
 	rm -rf \
+		dist/Python-$(PYTHON_VER)-* \
 		build/*/Python-$(PYTHON_VERSION)-* \
 		build/*/python \
 		build/*/python-*.log \
@@ -469,11 +470,11 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 			> $$(PYTHON_DIR-$(target))/Modules/Setup.local
 	# Configure target Python
 	cd $$(PYTHON_DIR-$(target)) && \
-		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
 		./configure \
 			CC="$$(CC-$(target))" LD="$$(CC-$(target))" \
 			--host=$$(MACHINE_DETAILED-$(target))-apple-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
 			--build=$(HOST_ARCH)-apple-darwin \
+			--with-build-python=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin/python$(PYTHON_VER) \
 			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(target))/_install" \
 			--without-doc-strings --enable-ipv6 --without-ensurepip \
 			--with-openssl=../openssl/$$(SDK-$(target)) \
@@ -484,14 +485,12 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 $$(PYTHON_DIR-$(target))/python.exe: $$(PYTHON_DIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_DIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
 		make all \
 		2>&1 | tee -a ../python-$(target).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_DIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_DIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
 		make install \
 		2>&1 | tee -a ../python-$(target).install.log
 
