@@ -71,7 +71,6 @@ def test_stdlib_modules():
         "_socket",
         "_statistics",
         "_struct",
-        "_typing",
         "_uuid",
         "array",
         "binascii",
