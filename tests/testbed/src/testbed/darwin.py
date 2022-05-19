@@ -1,6 +1,8 @@
 ###########################################################################
 # macOS specific tests
 ###########################################################################
+import importlib
+
 from .utils import assert_
 
 
@@ -49,3 +51,18 @@ def test_posix_subprocess():
 
     result = subprocess.run(["uname", "-s"], capture_output=True)
     assert_(result.stdout == b"Darwin\n")
+
+
+def test_stdlib_modules():
+    "All the macOS-specific stdlib modules exist"
+    missing = []
+    for module in [
+        "_posixshmem",
+        "_scproxy",
+    ]:
+        try:
+            importlib.import_module(module)
+        except ModuleNotFoundError:
+            missing.append(module)
+
+    assert_(len(missing) == 0, msg=f"Missing stdlib modules: {', '.join(str(m) for m in missing)}")
