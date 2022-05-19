@@ -113,10 +113,10 @@ _testcapi
 _testimportmultiple
 _testinternalcapi
 _testmultiphase
-_xxlimited
-_xxlimited_35
 _xxsubinterpreters
-_xxtestfuxx
+_xxtestfuzz
+xxlimited
+xxlimited_35
 
 #####################################################################
 # DISABLED Modules that require additional frameworks
