@@ -834,7 +834,7 @@ $$(PYTHON_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(
 	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$(os))))/_install/lib/python$(PYTHON_VER) \
 		$$(PYTHON_RESOURCES-$(os))
 
-Python-$(os): $$(PYTHON_XCFRAMEWORK-$(os))
+Python-$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 
 ###########################################################################
 # Build
