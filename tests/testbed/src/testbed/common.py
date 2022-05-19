@@ -172,6 +172,20 @@ def test_ssl():
     ssl.get_default_verify_paths()
 
 
+def test_tempfile():
+    "A tempfile can be written"
+    import tempfile
+
+    msg = b"I've watched C-beams glitter in the dark near the Tannhauser Gate."
+    with tempfile.TemporaryFile() as f:
+        # Write content to the temp file
+        f.write(msg)
+
+        # Reset the file pointer to 0 and read back the content
+        f.seek(0)
+        assert_(f.read() == msg)
+
+
 XML_DOCUMENT = """<?xml version="1.0"?>
 <data>
     <device name="iPhone">
