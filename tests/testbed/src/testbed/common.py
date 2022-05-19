@@ -1,9 +1,101 @@
 ###########################################################################
 # Common tests
 ###########################################################################
+import importlib
 import os
 
 from .utils import assert_
+
+
+def test_bootstrap_modules():
+    "All the bootstrap modules are importable"
+    missing = []
+
+    # The list of bootstrap modules that don't have explicit tests.
+    for module in [
+        '_abc',
+        '_codecs',
+        '_collections',
+        '_functools',
+        '_io',
+        '_locale',
+        '_operator',
+        '_signal',
+        '_sre',
+        '_stat',
+        '_symtable',
+        '_thread',
+        '_tracemalloc',
+        '_weakref',
+        'atexit',
+        'errno',
+        'faulthandler',
+        'itertools',
+        'posix',
+        'pwd',
+        'time',
+    ]:
+        try:
+            importlib.import_module(module)
+        except ModuleNotFoundError:
+            missing.append(module)
+
+    assert_(len(missing) == 0, msg=f"Missing bootstrap modules: {', '.join(str(m) for m in missing)}")
+
+
+def test_stdlib_modules():
+    "All the stdlib modules exist"
+    missing = []
+    for module in [
+        "_asyncio",
+        "_bisect",
+        "_codecs_cn",
+        "_codecs_hk",
+        "_codecs_iso2022",
+        "_codecs_jp",
+        "_codecs_kr",
+        "_codecs_tw",
+        "_contextvars",
+        "_csv",
+        "_datetime",
+        "_heapq",
+        "_json",
+        "_lsprof",
+        "_multibytecodec",
+        "_multiprocessing",
+        "_opcode",
+        "_pickle",
+        "_posixsubprocess",
+        "_queue",
+        "_random",
+        "_socket",
+        "_statistics",
+        "_struct",
+        "_typing",
+        "_uuid",
+        "array",
+        "binascii",
+        "cmath",
+        "fcntl",
+        "grp",
+        "math",
+        "mmap",
+        "resource",
+        "select",
+        "syslog",
+        "termios",
+        "unicodedata",
+        "zlib",
+        # Scheduled for deprecation
+        "_crypt",
+        "audioop",
+    ]:
+        try:
+            importlib.import_module(module)
+        except ModuleNotFoundError:
+            missing.append(module)
+
+    assert_(len(missing) == 0, msg=f"Missing stdlib modules: {', '.join(str(m) for m in missing)}")
 
 
 def test_bzip2():
@@ -170,6 +262,20 @@ def test_ssl():
     # Result doesn't really matter; we just need to be able to invoke
     # a method whose implementation is in the C module
     ssl.get_default_verify_paths()
+
+
+def test_tempfile():
+    "A tempfile can be written"
+    import tempfile
+
+    msg = b"I've watched C-beams glitter in the dark near the Tannhauser Gate."
+    with tempfile.TemporaryFile() as f:
+        # Write content to the temp file
+        f.write(msg)
+
+        # Reset the file pointer to 0 and read back the content
+        f.seek(0)
+        assert_(f.read() == msg)
 
 
 XML_DOCUMENT = """<?xml version="1.0"?>
