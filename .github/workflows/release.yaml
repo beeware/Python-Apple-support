@@ -68,6 +68,10 @@ jobs:
         echo "TAG=${TAG}" >> $GITHUB_ENV
         echo "PY_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
         echo "BUILD_NUMBER=${TAG_BUILD}" >> $GITHUB_ENV
+    - name: Set up Python
+      uses: actions/setup-python@v3.1.2
+      with:
+        python-version: ${{ env.TAG_VERSION }}
     - name: Build ${{ matrix.target }}
       env:
         BUILD_NUMBER: ${{ env.BUILD_NUMBER }}

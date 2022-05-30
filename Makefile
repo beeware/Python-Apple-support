@@ -239,6 +239,17 @@ clean-Python:
 		build/*/Support/Python.xcframework \
 		build/*/Support/Python
 
+dev-clean-Python:
+	@echo ">>> Partially clean Python build products to the point where local code modifications can be made"
+	rm -rf \
+		dist/Python-$(PYTHON_VER)-* \
+		build/*/Python-$(PYTHON_VERSION)-*/python.exe \
+		build/*/Python-$(PYTHON_VERSION)-*/_install \
+		build/*/python \
+		build/*/python-*.log \
+		build/*/Support/Python.xcframework \
+		build/*/Support/Python
+
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
 	@echo ">>> Download Python sources"
@@ -455,7 +466,6 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
-		$$(PYTHON_XCFRAMEWORK-macOS) \
 		downloads/Python-$(PYTHON_VERSION).tgz
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
@@ -733,7 +743,7 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
@@ -741,8 +751,7 @@ $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERS
 	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
 	cd $$(LIBFFI_DIR-$(os)) && \
-		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
-		python3 generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
+		python$(PYTHON_VER) generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
 		2>&1 | tee -a ../libffi-$(os).config.log
 
 $$(LIBFFI_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(sdk)))
