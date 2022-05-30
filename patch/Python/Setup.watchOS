@@ -19,3 +19,13 @@ _ctypes _ctypes/_ctypes.c \
     -DUSING_MALLOC_CLOSURE_DOT_C \
     -L$(srcdir)/../Support/libFFI.xcframework/{{slice}} \
     -lFFI
+
+#####################################################################
+# DISABLED Modules that require additional frameworks
+#####################################################################
+
+*disabled*
+
+_curses
+_curses_panel
+_posixshmem

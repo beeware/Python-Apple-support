@@ -37,3 +37,13 @@ _decimal _decimal/_decimal.c \
     _decimal/libmpdec/transpose.c \
     -I$(srcdir)/Modules/_decimal/libmpdec \
     -DCONFIG_64 -DANSI -DHAVE_UINT128_T
+
+#####################################################################
+# DISABLED Modules that require additional frameworks
+#####################################################################
+
+*disabled*
+
+_curses
+_curses_panel
+_posixshmem
