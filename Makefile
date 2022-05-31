@@ -111,7 +111,7 @@ all: $(OS_LIST)
 
 .PHONY: \
 	all clean distclean update-patch vars \
-	$(foreach product,$(PRODUCTS),$(foreach os,$(OS_LIST),$(product) $(product)-$(os) clean-$(product))) \
+	$(foreach product,$(PRODUCTS),$(foreach os,$(OS_LIST),$(product) $(product)-$(os) clean-$(product) clean-$(product)-$(os))) \
 	$(foreach os,$(OS_LIST),$(os) clean-$(os) vars-$(os))
 
 # Clean all builds
@@ -139,14 +139,6 @@ update-patch:
 # Setup: BZip2
 ###########################################################################
 
-# Clean the bzip2 project
-clean-BZip2:
-	@echo ">>> Clean BZip2 build products"
-	rm -rf build/*/bzip2-$(BZIP2_VERSION)-* \
-		build/*/bzip2 \
-		build/*/bzip2-*.log \
-		build/*/Support/BZip2.xcframework
-
 # Download original BZip2 source code archive.
 downloads/bzip2-$(BZIP2_VERSION).tgz:
 	@echo ">>> Download BZip2 sources"
@@ -159,14 +151,6 @@ downloads/bzip2-$(BZIP2_VERSION).tgz:
 ###########################################################################
 # Setup: XZ (LZMA)
 ###########################################################################
-
-# Clean the XZ project
-clean-XZ:
-	@echo ">>> Clean XZ build products"
-	rm -rf build/*/xz-$(XZ_VERSION)-* \
-		build/*/xz \
-		build/*/xz-*.log \
-		build/*/Support/XZ.xcframework
 
 # Download original XZ source code archive.
 downloads/xz-$(XZ_VERSION).tgz:
@@ -182,14 +166,6 @@ downloads/xz-$(XZ_VERSION).tgz:
 # These build instructions adapted from the scripts developed by
 # Felix Shchulze (@x2on) https://github.com/x2on/OpenSSL-for-iPhone
 ###########################################################################
-
-# Clean the OpenSSL project
-clean-OpenSSL:
-	@echo ">>> Clean OpenSSL build products"
-	rm -rf build/*/openssl-$(OPENSSL_VERSION)-* \
-		build/*/openssl \
-		build/*/openssl-*.log \
-		build/*/Support/OpenSSL.xcframework
 
 # Download original OpenSSL source code archive.
 downloads/openssl-$(OPENSSL_VERSION).tgz:
@@ -208,13 +184,6 @@ downloads/openssl-$(OPENSSL_VERSION).tgz:
 # Setup: libFFI
 ###########################################################################
 
-# Clean the libFFI project
-clean-libFFI:
-	@echo ">>> Clean libFFI build products"
-	rm -rf build/*/libffi-$(LIBFFI_VERSION) \
-		build/*/libffi-*.log \
-		build/*/Support/libFFI.xcframework
-
 # Download original XZ source code archive.
 downloads/libffi-$(LIBFFI_VERSION).tgz:
 	@echo ">>> Download libFFI sources"
@@ -227,28 +196,6 @@ downloads/libffi-$(LIBFFI_VERSION).tgz:
 ###########################################################################
 # Setup: Python
 ###########################################################################
-
-# Clean the Python project
-clean-Python:
-	@echo ">>> Clean Python build products"
-	rm -rf \
-		dist/Python-$(PYTHON_VER)-* \
-		build/*/Python-$(PYTHON_VERSION)-* \
-		build/*/python \
-		build/*/python-*.log \
-		build/*/Support/Python.xcframework \
-		build/*/Support/Python
-
-dev-clean-Python:
-	@echo ">>> Partially clean Python build products to the point where local code modifications can be made"
-	rm -rf \
-		dist/Python-$(PYTHON_VER)-* \
-		build/*/Python-$(PYTHON_VERSION)-*/python.exe \
-		build/*/Python-$(PYTHON_VERSION)-*/_install \
-		build/*/python \
-		build/*/python-*.log \
-		build/*/Support/Python.xcframework \
-		build/*/Support/Python
 
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
@@ -466,6 +413,7 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
+		$$(PYTHON_XCFRAMEWORK-macOS) \
 		downloads/Python-$(PYTHON_VERSION).tgz
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
@@ -702,6 +650,13 @@ $$(BZIP2_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(BZIP2_FATLIB-$$(sd
 
 BZip2-$(os): $$(BZIP2_XCFRAMEWORK-$(os))
 
+clean-BZip2-$(os):
+	@echo ">>> Clean BZip2 build products on $(os)"
+	rm -rf build/$(os)/bzip2-$(BZIP2_VERSION)-* \
+		build/$(os)/bzip2 \
+		build/$(os)/bzip2-*.log \
+		build/$(os)/Support/BZip2.xcframework
+
 ###########################################################################
 # Build: XZ (LZMA)
 ###########################################################################
@@ -716,6 +671,13 @@ $$(XZ_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(XZ_FATLIB-$$(sdk)))
 		2>&1 | tee -a build/$(os)/xz-$(os).xcframework.log
 
 XZ-$(os): $$(XZ_XCFRAMEWORK-$(os))
+
+clean-XZ-$(os):
+	@echo ">>> Clean XZ build products on $(os)"
+	rm -rf build/$(os)/xz-$(XZ_VERSION)-* \
+		build/$(os)/xz \
+		build/$(os)/xz-*.log \
+		build/$(os)/Support/XZ.xcframework
 
 ###########################################################################
 # Build: OpenSSL
@@ -732,6 +694,13 @@ $$(OPENSSL_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATLIB-$
 
 OpenSSL-$(os): $$(OPENSSL_XCFRAMEWORK-$(os))
 
+clean-OpenSSL-$(os):
+	@echo ">>> Clean OpenSSL build products on $(os)"
+	rm -rf build/$(os)/openssl-$(OPENSSL_VERSION)-* \
+		build/$(os)/openssl \
+		build/$(os)/openssl-*.log \
+		build/$(os)/Support/OpenSSL.xcframework
+
 ###########################################################################
 # Build: libFFI
 ###########################################################################
@@ -743,7 +712,7 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
@@ -751,6 +720,7 @@ $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERS
 	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
 	cd $$(LIBFFI_DIR-$(os)) && \
+		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
 		python$(PYTHON_VER) generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
 		2>&1 | tee -a ../libffi-$(os).config.log
 
@@ -761,9 +731,15 @@ $$(LIBFFI_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(
 		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(LIBFFI_FATLIB-$$(sdk)) -headers $$(LIBFFI_DIR-$(os))/_install/$$(sdk)/include) \
 		2>&1 | tee -a build/$(os)/libffi-$(os).xcframework.log
 
+endif
+
 libFFI-$(os): $$(LIBFFI_XCFRAMEWORK-$(os))
 
-endif
+clean-libFFI-$(os):
+	@echo ">>> Clean libFFI build products on $(os)"
+	rm -rf build/$(os)/libffi-$(LIBFFI_VERSION) \
+		build/$(os)/libffi-*.log \
+		build/$(os)/Support/libFFI.xcframework
 
 
 ###########################################################################
@@ -847,6 +823,27 @@ $$(PYTHON_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(
 
 Python-$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 
+clean-Python-$(os):
+	@echo ">>> Clean Python build products on $(os)"
+	rm -rf \
+		dist/Python-$(PYTHON_VER)-$(os) \
+		build/$(os)/Python-$(PYTHON_VERSION)-* \
+		build/$(os)/python \
+		build/$(os)/python-*.log \
+		build/$(os)/Support/Python.xcframework \
+		build/$(os)/Support/Python
+
+dev-clean-Python-$(os):
+	@echo ">>> Partially clean Python build products on $(os) so that local code modifications can be made"
+	rm -rf \
+		dist/Python-$(PYTHON_VER)-$(os)-* \
+		build/$(os)/Python-$(PYTHON_VERSION)-*/python.exe \
+		build/$(os)/Python-$(PYTHON_VERSION)-*/_install \
+		build/$(os)/python \
+		build/$(os)/python-*.log \
+		build/$(os)/Support/Python.xcframework \
+		build/$(os)/Support/Python
+
 ###########################################################################
 # Build
 ###########################################################################
@@ -909,12 +906,22 @@ endef # build
 # Dump environment variables (for debugging purposes)
 vars: $(foreach os,$(OS_LIST),vars-$(os))
 
-# Expand cross-platform build targets for each output product
+# Expand cross-platform build and clean targets for each output product
 XZ: $(foreach os,$(OS_LIST),XZ-$(os))
+clean-XZ: $(foreach os,$(OS_LIST),clean-XZ-$(os))
+
 BZip2: $(foreach os,$(OS_LIST),BZip2-$(os))
+clean-BZip2: $(foreach os,$(OS_LIST),clean-BZip2-$(os))
+
 OpenSSL: $(foreach os,$(OS_LIST),OpenSSL-$(os))
+clean-OpenSSL: $(foreach os,$(OS_LIST),clean-OpenSSL-$(os))
+
 libFFI: $(foreach os,$(OS_LIST),libFFI-$(os))
+clean-libFFI: $(foreach os,$(OS_LIST),clean-libFFI-$(os))
+
 Python: $(foreach os,$(OS_LIST),Python-$(os))
+clean-Python: $(foreach os,$(OS_LIST),clean-Python-$(os))
+dev-clean-Python: $(foreach os,$(OS_LIST),dev-clean-Python-$(os))
 
 # Expand the build macro for every OS
 $(foreach os,$(OS_LIST),$(eval $(call build,$(os))))
