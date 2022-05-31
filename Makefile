@@ -920,7 +920,8 @@ libFFI: $(foreach os,$(OS_LIST),libFFI-$(os))
 clean-libFFI: $(foreach os,$(OS_LIST),clean-libFFI-$(os))
 
 Python: $(foreach os,$(OS_LIST),Python-$(os))
-clean-Python: $(foreach os,$(OS_LIST),clean-Python-$(os) dev-clean-Python-$(os))
+clean-Python: $(foreach os,$(OS_LIST),clean-Python-$(os))
+dev-clean-Python: $(foreach os,$(OS_LIST),dev-clean-Python-$(os))
 
 # Expand the build macro for every OS
 $(foreach os,$(OS_LIST),$(eval $(call build,$(os))))
