@@ -718,7 +718,7 @@ $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERS
 	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
 	cd $$(LIBFFI_DIR-$(os)) && \
-		PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH) \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
 		python$(PYTHON_VER) generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
 		2>&1 | tee -a ../libffi-$(os).config.log
 
