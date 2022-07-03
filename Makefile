@@ -285,7 +285,9 @@ $$(PYTHON_DIR-$1)/Makefile: downloads/Python-$(PYTHON_VERSION).tgz $$(PYTHON_HOS
 	if [ -e "$(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1)" ]; then \
 		cp -f $(PROJECT_DIR)/patch/Python/Setup.$2-$$(ARCH-$1) $$(PYTHON_DIR-$1)/Modules/Setup.$2-$$(ARCH-$1); fi
 	# Configure target Python
-	cd $$(PYTHON_DIR-$1) && PATH=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH) ./configure \
+	cd $$(PYTHON_DIR-$1) && \
+		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/dist/bin:$(PATH)" \
+		./configure \
 		CC="$$(CC-$1)" LD="$$(CC-$1)" \
 		--host=$$(MACHINE_DETAILED-$1)-apple-$(shell echo $2 | tr '[:upper:]' '[:lower:]') \
 		--build=x86_64-apple-darwin \
