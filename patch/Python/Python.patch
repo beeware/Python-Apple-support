@@ -1,5 +1,5 @@
 diff --git a/Lib/ctypes/test/test_as_parameter.py b/Lib/ctypes/test/test_as_parameter.py
-index f9d27cb89d..da172b345a 100644
+index 9c39179d2a..459e0f476f 100644
 --- a/Lib/ctypes/test/test_as_parameter.py
 +++ b/Lib/ctypes/test/test_as_parameter.py
 @@ -1,9 +1,11 @@
@@ -29,7 +29,7 @@ index 66acd62e68..95216920e6 100644
  
  ##for n in "ABCDEFGHIMNOPQRS":
 diff --git a/Lib/ctypes/test/test_callbacks.py b/Lib/ctypes/test/test_callbacks.py
-index 1099cf9a69..e9caf8032d 100644
+index 8f95a24443..58a80e3dbb 100644
 --- a/Lib/ctypes/test/test_callbacks.py
 +++ b/Lib/ctypes/test/test_callbacks.py
 @@ -1,4 +1,5 @@
@@ -38,7 +38,7 @@ index 1099cf9a69..e9caf8032d 100644
  import unittest
  from test import support
  
-@@ -161,7 +162,7 @@
+@@ -164,7 +165,7 @@
  
      def test_integrate(self):
          # Derived from some then non-working code, posted by David Foster
@@ -47,7 +47,7 @@ index 1099cf9a69..e9caf8032d 100644
  
          # The function prototype called by 'integrate': double func(double);
          CALLBACK = CFUNCTYPE(c_double, c_double)
-@@ -212,7 +213,7 @@
+@@ -215,7 +216,7 @@
      def test_callback_register_int(self):
          # Issue #8275: buggy handling of callback args under Win64
          # NOTE: should be run on release builds as well
@@ -56,7 +56,7 @@ index 1099cf9a69..e9caf8032d 100644
          CALLBACK = CFUNCTYPE(c_int, c_int, c_int, c_int, c_int, c_int)
          # All this function does is call the callback with its args squared
          func = dll._testfunc_cbk_reg_int
-@@ -228,7 +229,7 @@
+@@ -231,7 +232,7 @@
      def test_callback_register_double(self):
          # Issue #8275: buggy handling of callback args under Win64
          # NOTE: should be run on release builds as well
@@ -66,7 +66,7 @@ index 1099cf9a69..e9caf8032d 100644
                               c_double, c_double)
          # All this function does is call the callback with its args squared
 diff --git a/Lib/ctypes/test/test_cfuncs.py b/Lib/ctypes/test/test_cfuncs.py
-index ac2240fa19..b08b5f7581 100644
+index 09b06840bf..613d02e1ef 100644
 --- a/Lib/ctypes/test/test_cfuncs.py
 +++ b/Lib/ctypes/test/test_cfuncs.py
 @@ -1,6 +1,7 @@
@@ -86,7 +86,7 @@ index ac2240fa19..b08b5f7581 100644
  
      def S(self):
          return c_longlong.in_dll(self._dll, "last_tf_arg_s").value
-@@ -206,7 +207,7 @@
+@@ -212,7 +213,7 @@
  
  @need_symbol('WinDLL')
  class stdcallCFunctions(CFunctions):
@@ -135,7 +135,7 @@ index e0b9b54e97..1c05dcc22c 100644
  class CFuncPtrTestCase(unittest.TestCase):
      def test_basic(self):
 diff --git a/Lib/ctypes/test/test_functions.py b/Lib/ctypes/test/test_functions.py
-index f9e92e1cc6..0e2255b62e 100644
+index fc571700ce..b3c7a1ead1 100644
 --- a/Lib/ctypes/test/test_functions.py
 +++ b/Lib/ctypes/test/test_functions.py
 @@ -7,6 +7,7 @@
@@ -541,7 +541,7 @@ index 2ce5c5b64d..6e10a0c4a5 100644
              import pwd
              os.environ['HOME'] = pwd.getpwuid(os.getuid())[5]
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 5f67226adf..96f771fbe6 100644
+index f603a89f7f..faea51d1b5 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -554,10 +554,10 @@ index 5f67226adf..96f771fbe6 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 3f3f25a2c9..deb4165665 100755
+index c272c407c7..e76bc7127f 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -447,6 +447,47 @@
+@@ -451,6 +451,47 @@
      # If that also doesn't work return the default values
      return release, versioninfo, machine
  
@@ -605,7 +605,7 @@ index 3f3f25a2c9..deb4165665 100755
  def _java_getprop(name, default):
  
      from java.lang import System
-@@ -603,7 +644,7 @@
+@@ -607,7 +648,7 @@
          default in case the command should fail.
  
      """
@@ -614,7 +614,7 @@ index 3f3f25a2c9..deb4165665 100755
          # XXX Others too ?
          return default
  
-@@ -745,6 +786,13 @@
+@@ -749,6 +790,13 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -628,7 +628,7 @@ index 3f3f25a2c9..deb4165665 100755
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -1208,11 +1256,13 @@
+@@ -1212,11 +1260,13 @@
          system, release, version = system_alias(system, release, version)
  
      if system == 'Darwin':
@@ -648,7 +648,7 @@ index 3f3f25a2c9..deb4165665 100755
      if system == 'Windows':
          # MS platforms
 diff --git a/Lib/site.py b/Lib/site.py
-index b11cd48e69..3c0fb81ccb 100644
+index 69670d9d7f..8287267e64 100644
 --- a/Lib/site.py
 +++ b/Lib/site.py
 @@ -294,6 +294,9 @@
@@ -662,28 +662,21 @@ index b11cd48e69..3c0fb81ccb 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 6e61cc2e5e..994e2d0518 100644
+index 7ae8df154b..4c3121de39 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -97,7 +97,7 @@
-                     "CREATE_NO_WINDOW", "DETACHED_PROCESS",
-                     "CREATE_DEFAULT_ERROR_MODE", "CREATE_BREAKAWAY_FROM_JOB"])
+@@ -74,8 +74,8 @@
  else:
--    if sys.platform in {"emscripten", "wasi"}:
-+    if sys.platform in {"emscripten", "wasi", "ios", "tvos", "watchos"}:
-         def _fork_exec(*args, **kwargs):
-             raise OSError(
-                 errno.ENOTSUP, f"{sys.platform} does not support processes."
-@@ -1896,7 +1896,7 @@
-             else:
-                 self.returncode = waitstatus_to_exitcode(sts)
+     _mswindows = True
  
--        def _internal_poll(self, _deadstate=None, _waitpid=os.waitpid,
-+        def _internal_poll(self, _deadstate=None, _waitpid=None,
-                 _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
-             """Check if child process has terminated.  Returns returncode
-             attribute.
-@@ -1905,6 +1905,8 @@
+-# wasm32-emscripten and wasm32-wasi do not support processes
+-_can_fork_exec = sys.platform not in {"emscripten", "wasi"}
++# some platforms do not support processes
++_can_fork_exec = sys.platform not in {"emscripten", "wasi", "ios", "tvos", "watchos"}
+ 
+ if _mswindows:
+     import _winapi
+@@ -1921,6 +1921,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -693,7 +686,7 @@ index 6e61cc2e5e..994e2d0518 100644
                  if not self._waitpid_lock.acquire(False):
                      # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index e21b7303fe..026934bb34 100644
+index ebe3711827..6d20f3c2d2 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -95,6 +95,33 @@
@@ -730,7 +723,7 @@ index e21b7303fe..026934bb34 100644
      }
  
  # For the OS-native venv scheme, we essentially provide an alias:
-@@ -282,12 +309,19 @@
+@@ -283,12 +310,19 @@
              'home': 'posix_home',
              'user': 'nt_user',
          }
@@ -751,7 +744,7 @@ index e21b7303fe..026934bb34 100644
          'prefix': 'posix_prefix',
          'home': 'posix_home',
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 3b2f33979d..86e7fb2d47 100644
+index 39b3530905..ef1fa18624 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
 @@ -47,7 +47,7 @@
@@ -763,7 +756,7 @@ index 3b2f33979d..86e7fb2d47 100644
      "check_impl_detail", "unix_shell", "setswitchinterval",
      # network
      "open_urlresource",
-@@ -500,7 +500,7 @@
+@@ -507,7 +507,7 @@
  
  is_android = hasattr(sys, 'getandroidapilevel')
  
@@ -772,7 +765,7 @@ index 3b2f33979d..86e7fb2d47 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -510,12 +510,25 @@
+@@ -517,12 +517,25 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
@@ -952,7 +945,7 @@ index fc8c39365f..00e988fdcc 100644
              off_t = 'l'
              pid_t = 'i'
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index 1f041aa121..3af807f6f9 100644
+index a937258069..bf011b0662 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -401,7 +401,7 @@
@@ -965,7 +958,7 @@ index 1f041aa121..3af807f6f9 100644
              # UTF-8 into a percent-encoded value.
              for name in os.listdir(self.tempdir):
 diff --git a/Lib/test/test_importlib/extension/test_finder.py b/Lib/test/test_importlib/extension/test_finder.py
-index b6663a4484..fbd553a629 100644
+index 1d5b6e7a5d..6fd6a543bf 100644
 --- a/Lib/test/test_importlib/extension/test_finder.py
 +++ b/Lib/test/test_importlib/extension/test_finder.py
 @@ -2,10 +2,13 @@
@@ -974,7 +967,7 @@ index b6663a4484..fbd553a629 100644
  
 +import sys
  import unittest
- import warnings
+ import sys
  
  
 +@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
@@ -983,7 +976,7 @@ index b6663a4484..fbd553a629 100644
  
      """Test the finder for extension modules."""
 diff --git a/Lib/test/test_importlib/extension/test_loader.py b/Lib/test/test_importlib/extension/test_loader.py
-index 5080009bee..9cf9fb3d8a 100644
+index 8570c6bc90..7de327ebf3 100644
 --- a/Lib/test/test_importlib/extension/test_loader.py
 +++ b/Lib/test/test_importlib/extension/test_loader.py
 @@ -13,6 +13,8 @@
@@ -995,7 +988,7 @@ index 5080009bee..9cf9fb3d8a 100644
  class LoaderTests(abc.LoaderTests):
  
      """Test load_module() for extension modules."""
-@@ -90,6 +92,9 @@
+@@ -94,6 +96,9 @@
   Source_LoaderTests
   ) = util.test_both(LoaderTests, machinery=machinery)
  
@@ -1006,10 +999,10 @@ index 5080009bee..9cf9fb3d8a 100644
      # Test loading extension modules with multi-phase initialization (PEP 489).
  
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index 5528c461e5..42fcfe8c64 100644
+index daccbae5b4..7158b41fef 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
-@@ -608,7 +608,7 @@
+@@ -609,7 +609,7 @@
          # On Windows and Mac OSX this test consumes large resources; It takes
          # a long time to build the >2 GiB file and takes >2 GiB of disk space
          # therefore the resource must be enabled to run this test.
@@ -1019,7 +1012,7 @@ index 5528c461e5..42fcfe8c64 100644
                  'largefile',
                  'test requires %s bytes and a long time to run' % self.LARGE)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 5d4ddedd05..b119a43d8e 100644
+index 71926a5432..2918759262 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -1787,9 +1787,21 @@
@@ -1063,19 +1056,17 @@ index 5d4ddedd05..b119a43d8e 100644
  
      """Test for SysLogHandler with Unix sockets."""
 diff --git a/Lib/test/test_mailcap.py b/Lib/test/test_mailcap.py
-index 97a8fac6e0..63274a7b52 100644
+index 8185f4a780..510ab8d3dd 100644
 --- a/Lib/test/test_mailcap.py
 +++ b/Lib/test/test_mailcap.py
-@@ -219,7 +219,8 @@
+@@ -223,7 +223,6 @@
          ]
          self._run_cases(cases)
  
 -    @unittest.skipUnless(os.name == "posix", "Requires 'test' command on system")
-+    @unittest.skipUnless(os.name == "posix" and sys.platform not in ('ios', 'tvos', 'watchos'),
-+                         "Requires 'test' command on system")
      @unittest.skipIf(sys.platform == "vxworks", "'test' command is not supported on VxWorks")
-     def test_test(self):
-         # findmatch() will automatically check any "test" conditions and skip
+     @unittest.skipUnless(
+         test.support.has_subprocess_support,
 diff --git a/Lib/test/test_marshal.py b/Lib/test/test_marshal.py
 index aae86cc257..bb48a85517 100644
 --- a/Lib/test/test_marshal.py
@@ -1139,10 +1130,10 @@ index 9b2cd201f3..dcd3a7a241 100644
      @unittest.skipUnless(sys.platform == 'darwin', "OSX only test")
      def test_mac_ver_with_fork(self):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index f44b8d0403..50a9bfa5b2 100644
+index ae25ef5588..8f2b1ffa69 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
-@@ -75,12 +75,19 @@
+@@ -69,12 +69,19 @@
                               "getpid", "getpgrp", "getppid", "getuid", "sync",
                             ]
  
@@ -1164,7 +1155,7 @@ index f44b8d0403..50a9bfa5b2 100644
  
      @unittest.skipUnless(hasattr(posix, 'getresuid'),
                           'test needs posix.getresuid()')
-@@ -780,9 +787,10 @@
+@@ -776,9 +783,10 @@
              check_stat(uid, gid)
              self.assertRaises(OSError, chown_func, first_param, 0, -1)
              check_stat(uid, gid)
@@ -1188,10 +1179,10 @@ index f44b8d0403..50a9bfa5b2 100644
              self.assertRaises(OSError, posix.sched_get_priority_max, -23)
  
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index 7003386345..55c83ec81e 100644
+index a2c4ab5081..eb427dfd72 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -1758,6 +1758,8 @@
+@@ -1776,6 +1776,8 @@
              check_chown(dirname, uid, gid)
  
  
@@ -1200,7 +1191,7 @@ index 7003386345..55c83ec81e 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -2625,6 +2627,7 @@
+@@ -2642,6 +2644,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -1209,10 +1200,10 @@ index 7003386345..55c83ec81e 100644
                           'need os.get_terminal_size()')
      def test_stty_match(self):
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 613363722c..ac48352d0f 100755
+index a2938cd834..2d3a5c72fb 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
-@@ -1146,7 +1146,7 @@
+@@ -1144,7 +1144,7 @@
          # I've ordered this by protocols that have both a tcp and udp
          # protocol, at least for modern Linuxes.
          if (sys.platform.startswith(('freebsd', 'netbsd', 'gnukfreebsd'))
@@ -1221,7 +1212,7 @@ index 613363722c..ac48352d0f 100755
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3541,7 +3541,8 @@
+@@ -3539,7 +3539,8 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -1231,7 +1222,7 @@ index 613363722c..ac48352d0f 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3552,7 +3553,8 @@
+@@ -3550,7 +3551,8 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -1241,7 +1232,7 @@ index 613363722c..ac48352d0f 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3565,7 +3567,8 @@
+@@ -3563,7 +3565,8 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -1251,7 +1242,7 @@ index 613363722c..ac48352d0f 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3579,7 +3582,8 @@
+@@ -3577,7 +3580,8 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -1261,7 +1252,7 @@ index 613363722c..ac48352d0f 100755
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3603,7 +3607,8 @@
+@@ -3601,7 +3605,8 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -1271,7 +1262,7 @@ index 613363722c..ac48352d0f 100755
      def testFDPassEmpty(self):
          # Try to pass an empty FD array.  Can receive either no array
          # or an empty array.
-@@ -4423,28 +4428,38 @@
+@@ -4421,28 +4426,38 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -1361,10 +1352,10 @@ index de2e7305cc..ccf240397d 100644
              import distutils.text_file
              import distutils.unixccompiler
 diff --git a/Lib/test/test_sysconfig.py b/Lib/test/test_sysconfig.py
-index f2b93706b2..8bcc5ae09f 100644
+index 578ac1db50..daf61113b2 100644
 --- a/Lib/test/test_sysconfig.py
 +++ b/Lib/test/test_sysconfig.py
-@@ -333,7 +333,7 @@
+@@ -336,7 +336,7 @@
          self.assertTrue(os.path.isfile(config_h), config_h)
  
      def test_get_scheme_names(self):
@@ -1374,10 +1365,10 @@ index f2b93706b2..8bcc5ae09f 100644
              wanted.extend(['nt_user', 'osx_framework_user', 'posix_user'])
          self.assertEqual(get_scheme_names(), tuple(sorted(wanted)))
 diff --git a/Lib/test/test_threading.py b/Lib/test/test_threading.py
-index f7dea136a8..feea7146e6 100644
+index 9c6561c099..f49aafcd9e 100644
 --- a/Lib/test/test_threading.py
 +++ b/Lib/test/test_threading.py
-@@ -1170,6 +1170,8 @@
+@@ -1171,6 +1171,8 @@
              os.set_blocking(r, False)
          return (r, w)
  
@@ -1386,7 +1377,7 @@ index f7dea136a8..feea7146e6 100644
      def test_threads_join(self):
          # Non-daemon threads should be joined at subinterpreter shutdown
          # (issue #18808)
-@@ -1198,6 +1200,8 @@
+@@ -1199,6 +1201,8 @@
          # The thread was joined properly.
          self.assertEqual(os.read(r, 1), b"x")
  
@@ -1396,29 +1387,29 @@ index f7dea136a8..feea7146e6 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index d96cf1e6c7..0878f1bdd1 100644
+index 74039f59f7..36dc82f871 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
-@@ -16,7 +16,7 @@
+@@ -19,7 +19,7 @@
  import tempfile
  from test.support import (captured_stdout, captured_stderr, requires_zlib,
                            skip_if_broken_multiprocessing_synchronize, verbose,
--                          requires_subprocess, is_emscripten)
-+                          requires_subprocess, is_apple_mobile, is_emscripten)
+-                          requires_subprocess, is_emscripten, is_wasi,
++                          requires_subprocess, is_apple_mobile, is_emscripten, is_wasi,
+                           requires_venv_with_pip)
  from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
  import unittest
- import venv
-@@ -34,7 +34,7 @@
-     or sys._base_executable != sys.executable,
-     'cannot run venv.create from within a venv on this platform')
+@@ -40,6 +40,8 @@
  
--if is_emscripten:
-+if is_emscripten or is_apple_mobile:
-     raise unittest.SkipTest("venv is not available on Emscripten.")
+ if is_emscripten or is_wasi:
+     raise unittest.SkipTest("venv is not available on Emscripten/WASI.")
++if is_apple_mobile:
++    raise unittest.SkipTest("venv is not available on mobile Apple platforms.")
  
  @requires_subprocess()
+ def check_output(cmd, encoding=None):
 diff --git a/Lib/test/test_zipfile.py b/Lib/test/test_zipfile.py
-index 848bf4f76d..ed6969348c 100644
+index f4c11d88c8..fb1ef8b417 100644
 --- a/Lib/test/test_zipfile.py
 +++ b/Lib/test/test_zipfile.py
 @@ -1166,6 +1166,7 @@
@@ -1628,7 +1619,7 @@ index 9132f13e81..36e00f7bfd 100644
  
  
 diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
-index 08c40834c4..5c110d7211 100644
+index 3026bb6a34..42f503abe6 100644
 --- a/Modules/faulthandler.c
 +++ b/Modules/faulthandler.c
 @@ -1,3 +1,7 @@
@@ -1639,7 +1630,7 @@ index 08c40834c4..5c110d7211 100644
  #include "Python.h"
  #include "pycore_initconfig.h"    // _PyStatus_ERR
  #include "pycore_pyerrors.h"      // _Py_DumpExtensionModules
-@@ -21,6 +25,11 @@
+@@ -19,6 +23,11 @@
  #  include <sys/resource.h>
  #endif
  
@@ -1652,10 +1643,10 @@ index 08c40834c4..5c110d7211 100644
     and sigaction() SA_ONSTACK */
  #if defined(HAVE_SIGALTSTACK) && defined(HAVE_SIGACTION)
 diff --git a/Modules/makesetup b/Modules/makesetup
-index 9b20e3c9f6..23be532f6a 100755
+index 08303814c8..56d35ab407 100755
 --- a/Modules/makesetup
 +++ b/Modules/makesetup
-@@ -166,7 +166,7 @@
+@@ -167,7 +167,7 @@
  			esac
  			case $arg in
  			-framework)	libs="$libs $arg"; skip=libs;
@@ -1664,7 +1655,7 @@ index 9b20e3c9f6..23be532f6a 100755
  					;;
  			-[IDUCfF]*)	cpps="$cpps $arg";;
  			-Xcompiler)	skip=cpps;;
-@@ -186,6 +186,7 @@
+@@ -187,6 +187,7 @@
  			*.c++)		srcs="$srcs $arg";;
  			*.cxx)		srcs="$srcs $arg";;
  			*.cpp)		srcs="$srcs $arg";;
@@ -1672,7 +1663,7 @@ index 9b20e3c9f6..23be532f6a 100755
  			\$\(*_CFLAGS\))		cpps="$cpps $arg";;
  			\$\(*_INCLUDES\))	cpps="$cpps $arg";;
  			\$\(*_LIBS\))		libs="$libs $arg";;
-@@ -220,7 +221,16 @@
+@@ -221,7 +222,16 @@
  		done
  		case $doconfig in
  		yes)
@@ -1685,12 +1676,12 @@ index 9b20e3c9f6..23be532f6a 100755
 +			# requires escaping for when this script runs, and escaping for when
 +			# the output is run through sed.
 +			if test "$libs"; then
-+				LIBS="$LIBS \\\\\\\\\\$NL\t$libs"
++				LIBS="$LIBS \\\\\\$NL\t$libs"
 +			fi
  			MODS="$MODS $mods"
  			BUILT="$BUILT $mods"
  			;;
-@@ -245,6 +255,7 @@
+@@ -246,6 +256,7 @@
  			*.C)   obj=`basename $src .C`.o; cc='$(CXX)';;
  			*.cxx) obj=`basename $src .cxx`.o; cc='$(CXX)';;
  			*.cpp) obj=`basename $src .cpp`.o; cc='$(CXX)';;
@@ -1714,7 +1705,7 @@ index aa93e756c6..fcf3784c2f 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 4015889441..b9d6633213 100644
+index d7cac2b67f..f7d49ac2c0 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -69,6 +69,8 @@
@@ -1779,7 +1770,7 @@ index 4015889441..b9d6633213 100644
      return d;
  }
  
-@@ -4931,6 +4957,9 @@
+@@ -4935,6 +4961,9 @@
  /*[clinic end generated code: output=290fc437dd4f33a0 input=86a58554ba6094af]*/
  {
      long result;
@@ -1789,7 +1780,7 @@ index 4015889441..b9d6633213 100644
      const char *bytes = PyBytes_AsString(command);
  
      if (PySys_Audit("os.system", "(O)", command) < 0) {
-@@ -4940,6 +4969,7 @@
+@@ -4944,6 +4973,7 @@
      Py_BEGIN_ALLOW_THREADS
      result = system(bytes);
      Py_END_ALLOW_THREADS
@@ -1797,7 +1788,7 @@ index 4015889441..b9d6633213 100644
      return result;
  }
  #endif
-@@ -13693,6 +13723,7 @@
+@@ -13697,6 +13727,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -1805,7 +1796,7 @@ index 4015889441..b9d6633213 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13753,6 +13784,7 @@
+@@ -13757,6 +13788,7 @@
  #endif
  
      return result;
@@ -1875,7 +1866,7 @@ index a757380bd0..5a20864a1c 100644
                           "getpwnam(): name not found: %R", name);
          }
 diff --git a/Modules/timemodule.c b/Modules/timemodule.c
-index 7475ef344b..2ebafe993b 100644
+index 18f9ddb909..2ed289a92f 100644
 --- a/Modules/timemodule.c
 +++ b/Modules/timemodule.c
 @@ -62,6 +62,11 @@
@@ -3603,10 +3594,10 @@ index d74fb6deac..249b391d71 100755
  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
 diff --git a/configure b/configure
-index b57c6f3a45..b4f2e1a026 100755
+index 078bb5bef1..107dccb7a5 100755
 --- a/configure
 +++ b/configure
-@@ -3814,6 +3814,15 @@
+@@ -3820,6 +3820,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -3622,7 +3613,7 @@ index b57c6f3a45..b4f2e1a026 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3870,6 +3879,15 @@
+@@ -3876,6 +3885,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -3638,7 +3629,7 @@ index b57c6f3a45..b4f2e1a026 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3948,6 +3966,13 @@
+@@ -3954,6 +3972,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -3652,7 +3643,7 @@ index b57c6f3a45..b4f2e1a026 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6152,6 +6177,12 @@
+@@ -6191,6 +6216,12 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
@@ -3665,7 +3656,7 @@ index b57c6f3a45..b4f2e1a026 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -6945,11 +6976,17 @@
+@@ -7048,11 +7079,17 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -3688,7 +3679,7 @@ index b57c6f3a45..b4f2e1a026 100755
  fi
  
  
-@@ -14783,6 +14820,10 @@
+@@ -14908,6 +14945,10 @@
  then
  	case $ac_sys_system/$ac_sys_release in
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -3699,7 +3690,7 @@ index b57c6f3a45..b4f2e1a026 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -26385,7 +26426,7 @@
+@@ -26543,7 +26584,7 @@
  $as_echo "$as_me: creating Modules/Setup.local" >&6;}
  if test ! -f Modules/Setup.local
  then
@@ -3709,10 +3700,10 @@ index b57c6f3a45..b4f2e1a026 100755
  
  { $as_echo "$as_me:${as_lineno-$LINENO}: creating Makefile" >&5
 diff --git a/configure.ac b/configure.ac
-index 07b8885f1e..b660ad6475 100644
+index 09f3f902a6..271fd4be6d 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -500,6 +500,15 @@
+@@ -545,6 +545,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -3728,7 +3719,7 @@ index 07b8885f1e..b660ad6475 100644
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -555,6 +564,15 @@
+@@ -600,6 +609,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -3744,7 +3735,7 @@ index 07b8885f1e..b660ad6475 100644
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -630,6 +648,13 @@
+@@ -675,6 +693,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -3758,7 +3749,7 @@ index 07b8885f1e..b660ad6475 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -1011,6 +1036,9 @@
+@@ -1085,6 +1110,9 @@
  AC_MSG_CHECKING([for multiarch])
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
@@ -3768,7 +3759,7 @@ index 07b8885f1e..b660ad6475 100644
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1472,11 +1500,17 @@
+@@ -1591,11 +1619,17 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -3791,7 +3782,7 @@ index 07b8885f1e..b660ad6475 100644
  fi
  AC_SUBST(READELF)
  
-@@ -4362,6 +4396,10 @@
+@@ -4501,6 +4535,10 @@
  then
  	case $ac_sys_system/$ac_sys_release in
  	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
@@ -3802,7 +3793,7 @@ index 07b8885f1e..b660ad6475 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -6919,7 +6957,7 @@
+@@ -7049,7 +7087,7 @@
  AC_MSG_NOTICE([creating Modules/Setup.local])
  if test ! -f Modules/Setup.local
  then

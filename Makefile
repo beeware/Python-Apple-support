@@ -39,7 +39,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.0b1
+PYTHON_VERSION=3.11.0b5
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -48,7 +48,7 @@ BZIP2_VERSION=1.0.8
 XZ_VERSION=5.2.5
 
 OPENSSL_VERSION_NUMBER=1.1.1
-OPENSSL_REVISION=o
+OPENSSL_REVISION=q
 OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 LIBFFI_VERSION=3.4.2
