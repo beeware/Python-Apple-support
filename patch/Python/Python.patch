@@ -662,7 +662,7 @@ index 69670d9d7f..8287267e64 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 7ae8df154b..4c3121de39 100644
+index 7ae8df154b..08899c9921 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -74,8 +74,8 @@
@@ -676,15 +676,6 @@ index 7ae8df154b..4c3121de39 100644
  
  if _mswindows:
      import _winapi
-@@ -1921,6 +1921,8 @@
-             outside of the local scope (nor can any methods it calls).
- 
-             """
-+            if _waitpid is None:
-+                _waitpid = os.waitpid
-             if self.returncode is None:
-                 if not self._waitpid_lock.acquire(False):
-                     # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
 index ebe3711827..6d20f3c2d2 100644
 --- a/Lib/sysconfig.py
@@ -1055,18 +1046,6 @@ index 71926a5432..2918759262 100644
  class UnixSysLogHandlerTest(SysLogHandlerTest):
  
      """Test for SysLogHandler with Unix sockets."""
-diff --git a/Lib/test/test_mailcap.py b/Lib/test/test_mailcap.py
-index 8185f4a780..510ab8d3dd 100644
---- a/Lib/test/test_mailcap.py
-+++ b/Lib/test/test_mailcap.py
-@@ -223,7 +223,6 @@
-         ]
-         self._run_cases(cases)
- 
--    @unittest.skipUnless(os.name == "posix", "Requires 'test' command on system")
-     @unittest.skipIf(sys.platform == "vxworks", "'test' command is not supported on VxWorks")
-     @unittest.skipUnless(
-         test.support.has_subprocess_support,
 diff --git a/Lib/test/test_marshal.py b/Lib/test/test_marshal.py
 index aae86cc257..bb48a85517 100644
 --- a/Lib/test/test_marshal.py
@@ -1179,7 +1158,7 @@ index ae25ef5588..8f2b1ffa69 100644
              self.assertRaises(OSError, posix.sched_get_priority_max, -23)
  
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index a2c4ab5081..eb427dfd72 100644
+index a2c4ab5081..265b5618df 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
 @@ -1776,6 +1776,8 @@
@@ -1195,7 +1174,7 @@ index a2c4ab5081..eb427dfd72 100644
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
-+    @unittest.skipUnless(os.allows_subprocesses, 'Test requires support for subprocesses.')
++    @unittest.skipUnless(support.has_subprocess_support, 'Test requires support for subprocesses.')
      @unittest.skipUnless(hasattr(os, 'get_terminal_size'),
                           'need os.get_terminal_size()')
      def test_stty_match(self):
@@ -3594,7 +3573,7 @@ index d74fb6deac..249b391d71 100755
  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
 diff --git a/configure b/configure
-index 078bb5bef1..107dccb7a5 100755
+index 078bb5bef1..3bb80ee5bc 100755
 --- a/configure
 +++ b/configure
 @@ -3820,6 +3820,15 @@
@@ -3690,17 +3669,8 @@ index 078bb5bef1..107dccb7a5 100755
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -26543,7 +26584,7 @@
- $as_echo "$as_me: creating Modules/Setup.local" >&6;}
- if test ! -f Modules/Setup.local
- then
--	echo "# Edit this file for local setup changes" >Modules/Setup.local
-+   echo "# Edit this file for local setup changes" >Modules/Setup.local
- fi
- 
- { $as_echo "$as_me:${as_lineno-$LINENO}: creating Makefile" >&5
 diff --git a/configure.ac b/configure.ac
-index 09f3f902a6..271fd4be6d 100644
+index 09f3f902a6..b3bab951eb 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -545,6 +545,15 @@
@@ -3793,15 +3763,6 @@ index 09f3f902a6..271fd4be6d 100644
  	*)
  	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
  	# out any dynamic loading
-@@ -7049,7 +7087,7 @@
- AC_MSG_NOTICE([creating Modules/Setup.local])
- if test ! -f Modules/Setup.local
- then
--	echo "# Edit this file for local setup changes" >Modules/Setup.local
-+   echo "# Edit this file for local setup changes" >Modules/Setup.local
- fi
- 
- AC_MSG_NOTICE([creating Makefile])
 --- /dev/null
 +++ b/iOS/Info.plist
 @@ -0,0 +1,20 @@
