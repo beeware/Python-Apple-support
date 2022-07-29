@@ -106,6 +106,11 @@ MACHINE_SIMPLE-arm64_32=arm
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
 
+# Force the path to be minimal. This ensures that anything in the user environment
+# (in particular, homebrew and user-provided Python installs) aren't inadvertently
+# linked into the support package.
+PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
+
 # Build for all operating systems
 all: $(OS_LIST)
 
@@ -131,9 +136,15 @@ downloads: \
 
 update-patch:
 	# Generate a diff from the clone of the python/cpython Github repository
-	# Requireds patchutils (installable via `brew install patchutils`)
+	# Requires patchutils (installable via `brew install patchutils`); this
+	# also means we need to re-introduce homebrew to the path for the filterdiff
+	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
-	cd $(PYTHON_REPO_DIR) && git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) | filterdiff -X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean > $(PROJECT_DIR)/patch/Python/Python.patch
+	cd $(PYTHON_REPO_DIR) && \
+		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) \
+			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
+				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
+					> $(PROJECT_DIR)/patch/Python/Python.patch
 
 ###########################################################################
 # Setup: BZip2
