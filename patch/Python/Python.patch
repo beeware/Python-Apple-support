@@ -1469,6 +1469,19 @@ index 44974d433b..ae4e18802b 100755
  
  #
  # Platform support for Windows
+diff --git a/Makefile.pre.in b/Makefile.pre.in
+index e145315c45..9ad1a257a0 100644
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -344,6 +344,8 @@
+ ##########################################################################
+ 
+ LIBFFI_INCLUDEDIR=	@LIBFFI_INCLUDEDIR@
++LIBFFI_LIBDIR=	@LIBFFI_LIBDIR@
++LIBFFI_LIB=@LIBFFI_LIB@
+ 
+ ##########################################################################
+ # Parser
 diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
 index 9132f13e81..36e00f7bfd 100644
 --- a/Modules/_posixsubprocess.c
@@ -3559,10 +3572,188 @@ index 90a4405091..65dd71d868 100644
 +    exit(ret);
 +    return ret;
 +}
+diff --git a/aclocal.m4 b/aclocal.m4
+index 6a33c0cc9d..09ae5d1aa8 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -1,6 +1,6 @@
+-# generated automatically by aclocal 1.16.3 -*- Autoconf -*-
++# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
+ 
+-# Copyright (C) 1996-2020 Free Software Foundation, Inc.
++# Copyright (C) 1996-2021 Free Software Foundation, Inc.
+ 
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+@@ -184,7 +184,7 @@
+ #   and this notice are preserved. This file is offered as-is, without any
+ #   warranty.
+ 
+-#serial 10
++#serial 11
+ 
+ AU_ALIAS([CHECK_SSL], [AX_CHECK_OPENSSL])
+ AC_DEFUN([AX_CHECK_OPENSSL], [
+@@ -227,7 +227,7 @@
+     if ! $found; then
+         OPENSSL_INCLUDES=
+         for ssldir in $ssldirs; do
+-            AC_MSG_CHECKING([for openssl/ssl.h in $ssldir])
++            AC_MSG_CHECKING([for include/openssl/ssl.h in $ssldir])
+             if test -f "$ssldir/include/openssl/ssl.h"; then
+                 OPENSSL_INCLUDES="-I$ssldir/include"
+                 OPENSSL_LDFLAGS="-L$ssldir/lib"
+@@ -276,7 +276,7 @@
+ ])
+ 
+ # pkg.m4 - Macros to locate and utilise pkg-config.   -*- Autoconf -*-
+-# serial 11 (pkg-config-0.29.1)
++# serial 12 (pkg-config-0.29.2)
+ 
+ dnl Copyright © 2004 Scott James Remnant <scott@netsplit.com>.
+ dnl Copyright © 2012-2015 Dan Nicholson <dbn.lists@gmail.com>
+@@ -318,7 +318,7 @@
+ dnl See the "Since" comment for each macro you use to see what version
+ dnl of the macros you require.
+ m4_defun([PKG_PREREQ],
+-[m4_define([PKG_MACROS_VERSION], [0.29.1])
++[m4_define([PKG_MACROS_VERSION], [0.29.2])
+ m4_if(m4_version_compare(PKG_MACROS_VERSION, [$1]), -1,
+     [m4_fatal([pkg.m4 version $1 or higher is required but ]PKG_MACROS_VERSION[ found])])
+ ])dnl PKG_PREREQ
+@@ -419,7 +419,7 @@
+ AC_ARG_VAR([$1][_LIBS], [linker flags for $1, overriding pkg-config])dnl
+ 
+ pkg_failed=no
+-AC_MSG_CHECKING([for $1])
++AC_MSG_CHECKING([for $2])
+ 
+ _PKG_CONFIG([$1][_CFLAGS], [cflags], [$2])
+ _PKG_CONFIG([$1][_LIBS], [libs], [$2])
+@@ -429,11 +429,11 @@
+ See the pkg-config man page for more details.])
+ 
+ if test $pkg_failed = yes; then
+-   	AC_MSG_RESULT([no])
++        AC_MSG_RESULT([no])
+         _PKG_SHORT_ERRORS_SUPPORTED
+         if test $_pkg_short_errors_supported = yes; then
+ 	        $1[]_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "$2" 2>&1`
+-        else 
++        else
+ 	        $1[]_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "$2" 2>&1`
+         fi
+ 	# Put the nasty error message in config.log where it belongs
+@@ -450,7 +450,7 @@
+ _PKG_TEXT])[]dnl
+         ])
+ elif test $pkg_failed = untried; then
+-     	AC_MSG_RESULT([no])
++        AC_MSG_RESULT([no])
+ 	m4_default([$4], [AC_MSG_FAILURE(
+ [The pkg-config script could not be found or is too old.  Make sure it
+ is in your PATH or set the PKG_CONFIG environment variable to the full
+@@ -551,77 +551,9 @@
+ AS_VAR_IF([$1], [""], [$5], [$4])dnl
+ ])dnl PKG_CHECK_VAR
+ 
+-dnl PKG_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+-dnl   [ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND],
+-dnl   [DESCRIPTION], [DEFAULT])
+-dnl ------------------------------------------
+-dnl
+-dnl Prepare a "--with-" configure option using the lowercase
+-dnl [VARIABLE-PREFIX] name, merging the behaviour of AC_ARG_WITH and
+-dnl PKG_CHECK_MODULES in a single macro.
+-AC_DEFUN([PKG_WITH_MODULES],
+-[
+-m4_pushdef([with_arg], m4_tolower([$1]))
+-
+-m4_pushdef([description],
+-           [m4_default([$5], [build with ]with_arg[ support])])
+-
+-m4_pushdef([def_arg], [m4_default([$6], [auto])])
+-m4_pushdef([def_action_if_found], [AS_TR_SH([with_]with_arg)=yes])
+-m4_pushdef([def_action_if_not_found], [AS_TR_SH([with_]with_arg)=no])
+-
+-m4_case(def_arg,
+-            [yes],[m4_pushdef([with_without], [--without-]with_arg)],
+-            [m4_pushdef([with_without],[--with-]with_arg)])
+-
+-AC_ARG_WITH(with_arg,
+-     AS_HELP_STRING(with_without, description[ @<:@default=]def_arg[@:>@]),,
+-    [AS_TR_SH([with_]with_arg)=def_arg])
+-
+-AS_CASE([$AS_TR_SH([with_]with_arg)],
+-            [yes],[PKG_CHECK_MODULES([$1],[$2],$3,$4)],
+-            [auto],[PKG_CHECK_MODULES([$1],[$2],
+-                                        [m4_n([def_action_if_found]) $3],
+-                                        [m4_n([def_action_if_not_found]) $4])])
+-
+-m4_popdef([with_arg])
+-m4_popdef([description])
+-m4_popdef([def_arg])
+-
+-])dnl PKG_WITH_MODULES
+-
+-dnl PKG_HAVE_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+-dnl   [DESCRIPTION], [DEFAULT])
+-dnl -----------------------------------------------
+-dnl
+-dnl Convenience macro to trigger AM_CONDITIONAL after PKG_WITH_MODULES
+-dnl check._[VARIABLE-PREFIX] is exported as make variable.
+-AC_DEFUN([PKG_HAVE_WITH_MODULES],
+-[
+-PKG_WITH_MODULES([$1],[$2],,,[$3],[$4])
+-
+-AM_CONDITIONAL([HAVE_][$1],
+-               [test "$AS_TR_SH([with_]m4_tolower([$1]))" = "yes"])
+-])dnl PKG_HAVE_WITH_MODULES
+-
+-dnl PKG_HAVE_DEFINE_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+-dnl   [DESCRIPTION], [DEFAULT])
+-dnl ------------------------------------------------------
+-dnl
+-dnl Convenience macro to run AM_CONDITIONAL and AC_DEFINE after
+-dnl PKG_WITH_MODULES check. HAVE_[VARIABLE-PREFIX] is exported as make
+-dnl and preprocessor variable.
+-AC_DEFUN([PKG_HAVE_DEFINE_WITH_MODULES],
+-[
+-PKG_HAVE_WITH_MODULES([$1],[$2],[$3],[$4])
+-
+-AS_IF([test "$AS_TR_SH([with_]m4_tolower([$1]))" = "yes"],
+-        [AC_DEFINE([HAVE_][$1], 1, [Enable ]m4_tolower([$1])[ support])])
+-])dnl PKG_HAVE_DEFINE_WITH_MODULES
+-
+ # AM_CONDITIONAL                                            -*- Autoconf -*-
+ 
+-# Copyright (C) 1997-2020 Free Software Foundation, Inc.
++# Copyright (C) 1997-2021 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+@@ -652,7 +584,7 @@
+ Usually this means the macro was only invoked conditionally.]])
+ fi])])
+ 
+-# Copyright (C) 2006-2020 Free Software Foundation, Inc.
++# Copyright (C) 2006-2021 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
 diff --git a/config.sub b/config.sub
-index d74fb6deac..249b391d71 100755
+index d74fb6deac..09ebc4287c 100755
 --- a/config.sub
 +++ b/config.sub
+@@ -1121,7 +1121,7 @@
+ 	xscale-* | xscalee[bl]-*)
+ 		cpu=`echo "$cpu" | sed 's/^xscale/arm/'`
+ 		;;
+-	arm64-*)
++	arm64-* | arm64_32-*)
+ 		cpu=aarch64
+ 		;;
+ 
 @@ -1723,7 +1723,7 @@
  	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
  	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
@@ -3572,27 +3763,94 @@ index d74fb6deac..249b391d71 100755
  	     | mpw* | magic* | mmixware* | mon960* | lnews* \
  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
+@@ -1786,6 +1786,8 @@
+ 		;;
+ 	*-eabi* | *-gnueabi*)
+ 		;;
++	ios*-simulator | tvos*-simulator | watchos*-simulator)
++		;;
+ 	-*)
+ 		# Blank kernel with real OS is always fine.
+ 		;;
 diff --git a/configure b/configure
-index 078bb5bef1..3bb80ee5bc 100755
+index 078bb5bef1..84ef6459fb 100755
 --- a/configure
 +++ b/configure
-@@ -3820,6 +3820,15 @@
+@@ -836,6 +836,8 @@
+ LIBMPDEC_INTERNAL
+ LIBMPDEC_LDFLAGS
+ LIBMPDEC_CFLAGS
++LIBFFI_LIB
++LIBFFI_LIBDIR
+ LIBFFI_INCLUDEDIR
+ LIBEXPAT_INTERNAL
+ LIBEXPAT_LDFLAGS
+@@ -988,7 +990,6 @@
+ docdir
+ oldincludedir
+ includedir
+-runstatedir
+ localstatedir
+ sharedstatedir
+ sysconfdir
+@@ -1139,7 +1140,6 @@
+ sysconfdir='${prefix}/etc'
+ sharedstatedir='${prefix}/com'
+ localstatedir='${prefix}/var'
+-runstatedir='${localstatedir}/run'
+ includedir='${prefix}/include'
+ oldincludedir='/usr/include'
+ docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
+@@ -1392,15 +1392,6 @@
+   | -silent | --silent | --silen | --sile | --sil)
+     silent=yes ;;
+ 
+-  -runstatedir | --runstatedir | --runstatedi | --runstated \
+-  | --runstate | --runstat | --runsta | --runst | --runs \
+-  | --run | --ru | --r)
+-    ac_prev=runstatedir ;;
+-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+-  | --run=* | --ru=* | --r=*)
+-    runstatedir=$ac_optarg ;;
+-
+   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
+     ac_prev=sbindir ;;
+   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
+@@ -1538,7 +1529,7 @@
+ for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
+ 		datadir sysconfdir sharedstatedir localstatedir includedir \
+ 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
+-		libdir localedir mandir runstatedir
++		libdir localedir mandir
+ do
+   eval ac_val=\$$ac_var
+   # Remove trailing slashes.
+@@ -1691,7 +1682,6 @@
+   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
+   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
+   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
+   --libdir=DIR            object code libraries [EPREFIX/lib]
+   --includedir=DIR        C header files [PREFIX/include]
+   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
+@@ -3820,6 +3810,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
-+	*-apple-ios)
++	*-apple-ios*)
 +		ac_sys_system=iOS
 +		;;
-+	*-apple-tvos)
++	*-apple-tvos*)
 +		ac_sys_system=tvOS
 +		;;
-+	*-apple-watchos)
++	*-apple-watchos*)
 +		ac_sys_system=watchOS
 +		;;
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3876,6 +3885,15 @@
+@@ -3876,6 +3875,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -3608,7 +3866,7 @@ index 078bb5bef1..3bb80ee5bc 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3954,6 +3972,13 @@
+@@ -3954,6 +3962,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -3622,7 +3880,39 @@ index 078bb5bef1..3bb80ee5bc 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6191,6 +6216,12 @@
+@@ -6146,7 +6161,30 @@
+ #elif defined(__gnu_hurd__)
+         i386-gnu
+ #elif defined(__APPLE__)
+-        darwin
++#  include "TargetConditionals.h"
++#  if TARGET_OS_IOS
++#    if TARGET_OS_SIMULATOR
++       iphonesimulator
++#    else
++       iphoneos
++#    endif
++#  elif TARGET_OS_TV
++#    if TARGET_OS_SIMULATOR
++       appletvsimulator
++#    else
++       appletvos
++#    endif
++#  elif TARGET_OS_WATCH
++#    if TARGET_OS_SIMULATOR
++       watchsimulator
++#    else
++       watchos
++#    endif
++#  elif TARGET_OS_OSX
++     darwin
++#  else
++#    error unknown Apple platform
++#  endif
+ #elif defined(__VXWORKS__)
+         vxworks
+ #elif defined(__wasm32__)
+@@ -6191,6 +6229,12 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
@@ -3635,7 +3925,16 @@ index 078bb5bef1..3bb80ee5bc 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -7048,11 +7079,17 @@
+@@ -6249,7 +6293,7 @@
+         x86_64-*-freebsd*/clang) :
+     PY_SUPPORT_TIER=3 ;; #(
+   *) :
+-      PY_SUPPORT_TIER=0
++                        PY_SUPPORT_TIER=0
+  ;;
+ esac
+ 
+@@ -7048,11 +7092,23 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -3645,8 +3944,14 @@ index 078bb5bef1..3bb80ee5bc 100755
 -	;;
 -    esac
 +	case "$host" in
-+	*-apple-*os)
++	*-apple-ios*)
 +		# readelf not required for iOS cross builds.
++        	;;
++	*-apple-tvos*)
++		# readelf not required for tvOS cross builds.
++        	;;
++	*-apple-watchos*)
++		# readelf not required for watchOS cross builds.
 +        	;;
 +	*)
 +    		case "$READELF" in
@@ -3658,32 +3963,404 @@ index 078bb5bef1..3bb80ee5bc 100755
  fi
  
  
-@@ -14908,6 +14945,10 @@
- then
- 	case $ac_sys_system/$ac_sys_release in
- 	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
-+	# Disable dynamic loading on iOS
-+	iOS/*) DYNLOADFILE="dynload_stub.o";;
-+	tvOS/*) DYNLOADFILE="dynload_stub.o";;
-+	watchOS/*) DYNLOADFILE="dynload_stub.o";;
- 	*)
- 	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
- 	# out any dynamic loading
+@@ -10704,6 +10760,9 @@
+ 			BLDSHARED="$LDSHARED"
+ 		fi
+ 		;;
++	iOS/*|tvOS/*|watchOS/*)
++		LDSHARED='$(CC) -bundle -undefined dynamic_lookup'
++		LDCXXSHARED='$(CXX) -bundle -undefined dynamic_lookup';;
+ 	Emscripten|WASI)
+ 		LDSHARED='$(CC) -shared'
+ 		LDCXXSHARED='$(CXX) -shared';;
+@@ -11112,8 +11171,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBUUID" >&5
+-$as_echo_n "checking for LIBUUID... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for uuid >= 2.20" >&5
++$as_echo_n "checking for uuid >= 2.20... " >&6; }
+ 
+ if test -n "$LIBUUID_CFLAGS"; then
+     pkg_cv_LIBUUID_CFLAGS="$LIBUUID_CFLAGS"
+@@ -11153,7 +11212,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -11296,7 +11355,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+       save_CFLAGS=$CFLAGS
+@@ -11947,23 +12006,35 @@
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_system_ffi" >&5
+ $as_echo "$with_system_ffi" >&6; }
+ else
+-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-$as_echo "yes" >&6; }
+-    if test "$with_system_ffi" != ""
++    if test "$ac_sys_system" = "iOS" || test "$ac_sys_system" = "tvOS" || test "$ac_sys_system" = "watchOS"
+     then
+-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with(out)-system-ffi is ignored on this platform" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Using user-provided libffi configuration" >&5
++$as_echo "$as_me: WARNING: Using user-provided libffi configuration" >&2;}
++        LIBFFI_LIBDIR="${LIBFFI_LIBDIR}"
++        LIBFFI_LIB="${LIBFFI_LIB}"
++    else
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++        if test "$with_system_ffi" != ""
++        then
++            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with(out)-system-ffi is ignored on this platform" >&5
+ $as_echo "$as_me: WARNING: --with(out)-system-ffi is ignored on this platform" >&2;}
++        fi
++        with_system_ffi="yes"
+     fi
+-    with_system_ffi="yes"
+ fi
+ 
+ if test "$with_system_ffi" = "yes" && test -n "$PKG_CONFIG"; then
+     LIBFFI_INCLUDEDIR="`"$PKG_CONFIG" libffi --cflags-only-I 2>/dev/null | sed -e 's/^-I//;s/ *$//'`"
+ else
+-    LIBFFI_INCLUDEDIR=""
++    LIBFFI_INCLUDEDIR="${LIBFFI_INCLUDEDIR}"
+ fi
+ 
+ 
++
++
+ # Check for use of the system libmpdec library
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for --with-system-libmpdec" >&5
+ $as_echo_n "checking for --with-system-libmpdec... " >&6; }
+@@ -12104,8 +12175,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBNSL" >&5
+-$as_echo_n "checking for LIBNSL... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libnsl" >&5
++$as_echo_n "checking for libnsl... " >&6; }
+ 
+ if test -n "$LIBNSL_CFLAGS"; then
+     pkg_cv_LIBNSL_CFLAGS="$LIBNSL_CFLAGS"
+@@ -12145,7 +12216,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -12246,7 +12317,7 @@
+   LIBNSL_LIBS=${LIBNSL_LIBS-$libnsl}
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+   LIBNSL_CFLAGS=${LIBNSL_CFLAGS-""}
+@@ -12394,8 +12465,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBSQLITE3" >&5
+-$as_echo_n "checking for LIBSQLITE3... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sqlite3 >= 3.7.15" >&5
++$as_echo_n "checking for sqlite3 >= 3.7.15... " >&6; }
+ 
+ if test -n "$LIBSQLITE3_CFLAGS"; then
+     pkg_cv_LIBSQLITE3_CFLAGS="$LIBSQLITE3_CFLAGS"
+@@ -12435,7 +12506,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -12457,7 +12528,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+     LIBSQLITE3_CFLAGS=${LIBSQLITE3_CFLAGS-""}
+@@ -13226,8 +13297,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for TCLTK" >&5
+-$as_echo_n "checking for TCLTK... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $_QUERY" >&5
++$as_echo_n "checking for $_QUERY... " >&6; }
+ 
+ if test -n "$TCLTK_CFLAGS"; then
+     pkg_cv_TCLTK_CFLAGS="$TCLTK_CFLAGS"
+@@ -13267,7 +13338,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -13285,7 +13356,7 @@
+ 
+ 	found_tcltk=no
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 	found_tcltk=no
+ else
+@@ -13321,8 +13392,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for X11" >&5
+-$as_echo_n "checking for X11... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for x11" >&5
++$as_echo_n "checking for x11... " >&6; }
+ 
+ if test -n "$X11_CFLAGS"; then
+     pkg_cv_X11_CFLAGS="$X11_CFLAGS"
+@@ -13362,7 +13433,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -13389,7 +13460,7 @@
+ and X11_LIBS to avoid the need to call pkg-config.
+ See the pkg-config man page for more details." "$LINENO" 5
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+ $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+@@ -15952,8 +16023,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ZLIB" >&5
+-$as_echo_n "checking for ZLIB... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for zlib >= 1.2.0" >&5
++$as_echo_n "checking for zlib >= 1.2.0... " >&6; }
+ 
+ if test -n "$ZLIB_CFLAGS"; then
+     pkg_cv_ZLIB_CFLAGS="$ZLIB_CFLAGS"
+@@ -15993,7 +16064,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -16137,7 +16208,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+   save_CFLAGS=$CFLAGS
+@@ -16300,8 +16371,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BZIP2" >&5
+-$as_echo_n "checking for BZIP2... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for bzip2" >&5
++$as_echo_n "checking for bzip2... " >&6; }
+ 
+ if test -n "$BZIP2_CFLAGS"; then
+     pkg_cv_BZIP2_CFLAGS="$BZIP2_CFLAGS"
+@@ -16341,7 +16412,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -16438,7 +16509,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+   save_CFLAGS=$CFLAGS
+@@ -16530,8 +16601,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBLZMA" >&5
+-$as_echo_n "checking for LIBLZMA... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for liblzma" >&5
++$as_echo_n "checking for liblzma... " >&6; }
+ 
+ if test -n "$LIBLZMA_CFLAGS"; then
+     pkg_cv_LIBLZMA_CFLAGS="$LIBLZMA_CFLAGS"
+@@ -16571,7 +16642,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -16668,7 +16739,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+   save_CFLAGS=$CFLAGS
+@@ -17267,8 +17338,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBCRYPT" >&5
+-$as_echo_n "checking for LIBCRYPT... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libxcrypt >= 3.1.1" >&5
++$as_echo_n "checking for libxcrypt >= 3.1.1... " >&6; }
+ 
+ if test -n "$LIBCRYPT_CFLAGS"; then
+     pkg_cv_LIBCRYPT_CFLAGS="$LIBCRYPT_CFLAGS"
+@@ -17308,7 +17379,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -17405,7 +17476,7 @@
+ 
+ 
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+   save_CFLAGS=$CFLAGS
+@@ -22177,8 +22248,8 @@
+     if ! $found; then
+         OPENSSL_INCLUDES=
+         for ssldir in $ssldirs; do
+-            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h in $ssldir" >&5
+-$as_echo_n "checking for openssl/ssl.h in $ssldir... " >&6; }
++            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for include/openssl/ssl.h in $ssldir" >&5
++$as_echo_n "checking for include/openssl/ssl.h in $ssldir... " >&6; }
+             if test -f "$ssldir/include/openssl/ssl.h"; then
+                 OPENSSL_INCLUDES="-I$ssldir/include"
+                 OPENSSL_LDFLAGS="-L$ssldir/lib"
+@@ -22559,8 +22630,8 @@
+ 
+ 
+ pkg_failed=no
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBB2" >&5
+-$as_echo_n "checking for LIBB2... " >&6; }
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libb2" >&5
++$as_echo_n "checking for libb2... " >&6; }
+ 
+ if test -n "$LIBB2_CFLAGS"; then
+     pkg_cv_LIBB2_CFLAGS="$LIBB2_CFLAGS"
+@@ -22600,7 +22671,7 @@
+ 
+ 
+ if test $pkg_failed = yes; then
+-   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -22618,7 +22689,7 @@
+ 
+ 	have_libb2=no
+ elif test $pkg_failed = untried; then
+-     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ 	have_libb2=no
+ else
+@@ -22689,6 +22760,29 @@
+     py_cv_module_ossaudiodev=n/a
+     py_cv_module_spwd=n/a
+  ;; #(
++  iOS|tvOS|watchOS) :
++
++
++
++    py_cv_module__curses=n/a
++    py_cv_module__curses_panel=n/a
++    py_cv_module__gdbm=n/a
++    py_cv_module__multiprocessing=n/a
++    py_cv_module__posixshmem=n/a
++    py_cv_module__posixsubprocess=n/a
++    py_cv_module__scproxy=n/a
++    py_cv_module__tkinter=n/a
++    py_cv_module__xxsubinterpreters=n/a
++    py_cv_module_grp=n/a
++    py_cv_module_nis=n/a
++    py_cv_module_ossaudiodev=n/a
++    py_cv_module_readline=n/a
++    py_cv_module_pwd=n/a
++    py_cv_module_spwd=n/a
++    py_cv_module_syslog=n/a
++    py_cv_module_=n/a
++
++   ;; #(
+   CYGWIN*) :
+ 
+ 
 diff --git a/configure.ac b/configure.ac
-index 09f3f902a6..b3bab951eb 100644
+index 09f3f902a6..8563e88760 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -545,6 +545,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
-+	*-apple-ios)
++	*-apple-ios*)
 +		ac_sys_system=iOS
 +		;;
-+	*-apple-tvos)
++	*-apple-tvos*)
 +		ac_sys_system=tvOS
 +		;;
-+	*-apple-watchos)
++	*-apple-watchos*)
 +		ac_sys_system=watchOS
 +		;;
  	*-*-vxworks*)
@@ -3719,7 +4396,39 @@ index 09f3f902a6..b3bab951eb 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -1085,6 +1110,9 @@
+@@ -1044,7 +1069,30 @@
+ #elif defined(__gnu_hurd__)
+         i386-gnu
+ #elif defined(__APPLE__)
+-        darwin
++#  include "TargetConditionals.h"
++#  if TARGET_OS_IOS
++#    if TARGET_OS_SIMULATOR
++       iphonesimulator
++#    else
++       iphoneos
++#    endif
++#  elif TARGET_OS_TV
++#    if TARGET_OS_SIMULATOR
++       appletvsimulator
++#    else
++       appletvos
++#    endif
++#  elif TARGET_OS_WATCH
++#    if TARGET_OS_SIMULATOR
++       watchsimulator
++#    else
++       watchos
++#    endif
++#  elif TARGET_OS_OSX
++     darwin
++#  else
++#    error unknown Apple platform
++#  endif
+ #elif defined(__VXWORKS__)
+         vxworks
+ #elif defined(__wasm32__)
+@@ -1085,6 +1133,9 @@
  AC_MSG_CHECKING([for multiarch])
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
@@ -3729,7 +4438,23 @@ index 09f3f902a6..b3bab951eb 100644
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1591,11 +1619,17 @@
+@@ -1129,6 +1180,15 @@
+   dnl [wasm32-unknown-emscripten/clang], [PY_SUPPORT_TIER=3], dnl WebAssembly Emscripten
+   dnl [wasm32-unknown-wasi/clang],       [PY_SUPPORT_TIER=3], dnl WebAssembly System Interface
+   [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
++  dnl [aarch64-apple-ios/clang],         [PY_SUPPORT_TIER=3], dnl iOS on ARM64
++  dnl [aarch64-apple-ios-simulator/clang],   [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
++  dnl [x86_64-apple-ios-simulator/clang],    [PY_SUPPORT_TIER=3], dnl iOS Simulator on x86_64
++  dnl [aarch64-apple-tvos/clang],        [PY_SUPPORT_TIER=3], dnl Apple tvOS on ARM64
++  dnl [aarch64-apple-tvos-simulator/clang],  [PY_SUPPORT_TIER=3], dnl Apple tvOS Simulator on ARM64
++  dnl [x86_64-apple-tvos-simulator/clang],   [PY_SUPPORT_TIER=3], dnl Apple tvOS Simulator on x86_64
++  dnl [arm64_32-apple-watchos/clang],        [PY_SUPPORT_TIER=3], dnl Apple watchOS on ARM64_32
++  dnl [aarch64-apple-watchos-simulator/clang],   [PY_SUPPORT_TIER=3], dnl Apple watchOS Simulator on ARM64
++  dnl [x86_64-apple-watchos-simulator/clang],    [PY_SUPPORT_TIER=3], dnl Apple watchOS Simulator on x86_64
+   [PY_SUPPORT_TIER=0]
+ )
+ 
+@@ -1591,11 +1651,23 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -3739,8 +4464,14 @@ index 09f3f902a6..b3bab951eb 100644
 -	;;
 -    esac
 +	case "$host" in
-+	*-apple-*os)
++	*-apple-ios*)
 +		# readelf not required for iOS cross builds.
++        	;;
++	*-apple-tvos*)
++		# readelf not required for tvOS cross builds.
++        	;;
++	*-apple-watchos*)
++		# readelf not required for watchOS cross builds.
 +        	;;
 +	*)
 +    		case "$READELF" in
@@ -3752,17 +4483,92 @@ index 09f3f902a6..b3bab951eb 100644
  fi
  AC_SUBST(READELF)
  
-@@ -4501,6 +4535,10 @@
- then
- 	case $ac_sys_system/$ac_sys_release in
- 	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
-+	# Disable dynamic loading on iOS
-+	iOS/*) DYNLOADFILE="dynload_stub.o";;
-+	tvOS/*) DYNLOADFILE="dynload_stub.o";;
-+	watchOS/*) DYNLOADFILE="dynload_stub.o";;
- 	*)
- 	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
- 	# out any dynamic loading
+@@ -2066,7 +2138,7 @@
+     dnl build with WASM debug info if either Py_DEBUG is set or the target is
+     dnl node-debug or browser-debug.
+     AS_VAR_IF([Py_DEBUG], [yes], [wasm_debug=yes], [wasm_debug=no])
+-    
++
+     dnl Start with 20 MB and allow to grow
+     AS_VAR_APPEND([LDFLAGS_NODIST], [" -sALLOW_MEMORY_GROWTH -sTOTAL_MEMORY=20971520"])
+ 
+@@ -3128,6 +3200,9 @@
+ 			BLDSHARED="$LDSHARED"
+ 		fi
+ 		;;
++	iOS/*|tvOS/*|watchOS/*)
++		LDSHARED='$(CC) -bundle -undefined dynamic_lookup'
++		LDCXXSHARED='$(CXX) -bundle -undefined dynamic_lookup';;
+ 	Emscripten|WASI)
+ 		LDSHARED='$(CC) -shared'
+ 		LDCXXSHARED='$(CXX) -shared';;
+@@ -3597,20 +3672,30 @@
+     esac
+     AC_MSG_RESULT($with_system_ffi)
+ else
+-    AC_MSG_RESULT(yes)
+-    if test "$with_system_ffi" != ""
++    if test "$ac_sys_system" = "iOS" || test "$ac_sys_system" = "tvOS" || test "$ac_sys_system" = "watchOS"
+     then
+-        AC_MSG_WARN([--with(out)-system-ffi is ignored on this platform])
++        AC_MSG_RESULT(no)
++        AC_MSG_WARN([Using user-provided libffi configuration])
++        LIBFFI_LIBDIR="${LIBFFI_LIBDIR}"
++        LIBFFI_LIB="${LIBFFI_LIB}"
++    else
++        AC_MSG_RESULT(yes)
++        if test "$with_system_ffi" != ""
++        then
++            AC_MSG_WARN([--with(out)-system-ffi is ignored on this platform])
++        fi
++        with_system_ffi="yes"
+     fi
+-    with_system_ffi="yes"
+ fi
+ 
+ if test "$with_system_ffi" = "yes" && test -n "$PKG_CONFIG"; then
+     LIBFFI_INCLUDEDIR="`"$PKG_CONFIG" libffi --cflags-only-I 2>/dev/null | sed -e 's/^-I//;s/ *$//'`"
+ else
+-    LIBFFI_INCLUDEDIR=""
++    LIBFFI_INCLUDEDIR="${LIBFFI_INCLUDEDIR}"
+ fi
+ AC_SUBST(LIBFFI_INCLUDEDIR)
++AC_SUBST(LIBFFI_LIBDIR)
++AC_SUBST(LIBFFI_LIB)
+ 
+ # Check for use of the system libmpdec library
+ AC_MSG_CHECKING(for --with-system-libmpdec)
+@@ -6764,6 +6849,30 @@
+   [AIX], [PY_STDLIB_MOD_SET_NA([_scproxy], [spwd])],
+   [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [_crypt], [termios], [grp])],
+   [Darwin], [PY_STDLIB_MOD_SET_NA([ossaudiodev], [spwd])],
++  [iOS|tvOS|watchOS], [
++    dnl subprocess and multiprocessing are not supported (no fork syscall).
++    dnl curses and tkinter user interface are not available.
++    dnl gdbm, and nis aren't available
++    dnl Stub implementations are provided for pwd, grp etc APIs
++    PY_STDLIB_MOD_SET_NA(
++      [_curses],
++      [_curses_panel],
++      [_gdbm],
++      [_multiprocessing],
++      [_posixshmem],
++      [_posixsubprocess],
++      [_scproxy],
++      [_tkinter],
++      [_xxsubinterpreters],
++      [grp],
++      [nis],
++      [ossaudiodev],
++      [readline],
++      [pwd],
++      [spwd],
++      [syslog],
++    )
++  ],
+   [CYGWIN*], [PY_STDLIB_MOD_SET_NA([_scproxy], [nis])],
+   [QNX*], [PY_STDLIB_MOD_SET_NA([_scproxy], [nis])],
+   [FreeBSD*], [PY_STDLIB_MOD_SET_NA([_scproxy], [spwd])],
 --- /dev/null
 +++ b/iOS/Info.plist
 @@ -0,0 +1,20 @@
@@ -4621,6 +5427,60 @@ index 09f3f902a6..b3bab951eb 100644
 +    #import <Foundation/Foundation.h>
 +#endif
 \ No newline at end of file
+diff --git a/setup.py b/setup.py
+index 15d0d4576a..b59083aa47 100644
+--- a/setup.py
++++ b/setup.py
+@@ -82,6 +82,9 @@
+ MS_WINDOWS = (HOST_PLATFORM == 'win32')
+ CYGWIN = (HOST_PLATFORM == 'cygwin')
+ MACOS = (HOST_PLATFORM == 'darwin')
++IOS = HOST_PLATFORM.startswith('ios-')
++TVOS = HOST_PLATFORM.startswith('tvos-')
++WATCHOS = HOST_PLATFORM.startswith('watchos-')
+ AIX = (HOST_PLATFORM.startswith('aix'))
+ VXWORKS = ('vxworks' in HOST_PLATFORM)
+ EMSCRIPTEN = HOST_PLATFORM == 'emscripten-wasm32'
+@@ -1396,6 +1399,11 @@
+             extra_compile_args.append('-DMACOSX')
+             include_dirs.append('_ctypes/darwin')
+ 
++        elif IOS or TVOS or WATCHOS:
++            sources.append('_ctypes/malloc_closure.c')
++            extra_compile_args.append('-DUSING_MALLOC_CLOSURE_DOT_C')
++            include_dirs.append('_ctypes/darwin')
++
+         elif HOST_PLATFORM == 'sunos5':
+             # XXX This shouldn't be necessary; it appears that some
+             # of the assembler code is non-PIC (i.e. it has relocations
+@@ -1418,7 +1426,8 @@
+         self.addext(Extension('_ctypes_test', ['_ctypes/_ctypes_test.c']))
+ 
+         ffi_inc = sysconfig.get_config_var("LIBFFI_INCLUDEDIR")
+-        ffi_lib = None
++        ffi_lib_dir = sysconfig.get_config_var("LIBFFI_LIBDIR")
++        ffi_lib = sysconfig.get_config_var("LIBFFI_LIB")
+ 
+         ffi_inc_dirs = self.inc_dirs.copy()
+         if MACOS:
+@@ -1447,6 +1456,7 @@
+             for lib_name in ('ffi', 'ffi_pic'):
+                 if (self.compiler.find_library_file(self.lib_dirs, lib_name)):
+                     ffi_lib = lib_name
++                    self.use_system_libffi = True
+                     break
+ 
+         if ffi_inc and ffi_lib:
+@@ -1460,7 +1470,8 @@
+ 
+             ext.include_dirs.append(ffi_inc)
+             ext.libraries.append(ffi_lib)
+-            self.use_system_libffi = True
++            if ffi_lib_dir:
++                ext.library_dirs.append(ffi_lib_dir)
+ 
+         if sysconfig.get_config_var('HAVE_LIBDL'):
+             # for dlopen, see bpo-32647
 --- /dev/null
 +++ b/tvOS/Info.plist
 @@ -0,0 +1,20 @@

@@ -64,45 +64,36 @@ TARGETS-macOS=macosx.x86_64 macosx.arm64
 CFLAGS-macOS=-mmacosx-version-min=10.15
 CFLAGS-macosx.x86_64=
 CFLAGS-macosx.arm64=
-SLICE-macosx=macos-arm64_x86_64
 SDK_ROOT-macosx=$(shell xcrun --sdk macosx --show-sdk-path)
 CC-macosx=xcrun --sdk macosx clang --sysroot=$(SDK_ROOT-macosx) $(CFLAGS-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-CFLAGS-iOS=-mios-version-min=12.0 -fembed-bitcode
+CFLAGS-iOS=-mios-version-min=12.0
 CFLAGS-iphoneos.arm64=
 CFLAGS-iphonesimulator.x86_64=
 CFLAGS-iphonesimulator.arm64=
-SLICE-iphoneos=ios-arm64
-SLICE-iphonesimulator=ios-arm64_x86_64-simulator
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
-CFLAGS-tvOS=-mtvos-version-min=9.0 -fembed-bitcode
+CFLAGS-tvOS=-mtvos-version-min=9.0
 CFLAGS-appletvos.arm64=
 CFLAGS-appletvsimulator.x86_64=
 CFLAGS-appletvsimulator.arm64=
-SLICE-appletvos=tvos-arm64
-SLICE-appletvsimulator=tvos-arm64_x86_64-simulator
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
-CFLAGS-watchOS=-mwatchos-version-min=4.0 -fembed-bitcode
+CFLAGS-watchOS=-mwatchos-version-min=4.0
 CFLAGS_watchsimulator.x86_64=
 CFLAGS-watchsimulator.arm64=
 CFLAGS-watchos.arm64_32=
-SLICE-watchos=watchos-arm64_32
-SLICE-watchsimulator=watchos-arm64_x86_64-simulator
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # override machine types for arm64
-MACHINE_DETAILED-arm64=aarch64
 MACHINE_SIMPLE-arm64=arm
 
 # override machine types for arm64_32
-MACHINE_DETAILED-arm64_32=aarch64
 MACHINE_SIMPLE-arm64_32=arm
 
 # The architecture of the machine doing the build
@@ -219,11 +210,6 @@ os=$2
 SDK-$(target)=$$(basename $(target))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
-ifdef MACHINE_DETAILED-$$(ARCH-$(target))
-MACHINE_DETAILED-$(target)=$$(MACHINE_DETAILED-$$(ARCH-$(target)))
-else
-MACHINE_DETAILED-$(target)=$$(ARCH-$(target))
-endif
 ifdef MACHINE_SIMPLE-$$(ARCH-$(target))
 MACHINE_SIMPLE-$(target)=$$(MACHINE_SIMPLE-$$(ARCH-$(target)))
 else
@@ -372,7 +358,7 @@ $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
 # a per-target build on macOS
 ifneq ($(os),macOS)
 
-LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
+LIBFFI_DIR-$(os)=build/$(os)/libffi
 LIBFFI_DIR-$(target)=$$(LIBFFI_DIR-$(os))/build_$$(SDK-$(target))-$$(ARCH-$(target))
 LIBFFI_LIB-$(target)=$$(LIBFFI_DIR-$(target))/.libs/libffi.a
 
@@ -415,21 +401,18 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	# Generate the embedded module configuration
-	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
-		$(PROJECT_DIR)/patch/Python/Setup.$(os) | \
-			sed -e "s/{{slice}}/$$(SLICE-$$(SDK-$(target)))/g" \
-			> $$(PYTHON_DIR-$(target))/Modules/Setup.local
 	# Configure target Python
 	cd $$(PYTHON_DIR-$(target)) && \
 		./configure \
 			CC="$$(CC-$(target))" \
-			LD="$$(CC-$(target))" \
-			LIBLZMA_CFLAGS="-I../xz/$(target)/include" \
-			LIBLZMA_LIBS="-L../xz/$(target)/lib -lxz" \
-			BZIP2_CFLAGS="-I../bzip2/$(target)/include" \
-			BZIP2_LIBS="-L../bzip2/$(target)/lib -lbzip2" \
-			--host=$$(MACHINE_DETAILED-$(target))-apple-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
+			LIBLZMA_CFLAGS="-I../xz/$$(SDK-$(target))/include" \
+			LIBLZMA_LIBS="-L../xz/$$(SDK-$(target))/lib -lxz" \
+			BZIP2_CFLAGS="-I../bzip2/$$(SDK-$(target))/include" \
+			BZIP2_LIBS="-L../bzip2/$$(SDK-$(target))/lib -lbzip2" \
+			LIBFFI_INCLUDEDIR="../libffi/_install/$$(SDK-$(target))/include" \
+			LIBFFI_LIBDIR="../libffi/_install/$$(SDK-$(target))/lib" \
+			LIBFFI_LIB="ffi" \
+			--host=$$(TARGET_TRIPLE-$(target)) \
 			--build=$(HOST_ARCH)-apple-darwin \
 			--with-build-python=$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin/python$(PYTHON_VER) \
 			--prefix="$(PROJECT_DIR)/$$(PYTHON_DIR-$(target))/_install" \
@@ -497,6 +480,25 @@ endef # build-target
 # - $2 OS (e.g., iOS, tvOS)
 #
 ###########################################################################
+define targets-sdk
+sdk=$1
+os=$2
+
+BZIP2_FATLIB-$(sdk)=build/$(os)/bzip2/$(sdk)/lib/libbzip2.a
+
+XZ_FATLIB-$(sdk)=build/$(os)/xz/$(sdk)/lib/libxz.a
+
+OPENSSL_FAT_INCLUDE-$(sdk)=build/$(os)/openssl/$(sdk)/include
+OPENSSL_SSL_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libssl.a
+OPENSSL_CRYPTO_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libcrypto.a
+
+LIBFFI_FATLIB-$(sdk)=$$(LIBFFI_DIR-$(os))/_install/$(sdk)/lib/libffi.a
+
+PYTHON_DIR-$(sdk)=build/$(os)/python/$(sdk)
+PYTHON_FATLIB-$(sdk)=$$(PYTHON_DIR-$(sdk))/lib/libPython.a
+
+endef
+
 define build-sdk
 sdk=$1
 os=$2
@@ -507,8 +509,6 @@ SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 ###########################################################################
 # SDK: BZip2
 ###########################################################################
-
-BZIP2_FATLIB-$(sdk)=build/$(os)/bzip2/$(sdk)/lib/libbzip2.a
 
 $$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_LIB-$$(target)))
 	@echo ">>> Build BZip2 fat library for $(sdk)"
@@ -522,8 +522,6 @@ $$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_LIB-$
 # SDK: XZ (LZMA)
 ###########################################################################
 
-XZ_FATLIB-$(sdk)=build/$(os)/xz/$(sdk)/lib/libxz.a
-
 $$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_LIB-$$(target)))
 	@echo ">>> Build XZ fat library for $(sdk)"
 	mkdir -p build/$(os)/xz/$(sdk)/lib
@@ -535,10 +533,6 @@ $$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_LIB-$$(targ
 ###########################################################################
 # SDK: OpenSSL
 ###########################################################################
-
-OPENSSL_FAT_INCLUDE-$(sdk)=build/$(os)/openssl/$(sdk)/include
-OPENSSL_SSL_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libssl.a
-OPENSSL_CRYPTO_FATLIB-$(sdk)=build/$(os)/openssl/$(sdk)/lib/libcrypto.a
 
 $$(OPENSSL_FAT_INCLUDE-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)))
 	@echo ">>> Copy OpenSSL headers from the first target associated with the SDK"
@@ -563,11 +557,9 @@ $$(OPENSSL_CRYPTO_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OP
 # SDK: libFFI
 ###########################################################################
 
-LIBFFI_FATLIB-$(sdk)=$$(LIBFFI_DIR-$(os))/_install/$(sdk)/libFFI.a
-
 $$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB-$$(target)))
 	@echo ">>> Build libFFI fat library for $(sdk)"
-	mkdir -p $$(LIBFFI_DIR-$(os))/_install/$(sdk)
+	mkdir -p $$(LIBFFI_DIR-$(os))/_install/$(sdk)/lib
 	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
 		2>&1 | tee -a build/$(os)/libffi-$(sdk).libtool.log
 	# Copy headers from the first target associated with the SDK
@@ -579,9 +571,6 @@ $$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB
 ###########################################################################
 # SDK: Python
 ###########################################################################
-
-PYTHON_DIR-$(sdk)=build/$(os)/python/$(sdk)
-PYTHON_FATLIB-$(sdk)=$$(PYTHON_DIR-$(sdk))/lib/libPython.a
 
 ifeq ($(os),macOS)
 # There's a single OS-level build for macOS; the fat library is a direct copy of
@@ -642,11 +631,15 @@ os=$1
 # Build: Macro Expansions
 ###########################################################################
 
+SDKS-$(os)=$$(sort $$(basename $$(TARGETS-$(os))))
+
+# Expand the targets-sdk macro for all the sdks on this OS (e.g., iphoneos, iphonesimulator)
+$$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call targets-sdk,$$(sdk),$(os))))
+
 # Expand the build-target macro for target on this OS
 $$(foreach target,$$(TARGETS-$(os)),$$(eval $$(call build-target,$$(target),$(os))))
 
 # Expand the build-sdk macro for all the sdks on this OS (e.g., iphoneos, iphonesimulator)
-SDKS-$(os)=$$(sort $$(basename $$(TARGETS-$(os))))
 $$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
 
 ###########################################################################
@@ -694,7 +687,7 @@ clean-OpenSSL-$(os):
 ifneq ($(os),macOS)
 
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
-LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
+LIBFFI_DIR-$(os)=build/$(os)/libffi
 
 $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tar.gz $$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
@@ -756,15 +749,10 @@ $$(PYTHON_DIR-$(os))/Makefile: \
 	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(os))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
-		$(PROJECT_DIR)/patch/Python/Setup.$(os) | \
-			sed -e "s/{{slice}}/$$(SLICE-macosx)/g" \
-			> $$(PYTHON_DIR-$(os))/Modules/Setup.local
 	# Configure target Python
 	cd $$(PYTHON_DIR-$(os)) && \
 		./configure \
 			CC="$(CC-macosx)" \
-			LD="$(CC-macosx)" \
 			LIBLZMA_CFLAGS="-I../xz/macosx/include" \
 			LIBLZMA_LIBS="-L../xz/macosx/lib -lxz" \
 			BZIP2_CFLAGS="-I../bzip2/macosx/include" \
