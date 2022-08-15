@@ -57,6 +57,8 @@ LIBFFI_VERSION=3.4.2
 PRODUCTS=BZip2 XZ OpenSSL libFFI Python
 OS_LIST=macOS iOS tvOS watchOS
 
+CURL_FLAGS=--fail --location --create-dirs --progress-bar
+
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 CFLAGS-macOS=-mmacosx-version-min=10.15
@@ -128,10 +130,10 @@ distclean: clean
 	rm -rf downloads
 
 downloads: \
-		downloads/bzip2-$(BZIP2_VERSION).tgz \
-		downloads/xz-$(XZ_VERSION).tgz \
-		downloads/openssl-$(OPENSSL_VERSION).tgz \
-		downloads/libffi-$(LIBFFI_VERSION).tgz \
+		downloads/bzip2-$(BZIP2_VERSION).tar.gz \
+		downloads/xz-$(XZ_VERSION).tar.gz \
+		downloads/openssl-$(OPENSSL_VERSION).tar.gz \
+		downloads/libffi-$(LIBFFI_VERSION).tar.gz \
 		downloads/Python-$(PYTHON_VERSION).tgz
 
 update-patch:
@@ -151,26 +153,20 @@ update-patch:
 ###########################################################################
 
 # Download original BZip2 source code archive.
-downloads/bzip2-$(BZIP2_VERSION).tgz:
+downloads/bzip2-$(BZIP2_VERSION).tar.gz:
 	@echo ">>> Download BZip2 sources"
-	mkdir -p downloads
-	if [ ! -e downloads/bzip2-$(BZIP2_VERSION).tgz ]; then \
-		curl --fail -L https://sourceware.org/pub/bzip2/bzip2-$(BZIP2_VERSION).tar.gz \
-			-o downloads/bzip2-$(BZIP2_VERSION).tgz; \
-	fi
+	curl $(CURL_FLAGS) -o $@ \
+		https://sourceware.org/pub/bzip2/$(notdir $@)
 
 ###########################################################################
 # Setup: XZ (LZMA)
 ###########################################################################
 
 # Download original XZ source code archive.
-downloads/xz-$(XZ_VERSION).tgz:
+downloads/xz-$(XZ_VERSION).tar.gz:
 	@echo ">>> Download XZ sources"
-	mkdir -p downloads
-	if [ ! -e downloads/xz-$(XZ_VERSION).tgz ]; then \
-		curl --fail -L http://tukaani.org/xz/xz-$(XZ_VERSION).tar.gz \
-			-o downloads/xz-$(XZ_VERSION).tgz; \
-	fi
+	curl $(CURL_FLAGS) -o $@ \
+		https://tukaani.org/xz/$(notdir $@)
 
 ###########################################################################
 # Setup: OpenSSL
@@ -179,30 +175,22 @@ downloads/xz-$(XZ_VERSION).tgz:
 ###########################################################################
 
 # Download original OpenSSL source code archive.
-downloads/openssl-$(OPENSSL_VERSION).tgz:
+downloads/openssl-$(OPENSSL_VERSION).tar.gz:
 	@echo ">>> Download OpenSSL sources"
-	mkdir -p downloads
-	-if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then \
-		curl --fail -L http://openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz \
-			-o downloads/openssl-$(OPENSSL_VERSION).tgz; \
-	fi
-	if [ ! -e downloads/openssl-$(OPENSSL_VERSION).tgz ]; then \
-		curl --fail -L http://openssl.org/source/old/$(OPENSSL_VERSION_NUMBER)/openssl-$(OPENSSL_VERSION).tar.gz \
-			-o downloads/openssl-$(OPENSSL_VERSION).tgz; \
-	fi
+	curl $(CURL_FLAGS) -o $@ \
+		https://openssl.org/source/$(notdir $@) \
+		|| curl $(CURL_FLAGS) -o $@ \
+			https://openssl.org/source/old/$(notdir $@)
 
 ###########################################################################
 # Setup: libFFI
 ###########################################################################
 
-# Download original XZ source code archive.
-downloads/libffi-$(LIBFFI_VERSION).tgz:
+# Download original libFFI source code archive.
+downloads/libffi-$(LIBFFI_VERSION).tar.gz:
 	@echo ">>> Download libFFI sources"
-	mkdir -p downloads
-	if [ ! -e downloads/libffi-$(LIBFFI_VERSION).tgz ]; then \
-		curl --fail -L http://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)/libffi-$(LIBFFI_VERSION).tar.gz \
-			-o downloads/libffi-$(LIBFFI_VERSION).tgz; \
-	fi
+	curl $(CURL_FLAGS) -o $@ \
+		https://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)/$(notdir $@)
 
 ###########################################################################
 # Setup: Python
@@ -211,11 +199,8 @@ downloads/libffi-$(LIBFFI_VERSION).tgz:
 # Download original Python source code archive.
 downloads/Python-$(PYTHON_VERSION).tgz:
 	@echo ">>> Download Python sources"
-	mkdir -p downloads
-	if [ ! -e downloads/Python-$(PYTHON_VERSION).tgz ]; then \
-		curl --fail -L https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz \
-			-o downloads/Python-$(PYTHON_VERSION).tgz; \
-	fi
+	curl $(CURL_FLAGS) -o $@ \
+		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/$(notdir $@)
 
 ###########################################################################
 # Build for specified target (from $(TARGETS-*))
@@ -265,10 +250,10 @@ LDFLAGS-$(target)=-arch $$(ARCH-$(target)) -isysroot=$$(SDK_ROOT-$(target))
 BZIP2_DIR-$(target)=build/$(os)/bzip2-$(BZIP2_VERSION)-$(target)
 BZIP2_LIB-$(target)=$$(BZIP2_DIR-$(target))/_install/lib/libbz2.a
 
-$$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tgz
+$$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	@echo ">>> Unpack BZip2 sources for $(target)"
 	mkdir -p $$(BZIP2_DIR-$(target))
-	tar zxf downloads/bzip2-$(BZIP2_VERSION).tgz --strip-components 1 -C $$(BZIP2_DIR-$(target))
+	tar zxf $$^ --strip-components 1 -C $$(BZIP2_DIR-$(target))
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_DIR-$(target))/Makefile
 
@@ -315,10 +300,10 @@ OPENSSL_DIR-$(target)=build/$(os)/openssl-$(OPENSSL_VERSION)-$(target)
 OPENSSL_SSL_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libssl.a
 OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libcrypto.a
 
-$$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tgz
+$$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tar.gz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_DIR-$(target))
-	tar zxf downloads/openssl-$(OPENSSL_VERSION).tgz --strip-components 1 -C $$(OPENSSL_DIR-$(target))
+	tar zxf $$^ --strip-components 1 -C $$(OPENSSL_DIR-$(target))
 
 ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 	# Tweak ui_openssl.c
