@@ -430,7 +430,7 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 	mkdir -p $$(PYTHON_DIR-$(target))
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(target))
 	# Apply target Python patches
-	cd $$(PYTHON_DIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	-cd $$(PYTHON_DIR-$(target)) && patch -Np1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Generate the embedded module configuration
 	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
 		$(PROJECT_DIR)/patch/Python/Setup.$(os) \
@@ -726,7 +726,7 @@ $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERS
 	mkdir -p $$(LIBFFI_DIR-$(os))
 	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
 	# Patch the build to add support for new platforms
-	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
+	-cd $$(LIBFFI_DIR-$(os)) && patch -Np1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
 	cd $$(LIBFFI_DIR-$(os)) && \
 		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
@@ -781,7 +781,7 @@ $$(PYTHON_DIR-$(os))/Makefile: \
 	mkdir -p $$(PYTHON_DIR-$(os))
 	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(os))
 	# Apply target Python patches
-	cd $$(PYTHON_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	-cd $$(PYTHON_DIR-$(os)) && patch -Np1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
 		$(PROJECT_DIR)/patch/Python/Setup.$(os) | \
 			sed -e "s/{{slice}}/$$(SLICE-macosx)/g" \
