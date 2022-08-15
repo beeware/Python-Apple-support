@@ -420,6 +420,7 @@ PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER
 PYCONFIG_H-$(target)=build/$(os)/python/$$(SDK-$(target))/include/python$(PYTHON_VER)/pyconfig-$$(ARCH-$(target)).h
 
 $$(PYTHON_DIR-$(target))/Makefile: \
+		Python-macOS \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
