@@ -42,6 +42,7 @@ BUILD_NUMBER=custom
 PYTHON_VERSION=3.11.0b5
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
+PYTHON=python$(PYTHON_VER)
 
 BZIP2_VERSION=1.0.8
 
@@ -730,7 +731,7 @@ $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERS
 	# Configure the build
 	cd $$(LIBFFI_DIR-$(os)) && \
 		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-macOS)/_install/bin:$(PATH)" \
-		python$(PYTHON_VER) generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
+		$(PYTHON) generate-darwin-source-and-headers.py --only-$(shell echo $(os) | tr '[:upper:]' '[:lower:]') \
 		2>&1 | tee -a ../libffi-$(os).config.log
 
 $$(LIBFFI_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(sdk)))
