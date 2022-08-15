@@ -39,7 +39,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.0b5
+PYTHON_VERSION=3.11.0rc1
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -454,7 +454,7 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 $$(PYTHON_DIR-$(target))/python.exe: $$(PYTHON_DIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_DIR-$(target)) && \
-		make all \
+		make CFLAGS='-I../openssl/$$(SDK-$(target))/include -I../xz/$$(SDK-$(target))/include -I$$(SDK_ROOT-$(target))/usr/include/ffi' all \
 		2>&1 | tee -a ../python-$(target).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_DIR-$(target))/python.exe
@@ -801,7 +801,7 @@ $$(PYTHON_DIR-$(os))/python.exe: \
 	@echo ">>> Build Python for $(os)"
 	cd $$(PYTHON_DIR-$(os)) && \
 		PATH="$(PROJECT_DIR)/$(PYTHON_DIR-$(os))/_install/bin:$(PATH)" \
-		make all \
+		make CFLAGS='-I../openssl/$$(SDK-$(target))/include -I../xz/$$(SDK-$(target))/include -I$$(SDK_ROOT-$(target))/usr/include/fii' all \
 		2>&1 | tee -a ../python-$(os).build.log
 
 $$(PYTHON_LIB-$(os)): $$(PYTHON_DIR-$(os))/python.exe
