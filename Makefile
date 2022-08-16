@@ -410,7 +410,7 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
-		$$(PYTHON_XCFRAMEWORK-macOS) \
+		$$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(target))
