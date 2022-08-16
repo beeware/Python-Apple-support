@@ -272,10 +272,10 @@ $$(BZIP2_LIB-$(target)): $$(BZIP2_DIR-$(target))/Makefile
 XZ_DIR-$(target)=build/$(os)/xz-$(XZ_VERSION)-$(target)
 XZ_LIB-$(target)=$$(XZ_DIR-$(target))/_install/lib/liblzma.a
 
-$$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tgz
+$$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
 	@echo ">>> Unpack XZ sources for $(target)"
 	mkdir -p $$(XZ_DIR-$(target))
-	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(XZ_DIR-$(target))
 	# Configure the build
 	cd $$(XZ_DIR-$(target)) && \
 		./configure \
@@ -706,10 +706,10 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tar.gz $$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
-	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
+	tar zxf $$< --strip-components 1 -C $$(LIBFFI_DIR-$(os))
 	# Patch the build to add support for new platforms
 	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
