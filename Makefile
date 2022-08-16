@@ -761,7 +761,7 @@ $$(PYTHON_DIR-$(os))/Makefile: \
 		downloads/Python-$(PYTHON_VERSION).tgz \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
-		$$(OPENSSL_XCFRAMEWORK-$(os)) \
+		$$(OPENSSL_XCFRAMEWORK-$(os))
 	@echo ">>> Unpack and configure Python for $(os)"
 	mkdir -p $$(PYTHON_DIR-$(os))
 	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(os))
