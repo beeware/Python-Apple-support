@@ -405,15 +405,15 @@ PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER
 PYCONFIG_H-$(target)=build/$(os)/python/$$(SDK-$(target))/include/python$(PYTHON_VER)/pyconfig-$$(ARCH-$(target)).h
 
 $$(PYTHON_DIR-$(target))/Makefile: \
+		downloads/Python-$(PYTHON_VERSION).tgz \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
 		$$(PYTHON_XCFRAMEWORK-macOS) \
-		downloads/Python-$(PYTHON_VERSION).tgz
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Generate the embedded module configuration
@@ -758,13 +758,13 @@ PYTHON_DIR-$(os)=$$(PYTHON_DIR-$$(firstword $$(TARGETS-$(os))))
 PYTHON_LIB-$(os)=$$(PYTHON_LIB-$$(firstword $$(TARGETS-$(os))))
 
 $$(PYTHON_DIR-$(os))/Makefile: \
+		downloads/Python-$(PYTHON_VERSION).tgz \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
-		downloads/Python-$(PYTHON_VERSION).tgz
 	@echo ">>> Unpack and configure Python for $(os)"
 	mkdir -p $$(PYTHON_DIR-$(os))
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(os))
+	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(os))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
