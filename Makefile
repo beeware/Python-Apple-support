@@ -810,7 +810,7 @@ $$(PYTHON_XCFRAMEWORK-$(os)): $$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(
 	xcodebuild -create-xcframework \
 		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_DIR-$$(sdk))/include/python$(PYTHON_VER)) \
 		2>&1 | tee -a build/$(os)/python-$(os).xcframework.log
- 	# Copy the standard library from the first target listed
+	# Copy the standard library from the first target listed
 	mkdir -p $$(PYTHON_RESOURCES-$(os))
 	cp -f -r $$(PYTHON_DIR-$$(firstword $$(PYTHON_TARGETS-$(os))))/_install/lib/python$(PYTHON_VER) \
 		$$(PYTHON_RESOURCES-$(os))
