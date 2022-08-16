@@ -142,11 +142,10 @@ update-patch:
 	# also means we need to re-introduce homebrew to the path for the filterdiff
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
-	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) \
-			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
-				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
-					> $(PROJECT_DIR)/patch/Python/Python.patch
+	git -C $(PYTHON_REPO_DIR) diff -D v$(PYTHON_VERSION) $(PYTHON_VER) \
+		| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
+			-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
+				> $(PROJECT_DIR)/patch/Python/Python.patch
 
 ###########################################################################
 # Setup: BZip2
@@ -259,11 +258,10 @@ $$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 
 $$(BZIP2_LIB-$(target)): $$(BZIP2_DIR-$(target))/Makefile
 	@echo ">>> Build BZip2 for $(target)"
-	cd $$(BZIP2_DIR-$(target)) && \
-		make install \
-			PREFIX="$(PROJECT_DIR)/$$(BZIP2_DIR-$(target))/_install" \
-			CC="$$(CC-$(target))" \
-			2>&1 | tee -a ../bzip2-$(target).build.log
+	make -C $$(BZIP2_DIR-$(target)) install \
+		PREFIX="$(PROJECT_DIR)/$$(BZIP2_DIR-$(target))/_install" \
+		CC="$$(CC-$(target))" \
+		2>&1 | tee -a $(dir $$(BZIP2_DIR-$(target)))/bzip2-$(target).build.log
 
 ###########################################################################
 # Target: XZ (LZMA)
@@ -288,9 +286,8 @@ $$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tgz
 
 $$(XZ_LIB-$(target)): $$(XZ_DIR-$(target))/Makefile
 	@echo ">>> Build and install XZ for $(target)"
-	cd $$(XZ_DIR-$(target)) && \
-		make install \
-			2>&1 | tee -a ../xz-$(target).build.log
+	make -C $$(XZ_DIR-$(target)) install \
+		2>&1 | tee -a $(notdir $$(XZ_DIR-$(target)))/xz-$(target).build.log
 
 ###########################################################################
 # Target: OpenSSL
@@ -347,22 +344,20 @@ $$(OPENSSL_DIR-$(target))/libssl.a: $$(OPENSSL_DIR-$(target))/is_configured
 	@echo ">>> Build OpenSSL for $(target)"
 	# OpenSSL's `all` target modifies the Makefile;
 	# use the raw targets that make up all and it's dependencies
-	cd $$(OPENSSL_DIR-$(target)) && \
-		CC="$$(CC-$(target))" \
-		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
-		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
-		make all \
-			2>&1 | tee -a ../openssl-$(target).build.log
+	CC="$$(CC-$(target))" \
+	CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+	CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+	make -C $$(OPENSSL_DIR-$(target)) all \
+		2>&1 | tee -a $(notdir $$(OPENSSL_DIR-$(target)))/openssl-$(target).build.log
 
 $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_DIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
-	cd $$(OPENSSL_DIR-$(target)) && \
-		CC="$$(CC-$(target))" \
-		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
-		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
-		make install_sw \
-			2>&1 | tee -a ../openssl-$(target).install.log
+	CC="$$(CC-$(target))" \
+	CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
+	CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
+	make -C $$(OPENSSL_DIR-$(target))  install_sw \
+		2>&1 | tee -a $(nodir $$(OPENSSL_DIR-$(target)))/openssl-$(target).install.log
 
 ###########################################################################
 # Target: libFFI
@@ -378,9 +373,8 @@ LIBFFI_LIB-$(target)=$$(LIBFFI_DIR-$(target))/.libs/libffi.a
 
 $$(LIBFFI_LIB-$(target)): $$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h
 	@echo ">>> Build libFFI for $(target)"
-	cd $$(LIBFFI_DIR-$(target)) && \
-		make \
-			2>&1 | tee -a ../../libffi-$(target).build.log
+	make -C $$(LIBFFI_DIR-$(target)) \
+		2>&1 | tee -a $(notdir $$(LIBFFI_DIR-$(target)))/libffi-$(target).build.log
 
 endif
 
@@ -438,15 +432,13 @@ $$(PYTHON_DIR-$(target))/Makefile: \
 
 $$(PYTHON_DIR-$(target))/python.exe: $$(PYTHON_DIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
-	cd $$(PYTHON_DIR-$(target)) && \
-		make all \
-		2>&1 | tee -a ../python-$(target).build.log
+	make -C $$(PYTHON_DIR-$(target)) all \
+	2>&1 | tee -a $(notdir $$(PYTHON_DIR-$(target)))/python-$(target).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_DIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
-	cd $$(PYTHON_DIR-$(target)) && \
-		make install \
-		2>&1 | tee -a ../python-$(target).install.log
+	make -C $$(PYTHON_DIR-$(target)) install \
+	2>&1 | tee -a $(notdir $$(PYTHON_DIR-$(target)))/python-$(target).install.log
 
 $$(PYCONFIG_H-$(target)): $$(PYTHON_LIB-$(target))
 	@echo ">>> Install pyconfig headers for $(target)"
