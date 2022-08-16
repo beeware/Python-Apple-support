@@ -253,7 +253,7 @@ BZIP2_LIB-$(target)=$$(BZIP2_DIR-$(target))/_install/lib/libbz2.a
 $$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	@echo ">>> Unpack BZip2 sources for $(target)"
 	mkdir -p $$(BZIP2_DIR-$(target))
-	tar zxf $$^ --strip-components 1 -C $$(BZIP2_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(BZIP2_DIR-$(target))
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_DIR-$(target))/Makefile
 
@@ -303,7 +303,7 @@ OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libcrypto.a
 $$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tar.gz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_DIR-$(target))
-	tar zxf $$^ --strip-components 1 -C $$(OPENSSL_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(OPENSSL_DIR-$(target))
 
 ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 	# Tweak ui_openssl.c
