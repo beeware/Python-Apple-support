@@ -253,7 +253,7 @@ BZIP2_LIB-$(target)=$$(BZIP2_DIR-$(target))/_install/lib/libbz2.a
 $$(BZIP2_DIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	@echo ">>> Unpack BZip2 sources for $(target)"
 	mkdir -p $$(BZIP2_DIR-$(target))
-	tar zxf $$^ --strip-components 1 -C $$(BZIP2_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(BZIP2_DIR-$(target))
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_DIR-$(target))/Makefile
 
@@ -272,10 +272,10 @@ $$(BZIP2_LIB-$(target)): $$(BZIP2_DIR-$(target))/Makefile
 XZ_DIR-$(target)=build/$(os)/xz-$(XZ_VERSION)-$(target)
 XZ_LIB-$(target)=$$(XZ_DIR-$(target))/_install/lib/liblzma.a
 
-$$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tgz
+$$(XZ_DIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
 	@echo ">>> Unpack XZ sources for $(target)"
 	mkdir -p $$(XZ_DIR-$(target))
-	tar zxf downloads/xz-$(XZ_VERSION).tgz --strip-components 1 -C $$(XZ_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(XZ_DIR-$(target))
 	# Configure the build
 	cd $$(XZ_DIR-$(target)) && \
 		./configure \
@@ -303,7 +303,7 @@ OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_DIR-$(target))/_install/lib/libcrypto.a
 $$(OPENSSL_DIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tar.gz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_DIR-$(target))
-	tar zxf $$^ --strip-components 1 -C $$(OPENSSL_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(OPENSSL_DIR-$(target))
 
 ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 	# Tweak ui_openssl.c
@@ -405,15 +405,15 @@ PYTHON_LIB-$(target)=$$(PYTHON_DIR-$(target))/_install/lib/libpython$(PYTHON_VER
 PYCONFIG_H-$(target)=build/$(os)/python/$$(SDK-$(target))/include/python$(PYTHON_VER)/pyconfig-$$(ARCH-$(target)).h
 
 $$(PYTHON_DIR-$(target))/Makefile: \
+		downloads/Python-$(PYTHON_VERSION).tgz \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
 		$$(OPENSSL_XCFRAMEWORK-$(os)) \
 		$$(LIBFFI_XCFRAMEWORK-$(os)) \
-		$$(PYTHON_XCFRAMEWORK-macOS) \
-		downloads/Python-$(PYTHON_VERSION).tgz
+		$$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_DIR-$(target))
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(target))
+	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Generate the embedded module configuration
@@ -706,10 +706,10 @@ ifneq ($(os),macOS)
 LIBFFI_XCFRAMEWORK-$(os)=build/$(os)/Support/libFFI.xcframework
 LIBFFI_DIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 
-$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tgz $$(PYTHON_XCFRAMEWORK-macOS)
+$$(LIBFFI_DIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_VERSION).tar.gz $$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure libFFI sources on $(os)"
 	mkdir -p $$(LIBFFI_DIR-$(os))
-	tar zxf downloads/libffi-$(LIBFFI_VERSION).tgz --strip-components 1 -C $$(LIBFFI_DIR-$(os))
+	tar zxf $$< --strip-components 1 -C $$(LIBFFI_DIR-$(os))
 	# Patch the build to add support for new platforms
 	cd $$(LIBFFI_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/libffi.patch
 	# Configure the build
@@ -758,13 +758,13 @@ PYTHON_DIR-$(os)=$$(PYTHON_DIR-$$(firstword $$(TARGETS-$(os))))
 PYTHON_LIB-$(os)=$$(PYTHON_LIB-$$(firstword $$(TARGETS-$(os))))
 
 $$(PYTHON_DIR-$(os))/Makefile: \
+		downloads/Python-$(PYTHON_VERSION).tgz \
 		$$(BZIP2_XCFRAMEWORK-$(os)) \
 		$$(XZ_XCFRAMEWORK-$(os)) \
-		$$(OPENSSL_XCFRAMEWORK-$(os)) \
-		downloads/Python-$(PYTHON_VERSION).tgz
+		$$(OPENSSL_XCFRAMEWORK-$(os))
 	@echo ">>> Unpack and configure Python for $(os)"
 	mkdir -p $$(PYTHON_DIR-$(os))
-	tar zxf downloads/Python-$(PYTHON_VERSION).tgz --strip-components 1 -C $$(PYTHON_DIR-$(os))
+	tar zxf $$< --strip-components 1 -C $$(PYTHON_DIR-$(os))
 	# Apply target Python patches
 	cd $$(PYTHON_DIR-$(os)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	cat $(PROJECT_DIR)/patch/Python/Setup.embedded \
