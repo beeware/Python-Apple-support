@@ -3742,10 +3742,10 @@ index 6a33c0cc9d..09ae5d1aa8 100644
  # This file is free software; the Free Software Foundation
  # gives unlimited permission to copy and/or distribute it,
 diff --git a/config.sub b/config.sub
-index d74fb6deac..09ebc4287c 100755
+index d74fb6deac..a30f74f03d 100755
 --- a/config.sub
 +++ b/config.sub
-@@ -1121,7 +1121,7 @@
+@@ -1121,10 +1121,9 @@
  	xscale-* | xscalee[bl]-*)
  		cpu=`echo "$cpu" | sed 's/^xscale/arm/'`
  		;;
@@ -3753,8 +3753,11 @@ index d74fb6deac..09ebc4287c 100755
 +	arm64-* | arm64_32-*)
  		cpu=aarch64
  		;;
- 
-@@ -1723,7 +1723,7 @@
+-
+ 	# Recognize the canonical CPU Types that limit and/or modify the
+ 	# company names they are paired with.
+ 	cr16-*)
+@@ -1723,7 +1722,7 @@
  	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
  	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
  	     | hiux* | abug | nacl* | netware* | windows* \
@@ -3763,7 +3766,7 @@ index d74fb6deac..09ebc4287c 100755
  	     | mpw* | magic* | mmixware* | mon960* | lnews* \
  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
-@@ -1786,6 +1786,8 @@
+@@ -1786,6 +1785,8 @@
  		;;
  	*-eabi* | *-gnueabi*)
  		;;

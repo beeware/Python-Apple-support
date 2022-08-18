@@ -1,0 +1,34 @@
+diff -ru xz-5.2.5/build-aux/config.sub xz-5.2.5-patched/build-aux/config.sub
+--- xz-5.2.5/build-aux/config.sub	2020-03-17 22:29:35.000000000 +0800
++++ xz-5.2.5-patched/build-aux/config.sub	2022-08-10 08:38:41.000000000 +0800
+@@ -116,6 +116,7 @@
+ case $maybe_os in
+   nto-qnx* | linux-gnu* | linux-android* | linux-dietlibc | linux-newlib* | \
+   linux-musl* | linux-uclibc* | uclinux-uclibc* | uclinux-gnu* | kfreebsd*-gnu* | \
++  ios*-simulator | tvos*-simulator | watchos*-simulator | \
+   knetbsd*-gnu* | netbsd*-gnu* | netbsd*-eabi* | \
+   kopensolaris*-gnu* | cloudabi*-eabi* | \
+   storm-chaos* | os2-emx* | rtmk-nova*)
+@@ -450,6 +451,9 @@
+ 	| ymp-* \
+ 	| z8k-* | z80-*)
+ 		;;
++	arm64-* | arm64e-* | arm64_32-*)
++		basic_machine=aarch64-`echo "$basic_machine" | sed 's/^[^-]*-//'`
++		;;
+ 	# Recognize the basic CPU types without company name, with glob match.
+ 	xtensa*)
+ 		basic_machine=$basic_machine-unknown
+@@ -1520,7 +1524,11 @@
+ 		;;
+ 	-nacl*)
+ 		;;
+-	-ios)
++	-ios | -ios-simulator)
++		;;
++	-tvos | -tvos-simulator)
++		;;
++	-watchos | -watchos-simulator)
+ 		;;
+ 	-none)
+ 		;;

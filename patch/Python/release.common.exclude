@@ -1,38 +1,30 @@
 # This is a list of support package path patterns that we exclude
 # from all Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
-#
-# Remove binaries; not needed for embedded builds
-Python/Resources/bin
-# Remove includes; use the version packaged in Headers
-Python/Resources/include
-# Remove the Resources version of libpython;
-# we use the version packaged at the root level
-Python/Resources/lib/libpython3.*.a
-# Remove lib/pkgconfig files. These are used for compiling C extension modules.
-Python/Resources/lib/pkgconfig
 # Remove standard library test suites.
-Python/Resources/lib/python*/ctypes/test
-Python/Resources/lib/python*/distutils/tests
-Python/Resources/lib/python*/lib2to3/tests
-Python/Resources/lib/python*/sqlite3/test
-Python/Resources/lib/python*/test
+python-stdlib/ctypes/test
+python-stdlib/distutils/tests
+python-stdlib/lib2to3/tests
+python-stdlib/sqlite3/test
+python-stdlib/test
 # Remove config-* directory, which is used for compiling C extension modules.
-Python/Resources/lib/python*/config-*
+python-stdlib/config-*
 # Remove ensurepip. If user code needs pip, it can add it to
-Python/Resources/lib/python*/ensurepip
+python-stdlib/ensurepip
 # Remove libraries supporting IDLE. We don't need to ship an IDE
-Python/Resources/lib/python*/idlelib
+python-stdlib/idlelib
 # Remove Tcl/Tk GUI code. We don't build against Tcl/Tk at the moment, so this
 # will not work.
-Python/Resources/lib/python*/tkinter
-Python/Resources/lib/python*/turtle.py
-Python/Resources/lib/python*/turtledemo
+python-stdlib/tkinter
+python-stdlib/turtle.py
+python-stdlib/turtledemo
+# Remove the testing binary modules
+python-stdlib/lib-dynload/_test*.so
+python-stdlib/lib-dynload/_xx*.so
+python-stdlib/lib-dynload/xx*.so
 # Remove site-packages directory. The template unpacks user code and
 # dependencies to a different path.
-Python/Resources/lib/python*/site-packages
-# Remove share/ directory, which contains user documentation (man pages).
-Python/Resources/share
+python-stdlib/site-packages
 # Remove pyc files. These take up space, but since most stdlib modules are
 # never imported by user code, they mostly have no value.
-Python/Resources/*/*.pyc
+*/__pycache__
