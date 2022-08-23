@@ -529,8 +529,8 @@ $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target)
 $$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_LIB-$$(target)))
 	@echo ">>> Build BZip2 fat library for $(sdk)"
 	mkdir -p $$(BZIP2_MERGE-$(sdk))/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
-		2>&1 | tee -a merge/$(os)/$(sdk)/bzip2-$(BZIP2_VERSION).libtool.log
+	lipo -create -output $$@ $$^ \
+		2>&1 | tee -a merge/$(os)/$(sdk)/bzip2-$(BZIP2_VERSION).lipo.log
 	# Copy headers from the first target associated with the $(sdk) SDK
 	cp -r $$(BZIP2_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/include $$(BZIP2_MERGE-$(sdk))
 
@@ -541,8 +541,8 @@ $$(BZIP2_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(BZIP2_LIB-$
 $$(XZ_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(XZ_LIB-$$(target)))
 	@echo ">>> Build XZ fat library for $(sdk)"
 	mkdir -p $$(XZ_MERGE-$(sdk))/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
-		2>&1 | tee -a merge/$(os)/$(sdk)/xz-$(XZ_VERSION).libtool.log
+	lipo -create -output $$@ $$^ \
+		2>&1 | tee -a merge/$(os)/$(sdk)/xz-$(XZ_VERSION).lipo.log
 	# Copy headers from the first target associated with the $(sdk) SDK
 	cp -r $$(XZ_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/include $$(XZ_MERGE-$(sdk))
 
@@ -558,16 +558,16 @@ $$(OPENSSL_FATINCLUDE-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENS
 $$(OPENSSL_SSL_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target)))
 	@echo ">>> Build OpenSSL ssl fat library for $(sdk)"
 	mkdir -p $$(OPENSSL_MERGE-$(sdk))/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ \
+	lipo -create -output $$@ \
 		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_SSL_LIB-$$(target))) \
-		2>&1 | tee -a merge/$(os)/$(sdk)/openssl-$(OPENSSL_VERSION).ssl.libtool.log
+		2>&1 | tee -a merge/$(os)/$(sdk)/openssl-$(OPENSSL_VERSION).ssl.lipo.log
 
 $$(OPENSSL_CRYPTO_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_CRYPTO_LIB-$$(target)))
 	@echo ">>> Build OpenSSL crypto fat library for $(sdk)"
 	mkdir -p $$(OPENSSL_MERGE-$(sdk))/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ \
+	lipo -create -output $$@ \
 		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OPENSSL_CRYPTO_LIB-$$(target))) \
-		2>&1 | tee -a merge/$(os)/$(sdk)/openssl-$(OPENSSL_VERSION).crypto.libtool.log
+		2>&1 | tee -a merge/$(os)/$(sdk)/openssl-$(OPENSSL_VERSION).crypto.lipo.log
 
 ###########################################################################
 # SDK: libFFI
@@ -576,8 +576,8 @@ $$(OPENSSL_CRYPTO_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(OP
 $$(LIBFFI_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(LIBFFI_LIB-$$(target)))
 	@echo ">>> Build libFFI fat library for $(sdk)"
 	mkdir -p $$(LIBFFI_MERGE-$(sdk))/lib
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
-		2>&1 | tee -a merge/$(os)/$(sdk)/libffi-$(LIBFFI_VERSION).libtool.log
+	lipo -create -output $$@ $$^ \
+		2>&1 | tee -a merge/$(os)/$(sdk)/libffi-$(LIBFFI_VERSION).lipo.log
 	# Copy headers from the first target associated with the $(sdk) SDK
 	cp -f -r $$(LIBFFI_SRCDIR-$(os))/darwin_common/include \
 		$$(LIBFFI_MERGE-$(sdk))
@@ -665,8 +665,8 @@ else
 $$(PYTHON_FATLIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for the $(sdk) SDK"
 	mkdir -p $$(dir $$(PYTHON_FATLIB-$(sdk)))
-	xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$@ $$^ \
-		2>&1 | tee -a merge/$(os)/$(sdk)/python-$(PYTHON_VERSION).libtool.log
+	lipo -create -output $$@ $$^ \
+		2>&1 | tee -a merge/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
 
 $$(PYTHON_FATINCLUDE-$(sdk)): $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Build Python fat headers for the $(sdk) SDK"
@@ -699,7 +699,7 @@ $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/config-$(PYTHON_VER)-$(sdk) $$(PYTHON_FATSTDLIB-$(sdk))/config-$(PYTHON_VER)-$$(target); )
 
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
-	$$(foreach module,$$(wildcard $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/lib-dynload/*),xcrun --sdk $(sdk) libtool -no_warning_for_no_symbols -static -o $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/lib-dynload/$$(notdir $$(module))); )
+	$$(foreach module,$$(wildcard $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/lib-dynload/*),lipo -create -output $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/lib-dynload/$$(notdir $$(module))); )
 
 endif
 
