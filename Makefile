@@ -400,7 +400,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
-			LIBLZMA_LIBS="-L$$(XZ_MERGE-$$(SDK-$(target)))/lib -lxz" \
+			LIBLZMA_LIBS="-L$$(XZ_MERGE-$$(SDK-$(target)))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$$(SDK-$(target)))/include" \
 			BZIP2_LIBS="-L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -lbzip2" \
 			LIBFFI_INCLUDEDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/include" \
@@ -688,6 +688,9 @@ $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 		$$(PYTHON_FATSTDLIB-$(sdk))/_sysconfigdata__*.py \
 		$$(PYTHON_FATSTDLIB-$(sdk))/config-* \
 		$$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/*
+
+	# Copy the cross-target _sysconfigdata module from the patch folder
+	cp $(PROJECT_DIR)/patch/Python/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))
 
 	# Copy the individual _sysconfigdata modules into names that include the architecture
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk)_$$(ARCH-$$(target)).py; )
