@@ -47,9 +47,7 @@ BZIP2_VERSION=1.0.8
 
 XZ_VERSION=5.2.5
 
-OPENSSL_VERSION_NUMBER=1.1.1
-OPENSSL_REVISION=q
-OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
+OPENSSL_VERSION=3.0.5
 
 LIBFFI_VERSION=3.4.2
 
@@ -289,17 +287,10 @@ $$(OPENSSL_SRCDIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION)
 	mkdir -p $$(OPENSSL_SRCDIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(OPENSSL_SRCDIR-$(target))
 
-ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-	# Tweak ui_openssl.c
-	sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" $$(OPENSSL_SRCDIR-$(target))/crypto/ui/ui_openssl.c
-endif
-
-ifeq ($$(findstring iphone,$$(SDK-$(target))),)
-	# Patch apps/speed.c and apps/ocsp.c to not use fork() since it's not available on tvOS
+ifneq ($(os),macOS)
+	# Patch code to disable the use of fork as it's not available on $(os)
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/include/http_server.h
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/speed.c
-	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/ocsp.c
-	# Patch Configure to build for tvOS or watchOS, not iOS
-	LC_ALL=C sed -ie 's/-D_REENTRANT:iOS/-D_REENTRANT:$(os)/' $$(OPENSSL_SRCDIR-$(target))/Configure
 endif
 
 	# Configure the OpenSSL build
@@ -387,7 +378,8 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(BZIP2_FATLIB-$$(SDK-$(target))) \
 		$$(XZ_FATLIB-$$(SDK-$(target))) \
 		$$(OPENSSL_FATINCLUDE-$$(SDK-$(target))) $$(OPENSSL_SSL_FATLIB-$$(SDK-$(target))) $$(OPENSSL_CRYPTO_FATLIB-$$(SDK-$(target))) \
-		$$(LIBFFI_FATLIB-$$(SDK-$(target)))
+		$$(LIBFFI_FATLIB-$$(SDK-$(target))) \
+		$$(PYTHON_XCFRAMEWORK-macOS)
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_SRCDIR-$(target))
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(target))
