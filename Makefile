@@ -59,20 +59,24 @@ CURL_FLAGS=--fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-VERSION_MIN-macOS=-mmacosx-version-min=10.15
+VERSION_MIN-macOS=10.15
+CFLAGS-macOS=-mmacosx-version-min=$(VERSION_MIN-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-VERSION_MIN-iOS=-mios-version-min=12.0
+VERSION_MIN-iOS=12.0
+CFLAGS-iOS=-mios-version-min=$(VERSION_MIN-iOS)
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
-VERSION_MIN-tvOS=-mtvos-version-min=9.0
+VERSION_MIN-tvOS=9.0
+CFLAGS-tvOS=-mtvos-version-min=$(VERSION_MIN-tvOS)
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
-VERSION_MIN-watchOS=-mwatchos-version-min=4.0
+VERSION_MIN-watchOS=4.0
+CFLAGS-watchOS=-mwatchos-version-min=$(VERSION_MIN-watchOS)
 PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # The architecture of the machine doing the build
@@ -207,14 +211,14 @@ endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
 CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang
+CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang
+AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=\
 	-target $$(TARGET_TRIPLE-$(target)) \
-	--sysroot=$$(SDK_ROOT-$(target)) \
-	$$(VERSION_MIN-$(os))
+	$$(CFLAGS-$(os))
 LDFLAGS-$(target)=\
 	-target $$(TARGET_TRIPLE-$(target)) \
-	-isysroot $$(SDK_ROOT-$(target)) \
-	$$(VERSION_MIN-$(os))
+	$$(CFLAGS-$(os))
 
 ###########################################################################
 # Target: BZip2
@@ -388,7 +392,9 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		./configure \
+			AR="$$(AR-$(target))" \
 			CC="$$(CC-$(target))" \
+			CXX="$$(CXX-$(target))" \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
@@ -481,14 +487,11 @@ else
 SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
-SDK_ROOT-$(sdk)=$$(shell xcrun --sdk $(sdk) --show-sdk-path)
 CC-$(sdk)=xcrun --sdk $(sdk) clang
 CFLAGS-$(sdk)=\
-	--sysroot=$$(SDK_ROOT-$(sdk)) \
-	$$(VERSION_MIN-$(os))
+	$$(CFLAGS-$(os))
 LDFLAGS-$(sdk)=\
-	-isysroot $$(SDK_ROOT-$(sdk)) \
-	$$(VERSION_MIN-$(os))
+	$$(CFLAGS-$(os))
 
 # Predeclare SDK constants that are used by the build-target macro
 
@@ -705,7 +708,6 @@ vars-$(sdk):
 	@echo "SDK_TARGETS-$(sdk): $$(SDK_TARGETS-$(sdk))"
 	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
 	@echo "SDK_SLICE-$(sdk): $$(SDK_SLICE-$(sdk))"
-	@echo "SDK_ROOT-$(sdk): $$(SDK_ROOT-$(sdk))"
 	@echo "CC-$(sdk): $$(CC-$(sdk))"
 	@echo "CFLAGS-$(sdk): $$(CFLAGS-$(sdk))"
 	@echo "LDFLAGS-$(sdk): $$(LDFLAGS-$(sdk))"
@@ -874,6 +876,7 @@ dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(PYTHON_XCFRAM
 	mkdir -p dist
 	echo "Python version: $(PYTHON_VERSION) " > support/$(os)/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> support/$(os)/VERSIONS
+	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(os)/VERSIONS
 	echo "---------------------" >> support/$(os)/VERSIONS
 ifeq ($(os),macOS)
 	echo "libFFI: macOS native" >> support/$(os)/VERSIONS
