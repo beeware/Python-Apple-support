@@ -39,13 +39,13 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.0b5
+PYTHON_VERSION=3.11.0rc1
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 BZIP2_VERSION=1.0.8
 
-XZ_VERSION=5.2.5
+XZ_VERSION=5.2.6
 
 OPENSSL_VERSION=3.0.5
 
@@ -158,7 +158,7 @@ downloads/openssl-$(OPENSSL_VERSION).tar.gz:
 	curl $(CURL_FLAGS) -o $@ \
 		https://openssl.org/source/$(notdir $@) \
 		|| curl $(CURL_FLAGS) -o $@ \
-			https://openssl.org/source/old/$(notdir $@)
+			https://openssl.org/source/old/$(basename $(OPENSSL_VERSION))/$(notdir $@)
 
 ###########################################################################
 # Setup: libFFI
@@ -178,7 +178,7 @@ downloads/libffi-$(LIBFFI_VERSION).tar.gz:
 downloads/Python-$(PYTHON_VERSION).tar.gz:
 	@echo ">>> Download Python sources"
 	curl $(CURL_FLAGS) -o $@ \
-		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/$(notdir $@)
+		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/$(basename $(basename $(notdir $@))).tgz
 
 ###########################################################################
 # Build for specified target (from $(TARGETS-*))
