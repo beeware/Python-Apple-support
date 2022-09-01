@@ -90,6 +90,17 @@ Each support package contains:
   one for physical devices, and one for the simulator. The simulator binaries
   are "fat", containing code for both x86_64 and arm64.
 
+Non-macOS platforms also contain a ``platform-site`` folder. This contains a
+site customization script that can be used to make your local Python install
+look like it is an on-device install. This is needed because when you run
+``pip`` you'll be on a macOS machine; if ``pip`` tries to install a binary
+package, it will install a macOS binary wheel (which won't work on
+iOS/tvOS/watchOS). However, if you add the ``platform-site`` folder to your
+``PYTHONPATH`` when invoking pip, the site customization will make your Python
+install return ``platform`` and ``sysconfig`` responses consistent with
+on-device behavior, which will cause ``pip`` to install platform-appropriate
+packages.
+
 To add a support package to your own Xcode project:
 
 1. Drag ``Python.xcframework`` and ``python-stdlib`` into your Xcode project

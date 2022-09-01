@@ -872,8 +872,7 @@ $$(PYTHON_STDLIB-$(os)): \
 	$$(foreach sdk,$$(SDKS-$(os)),cp $$(PYTHON_FATSTDLIB-$$(sdk))/lib-dynload/* $$(PYTHON_STDLIB-$(os))/lib-dynload; )
 
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(PYTHON_XCFRAMEWORK-$(os)) $$(PYTHON_STDLIB-$(os))
-	@echo ">>> Create final distribution artefact for $(os)"
-	mkdir -p dist
+	@echo ">>> Create VERSIONS file for $(os)"
 	echo "Python version: $(PYTHON_VERSION) " > support/$(os)/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> support/$(os)/VERSIONS
 	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(os)/VERSIONS
@@ -887,6 +886,17 @@ endif
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(os)/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> support/$(os)/VERSIONS
 
+ifneq ($(os),macOS)
+	@echo ">>> Create cross-platform site sitecustomize.py for $(os)"
+	mkdir -p support/$(os)/platform-site
+	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py \
+		| sed -e "s/{{os}}/$(os)/g" \
+		| sed -e "s/{{tag}}/$$(shell echo $(os) | tr '[:upper:]' '[:lower:]')_$$(shell echo $$(VERSION_MIN-$(os)) | sed "s/\./_/g")/g" \
+		> support/$(os)/platform-site/sitecustomize.py
+endif
+
+	@echo ">>> Create final distribution artefact for $(os)"
+	mkdir -p dist
 	# Build a "full" tarball with all content for test purposes
 	tar zcvf dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C support/$(os) `ls -A support/$(os)`
 	# Build a distributable tarball
