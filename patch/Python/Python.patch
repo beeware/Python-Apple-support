@@ -1,3 +1,42 @@
+--- /dev/null
++++ b/Lib/_ios_support.py
+@@ -0,0 +1,36 @@
++from ctypes import cdll, c_void_p, c_char_p
++from ctypes import util
++
++
++def get_platform_ios():
++    objc = cdll.LoadLibrary(util.find_library(b'objc'))
++
++    objc.objc_getClass.restype = c_void_p
++    objc.objc_getClass.argtypes = [c_char_p]
++    objc.objc_msgSend.restype = c_void_p
++    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++    objc.sel_registerName.restype = c_void_p
++    objc.sel_registerName.argtypes = [c_char_p]
++
++    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
++    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
++    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++
++    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
++    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++
++    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
++    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
++
++    SEL_model = c_void_p(objc.sel_registerName(b'model'))
++    systemModel = c_void_p(objc.objc_msgSend(device, SEL_model))
++
++    # UTF8String returns a const char*;
++    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
++    objc.objc_msgSend.restype = c_char_p
++
++    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
++    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
++    model = objc.objc_msgSend(systemModel, SEL_UTF8String).decode()
++
++    return system, release, model
 diff --git a/Lib/ctypes/test/test_as_parameter.py b/Lib/ctypes/test/test_as_parameter.py
 index 9c39179d2a..459e0f476f 100644
 --- a/Lib/ctypes/test/test_as_parameter.py
@@ -554,58 +593,46 @@ index f603a89f7f..faea51d1b5 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index c272c407c7..e76bc7127f 100755
+index c272c407c7..1b1aa6d141 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -451,6 +451,47 @@
+@@ -451,6 +451,35 @@
      # If that also doesn't work return the default values
      return release, versioninfo, machine
  
 +def iOS_ver():
 +    """ Get iOS/tvOS version information, and return it as a
-+        tuple (system, release). All tuple entries are strings.
++        tuple (system, release, model). All tuple entries are strings.
 +
 +        Equivalent of:
-+        system = [[UIDevice currentDevice].model] UTF8String]
++        system = [[UIDevice currentDevice].systemName] UTF8String]
 +        release = [[UIDevice currentDevice].systemVersion] UTF8String]
-+
++        model = [[UIDevice currentDevice].model] UTF8String]
 +    """
-+    from ctypes import cast, cdll, c_void_p, c_char_p
-+    from ctypes import util
-+    objc = cdll.LoadLibrary(util.find_library(b'objc'))
-+    uikit = cdll.LoadLibrary(util.find_library(b'UIKit'))
++    import _ios_support
++    return _ios_support.get_platform_ios()
 +
-+    objc.objc_getClass.restype = c_void_p
-+    objc.objc_getClass.argtypes = [c_char_p]
-+    objc.objc_msgSend.restype = c_void_p
-+    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
-+    objc.sel_registerName.restype = c_void_p
-+    objc.sel_registerName.argtypes = [c_char_p]
++def is_simulator():
++    """Determine if the current platform is a device simulator.
 +
-+    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
-+    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
-+    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++    Only useful when working with iOS, tvOS or watchOS, because
++    Apple provides simulator platforms for those devices.
 +
-+    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
-+    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++    If the platform is actual hardware, returns False. Will also
++    return False for device *emulators*, which are indistinguishable
++    from actual devices because they are reproducing actual device
++    properties.
++    """
++    if sys.platform in ('ios', 'tvos', 'watchos'):
++        return sys.implementation._multiarch.endswith('simulator')
 +
-+    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
-+    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
-+
-+    # UTF8String returns a const char*;
-+    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
-+    objc.objc_msgSend.restype = c_char_p
-+
-+    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
-+    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
-+
-+    return system, release
-+
++    # All other platforms aren't simulators.
++    return False
 +
  def _java_getprop(name, default):
  
      from java.lang import System
-@@ -607,7 +648,7 @@
+@@ -607,7 +636,7 @@
          default in case the command should fail.
  
      """
@@ -614,21 +641,47 @@ index c272c407c7..e76bc7127f 100755
          # XXX Others too ?
          return default
  
-@@ -749,6 +790,13 @@
+@@ -749,6 +778,24 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
-+    # iOS, tvOS and watchOS processor is the same as machine
++    # On iOS, tvOS and watchOS, os.uname returns the architecture
++    # as uname.machine. On device it doesn't; but there's only
++    # on CPU architecture on device
 +    def get_ios():
-+        return ''
++        if sys.implementation._multiarch.endswith('simulator'):
++            return os.uname().machine
++        return 'arm64'
 +
-+    get_tvos = get_ios
-+    get_watchos = get_ios
++    def get_tvos():
++        if sys.implementation._multiarch.endswith('simulator'):
++            return os.uname().machine
++        return 'arm64'
++
++    def get_watchos():
++        if sys.implementation._multiarch.endswith('simulator'):
++            return os.uname().machine
++        return 'arm64_32'
 +
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -1212,11 +1260,13 @@
+@@ -900,6 +947,14 @@
+         system = 'Windows'
+         release = 'Vista'
+ 
++    # Normalize responses on Apple mobile platforms
++    if sys.platform in ('ios', 'tvos'):
++        system, release, model = iOS_ver()
++        # Simulator devices report as "arm64" or "x86_64";
++        # use the model as the basis for the normalized machine name.
++        if sys.implementation._multiarch.endswith('simulator'):
++            machine = f'{model} Simulator'
++
+     vals = system, node, release, version, machine
+     # Replace 'unknown' values with the more portable ''
+     _uname_cache = uname_result(*map(_unknown_as_blank, vals))
+@@ -1212,11 +1267,13 @@
          system, release, version = system_alias(system, release, version)
  
      if system == 'Darwin':
@@ -638,7 +691,7 @@ index c272c407c7..e76bc7127f 100755
 -            system = 'macOS'
 -            release = macos_release
 +        if sys.platform in ('ios', 'tvos'):
-+            system, release = iOS_ver()
++            system, release, model = iOS_ver()
 +        else:
 +            macos_release = mac_ver()[0]
 +            if macos_release:
@@ -677,7 +730,7 @@ index 7ae8df154b..08899c9921 100644
  if _mswindows:
      import _winapi
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index ebe3711827..6d20f3c2d2 100644
+index ebe3711827..ea00c3176d 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -95,6 +95,33 @@
@@ -734,6 +787,27 @@ index ebe3711827..6d20f3c2d2 100644
      return {
          'prefix': 'posix_prefix',
          'home': 'posix_home',
+@@ -788,10 +822,16 @@
+         if m:
+             release = m.group()
+     elif osname[:6] == "darwin":
+-        import _osx_support
+-        osname, release, machine = _osx_support.get_platform_osx(
+-                                            get_config_vars(),
+-                                            osname, release, machine)
++        if sys.platform in ("ios", "tvos", "watchos"):
++            import _ios_support
++            _, release, model = _ios_support.get_platform_ios()
++            osname = sys.platform
++            machine = sys.implementation._multiarch
++        else:
++            import _osx_support
++            osname, release, machine = _osx_support.get_platform_osx(
++                                                get_config_vars(),
++                                                osname, release, machine)
+ 
+     return f"{osname}-{release}-{machine}"
+ 
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
 index 39b3530905..ef1fa18624 100644
 --- a/Lib/test/support/__init__.py
