@@ -1,34 +1,35 @@
-diff -ru xz-5.2.5/build-aux/config.sub xz-5.2.5-patched/build-aux/config.sub
---- xz-5.2.5/build-aux/config.sub	2020-03-17 22:29:35.000000000 +0800
-+++ xz-5.2.5-patched/build-aux/config.sub	2022-08-10 08:38:41.000000000 +0800
-@@ -116,6 +116,7 @@
- case $maybe_os in
-   nto-qnx* | linux-gnu* | linux-android* | linux-dietlibc | linux-newlib* | \
-   linux-musl* | linux-uclibc* | uclinux-uclibc* | uclinux-gnu* | kfreebsd*-gnu* | \
-+  ios*-simulator | tvos*-simulator | watchos*-simulator | \
-   knetbsd*-gnu* | netbsd*-gnu* | netbsd*-eabi* | \
-   kopensolaris*-gnu* | cloudabi*-eabi* | \
-   storm-chaos* | os2-emx* | rtmk-nova*)
-@@ -450,6 +451,9 @@
- 	| ymp-* \
- 	| z8k-* | z80-*)
+diff -ru xz-5.2.6-orig/build-aux/config.sub xz-5.2.6/build-aux/config.sub
+--- xz-5.2.6-orig/build-aux/config.sub	2022-08-12 18:56:06.000000000 +0800
++++ xz-5.2.6/build-aux/config.sub	2022-09-01 14:36:08.000000000 +0800
+@@ -1121,10 +1121,9 @@
+ 	xscale-* | xscalee[bl]-*)
+ 		cpu=`echo "$cpu" | sed 's/^xscale/arm/'`
  		;;
-+	arm64-* | arm64e-* | arm64_32-*)
-+		basic_machine=aarch64-`echo "$basic_machine" | sed 's/^[^-]*-//'`
+-	arm64-*)
++	arm64-* | arm64_32-*)
+ 		cpu=aarch64
+ 		;;
+-
+ 	# Recognize the canonical CPU Types that limit and/or modify the
+ 	# company names they are paired with.
+ 	cr16-*)
+@@ -1723,7 +1722,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
+ 	     | hiux* | abug | nacl* | netware* | windows* \
+-	     | os9* | macos* | osx* | ios* \
++	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
+@@ -1786,6 +1785,8 @@
+ 		;;
+ 	*-eabi* | *-gnueabi*)
+ 		;;
++	ios*-simulator | tvos*-simulator | watchos*-simulator)
 +		;;
- 	# Recognize the basic CPU types without company name, with glob match.
- 	xtensa*)
- 		basic_machine=$basic_machine-unknown
-@@ -1520,7 +1524,11 @@
+ 	-*)
+ 		# Blank kernel with real OS is always fine.
  		;;
- 	-nacl*)
- 		;;
--	-ios)
-+	-ios | -ios-simulator)
-+		;;
-+	-tvos | -tvos-simulator)
-+		;;
-+	-watchos | -watchos-simulator)
- 		;;
- 	-none)
- 		;;
+Only in xz-5.2.6/build-aux: config.sub.orig
+Only in xz-5.2.6/build-aux: config.sub.rej
