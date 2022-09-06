@@ -400,7 +400,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_MERGE-$$(SDK-$(target)))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$$(SDK-$(target)))/include" \
-			BZIP2_LIBS="-L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -lbzip2" \
+			BZIP2_LIBS="-L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -lbz2" \
 			LIBFFI_INCLUDEDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/include" \
 			LIBFFI_LIBDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/lib" \
 			LIBFFI_LIB="ffi" \
@@ -496,7 +496,7 @@ LDFLAGS-$(sdk)=\
 # Predeclare SDK constants that are used by the build-target macro
 
 BZIP2_MERGE-$(sdk)=$(PROJECT_DIR)/merge/$(os)/$(sdk)/bzip2-$(BZIP2_VERSION)
-BZIP2_FATLIB-$(sdk)=$$(BZIP2_MERGE-$(sdk))/lib/libbzip2.a
+BZIP2_FATLIB-$(sdk)=$$(BZIP2_MERGE-$(sdk))/lib/libbz2.a
 
 XZ_MERGE-$(sdk)=$(PROJECT_DIR)/merge/$(os)/$(sdk)/xz-$(XZ_VERSION)
 XZ_FATLIB-$(sdk)=$$(XZ_MERGE-$(sdk))/lib/liblzma.a
@@ -611,7 +611,7 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$(sdk))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_MERGE-$(sdk))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$(sdk))/include" \
-			BZIP2_LIBS="-L$$(BZIP2_MERGE-$(sdk))/lib -lbzip2" \
+			BZIP2_LIBS="-L$$(BZIP2_MERGE-$(sdk))/lib -lbz2" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
 			--enable-ipv6 \
 			--enable-universalsdk \
