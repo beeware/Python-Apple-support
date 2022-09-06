@@ -1,0 +1,53 @@
+diff --git a/Lib/distutils/tests/test_cygwinccompiler.py b/Lib/distutils/tests/test_cygwinccompiler.py
+index 0912ffd15c..959aa90522 100644
+--- a/Lib/distutils/tests/test_cygwinccompiler.py
++++ b/Lib/distutils/tests/test_cygwinccompiler.py
+@@ -5,11 +5,14 @@
+ from io import BytesIO
+ from test.support import run_unittest
+
+-from distutils import cygwinccompiler
+-from distutils.cygwinccompiler import (check_config_h,
+-                                       CONFIG_H_OK, CONFIG_H_NOTOK,
+-                                       CONFIG_H_UNCERTAIN, get_versions,
+-                                       get_msvcr)
++# Importing cygwinccompiler attempts to import other tools
++# that may not exist unless you're on win32.
++if sys.platform == 'win32':
++    from distutils import cygwinccompiler
++    from distutils.cygwinccompiler import (check_config_h,
++                                           CONFIG_H_OK, CONFIG_H_NOTOK,
++                                           CONFIG_H_UNCERTAIN, get_versions,
++                                           get_msvcr)
+ from distutils.tests import support
+
+ class FakePopen(object):
+@@ -25,6 +28,7 @@
+             self.stdout = os.popen(cmd, 'r')
+
+
++@unittest.skipUnless(sys.platform == "win32", "These tests are only for win32")
+ class CygwinCCompilerTestCase(support.TempdirManager,
+                               unittest.TestCase):
+
+diff --git a/Lib/test/test_sundry.py b/Lib/test/test_sundry.py
+index de2e7305cc..ccf240397d 100644
+--- a/Lib/test/test_sundry.py
++++ b/Lib/test/test_sundry.py
+@@ -1,5 +1,6 @@
+ """Do a minimal test of all the modules that aren't otherwise tested."""
+ import importlib
++import sys
+ from test import support
+ from test.support import import_helper
+ from test.support import warnings_helper
+@@ -20,7 +21,8 @@
+
+             import distutils.bcppcompiler
+             import distutils.ccompiler
+-            import distutils.cygwinccompiler
++            if sys.platform.startswith('win'):
++                import distutils.cygwinccompiler
+             import distutils.filelist
+             import distutils.text_file
+             import distutils.unixccompiler

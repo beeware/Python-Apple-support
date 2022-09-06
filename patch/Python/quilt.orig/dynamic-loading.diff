@@ -1,0 +1,71 @@
+diff --git a/Lib/test/test_importlib/extension/test_finder.py b/Lib/test/test_importlib/extension/test_finder.py
+index 1d5b6e7a5d..6fd6a543bf 100644
+--- a/Lib/test/test_importlib/extension/test_finder.py
++++ b/Lib/test/test_importlib/extension/test_finder.py
+@@ -2,10 +2,13 @@
+
+ machinery = util.import_importlib('importlib.machinery')
+
++import sys
+ import unittest
+ import sys
+
+
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 '%s does not support dynamic loading' % sys.platform)
+ class FinderTests(abc.FinderTests):
+
+     """Test the finder for extension modules."""
+diff --git a/Lib/test/test_importlib/extension/test_loader.py b/Lib/test/test_importlib/extension/test_loader.py
+index 8570c6bc90..7de327ebf3 100644
+--- a/Lib/test/test_importlib/extension/test_loader.py
++++ b/Lib/test/test_importlib/extension/test_loader.py
+@@ -13,6 +13,8 @@
+ from test.support.script_helper import assert_python_failure
+
+
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 '%s does not support dynamic loading' % sys.platform)
+ class LoaderTests(abc.LoaderTests):
+
+     """Test load_module() for extension modules."""
+@@ -94,6 +96,9 @@
+  Source_LoaderTests
+  ) = util.test_both(LoaderTests, machinery=machinery)
+
++
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 '%s does not support dynamic loading' % sys.platform)
+ class MultiPhaseExtensionModuleTests(abc.LoaderTests):
+     # Test loading extension modules with multi-phase initialization (PEP 489).
+
+diff --git a/configure b/configure
+index 078bb5bef1..107dccb7a5 100755
+--- a/configure
++++ b/configure
+@@ -14908,6 +14945,10 @@
+ then
+ 	case $ac_sys_system/$ac_sys_release in
+ 	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
++	# Disable dynamic loading on iOS
++	iOS/*) DYNLOADFILE="dynload_stub.o";;
++	tvOS/*) DYNLOADFILE="dynload_stub.o";;
++	watchOS/*) DYNLOADFILE="dynload_stub.o";;
+ 	*)
+ 	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
+ 	# out any dynamic loading
+diff --git a/configure.ac b/configure.ac
+index 09f3f902a6..271fd4be6d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -4501,6 +4535,10 @@
+ then
+ 	case $ac_sys_system/$ac_sys_release in
+ 	hp*|HP*) DYNLOADFILE="dynload_hpux.o";;
++	# Disable dynamic loading on iOS
++	iOS/*) DYNLOADFILE="dynload_stub.o";;
++	tvOS/*) DYNLOADFILE="dynload_stub.o";;
++	watchOS/*) DYNLOADFILE="dynload_stub.o";;
+ 	*)
+ 	# use dynload_shlib.c and dlopen() if we have it; otherwise stub
+ 	# out any dynamic loading

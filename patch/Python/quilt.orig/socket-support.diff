@@ -1,0 +1,313 @@
+diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
+index 05d9107b28..76a6100a1e 100644
+--- a/Lib/test/test_asyncio/test_events.py
++++ b/Lib/test/test_asyncio/test_events.py
+@@ -542,6 +542,8 @@
+             self._basetest_create_connection(conn_fut)
+
+     @socket_helper.skip_unless_bind_unix_socket
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_connection(self):
+         # Issue #20682: On Mac OS X Tiger, getsockname() returns a
+         # zero-length address for UNIX socket.
+@@ -634,6 +636,8 @@
+         self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
+
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_ssl_connection(self):
+         with test_utils.run_test_server(use_ssl=True) as httpd:
+             create_connection = functools.partial(
+@@ -645,6 +649,8 @@
+
+     @socket_helper.skip_unless_bind_unix_socket
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_ssl_unix_connection(self):
+         # Issue #20682: On Mac OS X Tiger, getsockname() returns a
+         # zero-length address for UNIX socket.
+@@ -860,6 +866,8 @@
+         return server, path
+
+     @socket_helper.skip_unless_bind_unix_socket
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_server(self):
+         proto = MyProto(loop=self.loop)
+         server, path = self._make_unix_server(lambda: proto)
+@@ -888,6 +896,8 @@
+         server.close()
+
+     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_server_path_socket_error(self):
+         proto = MyProto(loop=self.loop)
+         sock = socket.socket()
+@@ -953,6 +963,8 @@
+
+     @socket_helper.skip_unless_bind_unix_socket
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_server_ssl(self):
+         proto = MyProto(loop=self.loop)
+         server, path = self._make_ssl_unix_server(
+@@ -983,6 +995,8 @@
+         server.close()
+
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_server_ssl_verify_failed(self):
+         proto = MyProto(loop=self.loop)
+         server, host, port = self._make_ssl_server(
+@@ -1013,6 +1027,8 @@
+
+     @socket_helper.skip_unless_bind_unix_socket
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_server_ssl_verify_failed(self):
+         proto = MyProto(loop=self.loop)
+         server, path = self._make_ssl_unix_server(
+@@ -1073,6 +1089,8 @@
+
+     @socket_helper.skip_unless_bind_unix_socket
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_create_unix_server_ssl_verified(self):
+         proto = MyProto(loop=self.loop)
+         server, path = self._make_ssl_unix_server(
+diff --git a/Lib/test/test_asyncio/test_streams.py b/Lib/test/test_asyncio/test_streams.py
+index 098a0da344..1df5654356 100644
+--- a/Lib/test/test_asyncio/test_streams.py
++++ b/Lib/test/test_asyncio/test_streams.py
+@@ -60,6 +60,8 @@
+             self._basetest_open_connection(conn_fut)
+
+     @socket_helper.skip_unless_bind_unix_socket
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_open_unix_connection(self):
+         with test_utils.run_test_unix_server() as httpd:
+             conn_fut = asyncio.open_unix_connection(httpd.address)
+@@ -91,6 +93,8 @@
+
+     @socket_helper.skip_unless_bind_unix_socket
+     @unittest.skipIf(ssl is None, 'No ssl module')
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_open_unix_connection_no_loop_ssl(self):
+         with test_utils.run_test_unix_server(use_ssl=True) as httpd:
+             conn_fut = asyncio.open_unix_connection(
+@@ -119,6 +123,8 @@
+             self._basetest_open_connection_error(conn_fut)
+
+     @socket_helper.skip_unless_bind_unix_socket
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_open_unix_connection_error(self):
+         with test_utils.run_test_unix_server() as httpd:
+             conn_fut = asyncio.open_unix_connection(httpd.address)
+@@ -637,6 +643,8 @@
+         self.assertEqual(messages, [])
+
+     @socket_helper.skip_unless_bind_unix_socket
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_start_unix_server(self):
+
+         class MyServer:
+diff --git a/Lib/test/test_asyncio/test_unix_events.py b/Lib/test/test_asyncio/test_unix_events.py
+index 2f68459d30..c9f9f48097 100644
+--- a/Lib/test/test_asyncio/test_unix_events.py
++++ b/Lib/test/test_asyncio/test_unix_events.py
+@@ -276,6 +276,8 @@
+
+ @unittest.skipUnless(hasattr(socket, 'AF_UNIX'),
+                      'UNIX Sockets are not supported')
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ class SelectorEventLoopUnixSocketTests(test_utils.TestCase):
+
+     def setUp(self):
+diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
+index 71926a5432..2918759262 100644
+--- a/Lib/test/test_logging.py
++++ b/Lib/test/test_logging.py
+@@ -1787,9 +1787,21 @@
+     # just need a name - file can't be present, or we'll get an
+     # 'address already in use' error.
+     os.remove(fn)
++    # Check the size of the socket file name. If it exceeds 108
++    # characters (UNIX_PATH_MAX), it can't be used as a UNIX socket.
++    # In this case, fall back to a path constructed somewhere that
++    # is known to be short.
++    if len(fn) > 108:
++        fd, fn = tempfile.mkstemp(prefix='test_logging_', suffix='.sock', dir='/tmp')
++        os.close(fd)
++        # just need a name - file can't be present, or we'll get an
++        # 'address already in use' error.
++        os.remove(fn)
+     return fn
+
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ class UnixSocketHandlerTest(SocketHandlerTest):
+
+     """Test for SocketHandler with unix sockets."""
+@@ -1873,6 +1885,8 @@
+         self.assertEqual(self.log_output, "spam\neggs\n")
+
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ class UnixDatagramHandlerTest(DatagramHandlerTest):
+
+     """Test for DatagramHandler using Unix sockets."""
+@@ -1967,6 +1981,8 @@
+         self.assertEqual(self.log_output, b'<11>sp\xc3\xa4m\x00')
+
+ @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ class UnixSysLogHandlerTest(SysLogHandlerTest):
+
+     """Test for SysLogHandler with Unix sockets."""
+diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
+index a2938cd834..2d3a5c72fb 100644
+--- a/Lib/test/test_socket.py
++++ b/Lib/test/test_socket.py
+@@ -1144,7 +1144,7 @@
+         # I've ordered this by protocols that have both a tcp and udp
+         # protocol, at least for modern Linuxes.
+         if (sys.platform.startswith(('freebsd', 'netbsd', 'gnukfreebsd'))
+-            or sys.platform in ('linux', 'darwin')):
++            or sys.platform in ('linux', 'darwin', 'ios', 'tvos', 'watchos')):
+             # avoid the 'echo' service on this platform, as there is an
+             # assumption breaking non-standard port/protocol entry
+             services = ('daytime', 'qotd', 'domain')
+@@ -3539,7 +3539,8 @@
+     def _testFDPassCMSG_LEN(self):
+         self.createAndSendFDs(1)
+
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", 'iOS', 'tvos', 'watchos'),
++                     "skipping, see issue #12958")
+     @unittest.skipIf(AIX, "skipping, see issue #22397")
+     @requireAttrs(socket, "CMSG_SPACE")
+     def testFDPassSeparate(self):
+@@ -3550,7 +3551,8 @@
+                              maxcmsgs=2)
+
+     @testFDPassSeparate.client_skip
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", 'iOS', 'tvos', 'watchos'),
++                     "skipping, see issue #12958")
+     @unittest.skipIf(AIX, "skipping, see issue #22397")
+     def _testFDPassSeparate(self):
+         fd0, fd1 = self.newFDs(2)
+@@ -3563,7 +3565,8 @@
+                                           array.array("i", [fd1]))]),
+             len(MSG))
+
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", 'iOS', 'tvos', 'watchos'),
++                     "skipping, see issue #12958")
+     @unittest.skipIf(AIX, "skipping, see issue #22397")
+     @requireAttrs(socket, "CMSG_SPACE")
+     def testFDPassSeparateMinSpace(self):
+@@ -3577,7 +3580,8 @@
+                              maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
+
+     @testFDPassSeparateMinSpace.client_skip
+-    @unittest.skipIf(sys.platform == "darwin", "skipping, see issue #12958")
++    @unittest.skipIf(sys.platform in ("darwin", 'iOS', 'tvos', 'watchos'),
++                     "skipping, see issue #12958")
+     @unittest.skipIf(AIX, "skipping, see issue #22397")
+     def _testFDPassSeparateMinSpace(self):
+         fd0, fd1 = self.newFDs(2)
+@@ -3601,7 +3605,8 @@
+             nbytes = self.sendmsgToServer([msg])
+         self.assertEqual(nbytes, len(msg))
+
+-    @unittest.skipIf(sys.platform == "darwin", "see issue #24725")
++    @unittest.skipIf(sys.platform in ("darwin", 'iOS', 'tvos', 'watchos'),
++                     "skipping, see issue #12958")
+     def testFDPassEmpty(self):
+         # Try to pass an empty FD array.  Can receive either no array
+         # or an empty array.
+@@ -4421,28 +4426,38 @@
+     pass
+
+ @requireAttrs(socket.socket, "sendmsg")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ @requireAttrs(socket, "AF_UNIX")
+ class SendmsgUnixStreamTest(SendmsgStreamTests, SendrecvmsgUnixStreamTestBase):
+     pass
+
+ @requireAttrs(socket.socket, "recvmsg")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ @requireAttrs(socket, "AF_UNIX")
+ class RecvmsgUnixStreamTest(RecvmsgTests, RecvmsgGenericStreamTests,
+                             SendrecvmsgUnixStreamTestBase):
+     pass
+
+ @requireAttrs(socket.socket, "recvmsg_into")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ @requireAttrs(socket, "AF_UNIX")
+ class RecvmsgIntoUnixStreamTest(RecvmsgIntoTests, RecvmsgGenericStreamTests,
+                                 SendrecvmsgUnixStreamTestBase):
+     pass
+
+ @requireAttrs(socket.socket, "sendmsg", "recvmsg")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ @requireAttrs(socket, "AF_UNIX", "SOL_SOCKET", "SCM_RIGHTS")
+ class RecvmsgSCMRightsStreamTest(SCMRightsTest, SendrecvmsgUnixStreamTestBase):
+     pass
+
+ @requireAttrs(socket.socket, "sendmsg", "recvmsg_into")
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't fully support UNIX sockets." % sys.platform)
+ @requireAttrs(socket, "AF_UNIX", "SOL_SOCKET", "SCM_RIGHTS")
+ class RecvmsgIntoSCMRightsStreamTest(RecvmsgIntoMixin, SCMRightsTest,
+                                      SendrecvmsgUnixStreamTestBase):
+diff --git a/Lib/test/test_socketserver.py b/Lib/test/test_socketserver.py
+index 2edb1e0c0e..67a3ecfcda 100644
+--- a/Lib/test/test_socketserver.py
++++ b/Lib/test/test_socketserver.py
+@@ -8,6 +8,7 @@
+ import select
+ import signal
+ import socket
++import sys
+ import tempfile
+ import threading
+ import unittest
+@@ -198,12 +199,16 @@
+                             self.stream_examine)
+
+     @requires_unix_sockets
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_UnixStreamServer(self):
+         self.run_server(socketserver.UnixStreamServer,
+                         socketserver.StreamRequestHandler,
+                         self.stream_examine)
+
+     @requires_unix_sockets
++    @unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                     "%s doesn't fully support UNIX sockets." % sys.platform)
+     def test_ThreadingUnixStreamServer(self):
+         self.run_server(socketserver.ThreadingUnixStreamServer,
+                         socketserver.StreamRequestHandler,

@@ -1,0 +1,497 @@
+diff --git a/Lib/ctypes/test/test_as_parameter.py b/Lib/ctypes/test/test_as_parameter.py
+index 9c39179d2a..459e0f476f 100644
+--- a/Lib/ctypes/test/test_as_parameter.py
++++ b/Lib/ctypes/test/test_as_parameter.py
+@@ -1,9 +1,11 @@
++import os
+ import unittest
+ from ctypes import *
+ from ctypes.test import need_symbol
+ import _ctypes_test
+
+-dll = CDLL(_ctypes_test.__file__)
++
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+ try:
+     CALLBACK_FUNCTYPE = WINFUNCTYPE
+diff --git a/Lib/ctypes/test/test_bitfields.py b/Lib/ctypes/test/test_bitfields.py
+index 66acd62e68..95216920e6 100644
+--- a/Lib/ctypes/test/test_bitfields.py
++++ b/Lib/ctypes/test/test_bitfields.py
+@@ -25,7 +25,7 @@
+                 ("R", c_short, 6),
+                 ("S", c_short, 7)]
+
+-func = CDLL(_ctypes_test.__file__).unpack_bitfields
++func = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE'])).unpack_bitfields
+ func.argtypes = POINTER(BITS), c_char
+
+ ##for n in "ABCDEFGHIMNOPQRS":
+diff --git a/Lib/ctypes/test/test_callbacks.py b/Lib/ctypes/test/test_callbacks.py
+index 8f95a24443..58a80e3dbb 100644
+--- a/Lib/ctypes/test/test_callbacks.py
++++ b/Lib/ctypes/test/test_callbacks.py
+@@ -1,4 +1,5 @@
+ import functools
++import os
+ import unittest
+ from test import support
+
+@@ -164,7 +165,7 @@
+
+     def test_integrate(self):
+         # Derived from some then non-working code, posted by David Foster
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+         # The function prototype called by 'integrate': double func(double);
+         CALLBACK = CFUNCTYPE(c_double, c_double)
+@@ -215,7 +216,7 @@
+     def test_callback_register_int(self):
+         # Issue #8275: buggy handling of callback args under Win64
+         # NOTE: should be run on release builds as well
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         CALLBACK = CFUNCTYPE(c_int, c_int, c_int, c_int, c_int, c_int)
+         # All this function does is call the callback with its args squared
+         func = dll._testfunc_cbk_reg_int
+@@ -231,7 +232,7 @@
+     def test_callback_register_double(self):
+         # Issue #8275: buggy handling of callback args under Win64
+         # NOTE: should be run on release builds as well
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         CALLBACK = CFUNCTYPE(c_double, c_double, c_double, c_double,
+                              c_double, c_double)
+         # All this function does is call the callback with its args squared
+diff --git a/Lib/ctypes/test/test_cfuncs.py b/Lib/ctypes/test/test_cfuncs.py
+index 09b06840bf..613d02e1ef 100644
+--- a/Lib/ctypes/test/test_cfuncs.py
++++ b/Lib/ctypes/test/test_cfuncs.py
+@@ -1,6 +1,7 @@
+ # A lot of failures in these tests on Mac OS X.
+ # Byte order related?
+
++import os
+ import unittest
+ from ctypes import *
+ from ctypes.test import need_symbol
+@@ -8,7 +9,7 @@
+ import _ctypes_test
+
+ class CFunctions(unittest.TestCase):
+-    _dll = CDLL(_ctypes_test.__file__)
++    _dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+     def S(self):
+         return c_longlong.in_dll(self._dll, "last_tf_arg_s").value
+@@ -212,7 +213,7 @@
+
+ @need_symbol('WinDLL')
+ class stdcallCFunctions(CFunctions):
+-    _dll = stdcall_dll(_ctypes_test.__file__)
++    _dll = stdcall_dll(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+ if __name__ == '__main__':
+     unittest.main()
+diff --git a/Lib/ctypes/test/test_checkretval.py b/Lib/ctypes/test/test_checkretval.py
+index e9567dc391..3c3fbf103c 100644
+--- a/Lib/ctypes/test/test_checkretval.py
++++ b/Lib/ctypes/test/test_checkretval.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+
+ from ctypes import *
+@@ -14,7 +15,7 @@
+     def test_checkretval(self):
+
+         import _ctypes_test
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         self.assertEqual(42, dll._testfunc_p_p(42))
+
+         dll._testfunc_p_p.restype = CHECKED
+diff --git a/Lib/ctypes/test/test_funcptr.py b/Lib/ctypes/test/test_funcptr.py
+index e0b9b54e97..1c05dcc22c 100644
+--- a/Lib/ctypes/test/test_funcptr.py
++++ b/Lib/ctypes/test/test_funcptr.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+ from ctypes import *
+
+@@ -8,7 +9,10 @@
+     WINFUNCTYPE = CFUNCTYPE
+
+ import _ctypes_test
+-lib = CDLL(_ctypes_test.__file__)
++
++
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
++
+
+ class CFuncPtrTestCase(unittest.TestCase):
+     def test_basic(self):
+diff --git a/Lib/ctypes/test/test_functions.py b/Lib/ctypes/test/test_functions.py
+index fc571700ce..b3c7a1ead1 100644
+--- a/Lib/ctypes/test/test_functions.py
++++ b/Lib/ctypes/test/test_functions.py
+@@ -7,6 +7,7 @@
+
+ from ctypes import *
+ from ctypes.test import need_symbol
++import os
+ import sys, unittest
+
+ try:
+@@ -16,7 +17,9 @@
+     WINFUNCTYPE = CFUNCTYPE
+
+ import _ctypes_test
+-dll = CDLL(_ctypes_test.__file__)
++
++
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+ if sys.platform == "win32":
+     windll = WinDLL(_ctypes_test.__file__)
+
+diff --git a/Lib/ctypes/test/test_libc.py b/Lib/ctypes/test/test_libc.py
+index 56285b5ff8..f78a152ade 100644
+--- a/Lib/ctypes/test/test_libc.py
++++ b/Lib/ctypes/test/test_libc.py
+@@ -1,9 +1,12 @@
++import os
+ import unittest
+
+ from ctypes import *
+ import _ctypes_test
+
+-lib = CDLL(_ctypes_test.__file__)
++
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
++
+
+ def three_way_cmp(x, y):
+     """Return -1 if x < y, 0 if x == y and 1 if x > y"""
+diff --git a/Lib/ctypes/test/test_parameters.py b/Lib/ctypes/test/test_parameters.py
+index 38af7ac13d..872d3f364a 100644
+--- a/Lib/ctypes/test/test_parameters.py
++++ b/Lib/ctypes/test/test_parameters.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+ from ctypes.test import need_symbol
+ import test.support
+@@ -140,7 +141,7 @@
+         import _ctypes_test
+         from ctypes import CDLL, c_void_p, ArgumentError
+
+-        func = CDLL(_ctypes_test.__file__)._testfunc_p_p
++        func = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))._testfunc_p_p
+         func.restype = c_void_p
+         # TypeError: has no from_param method
+         self.assertRaises(TypeError, setattr, func, "argtypes", (object,))
+diff --git a/Lib/ctypes/test/test_pickling.py b/Lib/ctypes/test/test_pickling.py
+index c4a79b9779..833608b629 100644
+--- a/Lib/ctypes/test/test_pickling.py
++++ b/Lib/ctypes/test/test_pickling.py
+@@ -1,8 +1,11 @@
+ import unittest
++import os
+ import pickle
+ from ctypes import *
+ import _ctypes_test
+-dll = CDLL(_ctypes_test.__file__)
++
++
++dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+ class X(Structure):
+     _fields_ = [("a", c_int), ("b", c_double)]
+diff --git a/Lib/ctypes/test/test_pointers.py b/Lib/ctypes/test/test_pointers.py
+index e97515879f..d678be3800 100644
+--- a/Lib/ctypes/test/test_pointers.py
++++ b/Lib/ctypes/test/test_pointers.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest, sys
+
+ from ctypes import *
+@@ -20,7 +21,7 @@
+         self.assertRaises(TypeError, A, c_ulong(33))
+
+     def test_pass_pointers(self):
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         func = dll._testfunc_p_p
+         if sizeof(c_longlong) == sizeof(c_void_p):
+             func.restype = c_longlong
+@@ -38,7 +39,7 @@
+         self.assertEqual(res[0], 12345678)
+
+     def test_change_pointers(self):
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         func = dll._testfunc_p_p
+
+         i = c_int(87654)
+@@ -77,7 +78,7 @@
+             return 0
+         callback = PROTOTYPE(func)
+
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         # This function expects a function pointer,
+         # and calls this with an integer pointer as parameter.
+         # The int pointer points to a table containing the numbers 1..10
+@@ -143,7 +144,7 @@
+
+     def test_charpp(self):
+         """Test that a character pointer-to-pointer is correctly passed"""
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         func = dll._testfunc_c_p_p
+         func.restype = c_char_p
+         argv = (c_char_p * 2)()
+diff --git a/Lib/ctypes/test/test_prototypes.py b/Lib/ctypes/test/test_prototypes.py
+index cd0c649de3..539351f798 100644
+--- a/Lib/ctypes/test/test_prototypes.py
++++ b/Lib/ctypes/test/test_prototypes.py
+@@ -1,3 +1,4 @@
++import os
+ from ctypes import *
+ from ctypes.test import need_symbol
+ import unittest
+@@ -23,7 +24,9 @@
+ # In this case, there would have to be an additional reference to the argument...
+
+ import _ctypes_test
+-testdll = CDLL(_ctypes_test.__file__)
++
++
++testdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+ # Return machine address `a` as a (possibly long) non-negative integer.
+ # Starting with Python 2.5, id(anything) is always non-negative, and
+diff --git a/Lib/ctypes/test/test_refcounts.py b/Lib/ctypes/test/test_refcounts.py
+index f2edfa6400..0e4dd7c126 100644
+--- a/Lib/ctypes/test/test_refcounts.py
++++ b/Lib/ctypes/test/test_refcounts.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+ from test import support
+ import ctypes
+@@ -7,7 +8,10 @@
+ OtherCallback = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong)
+
+ import _ctypes_test
+-dll = ctypes.CDLL(_ctypes_test.__file__)
++
++
++dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
++
+
+ class RefcountTestCase(unittest.TestCase):
+
+diff --git a/Lib/ctypes/test/test_returnfuncptrs.py b/Lib/ctypes/test/test_returnfuncptrs.py
+index 1974f40df6..7b76fae44c 100644
+--- a/Lib/ctypes/test/test_returnfuncptrs.py
++++ b/Lib/ctypes/test/test_returnfuncptrs.py
+@@ -1,5 +1,6 @@
+ import unittest
+ from ctypes import *
++import os
+
+ import _ctypes_test
+
+@@ -8,7 +9,7 @@
+     def test_with_prototype(self):
+         # The _ctypes_test shared lib/dll exports quite some functions for testing.
+         # The get_strchr function returns a *pointer* to the C strchr function.
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         get_strchr = dll.get_strchr
+         get_strchr.restype = CFUNCTYPE(c_char_p, c_char_p, c_char)
+         strchr = get_strchr()
+@@ -20,7 +21,7 @@
+         self.assertRaises(TypeError, strchr, b"abcdef")
+
+     def test_without_prototype(self):
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         get_strchr = dll.get_strchr
+         # the default 'c_int' would not work on systems where sizeof(int) != sizeof(void *)
+         get_strchr.restype = c_void_p
+@@ -34,7 +35,7 @@
+         self.assertRaises(TypeError, strchr, b"abcdef")
+
+     def test_from_dll(self):
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         # _CFuncPtr instances are now callable with a tuple argument
+         # which denotes a function name and a dll:
+         strchr = CFUNCTYPE(c_char_p, c_char_p, c_char)(("my_strchr", dll))
+@@ -50,13 +51,13 @@
+                 if key == 0:
+                     return "my_strchr"
+                 if key == 1:
+-                    return CDLL(_ctypes_test.__file__)
++                    return CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+                 raise IndexError
+
+         # _CFuncPtr instances are now callable with a tuple argument
+         # which denotes a function name and a dll:
+         strchr = CFUNCTYPE(c_char_p, c_char_p, c_char)(
+-                BadSequence(("my_strchr", CDLL(_ctypes_test.__file__))))
++                BadSequence(("my_strchr", CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE'])))))
+         self.assertTrue(strchr(b"abcdef", b"b"), "bcdef")
+         self.assertEqual(strchr(b"abcdef", b"x"), None)
+         self.assertRaises(ArgumentError, strchr, b"abcdef", 3.0)
+diff --git a/Lib/ctypes/test/test_slicing.py b/Lib/ctypes/test/test_slicing.py
+index a3932f1767..6d7bfff8f2 100644
+--- a/Lib/ctypes/test/test_slicing.py
++++ b/Lib/ctypes/test/test_slicing.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+ from ctypes import *
+ from ctypes.test import need_symbol
+@@ -62,7 +63,7 @@
+     def test_char_ptr(self):
+         s = b"abcdefghijklmnopqrstuvwxyz"
+
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         dll.my_strdup.restype = POINTER(c_char)
+         dll.my_free.restype = None
+         res = dll.my_strdup(s)
+@@ -94,7 +95,7 @@
+         dll.my_free(res)
+
+     def test_char_ptr_with_free(self):
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         s = b"abcdefghijklmnopqrstuvwxyz"
+
+         class allocated_c_char_p(c_char_p):
+@@ -130,7 +131,7 @@
+     def test_wchar_ptr(self):
+         s = "abcdefghijklmnopqrstuvwxyz\0"
+
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         dll.my_wcsdup.restype = POINTER(c_wchar)
+         dll.my_wcsdup.argtypes = POINTER(c_wchar),
+         dll.my_free.restype = None
+diff --git a/Lib/ctypes/test/test_stringptr.py b/Lib/ctypes/test/test_stringptr.py
+index c20951f4ce..fde0eef1c7 100644
+--- a/Lib/ctypes/test/test_stringptr.py
++++ b/Lib/ctypes/test/test_stringptr.py
+@@ -1,10 +1,12 @@
++import os
+ import unittest
+ from test import support
+ from ctypes import *
+
+ import _ctypes_test
+
+-lib = CDLL(_ctypes_test.__file__)
++
++lib = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+ class StringPtrTestCase(unittest.TestCase):
+
+diff --git a/Lib/ctypes/test/test_unicode.py b/Lib/ctypes/test/test_unicode.py
+index 60c75424b7..8c008b466b 100644
+--- a/Lib/ctypes/test/test_unicode.py
++++ b/Lib/ctypes/test/test_unicode.py
+@@ -1,3 +1,4 @@
++import os
+ import unittest
+ import ctypes
+ from ctypes.test import need_symbol
+@@ -7,7 +8,7 @@
+ @need_symbol('c_wchar')
+ class UnicodeTestCase(unittest.TestCase):
+     def test_wcslen(self):
+-        dll = ctypes.CDLL(_ctypes_test.__file__)
++        dll = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         wcslen = dll.my_wcslen
+         wcslen.argtypes = [ctypes.c_wchar_p]
+
+@@ -34,7 +35,7 @@
+         t.unicode = "foo\0bar\0\0"
+
+
+-func = ctypes.CDLL(_ctypes_test.__file__)._testfunc_p_p
++func = ctypes.CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))._testfunc_p_p
+
+ class StringTestCase(UnicodeTestCase):
+     def setUp(self):
+diff --git a/Lib/ctypes/test/test_values.py b/Lib/ctypes/test/test_values.py
+index 435fdd22ea..a57f9cf054 100644
+--- a/Lib/ctypes/test/test_values.py
++++ b/Lib/ctypes/test/test_values.py
+@@ -4,6 +4,7 @@
+
+ import _imp
+ import importlib.util
++import os
+ import unittest
+ import sys
+ from ctypes import *
+@@ -16,7 +17,7 @@
+     def test_an_integer(self):
+         # This test checks and changes an integer stored inside the
+         # _ctypes_test dll/shared lib.
+-        ctdll = CDLL(_ctypes_test.__file__)
++        ctdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         an_integer = c_int.in_dll(ctdll, "an_integer")
+         x = an_integer.value
+         self.assertEqual(x, ctdll.get_an_integer())
+@@ -28,7 +29,7 @@
+         self.assertEqual(x, ctdll.get_an_integer())
+
+     def test_undefined(self):
+-        ctdll = CDLL(_ctypes_test.__file__)
++        ctdll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+         self.assertRaises(ValueError, c_int.in_dll, ctdll, "Undefined_Symbol")
+
+ class PythonValuesTestCase(unittest.TestCase):
+diff --git a/Lib/ctypes/test/test_win32.py b/Lib/ctypes/test/test_win32.py
+index e51bdc8ad6..78ba8e6786 100644
+--- a/Lib/ctypes/test/test_win32.py
++++ b/Lib/ctypes/test/test_win32.py
+@@ -1,6 +1,7 @@
+ # Windows specific tests
+
+ from ctypes import *
++import os
+ import unittest, sys
+ from test import support
+
+@@ -102,7 +103,7 @@
+                         ("right", c_long),
+                         ("bottom", c_long)]
+
+-        dll = CDLL(_ctypes_test.__file__)
++        dll = CDLL(getattr(_ctypes_test, '__file__', os.environ['TEST_EXECUTABLE']))
+
+         pt = POINT(15, 25)
+         left = c_long.in_dll(dll, 'left')
+diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
+index 0c2510e161..6c3c43f11d 100644
+--- a/Lib/ctypes/util.py
++++ b/Lib/ctypes/util.py
+@@ -67,7 +67,7 @@
+                 return fname
+         return None
+
+-elif os.name == "posix" and sys.platform == "darwin":
++elif os.name == "posix" and sys.platform in ('darwin', 'ios', 'tvos', 'watchos'):
+     from ctypes.macholib.dyld import dyld_find as _dyld_find
+     def find_library(name):
+         possible = ['lib%s.dylib' % name,

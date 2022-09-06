@@ -1,0 +1,47 @@
+diff --git a/Modules/makesetup b/Modules/makesetup
+index 08303814c8..56d35ab407 100755
+--- a/Modules/makesetup
++++ b/Modules/makesetup
+@@ -167,7 +167,7 @@
+ 			esac
+ 			case $arg in
+ 			-framework)	libs="$libs $arg"; skip=libs;
+-				        # OSX/OSXS/Darwin framework link cmd
++				        # OSX/OSXS/Darwin/iOS/tvOS/watchOS framework link cmd
+ 					;;
+ 			-[IDUCfF]*)	cpps="$cpps $arg";;
+ 			-Xcompiler)	skip=cpps;;
+@@ -187,6 +187,7 @@
+ 			*.c++)		srcs="$srcs $arg";;
+ 			*.cxx)		srcs="$srcs $arg";;
+ 			*.cpp)		srcs="$srcs $arg";;
++			*.S)		srcs="$srcs $arg";; # Assembly src
+ 			\$\(*_CFLAGS\))		cpps="$cpps $arg";;
+ 			\$\(*_INCLUDES\))	cpps="$cpps $arg";;
+ 			\$\(*_LIBS\))		libs="$libs $arg";;
+@@ -221,7 +222,16 @@
+ 		done
+ 		case $doconfig in
+ 		yes)
+-			LIBS="$LIBS $libs"
++			# sed has a character limit for multiline substitutions on some
++			# installs. If you have a lot of customized module configurations,
++			# the LOCALMODLIBS definition can end up exceeding that line length.
++			# To ensure this doesn't happen, only include $libs if it adds
++			# something, and put each library definition on it's own line. This
++			# requires escaping for when this script runs, and escaping for when
++			# the output is run through sed.
++			if test "$libs"; then
++				LIBS="$LIBS \\\\\\$NL\t$libs"
++			fi
+ 			MODS="$MODS $mods"
+ 			BUILT="$BUILT $mods"
+ 			;;
+@@ -246,6 +256,7 @@
+ 			*.C)   obj=`basename $src .C`.o; cc='$(CXX)';;
+ 			*.cxx) obj=`basename $src .cxx`.o; cc='$(CXX)';;
+ 			*.cpp) obj=`basename $src .cpp`.o; cc='$(CXX)';;
++			*.S)   obj=`basename $src .S`.o; cc='$(CC)';; # Assembly
+ 			*.m)   obj=`basename $src .m`.o; cc='$(CC)';; # Obj-C
+ 			*)     continue;;
+ 			esac

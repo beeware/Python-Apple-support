@@ -1,0 +1,1134 @@
+diff --git a/Lib/distutils/util.py b/Lib/distutils/util.py
+index 2ce5c5b64d..6e10a0c4a5 100644
+--- a/Lib/distutils/util.py
++++ b/Lib/distutils/util.py
+@@ -170,7 +170,7 @@
+     if _environ_checked:
+         return
+
+-    if os.name == 'posix' and 'HOME' not in os.environ:
++    if os.name == 'posix' and 'HOME' not in os.environ and sys.platform not in ('ios', 'tvos', 'watchos'):
+         try:
+             import pwd
+             os.environ['HOME'] = pwd.getpwuid(os.getuid())[5]
+diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
+index f603a89f7f..faea51d1b5 100644
+--- a/Lib/importlib/_bootstrap_external.py
++++ b/Lib/importlib/_bootstrap_external.py
+@@ -52,7 +52,7 @@
+
+ # Bootstrap-related code ######################################################
+ _CASE_INSENSITIVE_PLATFORMS_STR_KEY = 'win',
+-_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY = 'cygwin', 'darwin'
++_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY = 'cygwin', 'darwin', 'ios', 'tvos', 'watchos'
+ _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
+                                 + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
+
+diff --git a/Lib/platform.py b/Lib/platform.py
+index c272c407c7..e76bc7127f 100755
+--- a/Lib/platform.py
++++ b/Lib/platform.py
+@@ -451,6 +451,47 @@
+     # If that also doesn't work return the default values
+     return release, versioninfo, machine
+
++def iOS_ver():
++    """ Get iOS/tvOS version information, and return it as a
++        tuple (system, release). All tuple entries are strings.
++
++        Equivalent of:
++        system = [[UIDevice currentDevice].model] UTF8String]
++        release = [[UIDevice currentDevice].systemVersion] UTF8String]
++
++    """
++    from ctypes import cast, cdll, c_void_p, c_char_p
++    from ctypes import util
++    objc = cdll.LoadLibrary(util.find_library(b'objc'))
++    uikit = cdll.LoadLibrary(util.find_library(b'UIKit'))
++
++    objc.objc_getClass.restype = c_void_p
++    objc.objc_getClass.argtypes = [c_char_p]
++    objc.objc_msgSend.restype = c_void_p
++    objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++    objc.sel_registerName.restype = c_void_p
++    objc.sel_registerName.argtypes = [c_char_p]
++
++    UIDevice = c_void_p(objc.objc_getClass(b'UIDevice'))
++    SEL_currentDevice = c_void_p(objc.sel_registerName(b'currentDevice'))
++    device = c_void_p(objc.objc_msgSend(UIDevice, SEL_currentDevice))
++
++    SEL_systemVersion = c_void_p(objc.sel_registerName(b'systemVersion'))
++    systemVersion = c_void_p(objc.objc_msgSend(device, SEL_systemVersion))
++
++    SEL_systemName = c_void_p(objc.sel_registerName(b'systemName'))
++    systemName = c_void_p(objc.objc_msgSend(device, SEL_systemName))
++
++    # UTF8String returns a const char*;
++    SEL_UTF8String = c_void_p(objc.sel_registerName(b'UTF8String'))
++    objc.objc_msgSend.restype = c_char_p
++
++    system = objc.objc_msgSend(systemName, SEL_UTF8String).decode()
++    release = objc.objc_msgSend(systemVersion, SEL_UTF8String).decode()
++
++    return system, release
++
++
+ def _java_getprop(name, default):
+
+     from java.lang import System
+@@ -607,7 +648,7 @@
+         default in case the command should fail.
+
+     """
+-    if sys.platform in ('dos', 'win32', 'win16'):
++    if sys.platform in ('dos', 'win32', 'win16', 'ios', 'tvos', 'watchos'):
+         # XXX Others too ?
+         return default
+
+@@ -749,6 +790,13 @@
+             csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
+             return 'Alpha' if cpu_number >= 128 else 'VAX'
+
++    # iOS, tvOS and watchOS processor is the same as machine
++    def get_ios():
++        return ''
++
++    get_tvos = get_ios
++    get_watchos = get_ios
++
+     def from_subprocess():
+         """
+         Fall back to `uname -p`
+@@ -1212,11 +1260,13 @@
+         system, release, version = system_alias(system, release, version)
+
+     if system == 'Darwin':
+-        # macOS (darwin kernel)
+-        macos_release = mac_ver()[0]
+-        if macos_release:
+-            system = 'macOS'
+-            release = macos_release
++        if sys.platform in ('ios', 'tvos'):
++            system, release = iOS_ver()
++        else:
++            macos_release = mac_ver()[0]
++            if macos_release:
++                system = 'macOS'
++                release = macos_release
+
+     if system == 'Windows':
+         # MS platforms
+diff --git a/Lib/site.py b/Lib/site.py
+index 69670d9d7f..8287267e64 100644
+--- a/Lib/site.py
++++ b/Lib/site.py
+@@ -294,6 +294,9 @@
+
+     if sys.platform == 'darwin' and sys._framework:
+         return f'{userbase}/lib/python/site-packages'
++    elif sys.platform in ('ios', 'tvos', 'watchos'):
++        from sysconfig import get_path
++        return get_path('purelib', sys.platform)
+
+     return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
+
+diff --git a/Lib/subprocess.py b/Lib/subprocess.py
+index 7ae8df154b..4c3121de39 100644
+--- a/Lib/subprocess.py
++++ b/Lib/subprocess.py
+@@ -74,8 +74,8 @@
+ else:
+     _mswindows = True
+
+-# wasm32-emscripten and wasm32-wasi do not support processes
+-_can_fork_exec = sys.platform not in {"emscripten", "wasi"}
++# some platforms do not support processes
++_can_fork_exec = sys.platform not in {"emscripten", "wasi", "ios", "tvos", "watchos"}
+
+ if _mswindows:
+     import _winapi
+diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
+index ebe3711827..6d20f3c2d2 100644
+--- a/Lib/sysconfig.py
++++ b/Lib/sysconfig.py
+@@ -95,6 +95,33 @@
+         'scripts': '{base}/Scripts',
+         'data': '{base}',
+         },
++    'ios': {
++        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'include': '{installed_base}/include',
++        'scripts': '{installed_base}/bin',
++        'data': '{installed_base}/Resources',
++        },
++    'tvos': {
++        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'include': '{installed_base}/include',
++        'scripts': '{installed_base}/bin',
++        'data': '{installed_base}/Resources',
++        },
++    'watchos': {
++        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
++        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'include': '{installed_base}/include',
++        'scripts': '{installed_base}/bin',
++        'data': '{installed_base}/Resources',
++        },
+     }
+
+ # For the OS-native venv scheme, we essentially provide an alias:
+@@ -283,12 +310,19 @@
+             'home': 'posix_home',
+             'user': 'nt_user',
+         }
++    if sys.platform in ('ios', 'tvos', 'watchos'):
++        return {
++            'prefix': sys.platform,
++            'home': sys.platform,
++            'user': sys.platform,
++        }
+     if sys.platform == 'darwin' and sys._framework:
+         return {
+             'prefix': 'posix_prefix',
+             'home': 'posix_home',
+             'user': 'osx_framework_user',
+         }
++
+     return {
+         'prefix': 'posix_prefix',
+         'home': 'posix_home',
+diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
+index 39b3530905..ef1fa18624 100644
+--- a/Lib/test/support/__init__.py
++++ b/Lib/test/support/__init__.py
+@@ -47,7 +47,7 @@
+     "check__all__", "skip_if_buggy_ucrt_strfptime",
+     "check_disallow_instantiation", "check_sanitizer", "skip_if_sanitizer",
+     # sys
+-    "is_jython", "is_android", "is_emscripten", "is_wasi",
++    "is_jython", "is_android", "is_emscripten", "is_wasi", "is_apple_mobile",
+     "check_impl_detail", "unix_shell", "setswitchinterval",
+     # network
+     "open_urlresource",
+@@ -507,7 +507,7 @@
+
+ is_android = hasattr(sys, 'getandroidapilevel')
+
+-if sys.platform not in ('win32', 'vxworks'):
++if sys.platform not in ('win32', 'vxworks', 'ios', 'tvos', 'watchos'):
+     unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
+ else:
+     unix_shell = None
+@@ -517,12 +517,25 @@
+ is_emscripten = sys.platform == "emscripten"
+ is_wasi = sys.platform == "wasi"
+
+-has_fork_support = hasattr(os, "fork") and not is_emscripten and not is_wasi
++# Apple mobile platforms (iOS/tvOS/watchOS) are POSIX-like but do not
++# have subprocess or fork support.
++is_apple_mobile = sys.platform in ('ios', 'tvos', 'watchos')
++
++has_fork_support = (
++    hasattr(os, "fork")
++    and not is_emscripten
++    and not is_wasi
++    and not is_apple_mobile
++)
+
+ def requires_fork():
+     return unittest.skipUnless(has_fork_support, "requires working os.fork()")
+
+-has_subprocess_support = not is_emscripten and not is_wasi
++has_subprocess_support = (
++    not is_emscripten
++    and not is_wasi
++    and not is_apple_mobile
++)
+
+ def requires_subprocess():
+     """Used for subprocess, os.spawn calls, fd inheritance"""
+diff --git a/Lib/test/test_fcntl.py b/Lib/test/test_fcntl.py
+index fc8c39365f..00e988fdcc 100644
+--- a/Lib/test/test_fcntl.py
++++ b/Lib/test/test_fcntl.py
+@@ -25,7 +25,7 @@
+         start_len = "qq"
+
+     if (sys.platform.startswith(('netbsd', 'freebsd', 'openbsd'))
+-        or sys.platform == 'darwin'):
++        or sys.platform in ('darwin', 'ios', 'tvos', 'watchos')):
+         if struct.calcsize('l') == 8:
+             off_t = 'l'
+             pid_t = 'i'
+diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
+index a937258069..bf011b0662 100644
+--- a/Lib/test/test_httpservers.py
++++ b/Lib/test/test_httpservers.py
+@@ -401,7 +401,7 @@
+         with open(os.path.join(self.tempdir, filename), 'wb') as f:
+             f.write(os_helper.TESTFN_UNDECODABLE)
+         response = self.request(self.base_url + '/')
+-        if sys.platform == 'darwin':
++        if sys.platform in ('darwin', 'ios', 'tvos', 'watchos'):
+             # On Mac OS the HFS+ filesystem replaces bytes that aren't valid
+             # UTF-8 into a percent-encoded value.
+             for name in os.listdir(self.tempdir):
+diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
+index daccbae5b4..7158b41fef 100644
+--- a/Lib/test/test_io.py
++++ b/Lib/test/test_io.py
+@@ -609,7 +609,7 @@
+         # On Windows and Mac OSX this test consumes large resources; It takes
+         # a long time to build the >2 GiB file and takes >2 GiB of disk space
+         # therefore the resource must be enabled to run this test.
+-        if sys.platform[:3] == 'win' or sys.platform == 'darwin':
++        if sys.platform[:3] == 'win' or sys.platform in ('darwin', 'ios', 'tvos', 'watchos'):
+             support.requires(
+                 'largefile',
+                 'test requires %s bytes and a long time to run' % self.LARGE)
+diff --git a/Lib/test/test_marshal.py b/Lib/test/test_marshal.py
+index aae86cc257..bb48a85517 100644
+--- a/Lib/test/test_marshal.py
++++ b/Lib/test/test_marshal.py
+@@ -260,7 +260,10 @@
+         if os.name == 'nt':
+             MAX_MARSHAL_STACK_DEPTH = 1000
+         else:
+-            MAX_MARSHAL_STACK_DEPTH = 2000
++            if sys.platform in ('ios', 'tvos', 'watchos'):
++                MAX_MARSHAL_STACK_DEPTH = 1500
++            else:
++                MAX_MARSHAL_STACK_DEPTH = 2000
+         for i in range(MAX_MARSHAL_STACK_DEPTH - 2):
+             last.append([0])
+             last = last[-1]
+diff --git a/Lib/test/test_mmap.py b/Lib/test/test_mmap.py
+index 213a44d56f..9908e9a2c8 100644
+--- a/Lib/test/test_mmap.py
++++ b/Lib/test/test_mmap.py
+@@ -245,7 +245,7 @@
+         with open(TESTFN, "r+b") as f:
+             self.assertRaises(ValueError, mmap.mmap, f.fileno(), mapsize, access=4)
+
+-        if os.name == "posix":
++        if os.name == "posix" and sys.platform not in ('ios', 'tvos', 'watchos'):
+             # Try incompatible flags, prot and access parameters.
+             with open(TESTFN, "r+b") as f:
+                 self.assertRaises(ValueError, mmap.mmap, f.fileno(), mapsize,
+@@ -896,7 +896,7 @@
+         unlink(TESTFN)
+
+     def _make_test_file(self, num_zeroes, tail):
+-        if sys.platform[:3] == 'win' or sys.platform == 'darwin':
++        if sys.platform[:3] == 'win' or sys.platform in ('darwin', 'ios', 'tvos', 'watchos'):
+             requires('largefile',
+                 'test requires %s bytes and a long time to run' % str(0x180000000))
+         f = open(TESTFN, 'w+b')
+diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
+index 9b2cd201f3..dcd3a7a241 100644
+--- a/Lib/test/test_platform.py
++++ b/Lib/test/test_platform.py
+@@ -315,7 +315,7 @@
+     def test_mac_ver(self):
+         res = platform.mac_ver()
+
+-        if platform.uname().system == 'Darwin':
++        if platform.uname().system == 'Darwin' and sys.platform not in ('ios', 'tvos', 'watchos'):
+             # We are on a macOS system, check that the right version
+             # information is returned
+             output = subprocess.check_output(['sw_vers'], text=True)
+@@ -347,6 +347,10 @@
+             else:
+                 self.assertEqual(res[2], 'PowerPC')
+
++    @unittest.skipUnless(sys.platform in ('ios', 'tvos', 'watchos'), "iOS/tvOS/watchOS only test")
++    def test_ios_ver(self):
++        res = platform.ios_ver()
++
+
+     @unittest.skipUnless(sys.platform == 'darwin', "OSX only test")
+     def test_mac_ver_with_fork(self):
+diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
+index ae25ef5588..8f2b1ffa69 100644
+--- a/Lib/test/test_posix.py
++++ b/Lib/test/test_posix.py
+@@ -69,12 +69,19 @@
+                              "getpid", "getpgrp", "getppid", "getuid", "sync",
+                            ]
+
++        # getgroups can't be invoked on iOS/tvOS/watchOS.
++        if sys.platform not in ('ios', 'tvos', 'watchos'):
++            NO_ARG_FUNCTIONS.append("getgroups")
++
+         for name in NO_ARG_FUNCTIONS:
+             posix_func = getattr(posix, name, None)
+             if posix_func is not None:
+                 with self.subTest(name):
+-                    posix_func()
+-                    self.assertRaises(TypeError, posix_func, 1)
++                    try:
++                        posix_func()
++                        self.assertRaises(TypeError, posix_func, 1)
++                    except Exception as e:
++                        self.fail('Problem invoking %s: %s' % (name, e))
+
+     @unittest.skipUnless(hasattr(posix, 'getresuid'),
+                          'test needs posix.getresuid()')
+@@ -776,9 +783,10 @@
+             check_stat(uid, gid)
+             self.assertRaises(OSError, chown_func, first_param, 0, -1)
+             check_stat(uid, gid)
+-            if 0 not in os.getgroups():
+-                self.assertRaises(OSError, chown_func, first_param, -1, 0)
+-                check_stat(uid, gid)
++            if hasattr(os, 'getgroups') and sys.platform not in ('ios', 'tvos', 'watchos'):
++                if 0 not in os.getgroups():
++                    self.assertRaises(OSError, chown_func, first_param, -1, 0)
++                    check_stat(uid, gid)
+         # test illegal types
+         for t in str, float:
+             self.assertRaises(TypeError, chown_func, first_param, t(uid), gid)
+@@ -1129,7 +1137,7 @@
+         self.assertIsInstance(hi, int)
+         self.assertGreaterEqual(hi, lo)
+         # OSX evidently just returns 15 without checking the argument.
+-        if sys.platform != "darwin":
++        if sys.platform not in ('darwin', 'ios', 'tvos', 'watchos'):
+             self.assertRaises(OSError, posix.sched_get_priority_min, -23)
+             self.assertRaises(OSError, posix.sched_get_priority_max, -23)
+
+diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
+index a2c4ab5081..eb427dfd72 100644
+--- a/Lib/test/test_shutil.py
++++ b/Lib/test/test_shutil.py
+@@ -1776,6 +1776,8 @@
+             check_chown(dirname, uid, gid)
+
+
++@unittest.skipIf(sys.platform in ('ios', 'tvos', 'watchos'),
++                 "%s doesn't support other executable." % sys.platform)
+ class TestWhich(BaseTest, unittest.TestCase):
+
+     def setUp(self):
+@@ -2642,6 +2644,7 @@
+         self.assertGreaterEqual(size.lines, 0)
+
+     @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
++    @unittest.skipUnless(support.has_subprocess_support, "Test requires support for subprocesses.")
+     @unittest.skipUnless(hasattr(os, 'get_terminal_size'),
+                          'need os.get_terminal_size()')
+     def test_stty_match(self):
+diff --git a/Lib/test/test_sysconfig.py b/Lib/test/test_sysconfig.py
+index 578ac1db50..daf61113b2 100644
+--- a/Lib/test/test_sysconfig.py
++++ b/Lib/test/test_sysconfig.py
+@@ -336,7 +336,7 @@
+         self.assertTrue(os.path.isfile(config_h), config_h)
+
+     def test_get_scheme_names(self):
+-        wanted = ['nt', 'posix_home', 'posix_prefix', 'posix_venv', 'nt_venv', 'venv']
++        wanted = ['nt', 'posix_home', 'posix_prefix', 'posix_venv', 'nt_venv', 'venv', 'tvos', 'watchos']
+         if HAS_USER_BASE:
+             wanted.extend(['nt_user', 'osx_framework_user', 'posix_user'])
+         self.assertEqual(get_scheme_names(), tuple(sorted(wanted)))
+diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
+index 74039f59f7..36dc82f871 100644
+--- a/Lib/test/test_venv.py
++++ b/Lib/test/test_venv.py
+@@ -19,7 +19,7 @@
+ import tempfile
+ from test.support import (captured_stdout, captured_stderr, requires_zlib,
+                           skip_if_broken_multiprocessing_synchronize, verbose,
+-                          requires_subprocess, is_emscripten, is_wasi,
++                          requires_subprocess, is_apple_mobile, is_emscripten, is_wasi,
+                           requires_venv_with_pip)
+ from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
+ import unittest
+@@ -40,6 +40,8 @@
+
+ if is_emscripten or is_wasi:
+     raise unittest.SkipTest("venv is not available on Emscripten/WASI.")
++if is_apple_mobile:
++    raise unittest.SkipTest("venv is not available on mobile Apple platforms.")
+
+ @requires_subprocess()
+ def check_output(cmd, encoding=None):
+diff --git a/Lib/webbrowser.py b/Lib/webbrowser.py
+index 44974d433b..ae4e18802b 100755
+--- a/Lib/webbrowser.py
++++ b/Lib/webbrowser.py
+@@ -596,6 +596,57 @@
+
+     # what to do if _tryorder is now empty?
+
++#
++# Platform support for iOS
++#
++if sys.platform == 'ios':
++    class MobileSafari(BaseBrowser):
++        def open(self, url, new=0, autoraise=True):
++            # This code is the equivalent of:
++            #   NSURL *nsurl = [NSURL URLWithString:url];
++            #   [[UIApplication sharedApplication] openURL:nsurl];
++            from ctypes import cdll, c_void_p, c_char_p, c_uint32
++            from ctypes import util
++            objc = cdll.LoadLibrary(util.find_library(b'objc'))
++            cf = cdll.LoadLibrary(util.find_library(b'CoreFoundation'))
++            objc.objc_getClass.restype = c_void_p
++            objc.objc_getClass.argtypes = [c_char_p]
++            objc.sel_registerName.restype = c_void_p
++            objc.sel_registerName.argtypes = [c_char_p]
++            cf.CFStringCreateWithCString.restype = c_void_p
++            cf.CFStringCreateWithCString.argtypes = [c_void_p, c_char_p, c_uint32]
++
++            # Get an NSString describing the URL
++            kCFStringEncodingUTF8 = 0x08000100
++            url = c_void_p(cf.CFStringCreateWithCString(None, url.encode('utf-8'), kCFStringEncodingUTF8))
++            autorelease = c_void_p(objc.sel_registerName(b'autorelease'))
++            objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++            objc.objc_msgSend.restype = c_void_p
++            objc.objc_msgSend(url, autorelease)
++
++            # Get an NSURL object representing the URL
++            NSURL = c_void_p(objc.objc_getClass(b'NSURL'))
++            urlWithString_ = c_void_p(objc.sel_registerName(b'URLWithString:'))
++            objc.objc_msgSend.restype = c_void_p
++            objc.objc_msgSend.argtypes = [c_void_p, c_void_p, c_void_p]
++            nsurl = c_void_p(objc.objc_msgSend(NSURL, urlWithString_, url))
++
++            # Get the shared UIApplication instance
++            UIApplication = c_void_p(objc.objc_getClass(b'UIApplication'))
++            sharedApplication = c_void_p(objc.sel_registerName(b'sharedApplication'))
++            objc.objc_msgSend.argtypes = [c_void_p, c_void_p]
++            objc.objc_msgSend.restype = c_void_p
++            shared_app = c_void_p(objc.objc_msgSend(UIApplication, sharedApplication))
++
++            # Open the URL on the shared application
++            openURL_ = c_void_p(objc.sel_registerName(b'openURL:'))
++            objc.objc_msgSend.argtypes = [c_void_p, c_void_p, c_void_p]
++            objc.objc_msgSend.restype = None
++            objc.objc_msgSend(shared_app, openURL_, nsurl)
++
++            return True
++
++    register("mobilesafari", None, MobileSafari(), preferred=True)
+
+ #
+ # Platform support for Windows
+diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
+index 9132f13e81..36e00f7bfd 100644
+--- a/Modules/_posixsubprocess.c
++++ b/Modules/_posixsubprocess.c
+@@ -31,10 +31,20 @@
+
+ #include "posixmodule.h"
+
++#if defined(__APPLE__)
++#include "TargetConditionals.h"
++#endif
++
+ #ifdef _Py_MEMORY_SANITIZER
+ # include <sanitizer/msan_interface.h>
+ #endif
+
++// iOS/tvOS/watchOS *define* a number of POSIX functions, but you can't use them
++// because they aren't conventional multiprocess environments.
++#if TARGET_OS_IPHONE
++#  undef HAVE_FORK
++#endif
++
+ #if defined(__ANDROID__) && __ANDROID_API__ < 21 && !defined(SYS_getdents64)
+ # include <sys/linux-syscalls.h>
+ # define SYS_getdents64  __NR_getdents64
+@@ -660,11 +670,15 @@
+     saved_errno = 0;
+     for (i = 0; exec_array[i] != NULL; ++i) {
+         const char *executable = exec_array[i];
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++	errno = ENOTSUP;
++#else
+         if (envp) {
+             execve(executable, argv, envp);
+         } else {
+             execv(executable, argv);
+         }
++#endif
+         if (errno != ENOENT && errno != ENOTDIR && saved_errno == 0) {
+             saved_errno = errno;
+         }
+@@ -730,7 +744,9 @@
+              PyObject *preexec_fn,
+              PyObject *preexec_fn_args_tuple)
+ {
+-
++/* iOS/tvOS/watchOS define the existence of fork, but it cannot be invoked;
++ * so fail fast if any attempt is made to invoke fork_exec */
++#ifdef HAVE_FORK
+     pid_t pid;
+
+ #ifdef VFORK_USABLE
+@@ -749,7 +765,7 @@
+             pid = fork();
+         }
+     } else
+-#endif
++#endif /* VFORK_USABLE */
+     {
+         pid = fork();
+     }
+@@ -757,7 +773,6 @@
+     if (pid != 0) {
+         return pid;
+     }
+-
+     /* Child process.
+      * See the comment above child_exec() for restrictions imposed on
+      * the code below.
+@@ -780,6 +795,9 @@
+                py_fds_to_keep, preexec_fn, preexec_fn_args_tuple);
+     _exit(255);
+     return 0;  /* Dead code to avoid a potential compiler warning. */
++#else /* HAVE_FORK */
++    return -1;
++#endif /* HAVE_FORK */
+ }
+
+
+@@ -810,7 +828,9 @@
+     int need_after_fork = 0;
+     int saved_errno = 0;
+     int allow_vfork;
+-
++/* iOS/tvOS/watchOS define the existence of fork, but it cannot be invoked;
++ * so fail fast if any attempt is made to invoke fork_exec */
++#ifdef HAVE_FORK
+     if (!PyArg_ParseTuple(
+             args, "OOpO!OOiiiiiiiiii" _Py_PARSE_PID "OOOiOp:fork_exec",
+             &process_args, &executable_list,
+@@ -982,7 +1002,6 @@
+         goto cleanup;
+ #endif /* HAVE_SETREUID */
+     }
+-
+     /* This must be the last thing done before fork() because we do not
+      * want to call PyOS_BeforeFork() if there is any chance of another
+      * error leading to the cleanup: code without calling fork(). */
+@@ -1017,7 +1036,7 @@
+         }
+         old_sigmask = &old_sigs;
+     }
+-#endif
++#endif /* VFORK_USABLE */
+
+     pid = do_fork_exec(exec_array, argv, envp, cwd,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+@@ -1049,7 +1068,7 @@
+          * the thread signal mask. */
+         (void) pthread_sigmask(SIG_SETMASK, old_sigmask, NULL);
+     }
+-#endif
++#endif /* VFORK_USABLE */
+
+     if (need_after_fork)
+         PyOS_AfterFork_Parent();
+@@ -1078,8 +1097,10 @@
+         PyGC_Enable();
+     }
+     Py_XDECREF(gc_module);
+-
+     return pid == -1 ? NULL : PyLong_FromPid(pid);
++#else /* HAVE_FORK */
++    return NULL;
++#endif
+ }
+
+
+diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
+index 3026bb6a34..42f503abe6 100644
+--- a/Modules/faulthandler.c
++++ b/Modules/faulthandler.c
+@@ -1,3 +1,7 @@
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ #include "Python.h"
+ #include "pycore_initconfig.h"    // _PyStatus_ERR
+ #include "pycore_pyerrors.h"      // _Py_DumpExtensionModules
+@@ -19,6 +23,11 @@
+ #  include <sys/resource.h>
+ #endif
+
++// tvOS and watchOS don't provide a number of important POSIX functions.
++#if defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
++#  undef HAVE_SIGALTSTACK
++#endif /* TVOS || WATCHOS */
++
+ /* Using an alternative stack requires sigaltstack()
+    and sigaction() SA_ONSTACK */
+ #if defined(HAVE_SIGALTSTACK) && defined(HAVE_SIGACTION)
+diff --git a/Modules/mathmodule.c b/Modules/mathmodule.c
+index aa93e756c6..fcf3784c2f 100644
+--- a/Modules/mathmodule.c
++++ b/Modules/mathmodule.c
+@@ -76,6 +76,10 @@
+ /*[clinic end generated code: output=da39a3ee5e6b4b0d input=76bc7002685dd942]*/
+
+
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ /*
+    sin(pi*x), giving accurate results for all finite x (especially x
+    integral or close to an integer).  This is here for use in the
+diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
+index d7cac2b67f..f7d49ac2c0 100644
+--- a/Modules/posixmodule.c
++++ b/Modules/posixmodule.c
+@@ -69,6 +69,8 @@
+  */
+ #if defined(__APPLE__)
+
++#include "TargetConditionals.h"
++
+ #if defined(__has_builtin)
+ #if __has_builtin(__builtin_available)
+ #define HAVE_BUILTIN_AVAILABLE 1
+@@ -325,6 +327,26 @@
+ #  endif  /* _MSC_VER */
+ #endif  /* ! __WATCOMC__ || __QNX__ */
+
++// iOS/tvOS/watchOS *define* a number of POSIX functions, but you can't use them
++// because they aren't conventional multiprocess environment.
++#if TARGET_OS_IPHONE
++#  undef HAVE_EXECV
++#  undef HAVE_FORK
++#  undef HAVE_FORK1
++#  undef HAVE_FORKPTY
++#  undef HAVE_GETGROUPS
++#  undef HAVE_POSIX_SPAWN
++#  undef HAVE_POSIX_SPAWNP
++#  undef HAVE_SCHED_H
++#  undef HAVE_SENDFILE
++#  undef HAVE_SETPRIORITY
++#  undef HAVE_SPAWNV
++#  undef HAVE_WAIT
++#  undef HAVE_WAIT3
++#  undef HAVE_WAIT4
++#  undef HAVE_WAITPID
++#endif
++
+ /*[clinic input]
+ # one of the few times we lie about this name!
+ module os
+@@ -1573,7 +1595,9 @@
+ */
+ #include <crt_externs.h>
+ #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
++#  if !TARGET_OS_TV && !TARGET_OS_WATCH
+ extern char **environ;
++#  endif
+ #endif /* !_MSC_VER */
+
+ static PyObject *
+@@ -1589,6 +1613,7 @@
+     d = PyDict_New();
+     if (d == NULL)
+         return NULL;
++#if !TARGET_OS_TV && !TARGET_OS_WATCH
+ #ifdef MS_WINDOWS
+     /* _wenviron must be initialized in this way if the program is started
+        through main() instead of wmain(). */
+@@ -1642,6 +1667,7 @@
+         Py_DECREF(k);
+         Py_DECREF(v);
+     }
++#endif
+     return d;
+ }
+
+@@ -4935,6 +4961,9 @@
+ /*[clinic end generated code: output=290fc437dd4f33a0 input=86a58554ba6094af]*/
+ {
+     long result;
++#if TARGET_OS_IPHONE
++    result = -1;
++#else
+     const char *bytes = PyBytes_AsString(command);
+
+     if (PySys_Audit("os.system", "(O)", command) < 0) {
+@@ -4944,6 +4973,7 @@
+     Py_BEGIN_ALLOW_THREADS
+     result = system(bytes);
+     Py_END_ALLOW_THREADS
++#endif
+     return result;
+ }
+ #endif
+@@ -13697,6 +13727,7 @@
+     int is_symlink;
+     int need_stat;
+ #endif
++#if !TARGET_OS_TV && !TARGET_OS_WATCH
+ #ifdef MS_WINDOWS
+     unsigned long dir_bits;
+ #endif
+@@ -13757,6 +13788,7 @@
+ #endif
+
+     return result;
++#endif
+
+ error:
+     Py_XDECREF(st_mode);
+diff --git a/Modules/pwdmodule.c b/Modules/pwdmodule.c
+index a757380bd0..5a20864a1c 100644
+--- a/Modules/pwdmodule.c
++++ b/Modules/pwdmodule.c
+@@ -1,6 +1,10 @@
+
+ /* UNIX password file access module */
+
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ #include "Python.h"
+ #include "posixmodule.h"
+
+@@ -182,6 +186,22 @@
+         if (nomem == 1) {
+             return PyErr_NoMemory();
+         }
++
++// iPhone has a "user" with UID 501, username "mobile"; but the simulator
++// doesn't reflect this. Generate a simulated response.
++#if TARGET_IPHONE_SIMULATOR
++        if (uid == 501) {
++            struct passwd mp;
++            mp.pw_name = "mobile";
++            mp.pw_passwd = "/smx7MYTQIi2M";
++            mp.pw_uid = 501;
++            mp.pw_gid = 501;
++            mp.pw_gecos = "Mobile User";
++            mp.pw_dir = "/var/mobile";
++            mp.pw_shell = "/bin/sh";
++            return mkpwent(module, &mp);
++        }
++#endif
+         PyObject *uid_obj = _PyLong_FromUid(uid);
+         if (uid_obj == NULL)
+             return NULL;
+@@ -265,6 +285,22 @@
+             PyErr_NoMemory();
+         }
+         else {
++// iPhone has a "user" with UID 501, username "mobile"; but the simulator
++// doesn't reflect this. Generate a simulated response.
++#if TARGET_IPHONE_SIMULATOR
++            if (strcmp(name, "mobile") == 0) {
++                struct passwd mp;
++                mp.pw_name = "mobile";
++                mp.pw_passwd = "/smx7MYTQIi2M";
++                mp.pw_uid = 501;
++                mp.pw_gid = 501;
++                mp.pw_gecos = "Mobile User";
++                mp.pw_dir = "/var/mobile";
++                mp.pw_shell = "/bin/sh";
++                retval = mkpwent(module, &mp);
++                goto out;
++            }
++#endif
+             PyErr_Format(PyExc_KeyError,
+                          "getpwnam(): name not found: %R", name);
+         }
+diff --git a/Modules/timemodule.c b/Modules/timemodule.c
+index 18f9ddb909..2ed289a92f 100644
+--- a/Modules/timemodule.c
++++ b/Modules/timemodule.c
+@@ -62,6 +62,11 @@
+ #define SEC_TO_NS (1000 * 1000 * 1000)
+
+
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
++
+ /* Forward declarations */
+ static int pysleep(_PyTime_t timeout);
+
+@@ -263,11 +268,13 @@
+     if (_PyTime_AsTimespec(t, &tp) == -1)
+         return NULL;
+
++#if !TARGET_OS_IPHONE
+     ret = clock_settime((clockid_t)clk_id, &tp);
+     if (ret != 0) {
+         PyErr_SetFromErrno(PyExc_OSError);
+         return NULL;
+     }
++#endif
+     Py_RETURN_NONE;
+ }
+
+@@ -296,11 +303,13 @@
+         return NULL;
+     }
+
++#if !TARGET_OS_IPHONE
+     ret = clock_settime((clockid_t)clk_id, &ts);
+     if (ret != 0) {
+         PyErr_SetFromErrno(PyExc_OSError);
+         return NULL;
+     }
++#endif
+     Py_RETURN_NONE;
+ }
+
+diff --git a/Python/bootstrap_hash.c b/Python/bootstrap_hash.c
+index 3a2a731808..cb2d9e53e2 100644
+--- a/Python/bootstrap_hash.c
++++ b/Python/bootstrap_hash.c
+@@ -35,6 +35,10 @@
+ #endif
+
+
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ #ifdef Py_DEBUG
+ int _Py_HashSecret_Initialized = 0;
+ #else
+@@ -180,6 +184,9 @@
+ }
+
+ #elif defined(HAVE_GETENTROPY)
++// iOS, tvOS and watchOS have an incomplete definitions of getentropy
++// so it is *found* by configure, but doesn't actually exist.
++#elif defined(HAVE_GETENTROPY) && !TARGET_OS_IPHONE
+ #define PY_GETENTROPY 1
+
+ /* Fill buffer with size pseudo-random bytes generated by getentropy():
+diff --git a/Python/marshal.c b/Python/marshal.c
+index 90a4405091..65dd71d868 100644
+--- a/Python/marshal.c
++++ b/Python/marshal.c
+@@ -14,6 +14,10 @@
+ #include "pycore_hashtable.h"     // _Py_hashtable_t
+ #include "marshal.h"              // Py_MARSHAL_VERSION
+
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ /*[clinic input]
+ module marshal
+ [clinic start generated code]*/
+@@ -33,9 +37,13 @@
+  * #if defined(MS_WINDOWS) && defined(_DEBUG)
+  */
+ #if defined(MS_WINDOWS)
+-#define MAX_MARSHAL_STACK_DEPTH 1000
++#  define MAX_MARSHAL_STACK_DEPTH 1000
+ #else
+-#define MAX_MARSHAL_STACK_DEPTH 2000
++#  if TARGET_OS_IPHONE
++#    define MAX_MARSHAL_STACK_DEPTH 1500
++#  else
++#    define MAX_MARSHAL_STACK_DEPTH 2000
++#  endif
+ #endif
+
+ #define TYPE_NULL               '0'
+diff --git a/config.sub b/config.sub
+index d74fb6deac..249b391d71 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1723,7 +1723,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
+ 	     | hiux* | abug | nacl* | netware* | windows* \
+-	     | os9* | macos* | osx* | ios* \
++	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
+diff --git a/configure b/configure
+index 078bb5bef1..107dccb7a5 100755
+--- a/configure
++++ b/configure
+@@ -3820,6 +3820,15 @@
+ 	*-*-cygwin*)
+ 		ac_sys_system=Cygwin
+ 		;;
++	*-apple-ios)
++		ac_sys_system=iOS
++		;;
++	*-apple-tvos)
++		ac_sys_system=tvOS
++		;;
++	*-apple-watchos)
++		ac_sys_system=watchOS
++		;;
+ 	*-*-vxworks*)
+ 	    ac_sys_system=VxWorks
+ 	    ;;
+@@ -3876,6 +3885,15 @@
+ 	*-*-cygwin*)
+ 		_host_cpu=
+ 		;;
++	*-apple-*)
++		case "$host_cpu" in
++		arm*)
++			_host_cpu=arm
++			;;
++		*)
++			_host_cpu=$host_cpu
++		esac
++		;;
+ 	*-*-vxworks*)
+ 		_host_cpu=$host_cpu
+ 		;;
+@@ -3954,6 +3972,13 @@
+     define_xopen_source=no;;
+   Darwin/[12][0-9].*)
+     define_xopen_source=no;;
++  # On iOS, defining _POSIX_C_SOURCE also disables platform specific features.
++  iOS/*)
++    define_xopen_source=no;;
++  tvOS/*)
++    define_xopen_source=no;;
++  watchOS/*)
++    define_xopen_source=no;;
+   # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
+   # defining NI_NUMERICHOST.
+   QNX/6.3.2)
+@@ -6191,6 +6216,12 @@
+ case $ac_sys_system in #(
+   Darwin*) :
+     MULTIARCH="" ;; #(
++  iOS*) :
++    MULTIARCH="" ;; #(
++  tvOS*) :
++    MULTIARCH="" ;; #(
++  watchOS*) :
++    MULTIARCH="" ;; #(
+   FreeBSD*) :
+     MULTIARCH="" ;; #(
+   *) :
+@@ -7048,11 +7079,17 @@
+ fi
+
+ if test "$cross_compiling" = yes; then
+-    case "$READELF" in
+-	readelf|:)
+-	as_fn_error $? "readelf for the host is required for cross builds" "$LINENO" 5
+-	;;
+-    esac
++	case "$host" in
++	*-apple-*os)
++		# readelf not required for iOS cross builds.
++        	;;
++	*)
++    		case "$READELF" in
++			readelf|:)
++			as_fn_error $? "readelf for the host is required for cross builds" "$LINENO" 5
++			;;
++    		esac
++	esac
+ fi
+
+
+diff --git a/configure.ac b/configure.ac
+index 09f3f902a6..271fd4be6d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -545,6 +545,15 @@
+ 	*-*-cygwin*)
+ 		ac_sys_system=Cygwin
+ 		;;
++	*-apple-ios)
++		ac_sys_system=iOS
++		;;
++	*-apple-tvos)
++		ac_sys_system=tvOS
++		;;
++	*-apple-watchos)
++		ac_sys_system=watchOS
++		;;
+ 	*-*-vxworks*)
+ 	    ac_sys_system=VxWorks
+ 	    ;;
+@@ -600,6 +609,15 @@
+ 	*-*-cygwin*)
+ 		_host_cpu=
+ 		;;
++	*-apple-*)
++		case "$host_cpu" in
++		arm*)
++			_host_cpu=arm
++			;;
++		*)
++			_host_cpu=$host_cpu
++		esac
++		;;
+ 	*-*-vxworks*)
+ 		_host_cpu=$host_cpu
+ 		;;
+@@ -675,6 +693,13 @@
+     define_xopen_source=no;;
+   Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
+     define_xopen_source=no;;
++  # On iOS, defining _POSIX_C_SOURCE also disables platform specific features.
++  iOS/*)
++    define_xopen_source=no;;
++  tvOS/*)
++    define_xopen_source=no;;
++  watchOS/*)
++    define_xopen_source=no;;
+   # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
+   # defining NI_NUMERICHOST.
+   QNX/6.3.2)
+@@ -1085,6 +1110,9 @@
+ AC_MSG_CHECKING([for multiarch])
+ AS_CASE([$ac_sys_system],
+   [Darwin*], [MULTIARCH=""],
++  [iOS*], [MULTIARCH=""],
++  [tvOS*], [MULTIARCH=""],
++  [watchOS*], [MULTIARCH=""],
+   [FreeBSD*], [MULTIARCH=""],
+   [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
+ )
+@@ -1591,11 +1619,17 @@
+
+ AC_CHECK_TOOLS([READELF], [readelf], [:])
+ if test "$cross_compiling" = yes; then
+-    case "$READELF" in
+-	readelf|:)
+-	AC_MSG_ERROR([readelf for the host is required for cross builds])
+-	;;
+-    esac
++	case "$host" in
++	*-apple-*os)
++		# readelf not required for iOS cross builds.
++        	;;
++	*)
++    		case "$READELF" in
++			readelf|:)
++			AC_MSG_ERROR([readelf for the host is required for cross builds])
++			;;
++    		esac
++	esac
+ fi
+ AC_SUBST(READELF)
