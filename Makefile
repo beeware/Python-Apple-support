@@ -39,7 +39,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.10.4
+PYTHON_VERSION=3.10.6
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -215,9 +215,11 @@ CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang
 AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=\
 	-target $$(TARGET_TRIPLE-$(target)) \
+	--sysroot=$$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 LDFLAGS-$(target)=\
 	-target $$(TARGET_TRIPLE-$(target)) \
+	--sysroot=$$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 
 ###########################################################################
@@ -391,22 +393,18 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
+		PATH="$$(PYTHON_INSTALL-macosx)/bin:$(PATH)" \
 		./configure \
 			AR="$$(AR-$(target))" \
 			CC="$$(CC-$(target))" \
 			CXX="$$(CXX-$(target))" \
-			CFLAGS="$$(CFLAGS-$(target))" \
-			LDFLAGS="$$(LDFLAGS-$(target))" \
-			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
-			LIBLZMA_LIBS="-L$$(XZ_MERGE-$$(SDK-$(target)))/lib -llzma" \
-			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$$(SDK-$(target)))/include" \
-			BZIP2_LIBS="-L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -lbz2" \
+			CFLAGS="$$(CFLAGS-$(target)) -I$$(BZIP2_MERGE-$$(SDK-$(target)))/include -I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
+			LDFLAGS="$$(LDFLAGS-$(target)) -L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -L$$(XZ_MERGE-$$(SDK-$(target)))/lib" \
 			LIBFFI_INCLUDEDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/include" \
 			LIBFFI_LIBDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/lib" \
 			LIBFFI_LIB="ffi" \
 			--host=$$(TARGET_TRIPLE-$(target)) \
 			--build=$(HOST_ARCH)-apple-darwin \
-			--with-build-python=$$(PYTHON_INSTALL-macosx)/bin/python$(PYTHON_VER) \
 			--prefix="$$(PYTHON_INSTALL-$(target))" \
 			--enable-ipv6 \
 			--with-openssl="$$(OPENSSL_MERGE-$$(SDK-$(target)))" \
@@ -420,14 +418,16 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make all \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
+		PATH="$$(PYTHON_INSTALL-macosx)/bin:$(PATH)" \
+			make all \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make install \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
+		PATH="$$(PYTHON_INSTALL-macosx)/bin:$(PATH)" \
+			make install \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
 endif
 
@@ -606,12 +606,8 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
 		./configure \
 			CC="$$(CC-$(sdk))" \
-			CFLAGS="$$(CFLAGS-$(sdk))" \
-			LDFLAGS="$$(LDFLAGS-$(sdk))" \
-			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$(sdk))/include" \
-			LIBLZMA_LIBS="-L$$(XZ_MERGE-$(sdk))/lib -llzma" \
-			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$(sdk))/include" \
-			BZIP2_LIBS="-L$$(BZIP2_MERGE-$(sdk))/lib -lbz2" \
+			CFLAGS="$$(CFLAGS-$(sdk)) -I$$(BZIP2_MERGE-$(sdk))/include -I$$(XZ_MERGE-$(sdk))/include" \
+			LDFLAGS="$$(LDFLAGS-$(sdk)) -L$$(XZ_MERGE-$(sdk))/lib -L$$(BZIP2_MERGE-$(sdk))/lib" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
 			--enable-ipv6 \
 			--enable-universalsdk \
