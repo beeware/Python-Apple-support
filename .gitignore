@@ -12,6 +12,7 @@ local/*
 merge/*
 src/*
 support/*
+wheels/*
 *.dist-info
 __pycache__
 tests/testbed/macOS

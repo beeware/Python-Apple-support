@@ -130,6 +130,22 @@ to a device simulator. However, to deploy to a physical device (including your
 own), you will require a Development or Distribution certificate, which requires
 a paid Apple Developer subscription.
 
+Building binary wheels
+----------------------
+
+When building binary wheels, you may need to use the libraries built by this
+project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
+project is able to package these dependencies as "wheels" that can be added to
+the `server/pypi/dist` directory of the [binary dependency builder
+project](https://github.com/freakboy3742/chaquopy).
+
+To build these wheels, run:
+
+* `make wheels` to make all wheels for all mobile platforms
+* `make wheels-iOS` to build all the iOS wheels
+* `make wheels-tvOS` to build all the tvOS wheels
+* `make wheels-watchOS` to build all the watchOS wheels
+
 .. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.11
 .. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.11
 .. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.11
