@@ -435,6 +435,9 @@ $$(OPENSSL_WHEEL-$(target)): $$(OPENSSL_LIB-$(target)) $$(BDIST_WHEEL)
 	cp -r $$(OPENSSL_INSTALL-$(target))/include $$(OPENSSL_INSTALL-$(target))/wheel/opt/include
 	cp -r $$(OPENSSL_INSTALL-$(target))/lib $$(OPENSSL_INSTALL-$(target))/wheel/opt/lib
 
+	# Remove dynamic library content
+	rm -f $$(OPENSSL_INSTALL-$(target))/wheel/opt/lib/*.dylib
+
 	# Copy LICENSE file
 	# OpenSSL 1.1.1 uses LICENSE; OpenSSL 3 uses LICENSE.txt
 	if [ -f "$$(OPENSSL_SRCDIR-$(target))/LICENSE.txt" ]; then \
@@ -490,6 +493,9 @@ $$(LIBFFI_WHEEL-$(target)): $$(LIBFFI_LIB-$(target)) $$(BDIST_WHEEL)
 	# Copy distributable content
 	cp -r $$(LIBFFI_SRCDIR-$(target))/include $$(LIBFFI_SRCDIR-$(target))/wheel/opt/include
 	cp -r $$(LIBFFI_SRCDIR-$(target))/.libs $$(LIBFFI_SRCDIR-$(target))/wheel/opt/lib
+
+	# Remove dynamic library content
+	rm -f $$(LIBFFI_SRCDIR-$(target))/wheel/opt/lib/*.dylib
 
 	# Copy LICENSE file
 	cp $$(LIBFFI_SRCDIR-$(os))/LICENSE $$(LIBFFI_WHEEL_DISTINFO-$(target))
