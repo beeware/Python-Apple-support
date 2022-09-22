@@ -1,12 +1,17 @@
 Python Apple Support
 ====================
 
-**This repository branch builds a packaged version of Python 3.11.0b1**.
-Other Python versions are available by cloning other branches of the main
-repository.
-
 This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
+
+**This branch builds a packaged version of Python 3.11.0rc1**.
+Other Python versions are available by cloning other branches of the main
+repository:
+
+* `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__
+* `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
+* `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
+* `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 
 It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
@@ -146,7 +151,19 @@ To build these wheels, run:
 * `make wheels-tvOS` to build all the tvOS wheels
 * `make wheels-watchOS` to build all the watchOS wheels
 
-.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b1.tar.gz
-.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b1.tar.gz
-.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b1.tar.gz
-.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b1.tar.gz
+.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b0.tar.gz
+.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b0.tar.gz
+.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b0.tar.gz
+.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b0.tar.gz
+
+Historical support
+------------------
+
+The following versions were supported in the past, but are no longer
+maintained:
+
+* `Python 2.7 <https://github.com/beeware/Python-Apple-support/tree/2.7>`__ (EOL January 2020)
+* `Python 3.4 <https://github.com/beeware/Python-Apple-support/tree/3.4>`__ (EOL March 2019)
+* `Python 3.5 <https://github.com/beeware/Python-Apple-support/tree/3.5>`__ (EOL February 2021)
+* `Python 3.6 <https://github.com/beeware/Python-Apple-support/tree/3.6>`__ (EOL December 2021)
+* `Python 3.7 <https://github.com/beeware/Python-Apple-support/tree/3.7>`__ (EOL September 2022)
