@@ -325,7 +325,7 @@ index ebe3711827..ea00c3176d 100644
      return f"{osname}-{release}-{machine}"
  
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 39b3530905..ef1fa18624 100644
+index 46087a98a2..ea8c228f65 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
 @@ -47,7 +47,7 @@
@@ -459,7 +459,7 @@ index 05d9107b28..6df2bcf163 100644
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
 diff --git a/Lib/test/test_asyncio/test_streams.py b/Lib/test/test_asyncio/test_streams.py
-index 098a0da344..65aa7abe7c 100644
+index 0c49099bc4..c972bade4b 100644
 --- a/Lib/test/test_asyncio/test_streams.py
 +++ b/Lib/test/test_asyncio/test_streams.py
 @@ -17,6 +17,7 @@
@@ -587,7 +587,7 @@ index daccbae5b4..607e40eb66 100644
                  'largefile',
                  'test requires %s bytes and a long time to run' % self.LARGE)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 71926a5432..0ef83b9f51 100644
+index 350f4a57e2..54ef53a4c1 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -43,6 +43,7 @@
@@ -797,7 +797,7 @@ index a2c4ab5081..45927b3163 100644
                           'need os.get_terminal_size()')
      def test_stty_match(self):
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 72e3394df2..832ee517f6 100644
+index b07954989f..ac634d421c 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -1,5 +1,6 @@
@@ -816,7 +816,7 @@ index 72e3394df2..832ee517f6 100644
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3552,7 +3553,7 @@
+@@ -3563,7 +3564,7 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -825,7 +825,7 @@ index 72e3394df2..832ee517f6 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3563,7 +3564,7 @@
+@@ -3574,7 +3575,7 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -834,7 +834,7 @@ index 72e3394df2..832ee517f6 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3576,7 +3577,7 @@
+@@ -3587,7 +3588,7 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -843,7 +843,7 @@ index 72e3394df2..832ee517f6 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3590,7 +3591,7 @@
+@@ -3601,7 +3602,7 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -852,7 +852,7 @@ index 72e3394df2..832ee517f6 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3614,7 +3615,7 @@
+@@ -3625,7 +3626,7 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -861,7 +861,7 @@ index 72e3394df2..832ee517f6 100644
      def testFDPassEmpty(self):
          # Try to pass an empty FD array.  Can receive either no array
          # or an empty array.
-@@ -4434,28 +4435,33 @@
+@@ -4445,28 +4446,33 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -1239,7 +1239,7 @@ index 9132f13e81..36e00f7bfd 100644
  
  
 diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
-index 3026bb6a34..42f503abe6 100644
+index 4847c1cb87..4a4c890846 100644
 --- a/Modules/faulthandler.c
 +++ b/Modules/faulthandler.c
 @@ -1,3 +1,7 @@
@@ -1742,7 +1742,7 @@ index d74fb6deac..a30f74f03d 100755
  		# Blank kernel with real OS is always fine.
  		;;
 diff --git a/configure b/configure
-index 91227f00be..d75c8c48fc 100755
+index 784f8d3060..2ca708e27b 100755
 --- a/configure
 +++ b/configure
 @@ -836,6 +836,8 @@
@@ -2316,7 +2316,7 @@ index 91227f00be..d75c8c48fc 100755
  
  
 diff --git a/configure.ac b/configure.ac
-index 77fb609b74..72acc6e054 100644
+index ab5e1de6fa..99d3147959 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -545,6 +545,15 @@
@@ -2451,15 +2451,6 @@ index 77fb609b74..72acc6e054 100644
 +	esac
  fi
  AC_SUBST(READELF)
- 
-@@ -2066,7 +2138,7 @@
-     dnl build with WASM debug info if either Py_DEBUG is set or the target is
-     dnl node-debug or browser-debug.
-     AS_VAR_IF([Py_DEBUG], [yes], [wasm_debug=yes], [wasm_debug=no])
--    
-+
-     dnl Start with 20 MB and allow to grow
-     AS_VAR_APPEND([LDFLAGS_NODIST], [" -sALLOW_MEMORY_GROWTH -sTOTAL_MEMORY=20971520"])
  
 @@ -3129,6 +3201,9 @@
  			BLDSHARED="$LDSHARED"
