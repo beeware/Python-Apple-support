@@ -10,9 +10,11 @@ into a macOS, iOS, tvOS or watchOS project.
 
 It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
-incorporated into an XCode project.
+incorporated into an XCode project. The binary modules in the Python standard
+library are statically compiled, but are distribted as ``.so`` objects that
+can be dynamically loaded at runtime.
 
-It exposed *almost* all the modules in the Python standard library except for:
+It exposes *almost* all the modules in the Python standard library except for:
     * dbm.gnu
     * tkinter
     * readline
@@ -23,7 +25,11 @@ It exposed *almost* all the modules in the Python standard library except for:
 The following standard library modules are available on macOS, but not the other
 Apple platforms:
     * curses
+    * grp
+    * multiprocessing
     * posixshmem
+    * posixsubprocess
+    * syslog
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
 devices; and arm64_32 for watchOS. It also supports device simulators on both
@@ -35,7 +41,7 @@ x86_64 and M1 hardware. This should enable the code to run on:
     * Mac Mini (including M1 Apple Silicon Mac minis)
     * Mac Studio (all models)
     * Mac Pro (all models)
-* iOS 13.0 or later, on:
+* iOS 12.0 or later, on:
     * iPhone (6s or later)
     * iPad (5th gen or later)
     * iPad Air (all models)
@@ -47,6 +53,11 @@ x86_64 and M1 hardware. This should enable the code to run on:
 
 Quickstart
 ----------
+
+The easist way to use these packages is by creating a project with `Briefcase
+<https://github.com/beeware/briefcase>`__. Briefcase will download pre-compiled
+versions of these support packages, and add them to an XCode project (or
+pre-build stub application, in the case of macOS).
 
 Pre-built versions of the frameworks can be downloaded `for macOS`_, `for
 iOS`_, `for tvOS`_, and `for watchOS`_, and added to your project.
@@ -66,10 +77,76 @@ This should:
 2. Patch them as required for compatibility with the selected OS
 3. Build the packages as XCode-compatible XCFrameworks.
 
-The build products will be in the `build` directory; the compiled frameworks
-will be in the `dist` directory.
+The resulting support packages will be packaged as a ``.tar.gz`` file
+in the ``dist`` folder.
 
-.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.11
-.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.11
-.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.11
-.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.11
+Each support package contains:
+
+* ``VERSIONS``, a text file describing the specific versions of code used to
+  build the support package;
+* ``Python.xcframework``, a multi-architecture build of libPython3.11.a
+* ``python-stdlib``, the code and binary modules comprising the Python standard
+  library. On iOS, tvOS and watchOS, there are 2 copies of every binary module -
+  one for physical devices, and one for the simulator. The simulator binaries
+  are "fat", containing code for both x86_64 and arm64.
+
+Non-macOS platforms also contain a ``platform-site`` folder. This contains a
+site customization script that can be used to make your local Python install
+look like it is an on-device install. This is needed because when you run
+``pip`` you'll be on a macOS machine; if ``pip`` tries to install a binary
+package, it will install a macOS binary wheel (which won't work on
+iOS/tvOS/watchOS). However, if you add the ``platform-site`` folder to your
+``PYTHONPATH`` when invoking pip, the site customization will make your Python
+install return ``platform`` and ``sysconfig`` responses consistent with
+on-device behavior, which will cause ``pip`` to install platform-appropriate
+packages.
+
+To add a support package to your own Xcode project:
+
+1. Drag ``Python.xcframework`` and ``python-stdlib`` into your Xcode project
+   tree.
+2. Ensure that these two objects are added to any targets that need to use
+   them;
+3. Add a custom build phase to purge any binary modules for the platform you are
+   *not* targetting; and
+4. Add a custom build phase to sign any of the binary modules in your app.
+5. Add CPython API code to your app to create an instance of the Python
+   interpreter.
+
+For examples of the scripts needed for steps 3 and 4, and the code needed for
+step 5, compare with a project generated with Briefcase.
+
+On macOS, you must also either:
+1. Enable the "Disable Library Validation" entitlement (found on the "Signing
+   & Capabilities" tab in XCode); or
+2. Sign your app with a Development or Distribution certificate. This will
+   require a paid Apple Developer subscription.
+
+It is not possible to use an ad-hoc signing certificate with the "Disable
+Library Validation" entitlement disabled.
+
+On iOS/tvOS/watchOS, you can use the default developer certificate for deploying
+to a device simulator. However, to deploy to a physical device (including your
+own), you will require a Development or Distribution certificate, which requires
+a paid Apple Developer subscription.
+
+Building binary wheels
+----------------------
+
+When building binary wheels, you may need to use the libraries built by this
+project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
+project is able to package these dependencies as "wheels" that can be added to
+the `server/pypi/dist` directory of the [binary dependency builder
+project](https://github.com/freakboy3742/chaquopy).
+
+To build these wheels, run:
+
+* `make wheels` to make all wheels for all mobile platforms
+* `make wheels-iOS` to build all the iOS wheels
+* `make wheels-tvOS` to build all the tvOS wheels
+* `make wheels-watchOS` to build all the watchOS wheels
+
+.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b1.tar.gz
+.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b1.tar.gz
+.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b1.tar.gz
+.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b1.tar.gz

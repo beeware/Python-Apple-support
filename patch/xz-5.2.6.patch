@@ -1,0 +1,35 @@
+diff -ru xz-5.2.6-orig/build-aux/config.sub xz-5.2.6/build-aux/config.sub
+--- xz-5.2.6-orig/build-aux/config.sub	2022-08-12 18:56:06.000000000 +0800
++++ xz-5.2.6/build-aux/config.sub	2022-09-01 14:36:08.000000000 +0800
+@@ -1121,10 +1121,9 @@
+ 	xscale-* | xscalee[bl]-*)
+ 		cpu=`echo "$cpu" | sed 's/^xscale/arm/'`
+ 		;;
+-	arm64-*)
++	arm64-* | arm64_32-*)
+ 		cpu=aarch64
+ 		;;
+-
+ 	# Recognize the canonical CPU Types that limit and/or modify the
+ 	# company names they are paired with.
+ 	cr16-*)
+@@ -1723,7 +1722,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
+ 	     | hiux* | abug | nacl* | netware* | windows* \
+-	     | os9* | macos* | osx* | ios* \
++	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
+@@ -1786,6 +1785,8 @@
+ 		;;
+ 	*-eabi* | *-gnueabi*)
+ 		;;
++	ios*-simulator | tvos*-simulator | watchos*-simulator)
++		;;
+ 	-*)
+ 		# Blank kernel with real OS is always fine.
+ 		;;
+Only in xz-5.2.6/build-aux: config.sub.orig
+Only in xz-5.2.6/build-aux: config.sub.rej
