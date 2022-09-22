@@ -146,7 +146,7 @@ To build these wheels, run:
 * `make wheels-tvOS` to build all the tvOS wheels
 * `make wheels-watchOS` to build all the watchOS wheels
 
-.. _for macOS: https://briefcase-support.org/python?platform=macOS&version=3.11
-.. _for iOS: https://briefcase-support.org/python?platform=iOS&version=3.11
-.. _for tvOS: https://briefcase-support.org/python?platform=tvOS&version=3.11
-.. _for watchOS: https://briefcase-support.org/python?platform=watchOS&version=3.11
+.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b1.tar.gz
+.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b1.tar.gz
+.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b1.tar.gz
+.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b1.tar.gz
