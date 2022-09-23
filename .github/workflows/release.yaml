@@ -47,7 +47,7 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
   build:
-    runs-on: macOS-12.0
+    runs-on: macOS-12
     needs: make-release
     strategy:
       max-parallel: 4
