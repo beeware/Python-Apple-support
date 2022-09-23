@@ -221,15 +221,14 @@ TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulato
 endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
-CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang
+CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
+CPP-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E
 CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang
 AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=\
-	-target $$(TARGET_TRIPLE-$(target)) \
 	--sysroot=$$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 LDFLAGS-$(target)=\
-	-target $$(TARGET_TRIPLE-$(target)) \
 	--sysroot=$$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 
@@ -553,6 +552,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		./configure \
 			AR="$$(AR-$(target))" \
 			CC="$$(CC-$(target))" \
+			CPP="$$(CPP-$(target))" \
 			CXX="$$(CXX-$(target))" \
 			CFLAGS="$$(CFLAGS-$(target)) -I$$(BZIP2_MERGE-$$(SDK-$(target)))/include -I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
 			LDFLAGS="$$(LDFLAGS-$(target)) -L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -L$$(XZ_MERGE-$$(SDK-$(target)))/lib" \
@@ -598,6 +598,7 @@ vars-$(target):
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
 	@echo "CC-$(target): $$(CC-$(target))"
+	@echo "CPP-$(target): $$(CPP-$(target))"
 	@echo "CFLAGS-$(target): $$(CFLAGS-$(target))"
 	@echo "LDFLAGS-$(target): $$(LDFLAGS-$(target))"
 	@echo "BZIP2_SRCDIR-$(target): $$(BZIP2_SRCDIR-$(target))"
@@ -652,10 +653,9 @@ SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "
 endif
 
 CC-$(sdk)=xcrun --sdk $(sdk) clang
-CFLAGS-$(sdk)=\
-	$$(CFLAGS-$(os))
-LDFLAGS-$(sdk)=\
-	$$(CFLAGS-$(os))
+CPP-$(sdk)=xcrun --sdk $(sdk) clang -E
+CFLAGS-$(sdk)=$$(CFLAGS-$(os))
+LDFLAGS-$(sdk)=$$(CFLAGS-$(os))
 
 # Predeclare SDK constants that are used by the build-target macro
 
@@ -770,6 +770,7 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
 		./configure \
 			CC="$$(CC-$(sdk))" \
+			CPP="$$(CPP-$(sdk))" \
 			CFLAGS="$$(CFLAGS-$(sdk)) -I$$(BZIP2_MERGE-$(sdk))/include -I$$(XZ_MERGE-$(sdk))/include" \
 			LDFLAGS="$$(LDFLAGS-$(sdk)) -L$$(XZ_MERGE-$(sdk))/lib -L$$(BZIP2_MERGE-$(sdk))/lib" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
@@ -869,6 +870,7 @@ vars-$(sdk):
 	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
 	@echo "SDK_SLICE-$(sdk): $$(SDK_SLICE-$(sdk))"
 	@echo "CC-$(sdk): $$(CC-$(sdk))"
+	@echo "CPP-$(sdk): $$(CPP-$(sdk))"
 	@echo "CFLAGS-$(sdk): $$(CFLAGS-$(sdk))"
 	@echo "LDFLAGS-$(sdk): $$(LDFLAGS-$(sdk))"
 	@echo "BZIP2_MERGE-$(sdk): $$(BZIP2_MERGE-$(sdk))"
