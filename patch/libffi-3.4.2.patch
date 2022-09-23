@@ -222,10 +222,10 @@ index 9921b0d..5b60ccc 100755
 -        copy_src_platform_files(ios_simulator64_platform)
 -        copy_src_platform_files(ios_device_platform)
 -        copy_src_platform_files(ios_device64_platform)
-+        copy_src_platform_files(ios_simulator_i386_platform)
++        # copy_src_platform_files(ios_simulator_i386_platform)
 +        copy_src_platform_files(ios_simulator_x86_64_platform)
 +        copy_src_platform_files(ios_simulator_arm64_platform)
-+        copy_src_platform_files(ios_device_armv7_platform)
++        # copy_src_platform_files(ios_device_armv7_platform)
 +        copy_src_platform_files(ios_device_arm64_platform)
      if generate_osx:
 -        copy_src_platform_files(desktop64_platform)
@@ -240,9 +240,9 @@ index 9921b0d..5b60ccc 100755
      if generate_watchos:
 -        copy_src_platform_files(watchos_simulator_platform)
 -        copy_src_platform_files(watchos_device_platform)
-+        copy_src_platform_files(watchos_simulator_i386_platform)
++        # copy_src_platform_files(watchos_simulator_i386_platform)
 +        copy_src_platform_files(watchos_simulator_x86_64_platform)
-+        copy_src_platform_files(watchos_simulator_arm64_platform)
++        # copy_src_platform_files(watchos_simulator_arm64_platform)
 +        copy_src_platform_files(watchos_device_armv7k_platform)
 +        copy_src_platform_files(watchos_device_arm64_32_platform)
  
@@ -253,10 +253,10 @@ index 9921b0d..5b60ccc 100755
 -        build_target(ios_simulator64_platform, platform_headers)
 -        build_target(ios_device_platform, platform_headers)
 -        build_target(ios_device64_platform, platform_headers)
-+        build_target(ios_simulator_i386_platform, platform_headers)
++        # build_target(ios_simulator_i386_platform, platform_headers)
 +        build_target(ios_simulator_x86_64_platform, platform_headers)
 +        build_target(ios_simulator_arm64_platform, platform_headers)
-+        build_target(ios_device_armv7_platform, platform_headers)
++        # build_target(ios_device_armv7_platform, platform_headers)
 +        build_target(ios_device_arm64_platform, platform_headers)
      if generate_osx:
 -        build_target(desktop64_platform, platform_headers)
@@ -271,10 +271,10 @@ index 9921b0d..5b60ccc 100755
      if generate_watchos:
 -        build_target(watchos_simulator_platform, platform_headers)
 -        build_target(watchos_device_platform, platform_headers)
-+        build_target(watchos_simulator_i386_platform, platform_headers)
++        # build_target(watchos_simulator_i386_platform, platform_headers)
 +        build_target(watchos_simulator_x86_64_platform, platform_headers)
 +        build_target(watchos_simulator_arm64_platform, platform_headers)
-+        build_target(watchos_device_armv7k_platform, platform_headers)
++        # build_target(watchos_device_armv7k_platform, platform_headers)
 +        build_target(watchos_device_arm64_32_platform, platform_headers)
  
      mkdir_p('darwin_common/include')
