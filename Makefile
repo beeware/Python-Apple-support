@@ -223,7 +223,7 @@ endif
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
 CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
 CPP-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E
-CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang
+CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
 AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=\
 	--sysroot=$$(SDK_ROOT-$(target)) \
