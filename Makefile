@@ -229,7 +229,7 @@ CFLAGS-$(target)=\
 	--sysroot=$$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 LDFLAGS-$(target)=\
-	--sysroot=$$(SDK_ROOT-$(target)) \
+	-isysroot $$(SDK_ROOT-$(target)) \
 	$$(CFLAGS-$(os))
 
 ###########################################################################
