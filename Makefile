@@ -564,7 +564,6 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			--prefix="$$(PYTHON_INSTALL-$(target))" \
 			--enable-ipv6 \
 			--with-openssl="$$(OPENSSL_MERGE-$$(SDK-$(target)))" \
-			--without-doc-strings \
 			--without-ensurepip \
 			ac_cv_file__dev_ptmx=no \
 			ac_cv_file__dev_ptc=no \
@@ -780,7 +779,6 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 			--enable-universalsdk \
 			--with-openssl="$$(OPENSSL_MERGE-$(sdk))" \
 			--with-universal-archs=universal2 \
-			--without-doc-strings \
 			--without-ensurepip \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
 
@@ -1097,12 +1095,12 @@ Python-$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 clean-Python-$(os):
 	@echo ">>> Clean Python build products on $(os)"
 	rm -rf \
-		build/$(os)/*/python-$(PYTHON_VERSION) \
-		build/$(os)/*/python-$(PYTHON_VERSION).*.log \
-		install/$(os)/*/python-$(PYTHON_VERSION) \
-		install/$(os)/*/python-$(PYTHON_VERSION).*.log \
-		merge/$(os)/*/python-$(PYTHON_VERSION) \
-		merge/$(os)/*/python-$(PYTHON_VERSION).*.log \
+		build/$(os)/*/python-$(PYTHON_VER)* \
+		build/$(os)/*/python-$(PYTHON_VER)*.*.log \
+		install/$(os)/*/python-$(PYTHON_VER)* \
+		install/$(os)/*/python-$(PYTHON_VER)*.*.log \
+		merge/$(os)/*/python-$(PYTHON_VER)* \
+		merge/$(os)/*/python-$(PYTHON_VER)*.*.log \
 		support/$(os) \
 		support/*-$(os).*.log \
 		dist/Python-$(PYTHON_VER)-$(os)-*
