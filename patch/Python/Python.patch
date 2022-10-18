@@ -260,6 +260,41 @@ index d4a01c6e91..f3fc4607e1 100644
      def test_check_environ(self):
          util._environ_checked = 0
          os.environ.pop('HOME', None)
+diff --git a/Lib/distutils/unixccompiler.py b/Lib/distutils/unixccompiler.py
+index d00c48981e..5d12b4779d 100644
+--- a/Lib/distutils/unixccompiler.py
++++ b/Lib/distutils/unixccompiler.py
+@@ -270,9 +270,9 @@
+         static_f = self.library_filename(lib, lib_type='static')
+ 
+         if sys.platform == 'darwin':
+-            # On OSX users can specify an alternate SDK using
+-            # '-isysroot', calculate the SDK root if it is specified
+-            # (and use it further on)
++            # On macOS users can specify an alternate SDK using
++            # '-isysroot <path>' or --sysroot=<path>, calculate the SDK root
++            # if it is specified (and use it further on)
+             #
+             # Note that, as of Xcode 7, Apple SDKs may contain textual stub
+             # libraries with .tbd extensions rather than the normal .dylib
+@@ -291,12 +291,14 @@
+             cflags = sysconfig.get_config_var('CFLAGS')
+             m = re.search(r'-isysroot\s*(\S+)', cflags)
+             if m is None:
+-                sysroot = _osx_support._default_sysroot(sysconfig.get_config_var('CC'))
++                m = re.search(r'--sysroot=(\S+)', cflags)
++                if m is None:
++                    sysroot = _osx_support._default_sysroot(sysconfig.get_config_var('CC'))
++                else:
++                    sysroot = m.group(1)
+             else:
+                 sysroot = m.group(1)
+ 
+-
+-
+         for dir in dirs:
+             shared = os.path.join(dir, shared_f)
+             dylib = os.path.join(dir, dylib_f)
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
 index 49bcaea78d..891356e54d 100644
 --- a/Lib/importlib/_bootstrap_external.py
@@ -3466,7 +3501,7 @@ index cc69015b10..d81f17dad6 100644
  
  echo "creating Makefile" >&AS_MESSAGE_FD
 diff --git a/setup.py b/setup.py
-index 85a2b26357..510a1ac62b 100644
+index 85a2b26357..86d97d1dd8 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -84,6 +84,9 @@
@@ -3479,7 +3514,38 @@ index 85a2b26357..510a1ac62b 100644
  AIX = (HOST_PLATFORM.startswith('aix'))
  VXWORKS = ('vxworks' in HOST_PLATFORM)
  CC = os.environ.get("CC")
-@@ -2243,6 +2246,11 @@
+@@ -163,16 +166,20 @@
+     for var_name in make_vars:
+         var = sysconfig.get_config_var(var_name)
+         if var is not None:
+-            m = re.search(r'--sysroot=([^"]\S*|"[^"]+")', var)
+-            if m is not None:
+-                sysroot = m.group(1).strip('"')
+-                for subdir in subdirs:
+-                    if os.path.isabs(subdir):
+-                        subdir = subdir[1:]
+-                    path = os.path.join(sysroot, subdir)
+-                    if os.path.isdir(path):
+-                        dirs.append(path)
+-                break
++            for pattern in [
++                r'-isysroot\s*([^"]\S*|"[^"]+")',
++                r'--sysroot=([^"]\S*|"[^"]+")',
++            ]:
++                m = re.search(pattern, var)
++                if m is not None:
++                    sysroot = m.group(1).strip('"')
++                    for subdir in subdirs:
++                        if os.path.isabs(subdir):
++                            subdir = subdir[1:]
++                        path = os.path.join(sysroot, subdir)
++                        if os.path.isdir(path):
++                            dirs.append(path)
++                    break
+     return dirs
+ 
+ 
+@@ -2243,6 +2250,11 @@
              extra_compile_args.append('-DMACOSX')
              include_dirs.append('_ctypes/darwin')
  
@@ -3491,7 +3557,7 @@ index 85a2b26357..510a1ac62b 100644
          elif HOST_PLATFORM == 'sunos5':
              # XXX This shouldn't be necessary; it appears that some
              # of the assembler code is non-PIC (i.e. it has relocations
-@@ -2272,7 +2280,8 @@
+@@ -2272,7 +2284,8 @@
                                 libraries=['m']))
  
          ffi_inc = sysconfig.get_config_var("LIBFFI_INCLUDEDIR")
@@ -3501,7 +3567,7 @@ index 85a2b26357..510a1ac62b 100644
  
          ffi_inc_dirs = self.inc_dirs.copy()
          if MACOS:
-@@ -2301,6 +2310,7 @@
+@@ -2301,6 +2314,7 @@
              for lib_name in ('ffi', 'ffi_pic'):
                  if (self.compiler.find_library_file(self.lib_dirs, lib_name)):
                      ffi_lib = lib_name
@@ -3509,7 +3575,7 @@ index 85a2b26357..510a1ac62b 100644
                      break
  
          if ffi_inc and ffi_lib:
-@@ -2314,7 +2324,8 @@
+@@ -2314,7 +2328,8 @@
  
              ext.include_dirs.append(ffi_inc)
              ext.libraries.append(ffi_lib)
