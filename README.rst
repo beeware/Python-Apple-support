@@ -4,7 +4,7 @@ Python Apple Support
 This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
 
-**This branch builds a packaged version of Python 3.11.0rc1**.
+**This branch builds a packaged version of Python 3.11.0**.
 Other Python versions are available by cloning other branches of the main
 repository:
 
@@ -151,10 +151,10 @@ To build these wheels, run:
 * `make wheels-tvOS` to build all the tvOS wheels
 * `make wheels-watchOS` to build all the watchOS wheels
 
-.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b0.tar.gz
-.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b0.tar.gz
-.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b0.tar.gz
-.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b0.tar.gz
+.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.11/macOS/Python-3.11-macOS-support.b1.tar.gz
+.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.11/iOS/Python-3.11-iOS-support.b1.tar.gz
+.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.11/tvOS/Python-3.11-tvOS-support.b1.tar.gz
+.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.11/watchOS/Python-3.11-watchOS-support.b1.tar.gz
 
 Historical support
 ------------------

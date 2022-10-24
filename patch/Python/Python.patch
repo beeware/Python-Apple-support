@@ -755,7 +755,7 @@ index 9b2cd201f3..e47de5d468 100644
      @unittest.skipUnless(sys.platform == 'darwin', "OSX only test")
      def test_mac_ver_with_fork(self):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index ae25ef5588..2885d5fd52 100644
+index e643d8e5a4..65e0e2d2c6 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -2,6 +2,7 @@
@@ -1029,7 +1029,7 @@ index 9c6561c099..ccccfb8b0b 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index 74039f59f7..36dc82f871 100644
+index decf021c64..7c824c8278 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
 @@ -19,7 +19,7 @@
@@ -1038,7 +1038,7 @@ index 74039f59f7..36dc82f871 100644
                            skip_if_broken_multiprocessing_synchronize, verbose,
 -                          requires_subprocess, is_emscripten, is_wasi,
 +                          requires_subprocess, is_apple_mobile, is_emscripten, is_wasi,
-                           requires_venv_with_pip)
+                           requires_venv_with_pip, TEST_HOME_DIR)
  from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
  import unittest
 @@ -40,6 +40,8 @@
@@ -1313,7 +1313,7 @@ index aa93e756c6..fcf3784c2f 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 378032501f..25a035acd7 100644
+index 309982af82..2afccdc969 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -69,6 +69,8 @@
@@ -1325,7 +1325,7 @@ index 378032501f..25a035acd7 100644
  #if defined(__has_builtin)
  #if __has_builtin(__builtin_available)
  #define HAVE_BUILTIN_AVAILABLE 1
-@@ -325,6 +327,26 @@
+@@ -329,6 +331,26 @@
  #  endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
@@ -1352,7 +1352,7 @@ index 378032501f..25a035acd7 100644
  /*[clinic input]
  # one of the few times we lie about this name!
  module os
-@@ -1573,7 +1595,9 @@
+@@ -1577,7 +1599,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -1362,7 +1362,7 @@ index 378032501f..25a035acd7 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1589,6 +1613,7 @@
+@@ -1593,6 +1617,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -1370,7 +1370,7 @@ index 378032501f..25a035acd7 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1642,6 +1667,7 @@
+@@ -1646,6 +1671,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -1378,7 +1378,7 @@ index 378032501f..25a035acd7 100644
      return d;
  }
  
-@@ -4935,6 +4961,9 @@
+@@ -4939,6 +4965,9 @@
  /*[clinic end generated code: output=290fc437dd4f33a0 input=86a58554ba6094af]*/
  {
      long result;
@@ -1388,7 +1388,7 @@ index 378032501f..25a035acd7 100644
      const char *bytes = PyBytes_AsString(command);
  
      if (PySys_Audit("os.system", "(O)", command) < 0) {
-@@ -4944,6 +4973,7 @@
+@@ -4948,6 +4977,7 @@
      Py_BEGIN_ALLOW_THREADS
      result = system(bytes);
      Py_END_ALLOW_THREADS
@@ -1396,7 +1396,7 @@ index 378032501f..25a035acd7 100644
      return result;
  }
  #endif
-@@ -13700,6 +13730,7 @@
+@@ -13736,6 +13766,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -1404,7 +1404,7 @@ index 378032501f..25a035acd7 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13760,6 +13791,7 @@
+@@ -13796,6 +13827,7 @@
  #endif
  
      return result;
