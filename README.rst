@@ -130,6 +130,8 @@ On macOS, you must also either:
 It is not possible to use an ad-hoc signing certificate with the "Disable
 Library Validation" entitlement disabled.
 
+For a detailed step-by-step on how to embed a Python interpreter in a MacOS app, see [Usage Guide](./MACOS_USAGE_GUIDE.md)
+
 On iOS/tvOS/watchOS, you can use the default developer certificate for deploying
 to a device simulator. However, to deploy to a physical device (including your
 own), you will require a Development or Distribution certificate, which requires
