@@ -107,7 +107,7 @@ on-device behavior, which will cause ``pip`` to install platform-appropriate
 packages.
 
 For a detailed instructions on using the support package in your own project,
-see the [usage guide](./USAGE.md)
+see the `usage guide <./USAGE.md>`__
 
 Building binary wheels
 ----------------------
@@ -115,8 +115,8 @@ Building binary wheels
 When building binary wheels, you may need to use the libraries built by this
 project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
 project is able to package these dependencies as "wheels" that can be added to
-the `server/pypi/dist` directory of the [binary dependency builder
-project](https://github.com/freakboy3742/chaquopy).
+the `server/pypi/dist` directory of the `binary dependency builder
+project <https://github.com/freakboy3742/chaquopy>`__.
 
 To build these wheels, run:
 
