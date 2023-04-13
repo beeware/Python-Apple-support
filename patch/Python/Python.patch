@@ -144,10 +144,10 @@ index f603a89f7f..faea51d1b5 100644
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
 diff --git a/Lib/platform.py b/Lib/platform.py
-index c272c407c7..1b1aa6d141 100755
+index 9b9d88bf58..dbd9ee3276 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -451,6 +451,35 @@
+@@ -452,6 +452,35 @@
      # If that also doesn't work return the default values
      return release, versioninfo, machine
  
@@ -183,7 +183,7 @@ index c272c407c7..1b1aa6d141 100755
  def _java_getprop(name, default):
  
      from java.lang import System
-@@ -607,7 +636,7 @@
+@@ -608,7 +637,7 @@
          default in case the command should fail.
  
      """
@@ -192,7 +192,7 @@ index c272c407c7..1b1aa6d141 100755
          # XXX Others too ?
          return default
  
-@@ -749,6 +778,24 @@
+@@ -750,6 +779,24 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -217,7 +217,7 @@ index c272c407c7..1b1aa6d141 100755
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -900,6 +947,14 @@
+@@ -904,6 +951,14 @@
          system = 'Windows'
          release = 'Vista'
  
@@ -232,7 +232,7 @@ index c272c407c7..1b1aa6d141 100755
      vals = system, node, release, version, machine
      # Replace 'unknown' values with the more portable ''
      _uname_cache = uname_result(*map(_unknown_as_blank, vals))
-@@ -1212,11 +1267,13 @@
+@@ -1216,11 +1271,13 @@
          system, release, version = system_alias(system, release, version)
  
      if system == 'Darwin':
@@ -266,7 +266,7 @@ index 69670d9d7f..8287267e64 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 7ae8df154b..08899c9921 100644
+index 1f203bd00d..3d9169ef81 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -74,8 +74,8 @@
@@ -360,7 +360,7 @@ index ebe3711827..ea00c3176d 100644
      return f"{osname}-{release}-{machine}"
  
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 46087a98a2..ea8c228f65 100644
+index c33f90d807..041789e823 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
 @@ -47,7 +47,7 @@
@@ -410,7 +410,7 @@ index 46087a98a2..ea8c228f65 100644
  def requires_subprocess():
      """Used for subprocess, os.spawn calls, fd inheritance"""
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 05d9107b28..6df2bcf163 100644
+index 5728d25254..76e62d4738 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
 @@ -33,6 +33,7 @@
@@ -445,7 +445,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_ssl_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -860,6 +864,7 @@
+@@ -901,6 +905,7 @@
          return server, path
  
      @socket_helper.skip_unless_bind_unix_socket
@@ -453,7 +453,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_unix_server(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_unix_server(lambda: proto)
-@@ -888,6 +893,7 @@
+@@ -929,6 +934,7 @@
          server.close()
  
      @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
@@ -461,7 +461,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_unix_server_path_socket_error(self):
          proto = MyProto(loop=self.loop)
          sock = socket.socket()
-@@ -953,6 +959,7 @@
+@@ -994,6 +1000,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -469,7 +469,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_unix_server_ssl(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -983,6 +990,7 @@
+@@ -1024,6 +1031,7 @@
          server.close()
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -477,7 +477,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, host, port = self._make_ssl_server(
-@@ -1013,6 +1021,7 @@
+@@ -1054,6 +1062,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -485,7 +485,7 @@ index 05d9107b28..6df2bcf163 100644
      def test_create_unix_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1073,6 +1082,7 @@
+@@ -1114,6 +1123,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -494,7 +494,7 @@ index 05d9107b28..6df2bcf163 100644
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
 diff --git a/Lib/test/test_asyncio/test_streams.py b/Lib/test/test_asyncio/test_streams.py
-index 0c49099bc4..c972bade4b 100644
+index 95fc7a159b..837046cd86 100644
 --- a/Lib/test/test_asyncio/test_streams.py
 +++ b/Lib/test/test_asyncio/test_streams.py
 @@ -17,6 +17,7 @@
@@ -538,7 +538,7 @@ index 0c49099bc4..c972bade4b 100644
  
          class MyServer:
 diff --git a/Lib/test/test_asyncio/test_unix_events.py b/Lib/test/test_asyncio/test_unix_events.py
-index 1d922783ce..81a5d2c699 100644
+index 01c1214c7f..e861c1d1e0 100644
 --- a/Lib/test/test_asyncio/test_unix_events.py
 +++ b/Lib/test/test_asyncio/test_unix_events.py
 @@ -13,6 +13,7 @@
@@ -558,7 +558,7 @@ index 1d922783ce..81a5d2c699 100644
  
      def setUp(self):
 diff --git a/Lib/test/test_fcntl.py b/Lib/test/test_fcntl.py
-index fc8c39365f..16235b8397 100644
+index 8e98256a62..819c8ef89c 100644
 --- a/Lib/test/test_fcntl.py
 +++ b/Lib/test/test_fcntl.py
 @@ -6,7 +6,7 @@
@@ -580,7 +580,7 @@ index fc8c39365f..16235b8397 100644
              off_t = 'l'
              pid_t = 'i'
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index a937258069..3829c29fe5 100644
+index cbcf94136a..ae52a91f6d 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -30,6 +30,7 @@
@@ -601,7 +601,7 @@ index a937258069..3829c29fe5 100644
              # UTF-8 into a percent-encoded value.
              for name in os.listdir(self.tempdir):
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index daccbae5b4..607e40eb66 100644
+index 79aa2da586..791b5ec018 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -40,6 +40,7 @@
@@ -671,7 +671,7 @@ index 350f4a57e2..54ef53a4c1 100644
  
      """Test for SysLogHandler with Unix sockets."""
 diff --git a/Lib/test/test_marshal.py b/Lib/test/test_marshal.py
-index aae86cc257..8be5af371b 100644
+index a1a91f661b..92fde54f5a 100644
 --- a/Lib/test/test_marshal.py
 +++ b/Lib/test/test_marshal.py
 @@ -1,5 +1,5 @@
@@ -681,9 +681,9 @@ index aae86cc257..8be5af371b 100644
  from test.support.script_helper import assert_python_ok
  import array
  import io
-@@ -260,7 +260,10 @@
-         if os.name == 'nt':
-             MAX_MARSHAL_STACK_DEPTH = 1000
+@@ -262,7 +262,10 @@
+         elif sys.platform == 'wasi':
+             MAX_MARSHAL_STACK_DEPTH = 1500
          else:
 -            MAX_MARSHAL_STACK_DEPTH = 2000
 +            if is_apple_mobile:
@@ -723,7 +723,7 @@ index 213a44d56f..87279579fe 100644
                  'test requires %s bytes and a long time to run' % str(0x180000000))
          f = open(TESTFN, 'w+b')
 diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
-index 9b2cd201f3..e47de5d468 100644
+index c9f27575b5..40a66e8613 100644
 --- a/Lib/test/test_platform.py
 +++ b/Lib/test/test_platform.py
 @@ -8,7 +8,7 @@
@@ -735,7 +735,7 @@ index 9b2cd201f3..e47de5d468 100644
  
  FEDORA_OS_RELEASE = """\
  NAME=Fedora
-@@ -315,7 +315,7 @@
+@@ -323,7 +323,7 @@
      def test_mac_ver(self):
          res = platform.mac_ver()
  
@@ -744,7 +744,7 @@ index 9b2cd201f3..e47de5d468 100644
              # We are on a macOS system, check that the right version
              # information is returned
              output = subprocess.check_output(['sw_vers'], text=True)
-@@ -347,6 +347,9 @@
+@@ -355,6 +355,9 @@
              else:
                  self.assertEqual(res[2], 'PowerPC')
  
@@ -755,7 +755,7 @@ index 9b2cd201f3..e47de5d468 100644
      @unittest.skipUnless(sys.platform == 'darwin', "OSX only test")
      def test_mac_ver_with_fork(self):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index ae25ef5588..2885d5fd52 100644
+index e643d8e5a4..65e0e2d2c6 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -2,6 +2,7 @@
@@ -812,10 +812,10 @@ index ae25ef5588..2885d5fd52 100644
              self.assertRaises(OSError, posix.sched_get_priority_max, -23)
  
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index a2c4ab5081..45927b3163 100644
+index 055c9af2cc..338cb6f61a 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -1776,6 +1776,7 @@
+@@ -1783,6 +1783,7 @@
              check_chown(dirname, uid, gid)
  
  
@@ -823,7 +823,7 @@ index a2c4ab5081..45927b3163 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -2642,6 +2643,7 @@
+@@ -2649,6 +2650,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -832,7 +832,7 @@ index a2c4ab5081..45927b3163 100644
                           'need os.get_terminal_size()')
      def test_stty_match(self):
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index b07954989f..ac634d421c 100644
+index 13cb2a7945..ccd0ca4d19 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -1,5 +1,6 @@
@@ -851,7 +851,7 @@ index b07954989f..ac634d421c 100644
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3563,7 +3564,7 @@
+@@ -3567,7 +3568,7 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -860,7 +860,7 @@ index b07954989f..ac634d421c 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3574,7 +3575,7 @@
+@@ -3578,7 +3579,7 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -869,7 +869,7 @@ index b07954989f..ac634d421c 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3587,7 +3588,7 @@
+@@ -3591,7 +3592,7 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -878,7 +878,7 @@ index b07954989f..ac634d421c 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3601,7 +3602,7 @@
+@@ -3605,7 +3606,7 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -887,7 +887,7 @@ index b07954989f..ac634d421c 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3625,7 +3626,7 @@
+@@ -3629,7 +3630,7 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -896,7 +896,7 @@ index b07954989f..ac634d421c 100644
      def testFDPassEmpty(self):
          # Try to pass an empty FD array.  Can receive either no array
          # or an empty array.
-@@ -4445,28 +4446,33 @@
+@@ -4449,28 +4450,33 @@
      pass
  
  @requireAttrs(socket.socket, "sendmsg")
@@ -987,7 +987,7 @@ index de2e7305cc..ccf240397d 100644
              import distutils.text_file
              import distutils.unixccompiler
 diff --git a/Lib/test/test_sysconfig.py b/Lib/test/test_sysconfig.py
-index 578ac1db50..daf61113b2 100644
+index d96371d242..5634962453 100644
 --- a/Lib/test/test_sysconfig.py
 +++ b/Lib/test/test_sysconfig.py
 @@ -336,7 +336,7 @@
@@ -1029,7 +1029,7 @@ index 9c6561c099..ccccfb8b0b 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index 74039f59f7..36dc82f871 100644
+index 86ce60fef1..c36e6b6096 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
 @@ -19,7 +19,7 @@
@@ -1038,7 +1038,7 @@ index 74039f59f7..36dc82f871 100644
                            skip_if_broken_multiprocessing_synchronize, verbose,
 -                          requires_subprocess, is_emscripten, is_wasi,
 +                          requires_subprocess, is_apple_mobile, is_emscripten, is_wasi,
-                           requires_venv_with_pip)
+                           requires_venv_with_pip, TEST_HOME_DIR)
  from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
  import unittest
 @@ -40,6 +40,8 @@
@@ -1051,10 +1051,10 @@ index 74039f59f7..36dc82f871 100644
  @requires_subprocess()
  def check_output(cmd, encoding=None):
 diff --git a/Lib/test/test_zipfile.py b/Lib/test/test_zipfile.py
-index f4c11d88c8..fb1ef8b417 100644
+index ffb954659e..8a5bfb7a7f 100644
 --- a/Lib/test/test_zipfile.py
 +++ b/Lib/test/test_zipfile.py
-@@ -1166,6 +1166,7 @@
+@@ -1167,6 +1167,7 @@
              self.skipTest('requires write access to the installed location')
          unlink(filename)
  
@@ -1062,7 +1062,7 @@ index f4c11d88c8..fb1ef8b417 100644
      def test_write_pyfile(self):
          self.requiresWriteAccess(os.path.dirname(__file__))
          with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
-@@ -1210,6 +1211,7 @@
+@@ -1211,6 +1212,7 @@
              self.assertCompiledIn('email/__init__.py', names)
              self.assertCompiledIn('email/mime/text.py', names)
  
@@ -1133,7 +1133,7 @@ index 44974d433b..ae4e18802b 100755
  #
  # Platform support for Windows
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 8fbcd7ac17..0e85788dba 100644
+index b356f6293e..50ed6e0047 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -344,6 +344,8 @@
@@ -1274,7 +1274,7 @@ index 9132f13e81..36e00f7bfd 100644
  
  
 diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
-index 4847c1cb87..4a4c890846 100644
+index 04995d2e74..a57daca284 100644
 --- a/Modules/faulthandler.c
 +++ b/Modules/faulthandler.c
 @@ -1,3 +1,7 @@
@@ -1298,7 +1298,7 @@ index 4847c1cb87..4a4c890846 100644
     and sigaction() SA_ONSTACK */
  #if defined(HAVE_SIGALTSTACK) && defined(HAVE_SIGACTION)
 diff --git a/Modules/mathmodule.c b/Modules/mathmodule.c
-index aa93e756c6..fcf3784c2f 100644
+index 0a907a0c04..f2ce439e28 100644
 --- a/Modules/mathmodule.c
 +++ b/Modules/mathmodule.c
 @@ -76,6 +76,10 @@
@@ -1313,10 +1313,10 @@ index aa93e756c6..fcf3784c2f 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 378032501f..25a035acd7 100644
+index 613b86f09c..56234822a8 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
-@@ -69,6 +69,8 @@
+@@ -72,6 +72,8 @@
   */
  #if defined(__APPLE__)
  
@@ -1325,7 +1325,7 @@ index 378032501f..25a035acd7 100644
  #if defined(__has_builtin)
  #if __has_builtin(__builtin_available)
  #define HAVE_BUILTIN_AVAILABLE 1
-@@ -325,6 +327,26 @@
+@@ -344,6 +346,26 @@
  #  endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
@@ -1352,7 +1352,7 @@ index 378032501f..25a035acd7 100644
  /*[clinic input]
  # one of the few times we lie about this name!
  module os
-@@ -1573,7 +1595,9 @@
+@@ -1585,7 +1607,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -1362,7 +1362,7 @@ index 378032501f..25a035acd7 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1589,6 +1613,7 @@
+@@ -1601,6 +1625,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -1370,7 +1370,7 @@ index 378032501f..25a035acd7 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1642,6 +1667,7 @@
+@@ -1654,6 +1679,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -1378,7 +1378,7 @@ index 378032501f..25a035acd7 100644
      return d;
  }
  
-@@ -4935,6 +4961,9 @@
+@@ -4948,6 +4974,9 @@
  /*[clinic end generated code: output=290fc437dd4f33a0 input=86a58554ba6094af]*/
  {
      long result;
@@ -1388,7 +1388,7 @@ index 378032501f..25a035acd7 100644
      const char *bytes = PyBytes_AsString(command);
  
      if (PySys_Audit("os.system", "(O)", command) < 0) {
-@@ -4944,6 +4973,7 @@
+@@ -4957,6 +4986,7 @@
      Py_BEGIN_ALLOW_THREADS
      result = system(bytes);
      Py_END_ALLOW_THREADS
@@ -1396,7 +1396,7 @@ index 378032501f..25a035acd7 100644
      return result;
  }
  #endif
-@@ -13700,6 +13730,7 @@
+@@ -13745,6 +13775,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -1404,7 +1404,7 @@ index 378032501f..25a035acd7 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13760,6 +13791,7 @@
+@@ -13805,6 +13836,7 @@
  #endif
  
      return result;
@@ -1543,7 +1543,7 @@ index 3a2a731808..cb2d9e53e2 100644
  
  /* Fill buffer with size pseudo-random bytes generated by getentropy():
 diff --git a/Python/marshal.c b/Python/marshal.c
-index 90a4405091..65dd71d868 100644
+index 2690f55766..a4d05fb274 100644
 --- a/Python/marshal.c
 +++ b/Python/marshal.c
 @@ -14,6 +14,10 @@
@@ -1557,12 +1557,15 @@ index 90a4405091..65dd71d868 100644
  /*[clinic input]
  module marshal
  [clinic start generated code]*/
-@@ -33,9 +37,13 @@
+@@ -33,11 +37,15 @@
   * #if defined(MS_WINDOWS) && defined(_DEBUG)
   */
  #if defined(MS_WINDOWS)
 -#define MAX_MARSHAL_STACK_DEPTH 1000
 +#  define MAX_MARSHAL_STACK_DEPTH 1000
+ #elif defined(__wasi__)
+-#define MAX_MARSHAL_STACK_DEPTH 1500
++#  define MAX_MARSHAL_STACK_DEPTH 1500
  #else
 -#define MAX_MARSHAL_STACK_DEPTH 2000
 +#  if TARGET_OS_IPHONE
@@ -1777,10 +1780,10 @@ index d74fb6deac..a30f74f03d 100755
  		# Blank kernel with real OS is always fine.
  		;;
 diff --git a/configure b/configure
-index 784f8d3060..2ca708e27b 100755
+index 9e76287725..b2cc25e158 100755
 --- a/configure
 +++ b/configure
-@@ -836,6 +836,8 @@
+@@ -838,6 +838,8 @@
  LIBMPDEC_INTERNAL
  LIBMPDEC_LDFLAGS
  LIBMPDEC_CFLAGS
@@ -1789,7 +1792,7 @@ index 784f8d3060..2ca708e27b 100755
  LIBFFI_INCLUDEDIR
  LIBEXPAT_INTERNAL
  LIBEXPAT_LDFLAGS
-@@ -988,7 +990,6 @@
+@@ -991,7 +993,6 @@
  docdir
  oldincludedir
  includedir
@@ -1797,7 +1800,7 @@ index 784f8d3060..2ca708e27b 100755
  localstatedir
  sharedstatedir
  sysconfdir
-@@ -1139,7 +1140,6 @@
+@@ -1142,7 +1143,6 @@
  sysconfdir='${prefix}/etc'
  sharedstatedir='${prefix}/com'
  localstatedir='${prefix}/var'
@@ -1805,7 +1808,7 @@ index 784f8d3060..2ca708e27b 100755
  includedir='${prefix}/include'
  oldincludedir='/usr/include'
  docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
-@@ -1392,15 +1392,6 @@
+@@ -1395,15 +1395,6 @@
    | -silent | --silent | --silen | --sile | --sil)
      silent=yes ;;
  
@@ -1821,7 +1824,7 @@ index 784f8d3060..2ca708e27b 100755
    -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
      ac_prev=sbindir ;;
    -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
-@@ -1538,7 +1529,7 @@
+@@ -1541,7 +1532,7 @@
  for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
  		datadir sysconfdir sharedstatedir localstatedir includedir \
  		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
@@ -1830,7 +1833,7 @@ index 784f8d3060..2ca708e27b 100755
  do
    eval ac_val=\$$ac_var
    # Remove trailing slashes.
-@@ -1691,7 +1682,6 @@
+@@ -1694,7 +1685,6 @@
    --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
    --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
    --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
@@ -1838,7 +1841,7 @@ index 784f8d3060..2ca708e27b 100755
    --libdir=DIR            object code libraries [EPREFIX/lib]
    --includedir=DIR        C header files [PREFIX/include]
    --oldincludedir=DIR     C header files for non-gcc [/usr/include]
-@@ -3820,6 +3810,15 @@
+@@ -3823,6 +3813,15 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
@@ -1854,7 +1857,7 @@ index 784f8d3060..2ca708e27b 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3876,6 +3875,15 @@
+@@ -3879,6 +3878,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -1870,7 +1873,7 @@ index 784f8d3060..2ca708e27b 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3954,6 +3962,13 @@
+@@ -3957,6 +3965,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -1884,7 +1887,7 @@ index 784f8d3060..2ca708e27b 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6146,7 +6161,30 @@
+@@ -6159,7 +6174,30 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -1916,7 +1919,7 @@ index 784f8d3060..2ca708e27b 100755
  #elif defined(__VXWORKS__)
          vxworks
  #elif defined(__wasm32__)
-@@ -6191,6 +6229,12 @@
+@@ -6204,6 +6242,12 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
@@ -1929,7 +1932,7 @@ index 784f8d3060..2ca708e27b 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -6253,7 +6297,7 @@
+@@ -6266,7 +6310,7 @@
      x86_64-*-freebsd*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
    *) :
@@ -1938,7 +1941,7 @@ index 784f8d3060..2ca708e27b 100755
   ;;
  esac
  
-@@ -7052,11 +7096,23 @@
+@@ -7210,11 +7254,23 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -1967,7 +1970,7 @@ index 784f8d3060..2ca708e27b 100755
  fi
  
  
-@@ -10709,6 +10765,9 @@
+@@ -10902,6 +10958,9 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -1977,7 +1980,7 @@ index 784f8d3060..2ca708e27b 100755
  	Emscripten|WASI)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -11117,8 +11176,8 @@
+@@ -11310,8 +11369,8 @@
  
  
  pkg_failed=no
@@ -1988,7 +1991,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBUUID_CFLAGS"; then
      pkg_cv_LIBUUID_CFLAGS="$LIBUUID_CFLAGS"
-@@ -11158,7 +11217,7 @@
+@@ -11351,7 +11410,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -1997,7 +2000,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -11301,7 +11360,7 @@
+@@ -11494,7 +11553,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2006,7 +2009,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
        save_CFLAGS=$CFLAGS
-@@ -11952,23 +12011,35 @@
+@@ -12145,23 +12204,35 @@
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_system_ffi" >&5
  $as_echo "$with_system_ffi" >&6; }
  else
@@ -2048,7 +2051,7 @@ index 784f8d3060..2ca708e27b 100755
  # Check for use of the system libmpdec library
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for --with-system-libmpdec" >&5
  $as_echo_n "checking for --with-system-libmpdec... " >&6; }
-@@ -12109,8 +12180,8 @@
+@@ -12302,8 +12373,8 @@
  
  
  pkg_failed=no
@@ -2059,7 +2062,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBNSL_CFLAGS"; then
      pkg_cv_LIBNSL_CFLAGS="$LIBNSL_CFLAGS"
-@@ -12150,7 +12221,7 @@
+@@ -12343,7 +12414,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2068,7 +2071,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -12251,7 +12322,7 @@
+@@ -12444,7 +12515,7 @@
    LIBNSL_LIBS=${LIBNSL_LIBS-$libnsl}
  
  elif test $pkg_failed = untried; then
@@ -2077,7 +2080,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
    LIBNSL_CFLAGS=${LIBNSL_CFLAGS-""}
-@@ -12399,8 +12470,8 @@
+@@ -12592,8 +12663,8 @@
  
  
  pkg_failed=no
@@ -2088,7 +2091,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBSQLITE3_CFLAGS"; then
      pkg_cv_LIBSQLITE3_CFLAGS="$LIBSQLITE3_CFLAGS"
-@@ -12440,7 +12511,7 @@
+@@ -12633,7 +12704,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2097,7 +2100,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -12462,7 +12533,7 @@
+@@ -12655,7 +12726,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2106,7 +2109,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
      LIBSQLITE3_CFLAGS=${LIBSQLITE3_CFLAGS-""}
-@@ -13231,8 +13302,8 @@
+@@ -13424,8 +13495,8 @@
  
  
  pkg_failed=no
@@ -2117,7 +2120,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$TCLTK_CFLAGS"; then
      pkg_cv_TCLTK_CFLAGS="$TCLTK_CFLAGS"
-@@ -13272,7 +13343,7 @@
+@@ -13465,7 +13536,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2126,7 +2129,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -13290,7 +13361,7 @@
+@@ -13483,7 +13554,7 @@
  
  	found_tcltk=no
  elif test $pkg_failed = untried; then
@@ -2135,7 +2138,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  	found_tcltk=no
  else
-@@ -13326,8 +13397,8 @@
+@@ -13519,8 +13590,8 @@
  
  
  pkg_failed=no
@@ -2146,7 +2149,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$X11_CFLAGS"; then
      pkg_cv_X11_CFLAGS="$X11_CFLAGS"
-@@ -13367,7 +13438,7 @@
+@@ -13560,7 +13631,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2155,7 +2158,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -13394,7 +13465,7 @@
+@@ -13587,7 +13658,7 @@
  and X11_LIBS to avoid the need to call pkg-config.
  See the pkg-config man page for more details." "$LINENO" 5
  elif test $pkg_failed = untried; then
@@ -2164,7 +2167,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
  $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-@@ -15969,8 +16040,8 @@
+@@ -16163,8 +16234,8 @@
  
  
  pkg_failed=no
@@ -2175,7 +2178,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$ZLIB_CFLAGS"; then
      pkg_cv_ZLIB_CFLAGS="$ZLIB_CFLAGS"
-@@ -16010,7 +16081,7 @@
+@@ -16204,7 +16275,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2184,7 +2187,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16154,7 +16225,7 @@
+@@ -16348,7 +16419,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2193,7 +2196,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -16317,8 +16388,8 @@
+@@ -16511,8 +16582,8 @@
  
  
  pkg_failed=no
@@ -2204,7 +2207,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$BZIP2_CFLAGS"; then
      pkg_cv_BZIP2_CFLAGS="$BZIP2_CFLAGS"
-@@ -16358,7 +16429,7 @@
+@@ -16552,7 +16623,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2213,7 +2216,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16455,7 +16526,7 @@
+@@ -16649,7 +16720,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2222,7 +2225,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -16547,8 +16618,8 @@
+@@ -16741,8 +16812,8 @@
  
  
  pkg_failed=no
@@ -2233,7 +2236,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBLZMA_CFLAGS"; then
      pkg_cv_LIBLZMA_CFLAGS="$LIBLZMA_CFLAGS"
-@@ -16588,7 +16659,7 @@
+@@ -16782,7 +16853,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2242,7 +2245,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16685,7 +16756,7 @@
+@@ -16879,7 +16950,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2251,7 +2254,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -17918,8 +17989,8 @@
+@@ -18112,8 +18183,8 @@
  
  
  pkg_failed=no
@@ -2262,7 +2265,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBCRYPT_CFLAGS"; then
      pkg_cv_LIBCRYPT_CFLAGS="$LIBCRYPT_CFLAGS"
-@@ -17959,7 +18030,7 @@
+@@ -18153,7 +18224,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2271,7 +2274,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -18056,7 +18127,7 @@
+@@ -18250,7 +18321,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2280,7 +2283,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -22828,8 +22899,8 @@
+@@ -23025,8 +23096,8 @@
      if ! $found; then
          OPENSSL_INCLUDES=
          for ssldir in $ssldirs; do
@@ -2291,7 +2294,7 @@ index 784f8d3060..2ca708e27b 100755
              if test -f "$ssldir/include/openssl/ssl.h"; then
                  OPENSSL_INCLUDES="-I$ssldir/include"
                  OPENSSL_LDFLAGS="-L$ssldir/lib"
-@@ -23210,8 +23281,8 @@
+@@ -23407,8 +23478,8 @@
  
  
  pkg_failed=no
@@ -2302,7 +2305,7 @@ index 784f8d3060..2ca708e27b 100755
  
  if test -n "$LIBB2_CFLAGS"; then
      pkg_cv_LIBB2_CFLAGS="$LIBB2_CFLAGS"
-@@ -23251,7 +23322,7 @@
+@@ -23448,7 +23519,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2311,7 +2314,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -23269,7 +23340,7 @@
+@@ -23466,7 +23537,7 @@
  
  	have_libb2=no
  elif test $pkg_failed = untried; then
@@ -2320,7 +2323,7 @@ index 784f8d3060..2ca708e27b 100755
  $as_echo "no" >&6; }
  	have_libb2=no
  else
-@@ -23340,6 +23411,29 @@
+@@ -23537,6 +23608,29 @@
      py_cv_module_ossaudiodev=n/a
      py_cv_module_spwd=n/a
   ;; #(
@@ -2351,7 +2354,7 @@ index 784f8d3060..2ca708e27b 100755
  
  
 diff --git a/configure.ac b/configure.ac
-index ab5e1de6fa..99d3147959 100644
+index c62a565eb6..44ed124c26 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -545,6 +545,15 @@
@@ -2400,7 +2403,7 @@ index ab5e1de6fa..99d3147959 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -1044,7 +1069,30 @@
+@@ -1054,7 +1079,30 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -2432,7 +2435,7 @@ index ab5e1de6fa..99d3147959 100644
  #elif defined(__VXWORKS__)
          vxworks
  #elif defined(__wasm32__)
-@@ -1085,6 +1133,9 @@
+@@ -1095,6 +1143,9 @@
  AC_MSG_CHECKING([for multiarch])
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
@@ -2442,7 +2445,7 @@ index ab5e1de6fa..99d3147959 100644
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1129,6 +1180,15 @@
+@@ -1139,6 +1190,15 @@
    [wasm32-unknown-emscripten/clang], [PY_SUPPORT_TIER=3], dnl WebAssembly Emscripten
    [wasm32-unknown-wasi/clang],       [PY_SUPPORT_TIER=3], dnl WebAssembly System Interface
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
@@ -2458,7 +2461,7 @@ index ab5e1de6fa..99d3147959 100644
    [PY_SUPPORT_TIER=0]
  )
  
-@@ -1591,11 +1651,23 @@
+@@ -1627,11 +1687,23 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -2487,7 +2490,7 @@ index ab5e1de6fa..99d3147959 100644
  fi
  AC_SUBST(READELF)
  
-@@ -3129,6 +3201,9 @@
+@@ -3167,6 +3239,9 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -2497,7 +2500,7 @@ index ab5e1de6fa..99d3147959 100644
  	Emscripten|WASI)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -3598,20 +3673,30 @@
+@@ -3636,20 +3711,30 @@
      esac
      AC_MSG_RESULT($with_system_ffi)
  else
@@ -2533,7 +2536,7 @@ index ab5e1de6fa..99d3147959 100644
  
  # Check for use of the system libmpdec library
  AC_MSG_CHECKING(for --with-system-libmpdec)
-@@ -6788,6 +6873,30 @@
+@@ -6830,6 +6915,30 @@
    [AIX], [PY_STDLIB_MOD_SET_NA([_scproxy], [spwd])],
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [_crypt], [termios], [grp])],
    [Darwin], [PY_STDLIB_MOD_SET_NA([ossaudiodev], [spwd])],
@@ -2565,7 +2568,7 @@ index ab5e1de6fa..99d3147959 100644
    [QNX*], [PY_STDLIB_MOD_SET_NA([_scproxy], [nis])],
    [FreeBSD*], [PY_STDLIB_MOD_SET_NA([_scproxy], [spwd])],
 diff --git a/setup.py b/setup.py
-index 15d0d4576a..a080c69d1f 100644
+index 4f122b62e0..c37ebf0e1e 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -82,6 +82,9 @@
@@ -2609,7 +2612,7 @@ index 15d0d4576a..a080c69d1f 100644
      return dirs
  
  
-@@ -1396,6 +1403,11 @@
+@@ -1399,6 +1406,11 @@
              extra_compile_args.append('-DMACOSX')
              include_dirs.append('_ctypes/darwin')
  
@@ -2621,7 +2624,7 @@ index 15d0d4576a..a080c69d1f 100644
          elif HOST_PLATFORM == 'sunos5':
              # XXX This shouldn't be necessary; it appears that some
              # of the assembler code is non-PIC (i.e. it has relocations
-@@ -1418,7 +1430,8 @@
+@@ -1421,7 +1433,8 @@
          self.addext(Extension('_ctypes_test', ['_ctypes/_ctypes_test.c']))
  
          ffi_inc = sysconfig.get_config_var("LIBFFI_INCLUDEDIR")
@@ -2631,7 +2634,7 @@ index 15d0d4576a..a080c69d1f 100644
  
          ffi_inc_dirs = self.inc_dirs.copy()
          if MACOS:
-@@ -1447,6 +1460,7 @@
+@@ -1450,6 +1463,7 @@
              for lib_name in ('ffi', 'ffi_pic'):
                  if (self.compiler.find_library_file(self.lib_dirs, lib_name)):
                      ffi_lib = lib_name
@@ -2639,7 +2642,7 @@ index 15d0d4576a..a080c69d1f 100644
                      break
  
          if ffi_inc and ffi_lib:
-@@ -1460,7 +1474,8 @@
+@@ -1463,7 +1477,8 @@
  
              ext.include_dirs.append(ffi_inc)
              ext.libraries.append(ffi_lib)
