@@ -39,18 +39,18 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.0
+PYTHON_VERSION=3.11.3
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 BZIP2_VERSION=1.0.8
 
-XZ_VERSION=5.2.6
+XZ_VERSION=5.4.2
 
 # Preference is to use OpenSSL 3; however, Cryptography 3.4.8 (and
 # probably some other packages as well) only works with 1.1.1, so
 # we need to preserve the ability to build the older OpenSSL (for now...)
-OPENSSL_VERSION=3.0.5
+OPENSSL_VERSION=3.1.0
 # OPENSSL_VERSION_NUMBER=1.1.1
 # OPENSSL_REVISION=q
 # OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
@@ -107,7 +107,7 @@ all: $(OS_LIST)
 
 # Clean all builds
 clean:
-	rm -rf build install merge dist support
+	rm -rf build install merge dist support wheels
 
 # Full clean - includes all downloaded products
 distclean: clean

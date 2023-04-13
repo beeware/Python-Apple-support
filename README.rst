@@ -106,34 +106,8 @@ install return ``platform`` and ``sysconfig`` responses consistent with
 on-device behavior, which will cause ``pip`` to install platform-appropriate
 packages.
 
-To add a support package to your own Xcode project:
-
-1. Drag ``Python.xcframework`` and ``python-stdlib`` into your Xcode project
-   tree.
-2. Ensure that these two objects are added to any targets that need to use
-   them;
-3. Add a custom build phase to purge any binary modules for the platform you are
-   *not* targetting; and
-4. Add a custom build phase to sign any of the binary modules in your app.
-5. Add CPython API code to your app to create an instance of the Python
-   interpreter.
-
-For examples of the scripts needed for steps 3 and 4, and the code needed for
-step 5, compare with a project generated with Briefcase.
-
-On macOS, you must also either:
-1. Enable the "Disable Library Validation" entitlement (found on the "Signing
-   & Capabilities" tab in XCode); or
-2. Sign your app with a Development or Distribution certificate. This will
-   require a paid Apple Developer subscription.
-
-It is not possible to use an ad-hoc signing certificate with the "Disable
-Library Validation" entitlement disabled.
-
-On iOS/tvOS/watchOS, you can use the default developer certificate for deploying
-to a device simulator. However, to deploy to a physical device (including your
-own), you will require a Development or Distribution certificate, which requires
-a paid Apple Developer subscription.
+For a detailed instructions on using the support package in your own project,
+see the `usage guide <./USAGE.md>`__
 
 Building binary wheels
 ----------------------
@@ -141,8 +115,8 @@ Building binary wheels
 When building binary wheels, you may need to use the libraries built by this
 project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
 project is able to package these dependencies as "wheels" that can be added to
-the `server/pypi/dist` directory of the [binary dependency builder
-project](https://github.com/freakboy3742/chaquopy).
+the `server/pypi/dist` directory of the `binary dependency builder
+project <https://github.com/freakboy3742/chaquopy>`__.
 
 To build these wheels, run:
 
