@@ -1,0 +1,58 @@
+# This project was generated with Unknown using template: https://github.com/beeware/briefcase-template@v0.3.15
+[tool.briefcase]
+project_name = "Python Testbed"
+bundle = "org.python"
+version = "0.0.1"
+url = "https://python.org/testbed"
+license = "BSD license"
+author = "Jane Developer"
+author_email = "jane@python.org"
+
+[tool.briefcase.app.testbed]
+formal_name = "Python Testbed"
+description = "The CPython test suite"
+long_description = """More details about the app should go here.
+"""
+icon = "src/testbed/resources/testbed"
+sources = [
+    "src/testbed",
+]
+test_sources = [
+    "tests",
+]
+
+requires = []
+test_requires = []
+
+[tool.briefcase.app.testbed.macOS]
+requires = [
+    "std-nslog~=1.0.0"
+]
+support_package = "../dist/Python-3.11-macOS-support.test-custom.tar.gz"
+
+# Mobile deployments
+[tool.briefcase.app.testbed.iOS]
+requires = [
+    "rubicon-objc~=0.4.6",
+    "std-nslog~=1.0.0",
+]
+support_package = "../dist/Python-3.11-iOS-support.test-custom.tar.gz"
+
+[tool.briefcase.app.testbed.android]
+sources = [
+    # "../path/to/python-src/Lib/test"
+]
+requires = [
+]
+# Is this needed?
+# build_gradle_extra_content = "android.defaultConfig.python.extractPackages 'test'"
+
+# Unsupported deployments
+[tool.briefcase.app.testbed.linux]
+supported = false
+
+[tool.briefcase.app.testbed.windows]
+supported = false
+
+[tool.briefcase.app.testbed.web]
+supported = false
