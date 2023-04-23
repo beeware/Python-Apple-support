@@ -61,7 +61,7 @@ LIBFFI_VERSION=3.4.2
 DEPENDENCIES=BZip2 XZ OpenSSL libFFI
 OS_LIST=macOS iOS tvOS watchOS
 
-CURL_FLAGS=--fail --location --create-dirs --progress-bar
+CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
