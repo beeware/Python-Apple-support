@@ -1,3 +1,22 @@
+--- a/Python/dynload_shlib.c
++++ b/Python/dynload_shlib.c
+@@ -38,12 +38,13 @@
+ #ifdef __CYGWIN__
+     ".dll",
+ #else  /* !__CYGWIN__ */
+-    "." SOABI ".so",
++    "." SOABI ".so", "." SOABI ".dylib",
+ #ifdef ALT_SOABI
+-    "." ALT_SOABI ".so",
++    "." ALT_SOABI ".so", "." ALT_SOABI ".dylib",
+ #endif
+     ".abi" PYTHON_ABI_STRING ".so",
+-    ".so",
++    ".abi" PYTHON_ABI_STRING ".dylib",
++    ".so", ".dylib",
+ #endif  /* __CYGWIN__ */
+     NULL,
+ };
 --- /dev/null
 +++ b/Lib/_ios_support.py
 @@ -0,0 +1,36 @@
@@ -2010,12 +2029,12 @@ index a0cb605c16..838641f649 100644
  
      def test_pep263(self):
          self.assertEqual(
--            "Питон".encode("utf-8"),
+-            "О©╫О©╫О©╫О©╫О©╫".encode("utf-8"),
 +            "О©╫О©╫О©╫О©╫О©╫".encode("utf-8"),
              b'\xd0\x9f\xd0\xb8\xd1\x82\xd0\xbe\xd0\xbd'
          )
          self.assertEqual(
--            "\П".encode("utf-8"),
+-            "\О©╫".encode("utf-8"),
 +            "\О©╫".encode("utf-8"),
              b'\\\xd0\x9f'
          )

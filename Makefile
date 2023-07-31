@@ -556,6 +556,8 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			CXX="$$(CXX-$(target))" \
 			CFLAGS="$$(CFLAGS-$(target)) -I$$(BZIP2_MERGE-$$(SDK-$(target)))/include -I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
 			LDFLAGS="$$(LDFLAGS-$(target)) -L$$(BZIP2_MERGE-$$(SDK-$(target)))/lib -L$$(XZ_MERGE-$$(SDK-$(target)))/lib" \
+			LDSHARED="$$(CC-$(target)) -dynamiclib -undefined dynamic_lookup" \
+			SHLIB_SUFFIX=".dylib" \
 			LIBFFI_INCLUDEDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/include" \
 			LIBFFI_LIBDIR="$$(LIBFFI_MERGE-$$(SDK-$(target)))/lib" \
 			LIBFFI_LIB="ffi" \
@@ -772,6 +774,8 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 			CPP="$$(CPP-$(sdk))" \
 			CFLAGS="$$(CFLAGS-$(sdk)) -I$$(BZIP2_MERGE-$(sdk))/include -I$$(XZ_MERGE-$(sdk))/include" \
 			LDFLAGS="$$(LDFLAGS-$(sdk)) -L$$(XZ_MERGE-$(sdk))/lib -L$$(BZIP2_MERGE-$(sdk))/lib" \
+			LDSHARED="$$(CC-$(sdk)) -dynamiclib -undefined dynamic_lookup" \
+			SHLIB_SUFFIX=".dylib" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
 			--enable-ipv6 \
 			--enable-universalsdk \
@@ -833,7 +837,7 @@ $$(PYTHON_FATINCLUDE-$(sdk)): $$(PYTHON_LIB-$(sdk))
 
 $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
-	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))
+	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
 	cp -r $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/ $$(PYTHON_FATSTDLIB-$(sdk))
 
