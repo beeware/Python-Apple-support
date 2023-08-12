@@ -16,7 +16,7 @@ repository:
 It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as static libraries that can be
 incorporated into an XCode project. The binary modules in the Python standard
-library are statically compiled, but are distribted as ``.so`` objects that
+library are statically compiled, but are distribted as ``.dylib`` objects that
 can be dynamically loaded at runtime.
 
 It exposes *almost* all the modules in the Python standard library except for:
