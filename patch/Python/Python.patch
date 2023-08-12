@@ -2025,20 +2025,6 @@ index a0cb605c16..838641f649 100644
  from test.support.os_helper import TESTFN, unlink, rmtree
  from test.support.import_helper import unload
  import importlib
-@@ -14,11 +14,11 @@
- 
-     def test_pep263(self):
-         self.assertEqual(
--            "ðÉÔÏÎ".encode("utf-8"),
-+            "ï¿½ï¿½ï¿½ï¿½ï¿½".encode("utf-8"),
-             b'\xd0\x9f\xd0\xb8\xd1\x82\xd0\xbe\xd0\xbd'
-         )
-         self.assertEqual(
--            "\ð".encode("utf-8"),
-+            "\ï¿½".encode("utf-8"),
-             b'\\\xd0\x9f'
-         )
- 
 @@ -65,6 +65,7 @@
          # two bytes in common with the UTF-8 BOM
          self.assertRaises(SyntaxError, eval, b'\xef\xbb\x20')

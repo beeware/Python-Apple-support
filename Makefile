@@ -1061,6 +1061,8 @@ $$(PYTHON_STDLIB-$(os)): \
 	# Copy the lib-dynload contents from every SDK in $(os) into the support folder.
 	$$(foreach sdk,$$(SDKS-$(os)),cp $$(PYTHON_FATSTDLIB-$$(sdk))/lib-dynload/* $$(PYTHON_STDLIB-$(os))/lib-dynload; )
 
+	cp $(PROJECT_DIR)/patch/Python/metapath-sitecustomize.py $$(PYTHON_STDLIB-$(os))/sitecustomize.py
+
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(PYTHON_XCFRAMEWORK-$(os)) $$(PYTHON_STDLIB-$(os))
 	@echo ">>> Create VERSIONS file for $(os)"
 	echo "Python version: $(PYTHON_VERSION) " > support/$(os)/VERSIONS
