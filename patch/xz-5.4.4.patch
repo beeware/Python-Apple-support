@@ -9,7 +9,7 @@ diff -ur xz-5.4.2-orig/build-aux/config.sub xz-5.4.2/build-aux/config.sub
 +	arm64-* | arm64_32-* | aarch64le-*)
  		cpu=aarch64
  		;;
- 
+
 @@ -1728,7 +1728,7 @@
  	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
  	     | sym* |  plan9* | psp* | sim* | xray* | os68k* | v88r* \
