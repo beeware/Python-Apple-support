@@ -39,23 +39,23 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.8.14
+PYTHON_VERSION=3.8.18
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 BZIP2_VERSION=1.0.8
 
-XZ_VERSION=5.2.6
+XZ_VERSION=5.4.4
 
 # Preference is to use OpenSSL 3; however, Cryptography 3.4.8 (and
 # probably some other packages as well) only works with 1.1.1, so
 # we need to preserve the ability to build the older OpenSSL (for now...)
-OPENSSL_VERSION=3.0.5
+OPENSSL_VERSION=3.1.2
 # OPENSSL_VERSION_NUMBER=1.1.1
-# OPENSSL_REVISION=q
+# OPENSSL_REVISION=v
 # OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
-LIBFFI_VERSION=3.4.2
+LIBFFI_VERSION=3.4.4
 
 # Supported OS and dependencies
 DEPENDENCIES=BZip2 XZ OpenSSL libFFI
@@ -107,7 +107,7 @@ all: $(OS_LIST)
 
 # Clean all builds
 clean:
-	rm -rf build install merge dist support
+	rm -rf build install merge dist support wheels
 
 # Full clean - includes all downloaded products
 distclean: clean
@@ -314,6 +314,7 @@ $$(XZ_SRCDIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
 			--disable-shared \
 			--enable-static \
 			--host=$$(TARGET_TRIPLE-$(target)) \
+			--build=$(HOST_ARCH)-apple-darwin \
 			--prefix="$$(XZ_INSTALL-$(target))" \
 			2>&1 | tee -a ../xz-$(XZ_VERSION).config.log
 
@@ -910,8 +911,8 @@ os=$1
 SDKS-$(os)=$$(sort $$(basename $$(TARGETS-$(os))))
 
 # Predeclare the Python XCFramework files so they can be referenced in SDK targets
-PYTHON_XCFRAMEWORK-$(os)=support/$(os)/Python.xcframework
-PYTHON_STDLIB-$(os)=support/$(os)/python-stdlib
+PYTHON_XCFRAMEWORK-$(os)=support/$(PYTHON_VER)/$(os)/Python.xcframework
+PYTHON_STDLIB-$(os)=support/$(PYTHON_VER)/$(os)/python-stdlib
 
 # Expand the build-sdk macro for all the sdks on this OS (e.g., iphoneos, iphonesimulator)
 $$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
@@ -1033,7 +1034,7 @@ $$(PYTHON_XCFRAMEWORK-$(os)): \
 	mkdir -p $$(dir $$(PYTHON_XCFRAMEWORK-$(os)))
 	xcodebuild -create-xcframework \
 		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_FATINCLUDE-$$(sdk))) \
-		2>&1 | tee -a support/python-$(os).xcframework.log
+		2>&1 | tee -a support/$(PYTHON_VER)/python-$(os).xcframework.log
 
 $$(PYTHON_STDLIB-$(os)): \
 		$$(PYTHON_XCFRAMEWORK-$(os)) \
@@ -1059,34 +1060,34 @@ $$(PYTHON_STDLIB-$(os)): \
 
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(PYTHON_XCFRAMEWORK-$(os)) $$(PYTHON_STDLIB-$(os))
 	@echo ">>> Create VERSIONS file for $(os)"
-	echo "Python version: $(PYTHON_VERSION) " > support/$(os)/VERSIONS
-	echo "Build: $(BUILD_NUMBER)" >> support/$(os)/VERSIONS
-	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(os)/VERSIONS
-	echo "---------------------" >> support/$(os)/VERSIONS
+	echo "Python version: $(PYTHON_VERSION) " > support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "---------------------" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 ifeq ($(os),macOS)
-	echo "libFFI: macOS native" >> support/$(os)/VERSIONS
+	echo "libFFI: macOS native" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 else
-	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(os)/VERSIONS
+	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 endif
-	echo "BZip2: $(BZIP2_VERSION)" >> support/$(os)/VERSIONS
-	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(os)/VERSIONS
-	echo "XZ: $(XZ_VERSION)" >> support/$(os)/VERSIONS
+	echo "BZip2: $(BZIP2_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "XZ: $(XZ_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 
 ifneq ($(os),macOS)
 	@echo ">>> Create cross-platform site sitecustomize.py for $(os)"
-	mkdir -p support/$(os)/platform-site
+	mkdir -p support/$(PYTHON_VER)/$(os)/platform-site
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py \
 		| sed -e "s/{{os}}/$(os)/g" \
 		| sed -e "s/{{tag}}/$$(shell echo $(os) | tr '[:upper:]' '[:lower:]')_$$(shell echo $$(VERSION_MIN-$(os)) | sed "s/\./_/g")/g" \
-		> support/$(os)/platform-site/sitecustomize.py
+		> support/$(PYTHON_VER)/$(os)/platform-site/sitecustomize.py
 endif
 
 	@echo ">>> Create final distribution artefact for $(os)"
 	mkdir -p dist
 	# Build a "full" tarball with all content for test purposes
-	tar zcvf dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C support/$(os) `ls -A support/$(os)`
+	tar zcvf dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C support/$(PYTHON_VER)/$(os) `ls -A support/$(PYTHON_VER)/$(os)/`
 	# Build a distributable tarball
-	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$(os).exclude -C support/$(os) `ls -A support/$(os)`
+	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$(os).exclude -C support/$(PYTHON_VER)/$(os) `ls -A support/$(PYTHON_VER)/$(os)/`
 
 Python-$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
 
@@ -1099,8 +1100,7 @@ clean-Python-$(os):
 		install/$(os)/*/python-$(PYTHON_VER)*.*.log \
 		merge/$(os)/*/python-$(PYTHON_VER)* \
 		merge/$(os)/*/python-$(PYTHON_VER)*.*.log \
-		support/$(os) \
-		support/*-$(os).*.log \
+		support/$(PYTHON_VER)/$(os) \
 		dist/Python-$(PYTHON_VER)-$(os)-*
 
 dev-clean-Python-$(os):
@@ -1112,8 +1112,7 @@ dev-clean-Python-$(os):
 		install/$(os)/*/python-$(PYTHON_VERSION).*.log \
 		merge/$(os)/*/python-$(PYTHON_VERSION) \
 		merge/$(os)/*/python-$(PYTHON_VERSION).*.log \
-		support/$(os) \
-		support/*-$(os).*.log \
+		support/$(PYTHON_VER)/$(os) \
 		dist/Python-$(PYTHON_VER)-$(os)-*
 
 merge-clean-Python-$(os):
@@ -1121,8 +1120,7 @@ merge-clean-Python-$(os):
 	rm -rf \
 		merge/$(os)/*/python-$(PYTHON_VERSION) \
 		merge/$(os)/*/python-$(PYTHON_VERSION).*.log \
-		support/$(os) \
-		support/*-$(os).*.log \
+		support/$(PYTHON_VER)/$(os) \
 		dist/Python-$(PYTHON_VER)-$(os)-*
 
 ###########################################################################
