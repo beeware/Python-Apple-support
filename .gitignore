@@ -15,5 +15,7 @@ support/*
 wheels/*
 *.dist-info
 __pycache__
-tests/testbed/macOS
-tests/testbed/iOS
+testbed/build
+testbed/logs
+testbed/dist
+venv*
