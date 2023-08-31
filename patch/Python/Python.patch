@@ -427,7 +427,7 @@ index 9e617afb00..41305298d3 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 4effc1d8b3..0a96cd3a75 100644
+index 8579d3f29e..53384a16f3 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -100,6 +100,8 @@
@@ -449,7 +449,7 @@ index 4effc1d8b3..0a96cd3a75 100644
          _cleanup()
          # Held while anything is calling waitpid before returncode has been
          # updated to prevent clobbering returncode if wait() or poll() are
-@@ -1834,7 +1839,7 @@
+@@ -1850,7 +1855,7 @@
              else:
                  self.returncode = waitstatus_to_exitcode(sts)
  
@@ -458,7 +458,7 @@ index 4effc1d8b3..0a96cd3a75 100644
                  _WNOHANG=os.WNOHANG, _ECHILD=errno.ECHILD):
              """Check if child process has terminated.  Returns returncode
              attribute.
-@@ -1843,6 +1848,8 @@
+@@ -1859,6 +1864,8 @@
              outside of the local scope (nor can any methods it calls).
  
              """
@@ -882,7 +882,7 @@ index 39b1b64651..e6552352e5 100644
  
      @support.reap_threads
 diff --git a/Lib/test/test_cmd_line.py b/Lib/test/test_cmd_line.py
-index e38fc698c5..ae503199d1 100644
+index 9fb48c5bac..e2c609e3f2 100644
 --- a/Lib/test/test_cmd_line.py
 +++ b/Lib/test/test_cmd_line.py
 @@ -9,6 +9,7 @@
@@ -1141,7 +1141,7 @@ index b3aa855a5b..3304cb9606 100644
      # Regex to parse:
      # 'GNU gdb (GDB; SUSE Linux Enterprise 12) 7.7\n' -> 7.7
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index 4acf7a6fea..8f3de2f4cc 100644
+index b70a109c27..8a168b4af8 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -30,6 +30,8 @@
@@ -1162,7 +1162,7 @@ index 4acf7a6fea..8f3de2f4cc 100644
              # On Mac OS the HFS+ filesystem replaces bytes that aren't valid
              # UTF-8 into a percent-encoded value.
              for name in os.listdir(self.tempdir):
-@@ -657,6 +659,7 @@
+@@ -665,6 +667,7 @@
  
  @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0,
          "This test can't be run reliably as root (issue #13308).")
@@ -1262,7 +1262,7 @@ index 0a9d449078..af9395e33a 100644
  
      """Test for SysLogHandler with Unix sockets."""
 diff --git a/Lib/test/test_mailcap.py b/Lib/test/test_mailcap.py
-index c08423c670..29b8ea06a3 100644
+index 920283d9a2..02322dce95 100644
 --- a/Lib/test/test_mailcap.py
 +++ b/Lib/test/test_mailcap.py
 @@ -1,8 +1,10 @@
@@ -1276,7 +1276,7 @@ index c08423c670..29b8ea06a3 100644
  
  # Location of mailcap file
  MAILCAPFILE = test.support.findfile("mailcap.txt")
-@@ -212,7 +214,7 @@
+@@ -216,7 +218,7 @@
          ]
          self._run_cases(cases)
  
@@ -1595,7 +1595,7 @@ index ab1bc77655..c5850faddc 100644
  
      def _do_test_commandline(self, cmdline, expected):
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index 6ba14547bd..8ed2d7441d 100644
+index 3c0ddeb003..b8276216fa 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -1,6 +1,8 @@
@@ -1784,19 +1784,20 @@ index 458998a62f..607c533e12 100644
          cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
          with os.popen(cmd) as p:
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index 3890df93bb..8c84a05794 100644
+index 9041e7aa36..dddf0b9de8 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -30,7 +30,7 @@
+@@ -30,8 +30,7 @@
      posix = None
  
  from test import support
 -from test.support import TESTFN, FakePath
-+from test.support import TESTFN, FakePath, has_subprocess_support
+-from test.support import warnings_helper
++from test.support import TESTFN, FakePath, has_subprocess_support, warnings_helper
  
  TESTFN2 = TESTFN + "2"
  TESTFN_SRC = TESTFN + "_SRC"
-@@ -1731,6 +1731,7 @@
+@@ -1745,6 +1744,7 @@
              check_chown(dirname, uid, gid)
  
  
@@ -1804,7 +1805,7 @@ index 3890df93bb..8c84a05794 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -2598,6 +2599,7 @@
+@@ -2612,6 +2612,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -2547,7 +2548,7 @@ index 1f16849a3e..a7b16eadc9 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index 1270af735e..bd0dd2f385 100644
+index bf4e648421..dc04447b0f 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -57,6 +57,8 @@
@@ -2559,7 +2560,7 @@ index 1270af735e..bd0dd2f385 100644
  #if defined(__has_builtin)
  #if __has_builtin(__builtin_available)
  #define HAVE_BUILTIN_AVAILABLE 1
-@@ -176,7 +178,6 @@
+@@ -180,7 +182,6 @@
  disguised Unix interface).  Refer to the library manual and\n\
  corresponding Unix manual entries for more information on calls.");
  
@@ -2567,7 +2568,7 @@ index 1270af735e..bd0dd2f385 100644
  #ifdef HAVE_SYS_UIO_H
  #  include <sys/uio.h>
  #endif
-@@ -333,6 +334,26 @@
+@@ -337,6 +338,26 @@
  #  endif  /* _MSC_VER */
  #endif  /* ! __WATCOMC__ || __QNX__ */
  
@@ -2594,7 +2595,7 @@ index 1270af735e..bd0dd2f385 100644
  _Py_IDENTIFIER(__fspath__);
  
  /*[clinic input]
-@@ -556,27 +577,33 @@
+@@ -560,27 +581,33 @@
          }
      }
  }
@@ -2628,7 +2629,7 @@ index 1270af735e..bd0dd2f385 100644
      _PyRuntimeState *runtime = &_PyRuntime;
      _PyGILState_Reinit(runtime);
      _PyEval_ReInitThreads(runtime);
-@@ -586,8 +613,10 @@
+@@ -590,8 +617,10 @@
      _PyInterpreterState_DeleteExceptMain(runtime);
  
      run_at_forkers(_PyInterpreterState_GET()->after_forkers_child, 0);
@@ -2639,7 +2640,7 @@ index 1270af735e..bd0dd2f385 100644
  static int
  register_at_forker(PyObject **lst, PyObject *func)
  {
-@@ -607,9 +636,7 @@
+@@ -611,9 +640,7 @@
  void
  PyOS_AfterFork(void)
  {
@@ -2649,7 +2650,7 @@ index 1270af735e..bd0dd2f385 100644
  }
  
  
-@@ -1522,7 +1549,9 @@
+@@ -1526,7 +1553,9 @@
  */
  #include <crt_externs.h>
  #elif !defined(_MSC_VER) && (!defined(__WATCOMC__) || defined(__QNX__) || defined(__VXWORKS__))
@@ -2659,7 +2660,7 @@ index 1270af735e..bd0dd2f385 100644
  #endif /* !_MSC_VER */
  
  static PyObject *
-@@ -1538,6 +1567,7 @@
+@@ -1542,6 +1571,7 @@
      d = PyDict_New();
      if (d == NULL)
          return NULL;
@@ -2667,7 +2668,7 @@ index 1270af735e..bd0dd2f385 100644
  #ifdef MS_WINDOWS
      /* _wenviron must be initialized in this way if the program is started
         through main() instead of wmain(). */
-@@ -1593,6 +1623,7 @@
+@@ -1597,6 +1627,7 @@
          Py_DECREF(k);
          Py_DECREF(v);
      }
@@ -2675,7 +2676,7 @@ index 1270af735e..bd0dd2f385 100644
      return d;
  }
  
-@@ -4828,7 +4859,12 @@
+@@ -4832,7 +4863,12 @@
      }
  
      Py_BEGIN_ALLOW_THREADS
@@ -2688,7 +2689,7 @@ index 1270af735e..bd0dd2f385 100644
      Py_END_ALLOW_THREADS
      return result;
  }
-@@ -13434,6 +13470,7 @@
+@@ -13470,6 +13506,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -2696,7 +2697,7 @@ index 1270af735e..bd0dd2f385 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13494,6 +13531,7 @@
+@@ -13530,6 +13567,7 @@
  #endif
  
      return result;
@@ -2835,7 +2836,7 @@ index e189ce0d90..5a53988ffa 100644
  
  /* Fill buffer with size pseudo-random bytes generated by getentropy():
 diff --git a/Python/marshal.c b/Python/marshal.c
-index baafa3ecfb..496ef9cf58 100644
+index 651168da9f..201c2c2bca 100644
 --- a/Python/marshal.c
 +++ b/Python/marshal.c
 @@ -14,6 +14,10 @@
