@@ -8,7 +8,6 @@ into a macOS, iOS, tvOS or watchOS project.
 Other Python versions are available by cloning other branches of the main
 repository:
 
-* `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
@@ -64,8 +63,8 @@ The easist way to use these packages is by creating a project with `Briefcase
 versions of these support packages, and add them to an XCode project (or
 pre-build stub application, in the case of macOS).
 
-Pre-built versions of the frameworks can be downloaded `for macOS`_, `for
-iOS`_, `for tvOS`_, and `for watchOS`_, and added to your project.
+Pre-built versions of the frameworks can be downloaded from the `Github releases page
+<https://github.com/beeware/Python-Apple-support/releases>`__ and added to your project.
 
 Alternatively, to build the frameworks on your own, download/clone this
 repository, and then in the root directory, and run:
@@ -124,11 +123,6 @@ To build these wheels, run:
 * `make wheels-iOS` to build all the iOS wheels
 * `make wheels-tvOS` to build all the tvOS wheels
 * `make wheels-watchOS` to build all the watchOS wheels
-
-.. _for macOS: https://briefcase-support.s3.amazonaws.com/python/3.8/macOS/Python-3.8-macOS-support.b10.tar.gz
-.. _for iOS: https://briefcase-support.s3.amazonaws.com/python/3.8/iOS/Python-3.8-iOS-support.b10.tar.gz
-.. _for tvOS: https://briefcase-support.s3.amazonaws.com/python/3.8/tvOS/Python-3.8-tvOS-support.b10.tar.gz
-.. _for watchOS: https://briefcase-support.s3.amazonaws.com/python/3.8/watchOS/Python-3.8-watchOS-support.b10.tar.gz
 
 Historical support
 ------------------
