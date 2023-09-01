@@ -836,7 +836,7 @@ $$(PYTHON_FATINCLUDE-$(sdk)): $$(PYTHON_LIB-$(sdk))
 
 $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
-	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))
+	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
 	cp -r $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/ $$(PYTHON_FATSTDLIB-$(sdk))
 

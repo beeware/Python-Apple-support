@@ -12,11 +12,10 @@ repository:
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 
-It works by downloading, patching, and building a fat binary of Python and
-selected pre-requisites, and packaging them as static libraries that can be
-incorporated into an Xcode project. The binary modules in the Python standard
-library are statically compiled, but are distribted as ``.so`` objects that
-can be dynamically loaded at runtime.
+It works by downloading, patching, and building a fat binary of Python and selected
+pre-requisites, and packaging them as static libraries that can be incorporated into an
+XCode project. The binary modules in the Python standard library are statically
+compiled, but are distributed as objects that can be dynamically loaded at runtime.
 
 It exposes *almost* all the modules in the Python standard library except for:
 
@@ -90,7 +89,7 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to
   build the support package;
-* ``Python.xcframework``, a multi-architecture build of libPython3.11.a
+* ``Python.xcframework``, a multi-architecture build of the Python runtime library
 * ``python-stdlib``, the code and binary modules comprising the Python standard
   library. On iOS, tvOS and watchOS, there are 2 copies of every binary module -
   one for physical devices, and one for the simulator. The simulator binaries
