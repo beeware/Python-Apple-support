@@ -131,7 +131,7 @@ index 2ce5c5b64d..6e10a0c4a5 100644
              import pwd
              os.environ['HOME'] = pwd.getpwuid(os.getuid())[5]
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index f603a89f7f..fe508e4615 100644
+index f603a89f7f..0339031178 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -143,7 +143,7 @@ index f603a89f7f..fe508e4615 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1705,6 +1705,29 @@
+@@ -1705,6 +1705,30 @@
          return 'FileFinder({!r})'.format(self.path)
  
  
@@ -161,9 +161,10 @@ index f603a89f7f..fe508e4615 100644
 +
 +    def find_spec(self, fullname, path, target=None):
 +        name = fullname.split(".")[-1]
++        framework_name = "_".join(fullname.split("."))
 +
 +        for extension in EXTENSION_SUFFIXES:
-+            dylib_path = _path_join(self.frameworks_path, f"{name}.framework", f"{name}{extension}")
++            dylib_path = _path_join(self.frameworks_path, f"{framework_name}.framework", f"{name}{extension}")
 +            if _path_isfile(dylib_path):
 +                loader = ExtensionFileLoader(fullname, dylib_path)
 +                return _bootstrap.spec_from_loader(fullname, loader)
@@ -173,7 +174,7 @@ index f603a89f7f..fe508e4615 100644
  # Import setup ###############################################################
  
  def _fix_up_module(ns, name, pathname, cpathname=None):
-@@ -1752,3 +1775,9 @@
+@@ -1752,3 +1776,9 @@
      supported_loaders = _get_supported_file_loaders()
      sys.path_hooks.extend([FileFinder.path_hook(*supported_loaders)])
      sys.meta_path.append(PathFinder)
