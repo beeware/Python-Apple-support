@@ -2,6 +2,7 @@
 *.swp
 .envrc
 .vscode/
+alias/*
 archive/*
 build/*
 diff/*

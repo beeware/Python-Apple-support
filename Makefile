@@ -30,8 +30,11 @@
 # - Python-tvOS     - build Python for tvOS
 # - Python-watchOS  - build Python for watchOS
 
-# Current director
+# Current directory
 PROJECT_DIR=$(shell pwd)
+
+# Add the alias folder to the path.
+SHELL:=env PATH=$(PATH):$(PROJECT_DIR)/alias /bin/bash
 
 BUILD_NUMBER=custom
 
@@ -97,7 +100,7 @@ BDIST_WHEEL=$(HOST_PYTHON)/lib/python$(PYTHON_VER)/site-packages/wheel/bdist_whe
 PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
 
 # Build for all operating systems
-all: $(OS_LIST)
+all: $(OS_LIST) wheels
 
 .PHONY: \
 	all clean distclean update-patch vars wheels \
@@ -107,7 +110,7 @@ all: $(OS_LIST)
 
 # Clean all builds
 clean:
-	rm -rf build install merge dist support wheels
+	rm -rf alias build install merge dist support wheels
 
 # Full clean - includes all downloaded products
 distclean: clean
@@ -135,6 +138,9 @@ update-patch:
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
+
+alias:
+	mkdir -p $(PROJECT_DIR)/alias
 
 ###########################################################################
 # Setup: BZip2
@@ -221,12 +227,20 @@ TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulato
 endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
-CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
-CPP-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E
-CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
-AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=$$(CFLAGS-$(os))
 LDFLAGS-$(target)=$$(CFLAGS-$(os))
+
+###########################################################################
+# Target: Aliases
+###########################################################################
+
+alias/clang-$(target): alias
+	patch/make-xcrun-alias alias/clang-$(target) "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))"
+
+alias/cpp-$(target): alias
+	patch/make-xcrun-alias alias/cpp-$(target) "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E"
+
+aliases-$(target): aliases-$$(SDK-$(target)) alias/clang-$(target) alias/cpp-$(target)
 
 ###########################################################################
 # Target: BZip2
@@ -245,12 +259,12 @@ $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_SRCDIR-$(target))/Makefile
 
-$$(BZIP2_LIB-$(target)): $$(BZIP2_SRCDIR-$(target))/Makefile
+$$(BZIP2_LIB-$(target)): aliases-$(target) $$(BZIP2_SRCDIR-$(target))/Makefile
 	@echo ">>> Build BZip2 for $(target)"
 	cd $$(BZIP2_SRCDIR-$(target)) && \
 		make install \
 			PREFIX="$$(BZIP2_INSTALL-$(target))" \
-			CC="$$(CC-$(target))" \
+			CC=clang-$(target) \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			2>&1 | tee -a ../bzip2-$(BZIP2_VERSION).build.log
@@ -295,16 +309,18 @@ XZ_LIB-$(target)=$$(XZ_INSTALL-$(target))/lib/liblzma.a
 XZ_WHEEL-$(target)=wheels/dist/xz/xz-$(XZ_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 XZ_WHEEL_DISTINFO-$(target)=$$(XZ_INSTALL-$(target))/wheel/xz-$(XZ_VERSION).dist-info
 
-$$(XZ_SRCDIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
+$$(XZ_SRCDIR-$(target))/configure: downloads/xz-$(XZ_VERSION).tar.gz
 	@echo ">>> Unpack XZ sources for $(target)"
 	mkdir -p $$(XZ_SRCDIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(XZ_SRCDIR-$(target))
 	# Patch the source to add support for new platforms
 	cd $$(XZ_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/xz-$(XZ_VERSION).patch
+
+$$(XZ_SRCDIR-$(target))/Makefile: aliases-$(target) $$(XZ_SRCDIR-$(target))/configure
 	# Configure the build
 	cd $$(XZ_SRCDIR-$(target)) && \
 		./configure \
-			CC="$$(CC-$(target))" \
+			CC=clang-$(target) \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			--disable-shared \
@@ -362,7 +378,7 @@ OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_INSTALL-$(target))/lib/libcrypto.a
 OPENSSL_WHEEL-$(target)=wheels/dist/openssl/openssl-$(OPENSSL_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 OPENSSL_WHEEL_DISTINFO-$(target)=$$(OPENSSL_INSTALL-$(target))/wheel/openssl-$(OPENSSL_VERSION).dist-info
 
-$$(OPENSSL_SRCDIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tar.gz
+$$(OPENSSL_SRCDIR-$(target))/Configure: downloads/openssl-$(OPENSSL_VERSION).tar.gz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_SRCDIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(OPENSSL_SRCDIR-$(target))
@@ -378,17 +394,19 @@ else
 endif
 endif
 
+
+$$(OPENSSL_SRCDIR-$(target))/is_configured: aliases-$(target) $$(OPENSSL_SRCDIR-$(target))/Configure
 	# Configure the OpenSSL build
 ifeq ($(os),macOS)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
 			--prefix="$$(OPENSSL_INSTALL-$(target))" \
 			--openssldir=/etc/ssl \
 			2>&1 | tee -a ../openssl-$(OPENSSL_VERSION).config.log
 else
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		./Configure iphoneos-cross no-asm no-tests \
@@ -408,7 +426,7 @@ $$(OPENSSL_SRCDIR-$(target))/libssl.a: $$(OPENSSL_SRCDIR-$(target))/is_configure
 	# OpenSSL's `all` target modifies the Makefile;
 	# use the raw targets that make up all and it's dependencies
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		make build_sw \
@@ -418,7 +436,7 @@ $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_SRCDIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		make install_sw \
@@ -531,7 +549,7 @@ PYTHON_SRCDIR-$(target)=build/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_LIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/libpython$(PYTHON_VER).a
 
-$$(PYTHON_SRCDIR-$(target))/Makefile: \
+$$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
 		$$(BZIP2_FATLIB-$$(SDK-$(target))) \
 		$$(XZ_FATLIB-$$(SDK-$(target))) \
@@ -543,13 +561,15 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+
+$$(PYTHON_SRCDIR-$(target))/Makefile: aliases-$(target) $$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		./configure \
-			AR="$$(AR-$(target))" \
-			CC="$$(CC-$(target))" \
-			CPP="$$(CPP-$(target))" \
-			CXX="$$(CXX-$(target))" \
+			AR=ar-$$(SDK-$(target)) \
+			CC=clang-$(target) \
+			CPP=cpp-$(target) \
+			CXX=clang-$(target) \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
@@ -595,8 +615,6 @@ vars-$(target):
 	@echo "ARCH-$(target): $$(ARCH-$(target))"
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
-	@echo "CC-$(target): $$(CC-$(target))"
-	@echo "CPP-$(target): $$(CPP-$(target))"
 	@echo "CFLAGS-$(target): $$(CFLAGS-$(target))"
 	@echo "LDFLAGS-$(target): $$(LDFLAGS-$(target))"
 	@echo "BZIP2_SRCDIR-$(target): $$(BZIP2_SRCDIR-$(target))"
@@ -650,8 +668,6 @@ else
 SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
-CC-$(sdk)=xcrun --sdk $(sdk) clang
-CPP-$(sdk)=xcrun --sdk $(sdk) clang -E
 CFLAGS-$(sdk)=$$(CFLAGS-$(os))
 LDFLAGS-$(sdk)=$$(CFLAGS-$(os))
 
@@ -678,6 +694,21 @@ PYTHON_FATSTDLIB-$(sdk)=$$(PYTHON_MERGE-$(sdk))/python-stdlib
 
 # Expand the build-target macro for target on this OS
 $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target),$(os))))
+
+###########################################################################
+# SDK: Aliases
+###########################################################################
+
+alias/clang-$(sdk): alias
+	patch/make-xcrun-alias alias/clang-$(sdk) "--sdk $(sdk) clang"
+
+alias/cpp-$(sdk): alias
+	patch/make-xcrun-alias alias/cpp-$(sdk) "--sdk $(sdk) clang -E"
+
+alias/ar-$(sdk): alias
+	patch/make-xcrun-alias alias/ar-$(sdk) "--sdk $(sdk) ar"
+
+aliases-$(sdk): alias/clang-$(sdk) alias/cpp-$(sdk) alias/ar-$(sdk)
 
 ###########################################################################
 # SDK: BZip2
@@ -754,7 +785,7 @@ PYTHON_SRCDIR-$(sdk)=build/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_LIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/libpython$(PYTHON_VER).a
 
-$$(PYTHON_SRCDIR-$(sdk))/Makefile: \
+$$(PYTHON_SRCDIR-$(sdk))/configure: \
 		$$(BZIP2_FATLIB-$$(sdk)) \
 		$$(XZ_FATLIB-$$(sdk)) \
 		$$(OPENSSL_FATINCLUDE-$$(sdk)) $$(OPENSSL_SSL_FATLIB-$$(sdk)) $$(OPENSSL_CRYPTO_FATLIB-$$(sdk)) \
@@ -764,11 +795,14 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(sdk))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(sdk)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+
+
+$$(PYTHON_SRCDIR-$(sdk))/Makefile: aliases-$(sdk) $$(PYTHON_SRCDIR-$(sdk))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
 		./configure \
-			CC="$$(CC-$(sdk))" \
-			CPP="$$(CPP-$(sdk))" \
+			CC=clang-$(sdk) \
+			CPP=cpp-$(sdk) \
 			CFLAGS="$$(CFLAGS-$(sdk))" \
 			LDFLAGS="$$(LDFLAGS-$(sdk))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$(sdk))/include" \
@@ -870,8 +904,6 @@ vars-$(sdk):
 	@echo "SDK_TARGETS-$(sdk): $$(SDK_TARGETS-$(sdk))"
 	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
 	@echo "SDK_SLICE-$(sdk): $$(SDK_SLICE-$(sdk))"
-	@echo "CC-$(sdk): $$(CC-$(sdk))"
-	@echo "CPP-$(sdk): $$(CPP-$(sdk))"
 	@echo "CFLAGS-$(sdk): $$(CFLAGS-$(sdk))"
 	@echo "LDFLAGS-$(sdk): $$(LDFLAGS-$(sdk))"
 	@echo "BZIP2_MERGE-$(sdk): $$(BZIP2_MERGE-$(sdk))"
@@ -1139,7 +1171,7 @@ clean-$(os):
 		install/$(os) \
 		merge/$(os) \
 		dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz \
-		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz \
+		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz
 
 clean-wheels-$(os): $(foreach dep,$(DEPENDENCIES),clean-$(dep)-wheels-$(os))
 
