@@ -18,10 +18,6 @@ python-stdlib/idlelib
 python-stdlib/tkinter
 python-stdlib/turtle.py
 python-stdlib/turtledemo
-# Remove the testing binary modules
-python-stdlib/lib-dynload/_test*.so
-python-stdlib/lib-dynload/_xx*.so
-python-stdlib/lib-dynload/xx*.so
 # Remove site-packages directory. The template unpacks user code and
 # dependencies to a different path.
 python-stdlib/site-packages

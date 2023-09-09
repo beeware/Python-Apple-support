@@ -2,3 +2,7 @@
 # from macOS Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
 #
+# Remove the testing binary modules
+python-stdlib/lib-dynload/_test*.so
+python-stdlib/lib-dynload/_xx*.so
+python-stdlib/lib-dynload/xx*.so
