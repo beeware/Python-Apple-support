@@ -33,9 +33,6 @@
 # Current directory
 PROJECT_DIR=$(shell pwd)
 
-# Add the alias folder to the path.
-SHELL:=env PATH=$(PATH):$(PROJECT_DIR)/alias /bin/bash
-
 BUILD_NUMBER=custom
 
 # Version of packages that will be compiled by this meta-package
@@ -139,9 +136,6 @@ update-patch:
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
 
-alias:
-	mkdir -p $(PROJECT_DIR)/alias
-
 ###########################################################################
 # Setup: BZip2
 ###########################################################################
@@ -234,13 +228,11 @@ LDFLAGS-$(target)=$$(CFLAGS-$(os))
 # Target: Aliases
 ###########################################################################
 
-alias/clang-$(target): alias
+alias/clang-$(target):
 	patch/make-xcrun-alias alias/clang-$(target) "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))"
 
-alias/cpp-$(target): alias
+alias/cpp-$(target):
 	patch/make-xcrun-alias alias/cpp-$(target) "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E"
-
-aliases-$(target): aliases-$$(SDK-$(target)) alias/clang-$(target) alias/cpp-$(target)
 
 ###########################################################################
 # Target: BZip2
@@ -259,9 +251,10 @@ $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_SRCDIR-$(target))/Makefile
 
-$$(BZIP2_LIB-$(target)): aliases-$(target) $$(BZIP2_SRCDIR-$(target))/Makefile
+$$(BZIP2_LIB-$(target)): alias/clang-$(target) $$(BZIP2_SRCDIR-$(target))/Makefile
 	@echo ">>> Build BZip2 for $(target)"
 	cd $$(BZIP2_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		make install \
 			PREFIX="$$(BZIP2_INSTALL-$(target))" \
 			CC=clang-$(target) \
@@ -315,10 +308,13 @@ $$(XZ_SRCDIR-$(target))/configure: downloads/xz-$(XZ_VERSION).tar.gz
 	tar zxf $$< --strip-components 1 -C $$(XZ_SRCDIR-$(target))
 	# Patch the source to add support for new platforms
 	cd $$(XZ_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/xz-$(XZ_VERSION).patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(XZ_SRCDIR-$(target))/configure
 
-$$(XZ_SRCDIR-$(target))/Makefile: aliases-$(target) $$(XZ_SRCDIR-$(target))/configure
+$$(XZ_SRCDIR-$(target))/Makefile: alias/clang-$(target) $$(XZ_SRCDIR-$(target))/configure
 	# Configure the build
 	cd $$(XZ_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		./configure \
 			CC=clang-$(target) \
 			CFLAGS="$$(CFLAGS-$(target))" \
@@ -333,6 +329,7 @@ $$(XZ_SRCDIR-$(target))/Makefile: aliases-$(target) $$(XZ_SRCDIR-$(target))/conf
 $$(XZ_LIB-$(target)): $$(XZ_SRCDIR-$(target))/Makefile
 	@echo ">>> Build and install XZ for $(target)"
 	cd $$(XZ_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		make install \
 			2>&1 | tee -a ../xz-$(XZ_VERSION).build.log
 
@@ -393,12 +390,15 @@ else
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/speed.c
 endif
 endif
+	# Touch the Configure script to ensure that Make identifies it as up to date.
+	touch $$(OPENSSL_SRCDIR-$(target))/Configure
 
 
-$$(OPENSSL_SRCDIR-$(target))/is_configured: aliases-$(target) $$(OPENSSL_SRCDIR-$(target))/Configure
+$$(OPENSSL_SRCDIR-$(target))/is_configured: alias/clang-$(target) $$(OPENSSL_SRCDIR-$(target))/Configure
 	# Configure the OpenSSL build
 ifeq ($(os),macOS)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
 			--prefix="$$(OPENSSL_INSTALL-$(target))" \
@@ -406,6 +406,7 @@ ifeq ($(os),macOS)
 			2>&1 | tee -a ../openssl-$(OPENSSL_VERSION).config.log
 else
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -426,6 +427,7 @@ $$(OPENSSL_SRCDIR-$(target))/libssl.a: $$(OPENSSL_SRCDIR-$(target))/is_configure
 	# OpenSSL's `all` target modifies the Makefile;
 	# use the raw targets that make up all and it's dependencies
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -436,6 +438,7 @@ $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_SRCDIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		CC="clang-$(target) $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -561,10 +564,17 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(PYTHON_SRCDIR-$(target))/configure
 
-$$(PYTHON_SRCDIR-$(target))/Makefile: aliases-$(target) $$(PYTHON_SRCDIR-$(target))/configure
+$$(PYTHON_SRCDIR-$(target))/Makefile: \
+		alias/ar-$$(SDK-$(target)) \
+		alias/clang-$(target) \
+		alias/cpp-$(target) \
+		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		./configure \
 			AR=ar-$$(SDK-$(target)) \
 			CC=clang-$(target) \
@@ -594,14 +604,16 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: aliases-$(target) $$(PYTHON_SRCDIR-$(targe
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make all \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+			make all \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make install \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+			make install \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
 endif
 
@@ -699,16 +711,14 @@ $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target)
 # SDK: Aliases
 ###########################################################################
 
-alias/clang-$(sdk): alias
+alias/clang-$(sdk):
 	patch/make-xcrun-alias alias/clang-$(sdk) "--sdk $(sdk) clang"
 
-alias/cpp-$(sdk): alias
+alias/cpp-$(sdk):
 	patch/make-xcrun-alias alias/cpp-$(sdk) "--sdk $(sdk) clang -E"
 
-alias/ar-$(sdk): alias
+alias/ar-$(sdk):
 	patch/make-xcrun-alias alias/ar-$(sdk) "--sdk $(sdk) ar"
-
-aliases-$(sdk): alias/clang-$(sdk) alias/cpp-$(sdk) alias/ar-$(sdk)
 
 ###########################################################################
 # SDK: BZip2
@@ -795,11 +805,16 @@ $$(PYTHON_SRCDIR-$(sdk))/configure: \
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(sdk))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(sdk)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(PYTHON_SRCDIR-$(sdk))/configure
 
-
-$$(PYTHON_SRCDIR-$(sdk))/Makefile: aliases-$(sdk) $$(PYTHON_SRCDIR-$(sdk))/configure
+$$(PYTHON_SRCDIR-$(sdk))/Makefile: \
+		alias/clang-$(sdk) \
+		alias/cpp-$(sdk) \
+		$$(PYTHON_SRCDIR-$(sdk))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		./configure \
 			CC=clang-$(sdk) \
 			CPP=cpp-$(sdk) \
@@ -821,6 +836,7 @@ $$(PYTHON_SRCDIR-$(sdk))/python.exe: \
 		$$(PYTHON_SRCDIR-$(sdk))/Makefile
 	@echo ">>> Build Python for $(sdk)"
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
+		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
 		make all \
 		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
