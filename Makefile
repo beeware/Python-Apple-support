@@ -102,8 +102,8 @@ all: $(OS_LIST) wheels
 .PHONY: \
 	all clean distclean update-patch vars wheels \
 	$(foreach product,$(PRODUCTS),$(product) $(foreach os,$(OS_LIST),$(product)-$(os) clean-$(product) clean-$(product)-$(os))) \
-	$(foreach product,$(PRODUCTS),$(product)-wheels $(foreach os,$(OS_LIST),$(product)-wheels-$(os) clean-$(product)-wheels-$(os))) \
-	$(foreach os,$(OS_LIST),$(os) wheels-$(os) clean-$(os) clean-wheels-$(os) vars-$(os))
+	$(foreach product,$(PRODUCTS),$(product)-wheels $(foreach os,$(OS_LIST),$(product)-$(os)-wheels clean-$(product)-$(os)-wheels)) \
+	$(foreach os,$(OS_LIST),$(os) $(os)-wheels clean-$(os) clean-$(os)-wheels vars-$(os))
 
 # Clean all builds
 clean:
@@ -204,11 +204,12 @@ target=$1
 os=$2
 
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-WHEEL_TAG-$(target)=py3-none-$$(OS_LOWER-$(target))_$$(shell echo $$(VERSION_MIN-$(os))_$(target) | sed "s/\./_/g")
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
 SDK-$(target)=$$(basename $(target))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
+
+WHEEL_TAG-$(target)=py3-none-$$(SDK-$(target))_$$(shell echo $$(VERSION_MIN-$(os))_$$(ARCH-$(target)) | sed "s/\./_/g")
 
 ifeq ($(os),macOS)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-darwin
@@ -896,14 +897,11 @@ $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 		$$(PYTHON_FATSTDLIB-$(sdk))/config-* \
 		$$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/*
 
-	# Copy the cross-target _sysconfigdata module from the patch folder
-	cp $(PROJECT_DIR)/patch/Python/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))
-
 	# Copy the individual _sysconfigdata modules into names that include the architecture
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk)_$$(ARCH-$$(target)).py; )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/_sysconfigdata_* $$(PYTHON_FATSTDLIB-$(sdk))/; )
 
 	# Copy the individual config modules directories into names that include the architecture
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/config-$(PYTHON_VER)-$(sdk) $$(PYTHON_FATSTDLIB-$(sdk))/config-$(PYTHON_VER)-$$(target); )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/config-$(PYTHON_VER)-$(sdk)-$$(ARCH-$$(target)) $$(PYTHON_FATSTDLIB-$(sdk))/; )
 
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
 	$$(foreach module,$$(wildcard $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/lib-dynload/*),lipo -create -output $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/lib-dynload/$$(notdir $$(module))); )
@@ -972,7 +970,7 @@ $$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
 ###########################################################################
 
 BZip2-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(BZIP2_FATLIB-$$(sdk)))
-BZip2-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(BZIP2_WHEEL-$$(target)))
+BZip2-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(BZIP2_WHEEL-$$(target)))
 
 clean-BZip2-$(os):
 	@echo ">>> Clean BZip2 build products on $(os)"
@@ -985,7 +983,7 @@ clean-BZip2-$(os):
 		merge/$(os)/*/bzip2-$(BZIP2_VERSION).*.log \
 		wheels/dist/bzip2
 
-clean-BZip2-wheels-$(os):
+clean-BZip2-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/bzip2-$(BZIP2_VERSION)/wheel \
 		wheels/dist/bzip2
@@ -995,7 +993,7 @@ clean-BZip2-wheels-$(os):
 ###########################################################################
 
 XZ-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(XZ_FATLIB-$$(sdk)))
-XZ-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(XZ_WHEEL-$$(target)))
+XZ-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(XZ_WHEEL-$$(target)))
 
 clean-XZ-$(os):
 	@echo ">>> Clean XZ build products on $(os)"
@@ -1008,7 +1006,7 @@ clean-XZ-$(os):
 		merge/$(os)/*/xz-$(XZ_VERSION).*.log \
 		wheels/dist/xz
 
-clean-XZ-wheels-$(os):
+clean-XZ-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/xz-$(XZ_VERSION)/wheel \
 		wheels/dist/xz
@@ -1018,7 +1016,7 @@ clean-XZ-wheels-$(os):
 ###########################################################################
 
 OpenSSL-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATINCLUDE-$$(sdk)) $$(OPENSSL_SSL_FATLIB-$$(sdk)) $$(OPENSSL_CRYPTO_FATLIB-$$(sdk)))
-OpenSSL-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(OPENSSL_WHEEL-$$(target)))
+OpenSSL-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(OPENSSL_WHEEL-$$(target)))
 
 clean-OpenSSL-$(os):
 	@echo ">>> Clean OpenSSL build products on $(os)"
@@ -1031,7 +1029,7 @@ clean-OpenSSL-$(os):
 		merge/$(os)/*/openssl-$(OPENSSL_VERSION).*.log \
 		wheels/dist/openssl
 
-clean-OpenSSL-wheels-$(os):
+clean-OpenSSL-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/openssl-$(OPENSSL_VERSION)/wheel \
 		wheels/dist/openssl
@@ -1058,7 +1056,7 @@ $$(LIBFFI_SRCDIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_V
 endif
 
 libFFI-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(sdk)))
-libFFI-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(LIBFFI_WHEEL-$$(target)))
+libFFI-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(LIBFFI_WHEEL-$$(target)))
 
 clean-libFFI-$(os):
 	@echo ">>> Clean libFFI build products on $(os)"
@@ -1069,7 +1067,7 @@ clean-libFFI-$(os):
 		merge/$(os)/libffi-$(LIBFFI_VERSION).*.log \
 		wheels/dist/libffi
 
-clean-libFFI-wheels-$(os):
+clean-libFFI-$(os)-wheels:
 	rm -rf \
 		build/$(os)/libffi-$(LIBFFI_VERSION)/build_*/wheel \
 		wheels/dist/libffi
@@ -1178,7 +1176,7 @@ merge-clean-Python-$(os):
 ###########################################################################
 
 $(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
-$(os)-wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-wheels-$(os))
+$(os)-wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-$(os)-wheels)
 
 clean-$(os):
 	@echo ">>> Clean $(os) build products"
@@ -1189,7 +1187,7 @@ clean-$(os):
 		dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz \
 		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz
 
-clean-wheels-$(os): $(foreach dep,$(DEPENDENCIES),clean-$(dep)-wheels-$(os))
+clean-$(os)-wheels: $(foreach dep,$(DEPENDENCIES),clean-$(dep)-$(os)-wheels)
 
 ###########################################################################
 # Build: Debug
@@ -1212,31 +1210,31 @@ $(BDIST_WHEEL): $(HOST_PYTHON_EXE)
 
 # Binary support wheels
 wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-wheels)
-clean-wheels: $(foreach dep,$(DEPENDENCIES),clean-wheels-$(dep))
+clean-wheels: $(foreach dep,$(DEPENDENCIES),clean-$(dep)-wheels)
 
 # Dump environment variables (for debugging purposes)
 vars: $(foreach os,$(OS_LIST),vars-$(os))
 
 # Expand cross-platform build and clean targets for each output product
 BZip2: $(foreach os,$(OS_LIST),BZip2-$(os))
-BZip2-wheels: $(foreach os,$(OS_LIST),BZip2-wheels-$(os))
+BZip2-wheels: $(foreach os,$(OS_LIST),BZip2-$(os)-wheels)
 clean-BZip2: $(foreach os,$(OS_LIST),clean-BZip2-$(os))
-clean-BZip2-wheels: $(foreach os,$(OS_LIST),clean-BZip2-wheels-$(os))
+clean-BZip2-wheels: $(foreach os,$(OS_LIST),clean-BZip2-$(os)-wheels)
 
 XZ: $(foreach os,$(OS_LIST),XZ-$(os))
-XZ-wheels: $(foreach os,$(OS_LIST),XZ-wheels-$(os))
+XZ-wheels: $(foreach os,$(OS_LIST),XZ-$(os)-wheels)
 clean-XZ: $(foreach os,$(OS_LIST),clean-XZ-$(os))
-clean-XZ-wheels: $(foreach os,$(OS_LIST),clean-XZ-wheels-$(os))
+clean-XZ-wheels: $(foreach os,$(OS_LIST),clean-XZ-$(os)-wheels)
 
 OpenSSL: $(foreach os,$(OS_LIST),OpenSSL-$(os))
-OpenSSL-wheels: $(foreach os,$(OS_LIST),OpenSSL-wheels-$(os))
+OpenSSL-wheels: $(foreach os,$(OS_LIST),OpenSSL-$(os)-wheels)
 clean-OpenSSL: $(foreach os,$(OS_LIST),clean-OpenSSL-$(os))
-clean-OpenSSL-wheels: $(foreach os,$(OS_LIST),clean-OpenSSL-wheels-$(os))
+clean-OpenSSL-wheels: $(foreach os,$(OS_LIST),clean-OpenSSL-$(os)-wheels)
 
 libFFI: $(foreach os,$(OS_LIST),libFFI-$(os))
-libFFI-wheels: $(foreach os,$(OS_LIST),libFFI-wheels-$(os))
+libFFI-wheels: $(foreach os,$(OS_LIST),libFFI-$(os)-wheels)
 clean-libFFI: $(foreach os,$(OS_LIST),clean-libFFI-$(os))
-clean-libFFI-wheels: $(foreach os,$(OS_LIST),clean-libFFI-wheels-$(os))
+clean-libFFI-wheels: $(foreach os,$(OS_LIST),clean-libFFI-$(os)-wheels)
 
 Python: $(foreach os,$(OS_LIST),Python-$(os))
 clean-Python: $(foreach os,$(OS_LIST),clean-Python-$(os))

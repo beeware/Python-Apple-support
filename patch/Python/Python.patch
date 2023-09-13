@@ -214,21 +214,16 @@ index f603a89f7f..d6db040d0d 100644
 +            )
 +        )
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 9b9d88bf58..dbd9ee3276 100755
+index 9b9d88bf58..6fe084a3a5 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -452,6 +452,35 @@
+@@ -452,6 +452,26 @@
      # If that also doesn't work return the default values
      return release, versioninfo, machine
  
 +def iOS_ver():
-+    """ Get iOS/tvOS version information, and return it as a
-+        tuple (system, release, model). All tuple entries are strings.
-+
-+        Equivalent of:
-+        system = [[UIDevice currentDevice].systemName] UTF8String]
-+        release = [[UIDevice currentDevice].systemVersion] UTF8String]
-+        model = [[UIDevice currentDevice].model] UTF8String]
++    """Get iOS/tvOS version information, and return it as a
++    tuple (system, release, model). All tuple entries are strings.
 +    """
 +    import _ios_support
 +    return _ios_support.get_platform_ios()
@@ -244,16 +239,12 @@ index 9b9d88bf58..dbd9ee3276 100755
 +    from actual devices because they are reproducing actual device
 +    properties.
 +    """
-+    if sys.platform in ('ios', 'tvos', 'watchos'):
-+        return sys.implementation._multiarch.endswith('simulator')
-+
-+    # All other platforms aren't simulators.
-+    return False
++    return getattr(sys.implementation, "_simulator", False)
 +
  def _java_getprop(name, default):
  
      from java.lang import System
-@@ -608,7 +637,7 @@
+@@ -608,7 +628,7 @@
          default in case the command should fail.
  
      """
@@ -262,7 +253,7 @@ index 9b9d88bf58..dbd9ee3276 100755
          # XXX Others too ?
          return default
  
-@@ -750,6 +779,24 @@
+@@ -750,6 +770,24 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -287,22 +278,23 @@ index 9b9d88bf58..dbd9ee3276 100755
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -904,6 +951,14 @@
+@@ -904,6 +942,15 @@
          system = 'Windows'
          release = 'Vista'
  
 +    # Normalize responses on Apple mobile platforms
 +    if sys.platform in ('ios', 'tvos'):
 +        system, release, model = iOS_ver()
-+        # Simulator devices report as "arm64" or "x86_64";
-+        # use the model as the basis for the normalized machine name.
-+        if sys.implementation._multiarch.endswith('simulator'):
-+            machine = f'{model} Simulator'
++
++        # On iOS/tvOS simulators, os.uname() reports the machine as something
++        # like "arm64" or "x86_64".
++        if getattr(sys.implementation, "_simulator", False):
++            machine = f'{model}Simulator'
 +
      vals = system, node, release, version, machine
      # Replace 'unknown' values with the more portable ''
      _uname_cache = uname_result(*map(_unknown_as_blank, vals))
-@@ -1216,11 +1271,13 @@
+@@ -1216,11 +1263,13 @@
          system, release, version = system_alias(system, release, version)
  
      if system == 'Darwin':
@@ -312,7 +304,7 @@ index 9b9d88bf58..dbd9ee3276 100755
 -            system = 'macOS'
 -            release = macos_release
 +        if sys.platform in ('ios', 'tvos'):
-+            system, release, model = iOS_ver()
++            system, release, _ = iOS_ver()
 +        else:
 +            macos_release = mac_ver()[0]
 +            if macos_release:
@@ -336,7 +328,7 @@ index 69670d9d7f..8287267e64 100644
      return f'{userbase}/lib/python{version[0]}.{version[1]}/site-packages'
  
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 6df5dd551e..396fb60c8d 100644
+index 6df5dd551e..597da09643 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -74,8 +74,8 @@
@@ -350,8 +342,84 @@ index 6df5dd551e..396fb60c8d 100644
  
  if _mswindows:
      import _winapi
+@@ -103,18 +103,22 @@
+     if _can_fork_exec:
+         from _posixsubprocess import fork_exec as _fork_exec
+         # used in methods that are called by __del__
+-        _waitpid = os.waitpid
+-        _waitstatus_to_exitcode = os.waitstatus_to_exitcode
+-        _WIFSTOPPED = os.WIFSTOPPED
+-        _WSTOPSIG = os.WSTOPSIG
+-        _WNOHANG = os.WNOHANG
++        class _del_safe:
++            waitpid = os.waitpid
++            waitstatus_to_exitcode =  os.waitstatus_to_exitcode
++            WIFSTOPPED =  os.WIFSTOPPED
++            WSTOPSIG = os.WSTOPSIG
++            WNOHANG = os.WNOHANG
++            ECHILD = errno.ECHILD
+     else:
+-        _fork_exec = None
+-        _waitpid = None
+-        _waitstatus_to_exitcode = None
+-        _WIFSTOPPED = None
+-        _WSTOPSIG = None
+-        _WNOHANG = None
++        class _del_safe:
++            waitpid = None
++            waitstatus_to_exitcode = None
++            WIFSTOPPED = None
++            WSTOPSIG = None
++            WNOHANG = None
++            ECHILD = errno.ECHILD
++
+     import select
+     import selectors
+ 
+@@ -1951,20 +1955,16 @@
+                 raise child_exception_type(err_msg)
+ 
+ 
+-        def _handle_exitstatus(self, sts,
+-                               _waitstatus_to_exitcode=_waitstatus_to_exitcode,
+-                               _WIFSTOPPED=_WIFSTOPPED,
+-                               _WSTOPSIG=_WSTOPSIG):
++        def _handle_exitstatus(self, sts, _del_safe=_del_safe):
+             """All callers to this function MUST hold self._waitpid_lock."""
+             # This method is called (indirectly) by __del__, so it cannot
+             # refer to anything outside of its local scope.
+-            if _WIFSTOPPED(sts):
+-                self.returncode = -_WSTOPSIG(sts)
++            if _del_safe.WIFSTOPPED(sts):
++                self.returncode = -_del_safe.WSTOPSIG(sts)
+             else:
+-                self.returncode = _waitstatus_to_exitcode(sts)
++                self.returncode = _del_safe.waitstatus_to_exitcode(sts)
+ 
+-        def _internal_poll(self, _deadstate=None, _waitpid=_waitpid,
+-                _WNOHANG=_WNOHANG, _ECHILD=errno.ECHILD):
++        def _internal_poll(self, _deadstate=None, _del_safe=_del_safe):
+             """Check if child process has terminated.  Returns returncode
+             attribute.
+ 
+@@ -1980,13 +1980,13 @@
+                 try:
+                     if self.returncode is not None:
+                         return self.returncode  # Another thread waited.
+-                    pid, sts = _waitpid(self.pid, _WNOHANG)
++                    pid, sts = _del_safe.waitpid(self.pid, _del_safe.WNOHANG)
+                     if pid == self.pid:
+                         self._handle_exitstatus(sts)
+                 except OSError as e:
+                     if _deadstate is not None:
+                         self.returncode = _deadstate
+-                    elif e.errno == _ECHILD:
++                    elif e.errno == _del_safe.ECHILD:
+                         # This happens if SIGCLD is set to be ignored or
+                         # waiting for child processes has otherwise been
+                         # disabled for our process.  This child is dead, we
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index ebe3711827..ea00c3176d 100644
+index ebe3711827..6006b92386 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -95,6 +95,33 @@
@@ -408,7 +476,33 @@ index ebe3711827..ea00c3176d 100644
      return {
          'prefix': 'posix_prefix',
          'home': 'posix_home',
-@@ -788,10 +822,16 @@
+@@ -455,9 +489,24 @@
+ 
+ def _get_sysconfigdata_name():
+     multiarch = getattr(sys.implementation, '_multiarch', '')
++
++    # On most platforms, sys.platform is all we need. However, iOS/tvOS/watchOS have a
++    # single sys.platform, but two underlying platforms depending on whether we're on
++    # device or on simulator.
++    platform = {
++        ("ios", False): "iphoneos",
++        ("ios", True): "iphonesimulator",
++        ("tvos", True): "appletvos",
++        ("tvos", False): "appletvsimulator",
++        ("watchos", False): "watchos",
++        ("watchos", True): "watchsimulator",
++    }.get(
++        (sys.platform, getattr(sys.implementation, "_simulator", False)),
++        sys.platform
++    )
+     return os.environ.get(
+         '_PYTHON_SYSCONFIGDATA_NAME',
+-        f'_sysconfigdata_{sys.abiflags}_{sys.platform}_{multiarch}',
++        f'_sysconfigdata_{sys.abiflags}_{platform}_{multiarch}'
+     )
+ 
+ 
+@@ -788,10 +837,16 @@
          if m:
              release = m.group()
      elif osname[:6] == "darwin":
@@ -1203,10 +1297,19 @@ index 44974d433b..ae4e18802b 100755
  #
  # Platform support for Windows
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 884bea1841..a15df8a03c 100644
+index 884bea1841..a0d3bfecc1 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
-@@ -344,6 +344,8 @@
+@@ -124,6 +124,8 @@
+ # Strict or non-strict aliasing flags used to compile dtoa.c, see above
+ CFLAGS_ALIASING=@CFLAGS_ALIASING@
+ 
++# Platform descriptor
++PLATFORM=	@PLATFORM@
+ 
+ # Machine-dependent subdirectories
+ MACHDEP=	@MACHDEP@
+@@ -344,6 +346,8 @@
  ##########################################################################
  
  LIBFFI_INCLUDEDIR=	@LIBFFI_INCLUDEDIR@
@@ -1215,6 +1318,15 @@ index 884bea1841..a15df8a03c 100644
  
  ##########################################################################
  # Parser
+@@ -1384,7 +1388,7 @@
+ Python/compile.o Python/symtable.o Python/ast_unparse.o Python/ast.o Python/future.o: $(srcdir)/Include/internal/pycore_ast.h
+ 
+ Python/getplatform.o: $(srcdir)/Python/getplatform.c
+-		$(CC) -c $(PY_CORE_CFLAGS) -DPLATFORM='"$(MACHDEP)"' -o $@ $(srcdir)/Python/getplatform.c
++		$(CC) -c $(PY_CORE_CFLAGS) -DPLATFORM='"$(PLATFORM)"' -o $@ $(srcdir)/Python/getplatform.c
+ 
+ Python/importdl.o: $(srcdir)/Python/importdl.c
+ 		$(CC) -c $(PY_CORE_CFLAGS) -I$(DLINCLDIR) -o $@ $(srcdir)/Python/importdl.c
 diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
 index ad9daaede4..f295528d4e 100644
 --- a/Modules/_posixsubprocess.c
@@ -1681,6 +1793,37 @@ index 29f3bab60a..ea3b25a978 100644
  #endif
  
  #define TYPE_NULL               '0'
+diff --git a/Python/sysmodule.c b/Python/sysmodule.c
+index 6e9ec90c9d..16b0a6ab11 100644
+--- a/Python/sysmodule.c
++++ b/Python/sysmodule.c
+@@ -49,6 +49,10 @@
+ extern const char *PyWin_DLLVersionString;
+ #endif
+ 
++#if defined(__APPLE__)
++#include "TargetConditionals.h"
++#endif
++
+ #ifdef __EMSCRIPTEN__
+ #include <emscripten.h>
+ #endif
+@@ -2739,6 +2743,15 @@
+         goto error;
+ #endif
+ 
++#if TARGET_OS_IPHONE
++#  if TARGET_OS_SIMULATOR
++    res = PyDict_SetItemString(impl_info, "_simulator", Py_True);
++#  else
++    res = PyDict_SetItemString(impl_info, "_simulator", Py_False);
++#  endif
++    if (res < 0)
++        goto error;
++#endif
+     /* dict ready */
+ 
+     ns = _PyNamespace_New(impl_info);
 diff --git a/aclocal.m4 b/aclocal.m4
 index 6a33c0cc9d..09ae5d1aa8 100644
 --- a/aclocal.m4
@@ -1885,10 +2028,18 @@ index d74fb6deac..a30f74f03d 100755
  		# Blank kernel with real OS is always fine.
  		;;
 diff --git a/configure b/configure
-index af4a5bbfdf..c01cd44df0 100755
+index af4a5bbfdf..ec56feb260 100755
 --- a/configure
 +++ b/configure
-@@ -838,6 +838,8 @@
+@@ -819,6 +819,7 @@
+ MACHDEP_OBJS
+ DYNLOADFILE
+ DLINCLDIR
++PLATFORM
+ PLATFORM_OBJS
+ PLATFORM_HEADERS
+ DTRACE_OBJS
+@@ -838,6 +839,8 @@
  LIBMPDEC_INTERNAL
  LIBMPDEC_LDFLAGS
  LIBMPDEC_CFLAGS
@@ -1897,7 +2048,7 @@ index af4a5bbfdf..c01cd44df0 100755
  LIBFFI_INCLUDEDIR
  LIBEXPAT_INTERNAL
  LIBEXPAT_LDFLAGS
-@@ -991,7 +993,6 @@
+@@ -991,7 +994,6 @@
  docdir
  oldincludedir
  includedir
@@ -1905,7 +2056,7 @@ index af4a5bbfdf..c01cd44df0 100755
  localstatedir
  sharedstatedir
  sysconfdir
-@@ -1142,7 +1143,6 @@
+@@ -1142,7 +1144,6 @@
  sysconfdir='${prefix}/etc'
  sharedstatedir='${prefix}/com'
  localstatedir='${prefix}/var'
@@ -1913,7 +2064,7 @@ index af4a5bbfdf..c01cd44df0 100755
  includedir='${prefix}/include'
  oldincludedir='/usr/include'
  docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
-@@ -1395,15 +1395,6 @@
+@@ -1395,15 +1396,6 @@
    | -silent | --silent | --silen | --sile | --sil)
      silent=yes ;;
  
@@ -1929,7 +2080,7 @@ index af4a5bbfdf..c01cd44df0 100755
    -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
      ac_prev=sbindir ;;
    -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
-@@ -1541,7 +1532,7 @@
+@@ -1541,7 +1533,7 @@
  for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
  		datadir sysconfdir sharedstatedir localstatedir includedir \
  		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
@@ -1938,7 +2089,7 @@ index af4a5bbfdf..c01cd44df0 100755
  do
    eval ac_val=\$$ac_var
    # Remove trailing slashes.
-@@ -1694,7 +1685,6 @@
+@@ -1694,7 +1686,6 @@
    --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
    --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
    --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
@@ -1946,23 +2097,47 @@ index af4a5bbfdf..c01cd44df0 100755
    --libdir=DIR            object code libraries [EPREFIX/lib]
    --includedir=DIR        C header files [PREFIX/include]
    --oldincludedir=DIR     C header files for non-gcc [/usr/include]
-@@ -3823,6 +3813,15 @@
+@@ -3823,6 +3814,24 @@
  	*-*-cygwin*)
  		ac_sys_system=Cygwin
  		;;
++	*-apple-ios*-simulator)
++		ac_sys_system=iphonesimulator
++		;;
 +	*-apple-ios*)
-+		ac_sys_system=iOS
++		ac_sys_system=iphoneos
++		;;
++	*-apple-tvos*-simulator)
++		ac_sys_system=appletvsimulator
 +		;;
 +	*-apple-tvos*)
-+		ac_sys_system=tvOS
++		ac_sys_system=appletvos
++		;;
++	*-apple-watchos*-simulator)
++		ac_sys_system=watchsimulator
 +		;;
 +	*-apple-watchos*)
-+		ac_sys_system=watchOS
++		ac_sys_system=watchos
 +		;;
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3879,6 +3878,15 @@
+@@ -3860,6 +3869,14 @@
+ 	darwin*) MACHDEP="darwin";;
+ 	'')	MACHDEP="unknown";;
+     esac
++
++    case $ac_sys_system in
++      iphoneos | iphonesimulator) PLATFORM=ios;;
++      appletvos | appletvsimulator) PLATFORM=tvos;;
++      watchos | watchsimulator) PLATFORM=watchos;;
++      *) PLATFORM=$MACHDEP;;
++    esac
++
+ fi
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: \"$MACHDEP\"" >&5
+ $as_echo "\"$MACHDEP\"" >&6; }
+@@ -3879,6 +3896,15 @@
  	*-*-cygwin*)
  		_host_cpu=
  		;;
@@ -1978,21 +2153,21 @@ index af4a5bbfdf..c01cd44df0 100755
  	*-*-vxworks*)
  		_host_cpu=$host_cpu
  		;;
-@@ -3957,6 +3965,13 @@
+@@ -3957,6 +3983,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
 +  # On iOS, defining _POSIX_C_SOURCE also disables platform specific features.
-+  iOS/*)
++  iphoneos/*|iphonesimulator/*)
 +    define_xopen_source=no;;
-+  tvOS/*)
++  appletv/*|appletvsimulator/*)
 +    define_xopen_source=no;;
-+  watchOS/*)
++  watchos/*|watchsimulator/*)
 +    define_xopen_source=no;;
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6159,7 +6174,30 @@
+@@ -6159,7 +6192,42 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -2000,21 +2175,33 @@ index af4a5bbfdf..c01cd44df0 100755
 +#  include "TargetConditionals.h"
 +#  if TARGET_OS_IOS
 +#    if TARGET_OS_SIMULATOR
-+       iphonesimulator
++#      if __x86_64__
++         iphonesimulator-x86_64
++#      else
++         iphonesimulator-arm64
++#      endif
 +#    else
-+       iphoneos
++       iphoneos-arm64
 +#    endif
 +#  elif TARGET_OS_TV
 +#    if TARGET_OS_SIMULATOR
-+       appletvsimulator
++#      if __x86_64__
++         appletvsimulator-x86_64
++#      else
++         appletvsimulator-arm64
++#      endif
 +#    else
-+       appletvos
++       appletvos-arm64
 +#    endif
 +#  elif TARGET_OS_WATCH
 +#    if TARGET_OS_SIMULATOR
-+       watchsimulator
++#      if __x86_64__
++         watchsimulator-x86_64
++#      else
++         watchsimulator-arm64
++#      endif
 +#    else
-+       watchos
++       watchos-arm64_32
 +#    endif
 +#  elif TARGET_OS_OSX
 +     darwin
@@ -2024,20 +2211,57 @@ index af4a5bbfdf..c01cd44df0 100755
  #elif defined(__VXWORKS__)
          vxworks
  #elif defined(__wasm32__)
-@@ -6204,6 +6242,12 @@
+@@ -6204,6 +6272,8 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
-+  iOS*) :
-+    MULTIARCH="" ;; #(
-+  tvOS*) :
-+    MULTIARCH="" ;; #(
-+  watchOS*) :
++  iphoneos | iphonesimulator | appletvos | appletvsimulator | watchos | watchsimulator) :
 +    MULTIARCH="" ;; #(
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -6266,7 +6310,7 @@
+@@ -6218,8 +6288,18 @@
+   if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
+     as_fn_error $? "internal configure error for the platform triplet, please file a bug report" "$LINENO" 5
+   fi
++  SOABI_PLATFORM=$PLATFORM_TRIPLET
+ elif test x$PLATFORM_TRIPLET != x && test x$MULTIARCH = x; then
+-  MULTIARCH=$PLATFORM_TRIPLET
++  case $ac_sys_system in #(
++    iphoneos | iphonesimulator | appletvos | appletvsimulator | watchos | watchsimulator) :
++      SOABI_PLATFORM=$(echo $PLATFORM_TRIPLET | cut -d- -f1)
++      MULTIARCH=$(echo $PLATFORM_TRIPLET | cut -d- -f2)
++      ;; #(
++    *) :
++      MULTIARCH=$PLATFORM_TRIPLET
++      SOABI_PLATFORM=$PLATFORM_TRIPLET
++  ;;
++  esac
+ fi
+ 
+ 
+@@ -6263,10 +6343,28 @@
+     PY_SUPPORT_TIER=3 ;; #(
+     wasm32-unknown-wasi/clang) :
+     PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-ios/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-ios-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    x86_64-apple-ios-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-tvos/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-tvos-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    x86_64-apple-tvos-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-watchos/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-watchos-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    x86_64-apple-watchos-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-freebsd*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
    *) :
@@ -2046,7 +2270,7 @@ index af4a5bbfdf..c01cd44df0 100755
   ;;
  esac
  
-@@ -7210,11 +7254,23 @@
+@@ -7210,11 +7308,23 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -2075,25 +2299,25 @@ index af4a5bbfdf..c01cd44df0 100755
  fi
  
  
-@@ -10858,6 +10914,7 @@
+@@ -10858,6 +10968,7 @@
  		esac
  		;;
  	CYGWIN*)   SHLIB_SUFFIX=.dll;;
-+	iOS|tvOS|watchOS)   SHLIB_SUFFIX=.dylib;;
++	iphoneos | iphonesimulator | appletvos | appletvsimulator | watchos | watchsimulator)   SHLIB_SUFFIX=.dylib;;
  	*)	   SHLIB_SUFFIX=.so;;
  	esac
  fi
-@@ -10940,6 +10997,9 @@
+@@ -10940,6 +11051,9 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
-+	iOS/*|tvOS/*|watchOS/*)
++	iphoneos/*|iphonesimulator/*|appletvos/*|appletvsimulator/*|watchos/*|watchsimulator*)
 +		LDSHARED='$(CC) -dynamiclib -undefined dynamic_lookup'
 +		LDCXXSHARED='$(CXX) -dynamiclib -undefined dynamic_lookup';;
  	Emscripten|WASI)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -11348,8 +11408,8 @@
+@@ -11348,8 +11462,8 @@
  
  
  pkg_failed=no
@@ -2104,7 +2328,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBUUID_CFLAGS"; then
      pkg_cv_LIBUUID_CFLAGS="$LIBUUID_CFLAGS"
-@@ -11389,7 +11449,7 @@
+@@ -11389,7 +11503,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2113,7 +2337,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -11532,7 +11592,7 @@
+@@ -11532,7 +11646,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2122,14 +2346,14 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
        save_CFLAGS=$CFLAGS
-@@ -12183,23 +12243,35 @@
+@@ -12183,23 +12297,35 @@
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_system_ffi" >&5
  $as_echo "$with_system_ffi" >&6; }
  else
 -    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 -$as_echo "yes" >&6; }
 -    if test "$with_system_ffi" != ""
-+    if test "$ac_sys_system" = "iOS" || test "$ac_sys_system" = "tvOS" || test "$ac_sys_system" = "watchOS"
++    if test "$ac_sys_system" = "iphoneos" || test "$ac_sys_system" = "iphonesimulator" || test "$ac_sys_system" = "appletvos" || test "$ac_sys_system" = "appletvsimulator" || test "$ac_sys_system" = "watchos" || test "$ac_sys_system" = "watchsimulator"
      then
 -        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with(out)-system-ffi is ignored on this platform" >&5
 +        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -2164,7 +2388,7 @@ index af4a5bbfdf..c01cd44df0 100755
  # Check for use of the system libmpdec library
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for --with-system-libmpdec" >&5
  $as_echo_n "checking for --with-system-libmpdec... " >&6; }
-@@ -12340,8 +12412,8 @@
+@@ -12340,8 +12466,8 @@
  
  
  pkg_failed=no
@@ -2175,7 +2399,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBNSL_CFLAGS"; then
      pkg_cv_LIBNSL_CFLAGS="$LIBNSL_CFLAGS"
-@@ -12381,7 +12453,7 @@
+@@ -12381,7 +12507,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2184,7 +2408,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -12482,7 +12554,7 @@
+@@ -12482,7 +12608,7 @@
    LIBNSL_LIBS=${LIBNSL_LIBS-$libnsl}
  
  elif test $pkg_failed = untried; then
@@ -2193,7 +2417,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
    LIBNSL_CFLAGS=${LIBNSL_CFLAGS-""}
-@@ -12630,8 +12702,8 @@
+@@ -12630,8 +12756,8 @@
  
  
  pkg_failed=no
@@ -2204,7 +2428,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBSQLITE3_CFLAGS"; then
      pkg_cv_LIBSQLITE3_CFLAGS="$LIBSQLITE3_CFLAGS"
-@@ -12671,7 +12743,7 @@
+@@ -12671,7 +12797,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2213,7 +2437,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -12693,7 +12765,7 @@
+@@ -12693,7 +12819,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2222,7 +2446,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
      LIBSQLITE3_CFLAGS=${LIBSQLITE3_CFLAGS-""}
-@@ -13462,8 +13534,8 @@
+@@ -13462,8 +13588,8 @@
  
  
  pkg_failed=no
@@ -2233,7 +2457,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$TCLTK_CFLAGS"; then
      pkg_cv_TCLTK_CFLAGS="$TCLTK_CFLAGS"
-@@ -13503,7 +13575,7 @@
+@@ -13503,7 +13629,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2242,7 +2466,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -13521,7 +13593,7 @@
+@@ -13521,7 +13647,7 @@
  
  	found_tcltk=no
  elif test $pkg_failed = untried; then
@@ -2251,7 +2475,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  	found_tcltk=no
  else
-@@ -13557,8 +13629,8 @@
+@@ -13557,8 +13683,8 @@
  
  
  pkg_failed=no
@@ -2262,7 +2486,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$X11_CFLAGS"; then
      pkg_cv_X11_CFLAGS="$X11_CFLAGS"
-@@ -13598,7 +13670,7 @@
+@@ -13598,7 +13724,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2271,7 +2495,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -13625,7 +13697,7 @@
+@@ -13625,7 +13751,7 @@
  and X11_LIBS to avoid the need to call pkg-config.
  See the pkg-config man page for more details." "$LINENO" 5
  elif test $pkg_failed = untried; then
@@ -2280,7 +2504,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
  $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-@@ -16201,8 +16273,8 @@
+@@ -16201,8 +16327,8 @@
  
  
  pkg_failed=no
@@ -2291,7 +2515,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$ZLIB_CFLAGS"; then
      pkg_cv_ZLIB_CFLAGS="$ZLIB_CFLAGS"
-@@ -16242,7 +16314,7 @@
+@@ -16242,7 +16368,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2300,7 +2524,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16386,7 +16458,7 @@
+@@ -16386,7 +16512,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2309,7 +2533,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -16549,8 +16621,8 @@
+@@ -16549,8 +16675,8 @@
  
  
  pkg_failed=no
@@ -2320,7 +2544,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$BZIP2_CFLAGS"; then
      pkg_cv_BZIP2_CFLAGS="$BZIP2_CFLAGS"
-@@ -16590,7 +16662,7 @@
+@@ -16590,7 +16716,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2329,7 +2553,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16687,7 +16759,7 @@
+@@ -16687,7 +16813,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2338,7 +2562,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -16779,8 +16851,8 @@
+@@ -16779,8 +16905,8 @@
  
  
  pkg_failed=no
@@ -2349,7 +2573,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBLZMA_CFLAGS"; then
      pkg_cv_LIBLZMA_CFLAGS="$LIBLZMA_CFLAGS"
-@@ -16820,7 +16892,7 @@
+@@ -16820,7 +16946,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2358,7 +2582,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -16917,7 +16989,7 @@
+@@ -16917,7 +17043,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2367,7 +2591,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -18150,8 +18222,8 @@
+@@ -18150,8 +18276,8 @@
  
  
  pkg_failed=no
@@ -2378,7 +2602,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBCRYPT_CFLAGS"; then
      pkg_cv_LIBCRYPT_CFLAGS="$LIBCRYPT_CFLAGS"
-@@ -18191,7 +18263,7 @@
+@@ -18191,7 +18317,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2387,7 +2611,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -18288,7 +18360,7 @@
+@@ -18288,7 +18414,7 @@
  
  
  elif test $pkg_failed = untried; then
@@ -2396,7 +2620,25 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
    save_CFLAGS=$CFLAGS
-@@ -23063,8 +23135,8 @@
+@@ -20750,7 +20876,7 @@
+ $as_echo "$ABIFLAGS" >&6; }
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking SOABI" >&5
+ $as_echo_n "checking SOABI... " >&6; }
+-SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $SOABI" >&5
+ $as_echo "$SOABI" >&6; }
+ 
+@@ -20758,7 +20884,7 @@
+ if test "$Py_DEBUG" = 'true' -a "$with_trace_refs" != "yes"; then
+   # Similar to SOABI but remove "d" flag from ABIFLAGS
+ 
+-  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+ 
+ cat >>confdefs.h <<_ACEOF
+ #define ALT_SOABI "${ALT_SOABI}"
+@@ -23063,8 +23189,8 @@
      if ! $found; then
          OPENSSL_INCLUDES=
          for ssldir in $ssldirs; do
@@ -2407,7 +2649,7 @@ index af4a5bbfdf..c01cd44df0 100755
              if test -f "$ssldir/include/openssl/ssl.h"; then
                  OPENSSL_INCLUDES="-I$ssldir/include"
                  OPENSSL_LDFLAGS="-L$ssldir/lib"
-@@ -23445,8 +23517,8 @@
+@@ -23445,8 +23571,8 @@
  
  
  pkg_failed=no
@@ -2418,7 +2660,7 @@ index af4a5bbfdf..c01cd44df0 100755
  
  if test -n "$LIBB2_CFLAGS"; then
      pkg_cv_LIBB2_CFLAGS="$LIBB2_CFLAGS"
-@@ -23486,7 +23558,7 @@
+@@ -23486,7 +23612,7 @@
  
  
  if test $pkg_failed = yes; then
@@ -2427,7 +2669,7 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  
  if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-@@ -23504,7 +23576,7 @@
+@@ -23504,7 +23630,7 @@
  
  	have_libb2=no
  elif test $pkg_failed = untried; then
@@ -2436,11 +2678,11 @@ index af4a5bbfdf..c01cd44df0 100755
  $as_echo "no" >&6; }
  	have_libb2=no
  else
-@@ -23575,6 +23647,29 @@
+@@ -23575,6 +23701,29 @@
      py_cv_module_ossaudiodev=n/a
      py_cv_module_spwd=n/a
   ;; #(
-+  iOS|tvOS|watchOS) :
++  iphoneos|iphonesimulator|appletvos|appletvsimulator|watchos|watchsimulator) :
 +
 +
 +
