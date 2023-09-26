@@ -47,7 +47,13 @@ BZIP2_VERSION=1.0.8
 
 XZ_VERSION=5.4.4
 
+# Preference is to use OpenSSL 3; however, Cryptography 3.4.8 (and
+# probably some other packages as well) only works with 1.1.1, so
+# we need to preserve the ability to build the older OpenSSL (for now...)
 OPENSSL_VERSION=3.1.2
+# OPENSSL_VERSION_NUMBER=1.1.1
+# OPENSSL_REVISION=v
+# OPENSSL_VERSION=$(OPENSSL_VERSION_NUMBER)$(OPENSSL_REVISION)
 
 LIBFFI_VERSION=3.4.4
 
@@ -101,7 +107,7 @@ all: $(OS_LIST) wheels
 
 # Clean all builds
 clean:
-	rm -rf alias build install merge dist support wheels
+	rm -rf build install merge dist support wheels
 
 # Full clean - includes all downloaded products
 distclean: clean
@@ -223,11 +229,11 @@ LDFLAGS-$(target)=$$(CFLAGS-$(os))
 # Target: Aliases
 ###########################################################################
 
-alias/$$(TARGET_TRIPLE-$(target))-gcc:
-	patch/make-xcrun-alias alias/$$(TARGET_TRIPLE-$(target))-gcc "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))"
+install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc:
+	patch/make-xcrun-alias $$@ "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))"
 
-alias/$$(TARGET_TRIPLE-$(target))-cpp:
-	patch/make-xcrun-alias alias/$$(TARGET_TRIPLE-$(target))-cpp "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E"
+install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-cpp:
+	patch/make-xcrun-alias $$@ "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E"
 
 ###########################################################################
 # Target: BZip2
@@ -236,7 +242,7 @@ alias/$$(TARGET_TRIPLE-$(target))-cpp:
 BZIP2_SRCDIR-$(target)=build/$(os)/$(target)/bzip2-$(BZIP2_VERSION)
 BZIP2_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/bzip2-$(BZIP2_VERSION)
 BZIP2_LIB-$(target)=$$(BZIP2_INSTALL-$(target))/lib/libbz2.a
-BZIP2_WHEEL-$(target)=wheels/$(os)/bzip2/bzip2-$(BZIP2_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+BZIP2_WHEEL-$(target)=wheels/$(os)/bzip2-$(BZIP2_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 BZIP2_WHEEL_DISTINFO-$(target)=$$(BZIP2_INSTALL-$(target))/wheel/bzip2-$(BZIP2_VERSION).dist-info
 
 $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
@@ -246,10 +252,10 @@ $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_SRCDIR-$(target))/Makefile
 
-$$(BZIP2_LIB-$(target)): alias/$$(TARGET_TRIPLE-$(target))-gcc $$(BZIP2_SRCDIR-$(target))/Makefile
+$$(BZIP2_LIB-$(target)): install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(BZIP2_SRCDIR-$(target))/Makefile
 	@echo ">>> Build BZip2 for $(target)"
 	cd $$(BZIP2_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make install \
 			PREFIX="$$(BZIP2_INSTALL-$(target))" \
 			CC=$$(TARGET_TRIPLE-$(target))-gcc \
@@ -284,8 +290,8 @@ $$(BZIP2_WHEEL-$(target)): $$(BZIP2_LIB-$(target)) $$(BDIST_WHEEL)
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/$(os)/bzip2
-	$(HOST_PYTHON_EXE) -m wheel pack $$(BZIP2_INSTALL-$(target))/wheel --dest-dir wheels/$(os)/bzip2 --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(BZIP2_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: XZ (LZMA)
@@ -294,7 +300,7 @@ $$(BZIP2_WHEEL-$(target)): $$(BZIP2_LIB-$(target)) $$(BDIST_WHEEL)
 XZ_SRCDIR-$(target)=build/$(os)/$(target)/xz-$(XZ_VERSION)
 XZ_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/xz-$(XZ_VERSION)
 XZ_LIB-$(target)=$$(XZ_INSTALL-$(target))/lib/liblzma.a
-XZ_WHEEL-$(target)=wheels/$(os)/xz/xz-$(XZ_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+XZ_WHEEL-$(target)=wheels/$(os)/xz-$(XZ_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 XZ_WHEEL_DISTINFO-$(target)=$$(XZ_INSTALL-$(target))/wheel/xz-$(XZ_VERSION).dist-info
 
 $$(XZ_SRCDIR-$(target))/configure: downloads/xz-$(XZ_VERSION).tar.gz
@@ -306,10 +312,10 @@ $$(XZ_SRCDIR-$(target))/configure: downloads/xz-$(XZ_VERSION).tar.gz
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(XZ_SRCDIR-$(target))/configure
 
-$$(XZ_SRCDIR-$(target))/Makefile: alias/$$(TARGET_TRIPLE-$(target))-gcc $$(XZ_SRCDIR-$(target))/configure
+$$(XZ_SRCDIR-$(target))/Makefile: install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(XZ_SRCDIR-$(target))/configure
 	# Configure the build
 	cd $$(XZ_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
 			CC=$$(TARGET_TRIPLE-$(target))-gcc \
 			CFLAGS="$$(CFLAGS-$(target))" \
@@ -324,7 +330,7 @@ $$(XZ_SRCDIR-$(target))/Makefile: alias/$$(TARGET_TRIPLE-$(target))-gcc $$(XZ_SR
 $$(XZ_LIB-$(target)): $$(XZ_SRCDIR-$(target))/Makefile
 	@echo ">>> Build and install XZ for $(target)"
 	cd $$(XZ_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make install \
 			2>&1 | tee -a ../xz-$(XZ_VERSION).build.log
 
@@ -356,8 +362,8 @@ $$(XZ_WHEEL-$(target)): $$(XZ_LIB-$(target)) $$(BDIST_WHEEL)
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/$(os)/xz
-	$(HOST_PYTHON_EXE) -m wheel pack $$(XZ_INSTALL-$(target))/wheel --dest-dir wheels/$(os)/xz --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(XZ_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: OpenSSL
@@ -367,7 +373,7 @@ OPENSSL_SRCDIR-$(target)=build/$(os)/$(target)/openssl-$(OPENSSL_VERSION)
 OPENSSL_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/openssl-$(OPENSSL_VERSION)
 OPENSSL_SSL_LIB-$(target)=$$(OPENSSL_INSTALL-$(target))/lib/libssl.a
 OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_INSTALL-$(target))/lib/libcrypto.a
-OPENSSL_WHEEL-$(target)=wheels/$(os)/openssl/openssl-$(OPENSSL_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+OPENSSL_WHEEL-$(target)=wheels/$(os)/openssl-$(OPENSSL_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 OPENSSL_WHEEL_DISTINFO-$(target)=$$(OPENSSL_INSTALL-$(target))/wheel/openssl-$(OPENSSL_VERSION).dist-info
 
 $$(OPENSSL_SRCDIR-$(target))/Configure: downloads/openssl-$(OPENSSL_VERSION).tar.gz
@@ -377,18 +383,23 @@ $$(OPENSSL_SRCDIR-$(target))/Configure: downloads/openssl-$(OPENSSL_VERSION).tar
 
 ifneq ($(os),macOS)
 	# Patch code to disable the use of fork as it's not available on $(os)
+ifeq ($(OPENSSL_VERSION_NUMBER),1.1.1)
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/speed.c
+	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/ocsp.c
+else
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/include/http_server.h
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/speed.c
+endif
 endif
 	# Touch the Configure script to ensure that Make identifies it as up to date.
 	touch $$(OPENSSL_SRCDIR-$(target))/Configure
 
 
-$$(OPENSSL_SRCDIR-$(target))/is_configured: alias/$$(TARGET_TRIPLE-$(target))-gcc $$(OPENSSL_SRCDIR-$(target))/Configure
+$$(OPENSSL_SRCDIR-$(target))/is_configured: install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(OPENSSL_SRCDIR-$(target))/Configure
 	# Configure the OpenSSL build
 ifeq ($(os),macOS)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
 			--prefix="$$(OPENSSL_INSTALL-$(target))" \
@@ -396,7 +407,7 @@ ifeq ($(os),macOS)
 			2>&1 | tee -a ../openssl-$(OPENSSL_VERSION).config.log
 else
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -417,7 +428,7 @@ $$(OPENSSL_SRCDIR-$(target))/libssl.a: $$(OPENSSL_SRCDIR-$(target))/is_configure
 	# OpenSSL's `all` target modifies the Makefile;
 	# use the raw targets that make up all and it's dependencies
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -428,7 +439,7 @@ $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_SRCDIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
@@ -470,8 +481,8 @@ $$(OPENSSL_WHEEL-$(target)): $$(OPENSSL_LIB-$(target)) $$(BDIST_WHEEL)
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/$(os)/openssl
-	$(HOST_PYTHON_EXE) -m wheel pack $$(OPENSSL_INSTALL-$(target))/wheel --dest-dir wheels/$(os)/openssl --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(OPENSSL_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: libFFI
@@ -485,7 +496,7 @@ ifneq ($(os),macOS)
 LIBFFI_SRCDIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 LIBFFI_SRCDIR-$(target)=$$(LIBFFI_SRCDIR-$(os))/build_$$(SDK-$(target))-$$(ARCH-$(target))
 LIBFFI_LIB-$(target)=$$(LIBFFI_SRCDIR-$(target))/.libs/libffi.a
-LIBFFI_WHEEL-$(target)=wheels/$(os)/libffi/libffi-$(LIBFFI_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+LIBFFI_WHEEL-$(target)=wheels/$(os)/libffi-$(LIBFFI_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 LIBFFI_WHEEL_DISTINFO-$(target)=$$(LIBFFI_SRCDIR-$(target))/wheel/libffi-$(LIBFFI_VERSION).dist-info
 
 $$(LIBFFI_LIB-$(target)): $$(LIBFFI_SRCDIR-$(os))/darwin_common/include/ffi.h
@@ -524,8 +535,8 @@ $$(LIBFFI_WHEEL-$(target)): $$(LIBFFI_LIB-$(target)) $$(BDIST_WHEEL)
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/$(os)/libffi
-	$(HOST_PYTHON_EXE) -m wheel pack $$(LIBFFI_SRCDIR-$(target))/wheel --dest-dir wheels/$(os)/libffi --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(LIBFFI_SRCDIR-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 endif
 
@@ -558,13 +569,13 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
 $$(PYTHON_SRCDIR-$(target))/Makefile: \
-		alias/$$(TARGET_TRIPLE-$$(SDK-$(target)))-ar \
-		alias/$$(TARGET_TRIPLE-$(target))-gcc \
-		alias/$$(TARGET_TRIPLE-$(target))-cpp \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$$(SDK-$(target)))-ar \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-cpp \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
 			AR=$$(TARGET_TRIPLE-$$(SDK-$(target)))-ar \
 			CC=$$(TARGET_TRIPLE-$(target))-gcc \
@@ -594,14 +605,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 			make all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -723,14 +734,14 @@ $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target)
 # SDK: Aliases
 ###########################################################################
 
-alias/$$(TARGET_TRIPLE-$(sdk))-gcc:
-	patch/make-xcrun-alias alias/$$(TARGET_TRIPLE-$(sdk))-gcc "--sdk $(sdk) clang"
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-gcc:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang"
 
-alias/$$(TARGET_TRIPLE-$(sdk))-cpp:
-	patch/make-xcrun-alias alias/$$(TARGET_TRIPLE-$(sdk))-cpp "--sdk $(sdk) clang -E"
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang -E"
 
-alias/$$(TARGET_TRIPLE-$(sdk))-ar:
-	patch/make-xcrun-alias alias/$$(TARGET_TRIPLE-$(sdk))-ar "--sdk $(sdk) ar"
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-ar:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) ar"
 
 ###########################################################################
 # SDK: BZip2
@@ -821,12 +832,12 @@ $$(PYTHON_SRCDIR-$(sdk))/configure: \
 	touch $$(PYTHON_SRCDIR-$(sdk))/configure
 
 $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
-		alias/$$(TARGET_TRIPLE-$(sdk))-gcc \
-		alias/$$(TARGET_TRIPLE-$(sdk))-cpp \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-gcc \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp \
 		$$(PYTHON_SRCDIR-$(sdk))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
 			CC=$$(TARGET_TRIPLE-$(sdk))-gcc \
 			CPP=$$(TARGET_TRIPLE-$(sdk))-cpp \
@@ -848,7 +859,7 @@ $$(PYTHON_SRCDIR-$(sdk))/python.exe: \
 		$$(PYTHON_SRCDIR-$(sdk))/Makefile
 	@echo ">>> Build Python for $(sdk)"
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
-		PATH="$(PROJECT_DIR)/alias:$(PATH)" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make all \
 		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
@@ -992,12 +1003,12 @@ clean-BZip2-$(os):
 		install/$(os)/*/bzip2-$(BZIP2_VERSION).*.log \
 		merge/$(os)/*/bzip2-$(BZIP2_VERSION) \
 		merge/$(os)/*/bzip2-$(BZIP2_VERSION).*.log \
-		wheels/$(os)/bzip2
+		wheels/$(os)/bzip2-$(BZIP2_VERSION)-*
 
 clean-BZip2-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/bzip2-$(BZIP2_VERSION)/wheel \
-		wheels/$(os)/bzip2
+		wheels/$(os)/bzip2-$(BZIP2_VERSION)-*
 
 ###########################################################################
 # Build: XZ (LZMA)
@@ -1015,12 +1026,12 @@ clean-XZ-$(os):
 		install/$(os)/*/xz-$(XZ_VERSION).*.log \
 		merge/$(os)/*/xz-$(XZ_VERSION) \
 		merge/$(os)/*/xz-$(XZ_VERSION).*.log \
-		wheels/$(os)/xz
+		wheels/$(os)/xz-$(XZ_VERSION)-*
 
 clean-XZ-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/xz-$(XZ_VERSION)/wheel \
-		wheels/$(os)/xz
+		wheels/$(os)/xz-$(XZ_VERSION)-*
 
 ###########################################################################
 # Build: OpenSSL
@@ -1038,12 +1049,12 @@ clean-OpenSSL-$(os):
 		install/$(os)/*/openssl-$(OPENSSL_VERSION).*.log \
 		merge/$(os)/*/openssl-$(OPENSSL_VERSION) \
 		merge/$(os)/*/openssl-$(OPENSSL_VERSION).*.log \
-		wheels/$(os)/openssl
+		wheels/$(os)/openssl-$(OPENSSL_VERSION)-*
 
 clean-OpenSSL-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/openssl-$(OPENSSL_VERSION)/wheel \
-		wheels/$(os)/openssl
+		wheels/$(os)/openssl-$(OPENSSL_VERSION)-*
 
 ###########################################################################
 # Build: libFFI
@@ -1076,12 +1087,12 @@ clean-libFFI-$(os):
 		build/$(os)/libffi-$(LIBFFI_VERSION).*.log \
 		merge/$(os)/libffi-$(LIBFFI_VERSION) \
 		merge/$(os)/libffi-$(LIBFFI_VERSION).*.log \
-		wheels/$(os)/libffi
+		wheels/$(os)/libffi-$(LIBFFI_VERSION)-*
 
 clean-libFFI-$(os)-wheels:
 	rm -rf \
 		build/$(os)/libffi-$(LIBFFI_VERSION)/build_*/wheel \
-		wheels/$(os)/libffi
+		wheels/$(os)/libffi-$(LIBFFI_VERSION)-*
 
 ###########################################################################
 # Build: Python
@@ -1133,7 +1144,7 @@ endif
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
 	$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist \
 	$$(PYTHON_STDLIB-$(os))/VERSIONS \
-	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_SITECUSTOMIZE-$$(target))) \
+	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for $(os)"
 	mkdir -p dist
@@ -1210,7 +1221,7 @@ vars-$(os): $$(foreach target,$$(TARGETS-$(os)),vars-$$(target)) $$(foreach sdk,
 
 endef # build
 
-$(BDIST_WHEEL): $(HOST_PYTHON_EXE)
+$(BDIST_WHEEL):
 	@echo ">>> Ensure the macOS python install has pip and wheel"
 	$(HOST_PYTHON_EXE) -m ensurepip
 	PIP_REQUIRE_VIRTUALENV=false $(HOST_PYTHON_EXE) -m pip install wheel
