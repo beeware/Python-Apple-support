@@ -1,7 +1,3 @@
-#ifdef __arm__
-#include "pyconfig-armv7k.h"
-#endif
-
 #ifdef __arm64__
 #  ifdef __LP64__
 #include "pyconfig-arm64.h"
