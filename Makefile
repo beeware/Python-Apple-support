@@ -30,7 +30,7 @@
 # - Python-tvOS     - build Python for tvOS
 # - Python-watchOS  - build Python for watchOS
 
-# Current director
+# Current directory
 PROJECT_DIR=$(shell pwd)
 
 BUILD_NUMBER=custom
@@ -97,13 +97,13 @@ BDIST_WHEEL=$(HOST_PYTHON)/lib/python$(PYTHON_VER)/site-packages/wheel/bdist_whe
 PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
 
 # Build for all operating systems
-all: $(OS_LIST)
+all: $(OS_LIST) wheels
 
 .PHONY: \
 	all clean distclean update-patch vars wheels \
 	$(foreach product,$(PRODUCTS),$(product) $(foreach os,$(OS_LIST),$(product)-$(os) clean-$(product) clean-$(product)-$(os))) \
-	$(foreach product,$(PRODUCTS),$(product)-wheels $(foreach os,$(OS_LIST),$(product)-wheels-$(os) clean-$(product)-wheels-$(os))) \
-	$(foreach os,$(OS_LIST),$(os) wheels-$(os) clean-$(os) clean-wheels-$(os) vars-$(os))
+	$(foreach product,$(PRODUCTS),$(product)-wheels $(foreach os,$(OS_LIST),$(product)-$(os)-wheels clean-$(product)-$(os)-wheels)) \
+	$(foreach os,$(OS_LIST),$(os) $(os)-wheels clean-$(os) clean-$(os)-wheels vars-$(os))
 
 # Clean all builds
 clean:
@@ -204,29 +204,36 @@ target=$1
 os=$2
 
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-WHEEL_TAG-$(target)=py3-none-$$(OS_LOWER-$(target))_$$(shell echo $$(VERSION_MIN-$(os))_$(target) | sed "s/\./_/g")
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
 SDK-$(target)=$$(basename $(target))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
+WHEEL_TAG-$(target)=py3-none-$$(shell echo $$(OS_LOWER-$(target))_$$(VERSION_MIN-$(os))_$(target) | sed "s/\./_/g")
+
 ifeq ($(os),macOS)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-darwin
 else
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
 	endif
 endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
-CC-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
-CPP-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E
-CXX-$(target)=xcrun --sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))
-AR-$(target)=xcrun --sdk $$(SDK-$(target)) ar
 CFLAGS-$(target)=$$(CFLAGS-$(os))
 LDFLAGS-$(target)=$$(CFLAGS-$(os))
+
+###########################################################################
+# Target: Aliases
+###########################################################################
+
+install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc:
+	patch/make-xcrun-alias $$@ "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target))"
+
+install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-cpp:
+	patch/make-xcrun-alias $$@ "--sdk $$(SDK-$(target)) clang -target $$(TARGET_TRIPLE-$(target)) -E"
 
 ###########################################################################
 # Target: BZip2
@@ -235,7 +242,7 @@ LDFLAGS-$(target)=$$(CFLAGS-$(os))
 BZIP2_SRCDIR-$(target)=build/$(os)/$(target)/bzip2-$(BZIP2_VERSION)
 BZIP2_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/bzip2-$(BZIP2_VERSION)
 BZIP2_LIB-$(target)=$$(BZIP2_INSTALL-$(target))/lib/libbz2.a
-BZIP2_WHEEL-$(target)=wheels/dist/bzip2/bzip2-$(BZIP2_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+BZIP2_WHEEL-$(target)=wheels/$(os)/bzip2-$(BZIP2_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 BZIP2_WHEEL_DISTINFO-$(target)=$$(BZIP2_INSTALL-$(target))/wheel/bzip2-$(BZIP2_VERSION).dist-info
 
 $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
@@ -245,12 +252,13 @@ $$(BZIP2_SRCDIR-$(target))/Makefile: downloads/bzip2-$(BZIP2_VERSION).tar.gz
 	# Touch the makefile to ensure that Make identifies it as up to date.
 	touch $$(BZIP2_SRCDIR-$(target))/Makefile
 
-$$(BZIP2_LIB-$(target)): $$(BZIP2_SRCDIR-$(target))/Makefile
+$$(BZIP2_LIB-$(target)): install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(BZIP2_SRCDIR-$(target))/Makefile
 	@echo ">>> Build BZip2 for $(target)"
 	cd $$(BZIP2_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make install \
 			PREFIX="$$(BZIP2_INSTALL-$(target))" \
-			CC="$$(CC-$(target))" \
+			CC=$$(TARGET_TRIPLE-$(target))-gcc \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			2>&1 | tee -a ../bzip2-$(BZIP2_VERSION).build.log
@@ -268,22 +276,22 @@ $$(BZIP2_WHEEL-$(target)): $$(BZIP2_LIB-$(target)) $$(BDIST_WHEEL)
 	cp $$(BZIP2_SRCDIR-$(target))/LICENSE $$(BZIP2_WHEEL_DISTINFO-$(target))
 
 	# Write package metadata
-	echo "Metadata-Version: 1.2" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
+	echo "Metadata-Version: 1.2" > $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Name: bzip2" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Version: $(BZIP2_VERSION)" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Summary: " >> $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Download-URL: " >> $$(BZIP2_WHEEL_DISTINFO-$(target))/METADATA
 
 	# Write wheel metadata
-	echo "Wheel-Version: 1.0" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
+	echo "Wheel-Version: 1.0" > $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Root-Is-Purelib: false" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Generator: Python-Apple-support.BeeWare" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Build: 1" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(BZIP2_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/dist/bzip2
-	$(HOST_PYTHON_EXE) -m wheel pack $$(BZIP2_INSTALL-$(target))/wheel --dest-dir wheels/dist/bzip2 --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(BZIP2_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: XZ (LZMA)
@@ -292,19 +300,24 @@ $$(BZIP2_WHEEL-$(target)): $$(BZIP2_LIB-$(target)) $$(BDIST_WHEEL)
 XZ_SRCDIR-$(target)=build/$(os)/$(target)/xz-$(XZ_VERSION)
 XZ_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/xz-$(XZ_VERSION)
 XZ_LIB-$(target)=$$(XZ_INSTALL-$(target))/lib/liblzma.a
-XZ_WHEEL-$(target)=wheels/dist/xz/xz-$(XZ_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+XZ_WHEEL-$(target)=wheels/$(os)/xz-$(XZ_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 XZ_WHEEL_DISTINFO-$(target)=$$(XZ_INSTALL-$(target))/wheel/xz-$(XZ_VERSION).dist-info
 
-$$(XZ_SRCDIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
+$$(XZ_SRCDIR-$(target))/configure: downloads/xz-$(XZ_VERSION).tar.gz
 	@echo ">>> Unpack XZ sources for $(target)"
 	mkdir -p $$(XZ_SRCDIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(XZ_SRCDIR-$(target))
 	# Patch the source to add support for new platforms
 	cd $$(XZ_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/xz-$(XZ_VERSION).patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(XZ_SRCDIR-$(target))/configure
+
+$$(XZ_SRCDIR-$(target))/Makefile: install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(XZ_SRCDIR-$(target))/configure
 	# Configure the build
 	cd $$(XZ_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
-			CC="$$(CC-$(target))" \
+			CC=$$(TARGET_TRIPLE-$(target))-gcc \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			--disable-shared \
@@ -317,6 +330,7 @@ $$(XZ_SRCDIR-$(target))/Makefile: downloads/xz-$(XZ_VERSION).tar.gz
 $$(XZ_LIB-$(target)): $$(XZ_SRCDIR-$(target))/Makefile
 	@echo ">>> Build and install XZ for $(target)"
 	cd $$(XZ_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make install \
 			2>&1 | tee -a ../xz-$(XZ_VERSION).build.log
 
@@ -334,22 +348,22 @@ $$(XZ_WHEEL-$(target)): $$(XZ_LIB-$(target)) $$(BDIST_WHEEL)
 	cp $$(XZ_SRCDIR-$(target))/COPYING.* $$(XZ_WHEEL_DISTINFO-$(target))
 
 	# Write package metadata
-	echo "Metadata-Version: 1.2" >> $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
+	echo "Metadata-Version: 1.2" > $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Name: xz" >> $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Version: $(XZ_VERSION)" >> $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Summary: " >> $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Download-URL: " >> $$(XZ_WHEEL_DISTINFO-$(target))/METADATA
 
 	# Write wheel metadata
-	echo "Wheel-Version: 1.0" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
+	echo "Wheel-Version: 1.0" > $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Root-Is-Purelib: false" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Generator: Python-Apple-support.BeeWare" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Build: 1" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(XZ_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/dist/xz
-	$(HOST_PYTHON_EXE) -m wheel pack $$(XZ_INSTALL-$(target))/wheel --dest-dir wheels/dist/xz --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(XZ_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: OpenSSL
@@ -359,10 +373,10 @@ OPENSSL_SRCDIR-$(target)=build/$(os)/$(target)/openssl-$(OPENSSL_VERSION)
 OPENSSL_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/openssl-$(OPENSSL_VERSION)
 OPENSSL_SSL_LIB-$(target)=$$(OPENSSL_INSTALL-$(target))/lib/libssl.a
 OPENSSL_CRYPTO_LIB-$(target)=$$(OPENSSL_INSTALL-$(target))/lib/libcrypto.a
-OPENSSL_WHEEL-$(target)=wheels/dist/openssl/openssl-$(OPENSSL_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+OPENSSL_WHEEL-$(target)=wheels/$(os)/openssl-$(OPENSSL_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 OPENSSL_WHEEL_DISTINFO-$(target)=$$(OPENSSL_INSTALL-$(target))/wheel/openssl-$(OPENSSL_VERSION).dist-info
 
-$$(OPENSSL_SRCDIR-$(target))/is_configured: downloads/openssl-$(OPENSSL_VERSION).tar.gz
+$$(OPENSSL_SRCDIR-$(target))/Configure: downloads/openssl-$(OPENSSL_VERSION).tar.gz
 	@echo ">>> Unpack and configure OpenSSL sources for $(target)"
 	mkdir -p $$(OPENSSL_SRCDIR-$(target))
 	tar zxf $$< --strip-components 1 -C $$(OPENSSL_SRCDIR-$(target))
@@ -377,18 +391,24 @@ else
 	sed -ie 's/define HAVE_FORK 1/define HAVE_FORK 0/' $$(OPENSSL_SRCDIR-$(target))/apps/speed.c
 endif
 endif
+	# Touch the Configure script to ensure that Make identifies it as up to date.
+	touch $$(OPENSSL_SRCDIR-$(target))/Configure
 
+
+$$(OPENSSL_SRCDIR-$(target))/is_configured: install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc $$(OPENSSL_SRCDIR-$(target))/Configure
 	# Configure the OpenSSL build
 ifeq ($(os),macOS)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		./Configure darwin64-$$(ARCH-$(target))-cc no-tests \
 			--prefix="$$(OPENSSL_INSTALL-$(target))" \
 			--openssldir=/etc/ssl \
 			2>&1 | tee -a ../openssl-$(OPENSSL_VERSION).config.log
 else
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		./Configure iphoneos-cross no-asm no-tests \
@@ -408,7 +428,8 @@ $$(OPENSSL_SRCDIR-$(target))/libssl.a: $$(OPENSSL_SRCDIR-$(target))/is_configure
 	# OpenSSL's `all` target modifies the Makefile;
 	# use the raw targets that make up all and it's dependencies
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		make build_sw \
@@ -418,7 +439,8 @@ $$(OPENSSL_SSL_LIB-$(target)): $$(OPENSSL_SRCDIR-$(target))/libssl.a
 	@echo ">>> Install OpenSSL for $(target)"
 	# Install just the software (not the docs)
 	cd $$(OPENSSL_SRCDIR-$(target)) && \
-		CC="$$(CC-$(target)) $$(CFLAGS-$(target))" \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+		CC="$$(TARGET_TRIPLE-$(target))-gcc $$(CFLAGS-$(target))" \
 		CROSS_TOP="$$(dir $$(SDK_ROOT-$(target))).." \
 		CROSS_SDK="$$(notdir $$(SDK_ROOT-$(target)))" \
 		make install_sw \
@@ -445,22 +467,22 @@ $$(OPENSSL_WHEEL-$(target)): $$(OPENSSL_LIB-$(target)) $$(BDIST_WHEEL)
 	fi
 
 	# Write package metadata
-	echo "Metadata-Version: 1.2" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
+	echo "Metadata-Version: 1.2" > $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Name: openssl" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Version: $(OPENSSL_VERSION)" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Summary: " >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Download-URL: " >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/METADATA
 
 	# Write wheel metadata
-	echo "Wheel-Version: 1.0" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
+	echo "Wheel-Version: 1.0" > $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Root-Is-Purelib: false" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Generator: Python-Apple-support.BeeWare" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Build: 1" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(OPENSSL_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/dist/openssl
-	$(HOST_PYTHON_EXE) -m wheel pack $$(OPENSSL_INSTALL-$(target))/wheel --dest-dir wheels/dist/openssl --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(OPENSSL_INSTALL-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 ###########################################################################
 # Target: libFFI
@@ -474,7 +496,7 @@ ifneq ($(os),macOS)
 LIBFFI_SRCDIR-$(os)=build/$(os)/libffi-$(LIBFFI_VERSION)
 LIBFFI_SRCDIR-$(target)=$$(LIBFFI_SRCDIR-$(os))/build_$$(SDK-$(target))-$$(ARCH-$(target))
 LIBFFI_LIB-$(target)=$$(LIBFFI_SRCDIR-$(target))/.libs/libffi.a
-LIBFFI_WHEEL-$(target)=wheels/dist/libffi/libffi-$(LIBFFI_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
+LIBFFI_WHEEL-$(target)=wheels/$(os)/libffi-$(LIBFFI_VERSION)-1-$$(WHEEL_TAG-$(target)).whl
 LIBFFI_WHEEL_DISTINFO-$(target)=$$(LIBFFI_SRCDIR-$(target))/wheel/libffi-$(LIBFFI_VERSION).dist-info
 
 $$(LIBFFI_LIB-$(target)): $$(LIBFFI_SRCDIR-$(os))/darwin_common/include/ffi.h
@@ -499,22 +521,22 @@ $$(LIBFFI_WHEEL-$(target)): $$(LIBFFI_LIB-$(target)) $$(BDIST_WHEEL)
 	cp $$(LIBFFI_SRCDIR-$(os))/LICENSE $$(LIBFFI_WHEEL_DISTINFO-$(target))
 
 	# Write package metadata
-	echo "Metadata-Version: 1.2" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
+	echo "Metadata-Version: 1.2" > $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Name: libffi" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Version: $(LIBFFI_VERSION)" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Summary: " >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
 	echo "Download-URL: " >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/METADATA
 
 	# Write wheel metadata
-	echo "Wheel-Version: 1.0" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
+	echo "Wheel-Version: 1.0" > $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Root-Is-Purelib: false" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Generator: Python-Apple-support.BeeWare" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Build: 1" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 	echo "Tag: $$(WHEEL_TAG-$(target))" >> $$(LIBFFI_WHEEL_DISTINFO-$(target))/WHEEL
 
 	# Pack the wheel
-	mkdir -p wheels/dist/libffi
-	$(HOST_PYTHON_EXE) -m wheel pack $$(LIBFFI_SRCDIR-$(target))/wheel --dest-dir wheels/dist/libffi --build-number 1
+	mkdir -p wheels/$(os)
+	$(HOST_PYTHON_EXE) -m wheel pack $$(LIBFFI_SRCDIR-$(target))/wheel --dest-dir wheels/$(os) --build-number 1
 
 endif
 
@@ -524,32 +546,41 @@ endif
 
 # macOS builds are compiled as a single universal2 build.
 # The macOS Python build is configured in the `build-sdk` macro, rather than the
-# `build-target` macro.
+# `build-target` macro. However, the site-customize scripts generated here, per target.
 ifneq ($(os),macOS)
 
 PYTHON_SRCDIR-$(target)=build/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_LIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/libpython$(PYTHON_VER).a
 
-$$(PYTHON_SRCDIR-$(target))/Makefile: \
+$$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
 		$$(BZIP2_FATLIB-$$(SDK-$(target))) \
 		$$(XZ_FATLIB-$$(SDK-$(target))) \
 		$$(OPENSSL_FATINCLUDE-$$(SDK-$(target))) $$(OPENSSL_SSL_FATLIB-$$(SDK-$(target))) $$(OPENSSL_CRYPTO_FATLIB-$$(SDK-$(target))) \
 		$$(LIBFFI_FATLIB-$$(SDK-$(target))) \
-		$$(PYTHON_XCFRAMEWORK-macOS)
+		$$(PYTHON_LIB-macOS)
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_SRCDIR-$(target))
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(target))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(PYTHON_SRCDIR-$(target))/configure
+
+$$(PYTHON_SRCDIR-$(target))/Makefile: \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$$(SDK-$(target)))-ar \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-gcc \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(target))-cpp \
+		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
-			AR="$$(AR-$(target))" \
-			CC="$$(CC-$(target))" \
-			CPP="$$(CPP-$(target))" \
-			CXX="$$(CXX-$(target))" \
+			AR=$$(TARGET_TRIPLE-$$(SDK-$(target)))-ar \
+			CC=$$(TARGET_TRIPLE-$(target))-gcc \
+			CPP=$$(TARGET_TRIPLE-$(target))-cpp \
+			CXX=$$(TARGET_TRIPLE-$(target))-gcc \
 			CFLAGS="$$(CFLAGS-$(target))" \
 			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$$(SDK-$(target)))/include" \
@@ -574,16 +605,30 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make all \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+			make all \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		make install \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
+			make install \
+			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
 endif
+
+PYTHON_SITECUSTOMIZE-$(target)=$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/platform-site/$(target)/sitecustomize.py
+
+$$(PYTHON_SITECUSTOMIZE-$(target)):
+	@echo ">>> Create cross-platform sitecustomize.py for $(target)"
+	mkdir -p $$(dir $$(PYTHON_SITECUSTOMIZE-$(target)))
+	cat $(PROJECT_DIR)/patch/Python/sitecustomize.$(os).py \
+		| sed -e "s/{{os}}/$(os)/g" \
+		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(SDK-$(target))-$$(ARCH-$(target))/g" \
+		> $$(PYTHON_SITECUSTOMIZE-$(target))
+
 
 ###########################################################################
 # Target: Debug
@@ -595,8 +640,6 @@ vars-$(target):
 	@echo "ARCH-$(target): $$(ARCH-$(target))"
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
-	@echo "CC-$(target): $$(CC-$(target))"
-	@echo "CPP-$(target): $$(CPP-$(target))"
 	@echo "CFLAGS-$(target): $$(CFLAGS-$(target))"
 	@echo "LDFLAGS-$(target): $$(LDFLAGS-$(target))"
 	@echo "BZIP2_SRCDIR-$(target): $$(BZIP2_SRCDIR-$(target))"
@@ -650,8 +693,6 @@ else
 SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
-CC-$(sdk)=xcrun --sdk $(sdk) clang
-CPP-$(sdk)=xcrun --sdk $(sdk) clang -E
 CFLAGS-$(sdk)=$$(CFLAGS-$(os))
 LDFLAGS-$(sdk)=$$(CFLAGS-$(os))
 
@@ -676,8 +717,31 @@ PYTHON_FATLIB-$(sdk)=$$(PYTHON_MERGE-$(sdk))/libPython$(PYTHON_VER).a
 PYTHON_FATINCLUDE-$(sdk)=$$(PYTHON_MERGE-$(sdk))/Headers
 PYTHON_FATSTDLIB-$(sdk)=$$(PYTHON_MERGE-$(sdk))/python-stdlib
 
+ifeq ($(os),macOS)
+TARGET_TRIPLE-$(sdk)=apple-darwin
+else
+	ifeq ($$(findstring simulator,$(sdk)),)
+TARGET_TRIPLE-$(sdk)=apple-$$(OS_LOWER-$(sdk))$$(VERSION_MIN-$(os))
+	else
+TARGET_TRIPLE-$(sdk)=apple-$$(OS_LOWER-$(sdk))$$(VERSION_MIN-$(os))-simulator
+	endif
+endif
+
 # Expand the build-target macro for target on this OS
 $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target),$(os))))
+
+###########################################################################
+# SDK: Aliases
+###########################################################################
+
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-gcc:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang"
+
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang -E"
+
+install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-ar:
+	patch/make-xcrun-alias $$@ "--sdk $(sdk) ar"
 
 ###########################################################################
 # SDK: BZip2
@@ -754,7 +818,7 @@ PYTHON_SRCDIR-$(sdk)=build/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_LIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/libpython$(PYTHON_VER).a
 
-$$(PYTHON_SRCDIR-$(sdk))/Makefile: \
+$$(PYTHON_SRCDIR-$(sdk))/configure: \
 		$$(BZIP2_FATLIB-$$(sdk)) \
 		$$(XZ_FATLIB-$$(sdk)) \
 		$$(OPENSSL_FATINCLUDE-$$(sdk)) $$(OPENSSL_SSL_FATLIB-$$(sdk)) $$(OPENSSL_CRYPTO_FATLIB-$$(sdk)) \
@@ -764,11 +828,19 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(sdk))
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(sdk)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
+	# Touch the configure script to ensure that Make identifies it as up to date.
+	touch $$(PYTHON_SRCDIR-$(sdk))/configure
+
+$$(PYTHON_SRCDIR-$(sdk))/Makefile: \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-gcc \
+		install/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp \
+		$$(PYTHON_SRCDIR-$(sdk))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		./configure \
-			CC="$$(CC-$(sdk))" \
-			CPP="$$(CPP-$(sdk))" \
+			CC=$$(TARGET_TRIPLE-$(sdk))-gcc \
+			CPP=$$(TARGET_TRIPLE-$(sdk))-cpp \
 			CFLAGS="$$(CFLAGS-$(sdk))" \
 			LDFLAGS="$$(LDFLAGS-$(sdk))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_MERGE-$(sdk))/include" \
@@ -787,6 +859,7 @@ $$(PYTHON_SRCDIR-$(sdk))/python.exe: \
 		$$(PYTHON_SRCDIR-$(sdk))/Makefile
 	@echo ">>> Build Python for $(sdk)"
 	cd $$(PYTHON_SRCDIR-$(sdk)) && \
+		PATH="$(PROJECT_DIR)/install/$(os)/bin:$(PATH)" \
 		make all \
 		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
@@ -836,7 +909,7 @@ $$(PYTHON_FATINCLUDE-$(sdk)): $$(PYTHON_LIB-$(sdk))
 
 $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
-	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))
+	mkdir -p $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
 	cp -r $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/ $$(PYTHON_FATSTDLIB-$(sdk))
 
@@ -846,14 +919,11 @@ $$(PYTHON_FATSTDLIB-$(sdk)): $$(PYTHON_FATLIB-$(sdk))
 		$$(PYTHON_FATSTDLIB-$(sdk))/config-* \
 		$$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/*
 
-	# Copy the cross-target _sysconfigdata module from the patch folder
-	cp $(PROJECT_DIR)/patch/Python/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))
-
 	# Copy the individual _sysconfigdata modules into names that include the architecture
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk).py $$(PYTHON_FATSTDLIB-$(sdk))/_sysconfigdata__$$(OS_LOWER-$(sdk))_$(sdk)_$$(ARCH-$$(target)).py; )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/_sysconfigdata_* $$(PYTHON_FATSTDLIB-$(sdk))/; )
 
 	# Copy the individual config modules directories into names that include the architecture
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/config-$(PYTHON_VER)-$(sdk) $$(PYTHON_FATSTDLIB-$(sdk))/config-$(PYTHON_VER)-$$(target); )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/config-$(PYTHON_VER)-$(sdk)-$$(ARCH-$$(target)) $$(PYTHON_FATSTDLIB-$(sdk))/; )
 
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
 	$$(foreach module,$$(wildcard $$(PYTHON_INSTALL-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib/python$(PYTHON_VER)/lib-dynload/*),lipo -create -output $$(PYTHON_FATSTDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_INSTALL-$$(target))/lib/python$(PYTHON_VER)/lib-dynload/$$(notdir $$(module))); )
@@ -870,8 +940,6 @@ vars-$(sdk):
 	@echo "SDK_TARGETS-$(sdk): $$(SDK_TARGETS-$(sdk))"
 	@echo "SDK_ARCHES-$(sdk): $$(SDK_ARCHES-$(sdk))"
 	@echo "SDK_SLICE-$(sdk): $$(SDK_SLICE-$(sdk))"
-	@echo "CC-$(sdk): $$(CC-$(sdk))"
-	@echo "CPP-$(sdk): $$(CPP-$(sdk))"
 	@echo "CFLAGS-$(sdk): $$(CFLAGS-$(sdk))"
 	@echo "LDFLAGS-$(sdk): $$(LDFLAGS-$(sdk))"
 	@echo "BZIP2_MERGE-$(sdk): $$(BZIP2_MERGE-$(sdk))"
@@ -924,7 +992,7 @@ $$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
 ###########################################################################
 
 BZip2-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(BZIP2_FATLIB-$$(sdk)))
-BZip2-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(BZIP2_WHEEL-$$(target)))
+BZip2-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(BZIP2_WHEEL-$$(target)))
 
 clean-BZip2-$(os):
 	@echo ">>> Clean BZip2 build products on $(os)"
@@ -935,19 +1003,19 @@ clean-BZip2-$(os):
 		install/$(os)/*/bzip2-$(BZIP2_VERSION).*.log \
 		merge/$(os)/*/bzip2-$(BZIP2_VERSION) \
 		merge/$(os)/*/bzip2-$(BZIP2_VERSION).*.log \
-		wheels/dist/bzip2
+		wheels/$(os)/bzip2-$(BZIP2_VERSION)-*
 
-clean-BZip2-wheels-$(os):
+clean-BZip2-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/bzip2-$(BZIP2_VERSION)/wheel \
-		wheels/dist/bzip2
+		wheels/$(os)/bzip2-$(BZIP2_VERSION)-*
 
 ###########################################################################
 # Build: XZ (LZMA)
 ###########################################################################
 
 XZ-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(XZ_FATLIB-$$(sdk)))
-XZ-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(XZ_WHEEL-$$(target)))
+XZ-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(XZ_WHEEL-$$(target)))
 
 clean-XZ-$(os):
 	@echo ">>> Clean XZ build products on $(os)"
@@ -958,19 +1026,19 @@ clean-XZ-$(os):
 		install/$(os)/*/xz-$(XZ_VERSION).*.log \
 		merge/$(os)/*/xz-$(XZ_VERSION) \
 		merge/$(os)/*/xz-$(XZ_VERSION).*.log \
-		wheels/dist/xz
+		wheels/$(os)/xz-$(XZ_VERSION)-*
 
-clean-XZ-wheels-$(os):
+clean-XZ-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/xz-$(XZ_VERSION)/wheel \
-		wheels/dist/xz
+		wheels/$(os)/xz-$(XZ_VERSION)-*
 
 ###########################################################################
 # Build: OpenSSL
 ###########################################################################
 
 OpenSSL-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(OPENSSL_FATINCLUDE-$$(sdk)) $$(OPENSSL_SSL_FATLIB-$$(sdk)) $$(OPENSSL_CRYPTO_FATLIB-$$(sdk)))
-OpenSSL-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(OPENSSL_WHEEL-$$(target)))
+OpenSSL-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(OPENSSL_WHEEL-$$(target)))
 
 clean-OpenSSL-$(os):
 	@echo ">>> Clean OpenSSL build products on $(os)"
@@ -981,12 +1049,12 @@ clean-OpenSSL-$(os):
 		install/$(os)/*/openssl-$(OPENSSL_VERSION).*.log \
 		merge/$(os)/*/openssl-$(OPENSSL_VERSION) \
 		merge/$(os)/*/openssl-$(OPENSSL_VERSION).*.log \
-		wheels/dist/openssl
+		wheels/$(os)/openssl-$(OPENSSL_VERSION)-*
 
-clean-OpenSSL-wheels-$(os):
+clean-OpenSSL-$(os)-wheels:
 	rm -rf \
 		install/$(os)/*/openssl-$(OPENSSL_VERSION)/wheel \
-		wheels/dist/openssl
+		wheels/$(os)/openssl-$(OPENSSL_VERSION)-*
 
 ###########################################################################
 # Build: libFFI
@@ -1010,7 +1078,7 @@ $$(LIBFFI_SRCDIR-$(os))/darwin_common/include/ffi.h: downloads/libffi-$(LIBFFI_V
 endif
 
 libFFI-$(os): $$(foreach sdk,$$(SDKS-$(os)),$$(LIBFFI_FATLIB-$$(sdk)))
-libFFI-wheels-$(os): $$(foreach target,$$(TARGETS-$(os)),$$(LIBFFI_WHEEL-$$(target)))
+libFFI-$(os)-wheels: $$(foreach target,$$(TARGETS-$(os)),$$(LIBFFI_WHEEL-$$(target)))
 
 clean-libFFI-$(os):
 	@echo ">>> Clean libFFI build products on $(os)"
@@ -1019,27 +1087,26 @@ clean-libFFI-$(os):
 		build/$(os)/libffi-$(LIBFFI_VERSION).*.log \
 		merge/$(os)/libffi-$(LIBFFI_VERSION) \
 		merge/$(os)/libffi-$(LIBFFI_VERSION).*.log \
-		wheels/dist/libffi
+		wheels/$(os)/libffi-$(LIBFFI_VERSION)-*
 
-clean-libFFI-wheels-$(os):
+clean-libFFI-$(os)-wheels:
 	rm -rf \
 		build/$(os)/libffi-$(LIBFFI_VERSION)/build_*/wheel \
-		wheels/dist/libffi
+		wheels/$(os)/libffi-$(LIBFFI_VERSION)-*
 
 ###########################################################################
 # Build: Python
 ###########################################################################
 
-$$(PYTHON_XCFRAMEWORK-$(os)): \
+$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		$$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATLIB-$$(sdk)) $$(PYTHON_FATINCLUDE-$$(sdk)))
 	@echo ">>> Create Python.XCFramework on $(os)"
 	mkdir -p $$(dir $$(PYTHON_XCFRAMEWORK-$(os)))
 	xcodebuild -create-xcframework \
-		-output $$@ $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_FATINCLUDE-$$(sdk))) \
+		-output $$(PYTHON_XCFRAMEWORK-$(os)) $$(foreach sdk,$$(SDKS-$(os)),-library $$(PYTHON_FATLIB-$$(sdk)) -headers $$(PYTHON_FATINCLUDE-$$(sdk))) \
 		2>&1 | tee -a support/$(PYTHON_VER)/python-$(os).xcframework.log
 
-$$(PYTHON_STDLIB-$(os)): \
-		$$(PYTHON_XCFRAMEWORK-$(os)) \
+$$(PYTHON_STDLIB-$(os))/VERSIONS: \
 		$$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_FATSTDLIB-$$(sdk)))
 	@echo ">>> Create Python stdlib on $(os)"
 	# Copy stdlib from first SDK in $(os)
@@ -1060,7 +1127,6 @@ $$(PYTHON_STDLIB-$(os)): \
 	# Copy the lib-dynload contents from every SDK in $(os) into the support folder.
 	$$(foreach sdk,$$(SDKS-$(os)),cp $$(PYTHON_FATSTDLIB-$$(sdk))/lib-dynload/* $$(PYTHON_STDLIB-$(os))/lib-dynload; )
 
-dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: $$(PYTHON_XCFRAMEWORK-$(os)) $$(PYTHON_STDLIB-$(os))
 	@echo ">>> Create VERSIONS file for $(os)"
 	echo "Python version: $(PYTHON_VERSION) " > support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
@@ -1075,14 +1141,10 @@ endif
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 
-ifneq ($(os),macOS)
-	@echo ">>> Create cross-platform site sitecustomize.py for $(os)"
-	mkdir -p support/$(PYTHON_VER)/$(os)/platform-site
-	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py \
-		| sed -e "s/{{os}}/$(os)/g" \
-		| sed -e "s/{{tag}}/$$(shell echo $(os) | tr '[:upper:]' '[:lower:]')_$$(shell echo $$(VERSION_MIN-$(os)) | sed "s/\./_/g")/g" \
-		> support/$(PYTHON_VER)/$(os)/platform-site/sitecustomize.py
-endif
+dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
+	$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist \
+	$$(PYTHON_STDLIB-$(os))/VERSIONS \
+	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for $(os)"
 	mkdir -p dist
@@ -1129,19 +1191,21 @@ merge-clean-Python-$(os):
 # Build
 ###########################################################################
 
-$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz
-$(os)-wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-wheels-$(os))
+$(os)-wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-$(os)-wheels)
+$(os): dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz $(os)-wheels
 
-clean-$(os):
+clean-$(os)-wheels: $(foreach dep,$(DEPENDENCIES),clean-$(dep)-$(os)-wheels)
+	@echo ">>> Clean $(os) wheels"
+	rm -rf wheel/$(os)
+
+clean-$(os): clean-$(os)-wheels
 	@echo ">>> Clean $(os) build products"
 	rm -rf \
 		build/$(os) \
 		install/$(os) \
 		merge/$(os) \
 		dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz \
-		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz \
-
-clean-wheels-$(os): $(foreach dep,$(DEPENDENCIES),clean-$(dep)-wheels-$(os))
+		dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz
 
 ###########################################################################
 # Build: Debug
@@ -1157,38 +1221,38 @@ vars-$(os): $$(foreach target,$$(TARGETS-$(os)),vars-$$(target)) $$(foreach sdk,
 
 endef # build
 
-$(BDIST_WHEEL): $(HOST_PYTHON_EXE)
+$(BDIST_WHEEL):
 	@echo ">>> Ensure the macOS python install has pip and wheel"
 	$(HOST_PYTHON_EXE) -m ensurepip
 	PIP_REQUIRE_VIRTUALENV=false $(HOST_PYTHON_EXE) -m pip install wheel
 
 # Binary support wheels
 wheels: $(foreach dep,$(DEPENDENCIES),$(dep)-wheels)
-clean-wheels: $(foreach dep,$(DEPENDENCIES),clean-wheels-$(dep))
+clean-wheels: $(foreach dep,$(DEPENDENCIES),clean-$(dep)-wheels)
 
 # Dump environment variables (for debugging purposes)
 vars: $(foreach os,$(OS_LIST),vars-$(os))
 
 # Expand cross-platform build and clean targets for each output product
 BZip2: $(foreach os,$(OS_LIST),BZip2-$(os))
-BZip2-wheels: $(foreach os,$(OS_LIST),BZip2-wheels-$(os))
+BZip2-wheels: $(foreach os,$(OS_LIST),BZip2-$(os)-wheels)
 clean-BZip2: $(foreach os,$(OS_LIST),clean-BZip2-$(os))
-clean-BZip2-wheels: $(foreach os,$(OS_LIST),clean-BZip2-wheels-$(os))
+clean-BZip2-wheels: $(foreach os,$(OS_LIST),clean-BZip2-$(os)-wheels)
 
 XZ: $(foreach os,$(OS_LIST),XZ-$(os))
-XZ-wheels: $(foreach os,$(OS_LIST),XZ-wheels-$(os))
+XZ-wheels: $(foreach os,$(OS_LIST),XZ-$(os)-wheels)
 clean-XZ: $(foreach os,$(OS_LIST),clean-XZ-$(os))
-clean-XZ-wheels: $(foreach os,$(OS_LIST),clean-XZ-wheels-$(os))
+clean-XZ-wheels: $(foreach os,$(OS_LIST),clean-XZ-$(os)-wheels)
 
 OpenSSL: $(foreach os,$(OS_LIST),OpenSSL-$(os))
-OpenSSL-wheels: $(foreach os,$(OS_LIST),OpenSSL-wheels-$(os))
+OpenSSL-wheels: $(foreach os,$(OS_LIST),OpenSSL-$(os)-wheels)
 clean-OpenSSL: $(foreach os,$(OS_LIST),clean-OpenSSL-$(os))
-clean-OpenSSL-wheels: $(foreach os,$(OS_LIST),clean-OpenSSL-wheels-$(os))
+clean-OpenSSL-wheels: $(foreach os,$(OS_LIST),clean-OpenSSL-$(os)-wheels)
 
 libFFI: $(foreach os,$(OS_LIST),libFFI-$(os))
-libFFI-wheels: $(foreach os,$(OS_LIST),libFFI-wheels-$(os))
+libFFI-wheels: $(foreach os,$(OS_LIST),libFFI-$(os)-wheels)
 clean-libFFI: $(foreach os,$(OS_LIST),clean-libFFI-$(os))
-clean-libFFI-wheels: $(foreach os,$(OS_LIST),clean-libFFI-wheels-$(os))
+clean-libFFI-wheels: $(foreach os,$(OS_LIST),clean-libFFI-$(os)-wheels)
 
 Python: $(foreach os,$(OS_LIST),Python-$(os))
 clean-Python: $(foreach os,$(OS_LIST),clean-Python-$(os))
