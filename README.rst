@@ -53,8 +53,10 @@ x86_64 and M1 hardware. This should enable the code to run on:
     * iPad Mini (2 or later)
     * iPad Pro (all models)
     * iPod Touch (7th gen or later)
-* tvOS 9.0 or later, on Apple TV (4th gen or later)
-* watchOS 4.0 or later, on Apple Watch (4th gen or later)
+* tvOS 9.0 or later, on:
+    * Apple TV (4th gen or later)
+* watchOS 4.0 or later, on:
+    * Apple Watch (4th gen or later)
 
 Quickstart
 ----------
@@ -87,24 +89,22 @@ in the ``dist`` folder.
 
 Each support package contains:
 
-* ``VERSIONS``, a text file describing the specific versions of code used to
-  build the support package;
+* ``VERSIONS``, a text file describing the specific versions of code used to build the
+  support package;
+* ``platform-site``, a folder that contains site customization scripts that can be used
+  to make your local Python install look like it is an on-device install for each of the
+  underlying target architectures supported by the platform. This is needed because when
+  you run ``pip`` you'll be on a macOS machine with a specific architecture; if ``pip``
+  tries to install a binary package, it will install a macOS binary wheel (which won't
+  work on iOS/tvOS/watchOS). However, if you add the ``platform-site`` folder to your
+  ``PYTHONPATH`` when invoking pip, the site customization will make your Python install
+  return ``platform`` and ``sysconfig`` responses consistent with on-device behavior,
+  which will cause ``pip`` to install platform-appropriate packages.
 * ``Python.xcframework``, a multi-architecture build of the Python runtime library
-* ``python-stdlib``, the code and binary modules comprising the Python standard
-  library. On iOS, tvOS and watchOS, there are 2 copies of every binary module -
-  one for physical devices, and one for the simulator. The simulator binaries
-  are "fat", containing code for both x86_64 and arm64.
-
-Non-macOS platforms also contain a ``platform-site`` folder. This contains a
-site customization script that can be used to make your local Python install
-look like it is an on-device install. This is needed because when you run
-``pip`` you'll be on a macOS machine; if ``pip`` tries to install a binary
-package, it will install a macOS binary wheel (which won't work on
-iOS/tvOS/watchOS). However, if you add the ``platform-site`` folder to your
-``PYTHONPATH`` when invoking pip, the site customization will make your Python
-install return ``platform`` and ``sysconfig`` responses consistent with
-on-device behavior, which will cause ``pip`` to install platform-appropriate
-packages.
+* ``python-stdlib``, the code and binary modules comprising the Python standard library.
+  On iOS, tvOS and watchOS, there are 2 copies of every binary module - one for physical
+  devices, and one for the simulator. The simulator binaries are "fat", containing code
+  for both x86_64 and arm64.
 
 For a detailed instructions on using the support package in your own project,
 see the `usage guide <./USAGE.md>`__
@@ -115,8 +115,8 @@ Building binary wheels
 When building binary wheels, you may need to use the libraries built by this
 project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
 project is able to package these dependencies as "wheels" that can be added to
-the `server/pypi/dist` directory of the `binary dependency builder
-project <https://github.com/freakboy3742/chaquopy>`__.
+the ``dist`` directory of the `Mobile Forge
+project <https://github.com/beeware/mobile-forge>`__.
 
 To build these wheels, run:
 
