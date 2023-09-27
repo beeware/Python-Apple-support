@@ -419,7 +419,7 @@ index 6df5dd551e..597da09643 100644
                          # waiting for child processes has otherwise been
                          # disabled for our process.  This child is dead, we
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index ebe3711827..495dc7bf73 100644
+index ebe3711827..5f2456b5db 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -95,6 +95,33 @@
@@ -427,28 +427,28 @@ index ebe3711827..495dc7bf73 100644
          'data': '{base}',
          },
 +    'ios': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
 +        },
 +    'tvos': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
 +        },
 +    'watchos': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
