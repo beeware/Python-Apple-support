@@ -534,7 +534,7 @@ index f1e3d64dfe..9a7c6f8e7f 100644
                  if not self._waitpid_lock.acquire(False):
                      # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index daf9f00006..80498e1690 100644
+index daf9f00006..8d32223243 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -56,6 +56,33 @@
@@ -542,28 +542,28 @@ index daf9f00006..80498e1690 100644
          'data': '{base}',
          },
 +    'ios': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
 +        },
 +    'tvos': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
 +        },
 +    'watchos': {
-+        'stdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'platstdlib': '{installed_base}/lib/python%s' % sys.version[:3],
-+        'purelib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
-+        'platlib': '{installed_base}/lib/python%s/site-packages' % sys.version[:3],
++        'stdlib': '{installed_base}/lib/python{py_version_short}',
++        'platstdlib': '{installed_base}/lib/python{py_version_short}',
++        'purelib': '{installed_base}/lib/python{py_version_short}/site-packages',
++        'platlib': '{installed_base}/lib/python{py_version_short}/site-packages',
 +        'include': '{installed_base}/include',
 +        'scripts': '{installed_base}/bin',
 +        'data': '{installed_base}/Resources',
