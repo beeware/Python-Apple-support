@@ -3,8 +3,8 @@
 # It is used by `tar -X` during the Makefile build.
 #
 # Remove command-line curses toolkit.
-Python/Resources/lib/python*/curses
+python-stdlib/curses
 # Remove the testing binary modules
-python-stdlib/lib-dynload/_test*.dylib
+python-stdlib/lib-dynload/*_test*.dylib
 python-stdlib/lib-dynload/_xx*.dylib
 python-stdlib/lib-dynload/xx*.dylib
