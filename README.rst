@@ -12,28 +12,29 @@ repository:
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 
-It works by downloading, patching, and building a fat binary of Python and
-selected pre-requisites, and packaging them as static libraries that can be
-incorporated into an XCode project. The binary modules in the Python standard
-library are statically compiled, but are distribted as ``.so`` objects that
-can be dynamically loaded at runtime.
+It works by downloading, patching, and building a fat binary of Python and selected
+pre-requisites, and packaging them as static libraries that can be incorporated into an
+XCode project. The binary modules in the Python standard library are statically
+compiled, but are distributed as objects that can be dynamically loaded at runtime.
 
 It exposes *almost* all the modules in the Python standard library except for:
-    * dbm.gnu
-    * tkinter
-    * readline
-    * nis (Deprecated by PEP594)
-    * ossaudiodev (Deprecated by PEP594)
-    * spwd (Deprecated by PEP594)
+
+* ``dbm.gnu``
+* ``tkinter``
+* ``readline``
+* ``nis`` (Deprecated by PEP594)
+* ``ossaudiodev`` (Deprecated by PEP594)
+* ``spwd`` (Deprecated by PEP594)
 
 The following standard library modules are available on macOS, but not the other
 Apple platforms:
-    * curses
-    * grp
-    * multiprocessing
-    * posixshmem
-    * posixsubprocess
-    * syslog
+
+* ``curses``
+* ``grp``
+* ``multiprocessing``
+* ``posixshmem``
+* ``posixsubprocess``
+* ``syslog``
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
 devices; and arm64_32 for watchOS. It also supports device simulators on both
@@ -60,7 +61,7 @@ Quickstart
 
 The easist way to use these packages is by creating a project with `Briefcase
 <https://github.com/beeware/briefcase>`__. Briefcase will download pre-compiled
-versions of these support packages, and add them to an XCode project (or
+versions of these support packages, and add them to an Xcode project (or
 pre-build stub application, in the case of macOS).
 
 Pre-built versions of the frameworks can be downloaded from the `Github releases page
@@ -69,17 +70,17 @@ Pre-built versions of the frameworks can be downloaded from the `Github releases
 Alternatively, to build the frameworks on your own, download/clone this
 repository, and then in the root directory, and run:
 
-* `make` (or `make all`) to build everything.
-* `make macOS` to build everything for macOS.
-* `make iOS` to build everything for iOS.
-* `make tvOS` to build everything for tvOS.
-* `make watchOS` to build everything for watchOS.
+* ``make`` (or ``make all``) to build everything.
+* ``make macOS`` to build everything for macOS.
+* ``make iOS`` to build everything for iOS.
+* ``make tvOS`` to build everything for tvOS.
+* ``make watchOS`` to build everything for watchOS.
 
 This should:
 
 1. Download the original source packages
 2. Patch them as required for compatibility with the selected OS
-3. Build the packages as XCode-compatible XCFrameworks.
+3. Build the packages as Xcode-compatible XCFrameworks.
 
 The resulting support packages will be packaged as a ``.tar.gz`` file
 in the ``dist`` folder.
@@ -88,7 +89,7 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to
   build the support package;
-* ``Python.xcframework``, a multi-architecture build of libPython3.8.a
+* ``Python.xcframework``, a multi-architecture build of the Python runtime library
 * ``python-stdlib``, the code and binary modules comprising the Python standard
   library. On iOS, tvOS and watchOS, there are 2 copies of every binary module -
   one for physical devices, and one for the simulator. The simulator binaries
@@ -119,10 +120,10 @@ project <https://github.com/freakboy3742/chaquopy>`__.
 
 To build these wheels, run:
 
-* `make wheels` to make all wheels for all mobile platforms
-* `make wheels-iOS` to build all the iOS wheels
-* `make wheels-tvOS` to build all the tvOS wheels
-* `make wheels-watchOS` to build all the watchOS wheels
+* ``make wheels`` to make all wheels for all mobile platforms
+* ``make wheels-iOS`` to build all the iOS wheels
+* ``make wheels-tvOS`` to build all the tvOS wheels
+* ``make wheels-watchOS`` to build all the watchOS wheels
 
 Historical support
 ------------------

@@ -1,0 +1,10 @@
+#!/bin/bash
+# A script that writes an executable xcrun alias.
+# Arg 1: The name of the file to output
+# Arg 2: The arguments to pass to xcrun
+mkdir -p $(dirname $1)
+cat << EOF > $1
+#!/bin/bash
+xcrun $2 \$@
+EOF
+chmod +x $1

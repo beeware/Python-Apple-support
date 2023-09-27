@@ -294,7 +294,7 @@ index f0792de74a..7bbade8814 100644
              shared = os.path.join(dir, shared_f)
              dylib = os.path.join(dir, dylib_f)
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 509f99ae8e..2005b88e94 100644
+index 509f99ae8e..069e325b5c 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -49,7 +49,7 @@
@@ -306,22 +306,88 @@ index 509f99ae8e..2005b88e94 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
+@@ -1599,6 +1599,59 @@
+         return 'FileFinder({!r})'.format(self.path)
+ 
+ 
++class AppleFrameworkLoader(ExtensionFileLoader):
++    """A loader for modules that have been packaged as Apple Frameworks for
++    compatibility with Apple's App Store policies.
++
++    For compatibility with the App Store, *all* binary modules must be in .dylibs,
++    contained in a Framework, in the ``Frameworks`` folder of the packaged app. If
++    you're trying to run "from foo import _bar", and _bar is implemented with the binary
++    module "foo/_bar.abi3.dylib" (or any other .dylib extension), this loader will look
++    for "{sys.executable}/Frameworks/foo__bar.framework/_bar.abi3.dylib" (forming the
++    package name by taking the full path of the library, and replacing ``/`` with
++    ``_``). The app packaging tool is responsible for putting the library in this
++    location.
++
++    However, the ``__file__`` attribute of the _bar module will report as the original
++    location inside the ``foo`` directory. This so that code that depends on walking
++    directory trees will continue to work as expected based on the *original* file
++    location.
++    """
++    def __init__(self, fullname, dylib_file, path):
++        super().__init__(fullname, dylib_file)
++        self.parent_paths = path
++
++    def create_module(self, spec):
++        mod = super().create_module(spec)
++        if self.parent_paths:
++            for parent_path in self.parent_paths:
++                if _path_isdir(parent_path):
++                    mod.__file__ = _path_join(parent_path, _path_split(self.path)[-1])
++                    continue
++        return mod
++
++
++class AppleFrameworkFinder:
++    """A finder for modules that have been packaged as Apple Frameworks
++    for compatibility with Apple's App Store policies.
++
++    See AppleFrameworkLoader for details.
++    """
++    def __init__(self, path):
++        self.frameworks_path = path
++
++    def find_spec(self, fullname, path, target=None):
++        name = fullname.split(".")[-1]
++        framework_name = "_".join(fullname.split("."))
++
++        for extension in EXTENSION_SUFFIXES:
++            dylib_file = _path_join(self.frameworks_path, f"{framework_name}.framework", f"{name}{extension}")
++            if _path_isfile(dylib_file):
++                loader = AppleFrameworkLoader(fullname, dylib_file, path)
++                return _bootstrap.spec_from_loader(fullname, loader)
++
++        return None
++
+ # Import setup ###############################################################
+ 
+ def _fix_up_module(ns, name, pathname, cpathname=None):
+@@ -1706,3 +1759,9 @@
+     supported_loaders = _get_supported_file_loaders()
+     sys.path_hooks.extend([FileFinder.path_hook(*supported_loaders)])
+     sys.meta_path.append(PathFinder)
++    if sys.platform == "ios":
++        sys.meta_path.append(
++            AppleFrameworkFinder(
++                _path_join(_path_split(sys.executable)[0], "Frameworks")
++            )
++        )
 diff --git a/Lib/platform.py b/Lib/platform.py
-index b7e7bc439e..0ac5940def 100755
+index b7e7bc439e..b19881890a 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -445,6 +445,34 @@
+@@ -445,6 +445,26 @@
      # If that also doesn't work return the default values
      return release, versioninfo, machine
  
 +
 +def iOS_ver():
-+    """ Get iOS/tvOS version information, and return it as a
-+        tuple (system, release, model). All tuple entries are strings.
-+        Equivalent of:
-+        system = [[UIDevice currentDevice].systemName] UTF8String]
-+        release = [[UIDevice currentDevice].systemVersion] UTF8String]
-+        model = [[UIDevice currentDevice].model] UTF8String]
++    """Get iOS/tvOS version information, and return it as a
++    tuple (system, release, model). All tuple entries are strings.
 +    """
 +    import _ios_support
 +    return _ios_support.get_platform_ios()
@@ -335,17 +401,13 @@ index b7e7bc439e..0ac5940def 100755
 +    from actual devices because they are reproducing actual device
 +    properties.
 +    """
-+    if sys.platform in ('ios', 'tvos', 'watchos'):
-+        return sys.implementation._multiarch.endswith('simulator')
-+
-+    # All other platforms aren't simulators.
-+    return False
++    return getattr(sys.implementation, "_multiarch", False)
 +
 +
  def _java_getprop(name, default):
  
      from java.lang import System
-@@ -605,7 +633,7 @@
+@@ -605,7 +625,7 @@
  
      """ Interface to the system's uname command.
      """
@@ -354,7 +416,7 @@ index b7e7bc439e..0ac5940def 100755
          # XXX Others too ?
          return default
  
-@@ -627,7 +655,7 @@
+@@ -627,7 +647,7 @@
          default in case the command should fail.
  
      """
@@ -363,7 +425,7 @@ index b7e7bc439e..0ac5940def 100755
          # XXX Others too ?
          return default
  
-@@ -853,6 +881,18 @@
+@@ -853,6 +873,18 @@
                  processor = 'Alpha'
              else:
                  processor = 'VAX'
@@ -382,10 +444,20 @@ index b7e7bc439e..0ac5940def 100755
      if not processor:
          # Get processor information from the uname system command
          processor = _syscmd_uname('-p', '')
-@@ -876,8 +916,10 @@
+@@ -876,8 +908,20 @@
          system = 'Windows'
          release = 'Vista'
  
++    # Normalize responses on Apple mobile platforms
++    if sys.platform in ('ios', 'tvos'):
++        system, release, model = iOS_ver()
++
++        # On iOS/tvOS simulators, os.uname() reports the machine as something
++        # like "arm64" or "x86_64".
++        if getattr(sys.implementation, "_simulator", False):
++            machine = f'{model}Simulator'
++
++    vals = system, node, release, version, machine
 +    # Replace 'unknown' values with the more portable ''
      _uname_cache = uname_result(system, node, release, version,
                                  machine, processor)
@@ -393,7 +465,7 @@ index b7e7bc439e..0ac5940def 100755
      return _uname_cache
  
  ### Direct interfaces to some of the uname() return values
-@@ -1187,11 +1229,14 @@
+@@ -1187,11 +1231,14 @@
          system, release, version = system_alias(system, release, version)
  
      if system == 'Darwin':
@@ -404,7 +476,7 @@ index b7e7bc439e..0ac5940def 100755
 -            release = macos_release
 +        # macOS/iOS/tvOS/watchOS (darwin kernel)
 +        if sys.platform in ('ios', 'tvos'):
-+            system, release, model = iOS_ver()
++            system, release, _ = iOS_ver()
 +        else:
 +            macos_release = mac_ver()[0]
 +            if macos_release:
@@ -469,7 +541,7 @@ index 7d363fa315..6b3a695d63 100644
                  if not self._waitpid_lock.acquire(False):
                      # Something else is busy calling waitpid.  Don't allow two
 diff --git a/Lib/sysconfig.py b/Lib/sysconfig.py
-index 3f702d7ea5..0895e55aae 100644
+index 3f702d7ea5..80fe215fbc 100644
 --- a/Lib/sysconfig.py
 +++ b/Lib/sysconfig.py
 @@ -84,6 +84,33 @@
@@ -537,7 +609,7 @@ index 3f702d7ea5..0895e55aae 100644
 -                                            osname, release, machine)
 +        if sys.platform in ("ios", "tvos", "watchos"):
 +            import _ios_support
-+            _, release, model = _ios_support.get_platform_ios()
++            _, release, _ = _ios_support.get_platform_ios()
 +            osname = sys.platform
 +            machine = sys.implementation._multiarch
 +        else:
@@ -2870,6 +2942,49 @@ index eb2b6d08d8..7d8124f795 100644
  #define PY_GETENTROPY 1
  
  /* Fill buffer with size pseudo-random bytes generated by getentropy():
+diff --git a/Python/dynload_shlib.c b/Python/dynload_shlib.c
+index 23e58ed046..6d7dff0abf 100644
+--- a/Python/dynload_shlib.c
++++ b/Python/dynload_shlib.c
+@@ -27,6 +27,10 @@
+ #define LEAD_UNDERSCORE ""
+ #endif
+ 
++#ifdef __APPLE__
++#  include "TargetConditionals.h"
++#endif /* __APPLE__ */
++
+ /* The .so extension module ABI tag, supplied by the Makefile via
+    Makefile.pre.in and configure.  This is used to discriminate between
+    incompatible .so files so that extensions for different Python builds can
+@@ -37,12 +41,21 @@
+ #ifdef __CYGWIN__
+     ".dll",
+ #else  /* !__CYGWIN__ */
+-    "." SOABI ".so",
+-#ifdef ALT_SOABI
+-    "." ALT_SOABI ".so",
+-#endif
+-    ".abi" PYTHON_ABI_STRING ".so",
+-    ".so",
++#  ifdef __APPLE__
++#    if TARGET_OS_IPHONE
++#      define SHLIB_SUFFIX ".dylib"
++#    else
++#      define SHLIB_SUFFIX ".so"
++#    endif
++#  else
++#    define SHLIB_SUFFIX ".so"
++#  endif
++    "." SOABI SHLIB_SUFFIX,
++#  ifdef ALT_SOABI
++    "." ALT_SOABI SHLIB_SUFFIX,
++#  endif
++    ".abi" PYTHON_ABI_STRING SHLIB_SUFFIX,
++    SHLIB_SUFFIX,
+ #endif  /* __CYGWIN__ */
+     NULL,
+ };
 diff --git a/Python/marshal.c b/Python/marshal.c
 index 99075b1081..49421ed5b4 100644
 --- a/Python/marshal.c
@@ -2901,6 +3016,37 @@ index 99075b1081..49421ed5b4 100644
  #endif
  
  #define TYPE_NULL               '0'
+diff --git a/Python/sysmodule.c b/Python/sysmodule.c
+index a47926727a..01c54772bb 100644
+--- a/Python/sysmodule.c
++++ b/Python/sysmodule.c
+@@ -41,6 +41,10 @@
+ extern const char *PyWin_DLLVersionString;
+ #endif
+ 
++#if defined(__APPLE__)
++#include "TargetConditionals.h"
++#endif
++
+ /*[clinic input]
+ module sys
+ [clinic start generated code]*/
+@@ -2682,6 +2686,15 @@
+         goto error;
+ #endif
+ 
++#if TARGET_OS_IPHONE
++#  if TARGET_OS_SIMULATOR
++    res = PyDict_SetItemString(impl_info, "_simulator", Py_True);
++#  else
++    res = PyDict_SetItemString(impl_info, "_simulator", Py_False);
++#  endif
++    if (res < 0)
++        goto error;
++#endif
+     /* dict ready */
+ 
+     ns = _PyNamespace_New(impl_info);
 diff --git a/aclocal.m4 b/aclocal.m4
 index 04342a4982..52102fe4bb 100644
 --- a/aclocal.m4
@@ -3055,7 +3201,7 @@ index 04342a4982..52102fe4bb 100644
 -])dnl PKG_HAVE_DEFINE_WITH_MODULES
 -
 diff --git a/config.sub b/config.sub
-index ba37cf99e2..5060396a73 100755
+index ba37cf99e2..499a5268fc 100755
 --- a/config.sub
 +++ b/config.sub
 @@ -116,6 +116,7 @@
@@ -3100,16 +3246,16 @@ index ba37cf99e2..5060396a73 100755
  	-nacl*)
  		;;
 -	-ios)
-+	-ios | -ios-simulator)
++	-ios* | -ios*-simulator)
 +		;;
-+	-tvos | -tvos-simulator)
++	-tvos* | -tvos*-simulator)
 +		;;
-+	-watchos | -watchos-simulator)
++	-watchos* | -watchos*-simulator)
  		;;
  	-none)
  		;;
 diff --git a/configure b/configure
-index c091865aff..2fef54d86f 100755
+index c091865aff..35344222b2 100755
 --- a/configure
 +++ b/configure
 @@ -653,6 +653,8 @@
@@ -3137,23 +3283,106 @@ index c091865aff..2fef54d86f 100755
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -3318,6 +3329,15 @@
- 	*-*-cygwin*)
- 		_host_cpu=
+@@ -3309,24 +3320,93 @@
+ 	*-*-linux*)
+ 		case "$host_cpu" in
+ 		arm*)
+-			_host_cpu=arm
++			_host_ident=arm
+ 			;;
+ 		*)
+-			_host_cpu=$host_cpu
++			_host_ident=$host_cpu
+ 		esac
  		;;
+ 	*-*-cygwin*)
+-		_host_cpu=
++		_host_ident=
++		;;
++  *-apple-ios*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-iphonesimulator-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-iphonesimulator-$host_cpu
++    esac
++    ;;
++  *-apple-ios*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-iphoneos-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-iphoneos-$host_cpu
++    esac
++    ;;
++  *-apple-tvos*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-appletvsimulator-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-appletvsimulator-$host_cpu
++    esac
++    ;;
++  *-apple-tvos*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-appletvos-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-appletvos-$host_cpu
++    esac
++    ;;
++  *-apple-watchos*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-watchsimualtor-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-watchsimualtor-$host_cpu
++    esac
++    ;;
++  *-apple-watchos*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-watchosos-arm64_32
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-watchosos-$host_cpu
++    esac
++    ;;
 +	*-apple-*)
 +		case "$host_cpu" in
 +		arm*)
-+			_host_cpu=arm
++			_host_ident=arm
 +			;;
 +		*)
-+			_host_cpu=$host_cpu
++			_host_ident=$host_cpu
 +		esac
-+		;;
- 	*-*-vxworks*)
- 		_host_cpu=$host_cpu
  		;;
-@@ -3393,6 +3413,13 @@
+ 	*-*-vxworks*)
+-		_host_cpu=$host_cpu
++		_host_ident=$host_cpu
+ 		;;
+ 	*)
+ 		# for now, limit cross builds to known configurations
+ 		MACHDEP="unknown"
+ 		as_fn_error $? "cross build not supported for $host" "$LINENO" 5
+ 	esac
+-	_PYTHON_HOST_PLATFORM="$MACHDEP${_host_cpu:+-$_host_cpu}"
++	_PYTHON_HOST_PLATFORM="$MACHDEP${_host_ident:+-$_host_ident}"
+ fi
+ 
+ # Some systems cannot stand _XOPEN_SOURCE being defined at all; they
+@@ -3393,6 +3473,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -3167,7 +3396,7 @@ index c091865aff..2fef54d86f 100755
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -5299,7 +5326,30 @@
+@@ -5299,7 +5386,42 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -3175,21 +3404,33 @@ index c091865aff..2fef54d86f 100755
 +#  include "TargetConditionals.h"
 +#  if TARGET_OS_IOS
 +#    if TARGET_OS_SIMULATOR
-+       iphonesimulator
++#      if __x86_64__
++         iphonesimulator-x86_64
++#      else
++         iphonesimulator-arm64
++#      endif
 +#    else
-+       iphoneos
++       iphoneos-arm64
 +#    endif
 +#  elif TARGET_OS_TV
 +#    if TARGET_OS_SIMULATOR
-+       appletvsimulator
++#      if __x86_64__
++         appletvsimulator-x86_64
++#      else
++         appletvsimulator-arm64
++#      endif
 +#    else
-+       appletvos
++       appletvos-arm64
 +#    endif
 +#  elif TARGET_OS_WATCH
 +#    if TARGET_OS_SIMULATOR
-+       watchsimulator
++#      if __x86_64__
++         watchsimulator-x86_64
++#      else
++         watchsimulator-arm64
++#      endif
 +#    else
-+       watchos
++       watchos-arm64_32
 +#    endif
 +#  elif TARGET_OS_OSX
 +     darwin
@@ -3199,7 +3440,7 @@ index c091865aff..2fef54d86f 100755
  #elif defined(__VXWORKS__)
          vxworks
  #else
-@@ -5318,10 +5368,26 @@
+@@ -5318,9 +5440,23 @@
  fi
  rm -f conftest.c conftest.out
  
@@ -3211,11 +3452,11 @@ index c091865aff..2fef54d86f 100755
 +case $ac_sys_system in #(
 +  Darwin*) :
 +    MULTIARCH="" ;; #(
-+  iOS*) :
++  iOS) :
 +    MULTIARCH="" ;; #(
-+  tvOS*) :
++  tvOS) :
 +    MULTIARCH="" ;; #(
-+  watchOS*) :
++  watchOS) :
 +    MULTIARCH="" ;; #(
 +  FreeBSD*) :
 +    MULTIARCH="" ;; #(
@@ -3224,12 +3465,27 @@ index c091865aff..2fef54d86f 100755
 + ;;
 +esac
  
-+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $MULTIARCH" >&5
-+$as_echo "$MULTIARCH" >&6; }
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
-   if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-@@ -6164,11 +6230,23 @@
+@@ -5331,6 +5467,17 @@
+   MULTIARCH=$PLATFORM_TRIPLET
+ fi
+ 
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $MULTIARCH" >&5
++$as_echo "$MULTIARCH" >&6; }
++
++case $ac_sys_system in #(
++  iOS|tvOS|watchOS) :
++    SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f1` ;; #(
++  *) :
++    SOABI_PLATFORM=$PLATFORM_TRIPLET
++ ;;
++esac
++
+ if test x$MULTIARCH != x; then
+   MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
+ fi
+@@ -6164,11 +6311,23 @@
  fi
  
  if test "$cross_compiling" = yes; then
@@ -3258,18 +3514,26 @@ index c091865aff..2fef54d86f 100755
  fi
  
  
-@@ -9457,6 +9535,10 @@
+@@ -9363,6 +9522,7 @@
+ 		esac
+ 		;;
+ 	CYGWIN*)   SHLIB_SUFFIX=.dll;;
++	iOS|tvOS|watchOS)   SHLIB_SUFFIX=.dylib;;
+ 	*)	   SHLIB_SUFFIX=.so;;
+ 	esac
+ fi
+@@ -9457,6 +9617,10 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
 +  iOS/*|tvOS/*|watchOS/*)
-+    LDSHARED='$(CC) -bundle -undefined dynamic_lookup'
-+    LDCXXSHARED='$(CXX) -bundle -undefined dynamic_lookup'
++    LDSHARED='$(CC) -dynamiclib -undefined dynamic_lookup'
++    LDCXXSHARED='$(CXX) -dynamiclib -undefined dynamic_lookup'
 +    ;;
  	Linux*|GNU*|QNX*|VxWorks*)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -10421,23 +10503,35 @@
+@@ -10421,23 +10585,35 @@
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_system_ffi" >&5
  $as_echo "$with_system_ffi" >&6; }
  else
@@ -3311,7 +3575,25 @@ index c091865aff..2fef54d86f 100755
  # Check for use of the system libmpdec library
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for --with-system-libmpdec" >&5
  $as_echo_n "checking for --with-system-libmpdec... " >&6; }
-@@ -17278,8 +17372,8 @@
+@@ -15229,7 +15405,7 @@
+ $as_echo "$ABIFLAGS" >&6; }
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking SOABI" >&5
+ $as_echo_n "checking SOABI... " >&6; }
+-SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $SOABI" >&5
+ $as_echo "$SOABI" >&6; }
+ 
+@@ -15237,7 +15413,7 @@
+ if test "$Py_DEBUG" = 'true' -a "$with_trace_refs" != "yes"; then
+   # Similar to SOABI but remove "d" flag from ABIFLAGS
+ 
+-  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+ 
+ cat >>confdefs.h <<_ACEOF
+ #define ALT_SOABI "${ALT_SOABI}"
+@@ -17278,8 +17454,8 @@
      if ! $found; then
          OPENSSL_INCLUDES=
          for ssldir in $ssldirs; do
@@ -3322,8 +3604,13 @@ index c091865aff..2fef54d86f 100755
              if test -f "$ssldir/include/openssl/ssl.h"; then
                  OPENSSL_INCLUDES="-I$ssldir/include"
                  OPENSSL_LDFLAGS="-L$ssldir/lib"
+@@ -18768,4 +18944,3 @@
+     echo "" >&6
+     echo "" >&6
+ fi
+-
 diff --git a/configure.ac b/configure.ac
-index de83332dd3..417cec6de2 100644
+index de83332dd3..ae645378d5 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -392,6 +392,15 @@
@@ -3342,23 +3629,106 @@ index de83332dd3..417cec6de2 100644
  	*-*-vxworks*)
  	    ac_sys_system=VxWorks
  	    ;;
-@@ -441,6 +450,15 @@
- 	*-*-cygwin*)
- 		_host_cpu=
+@@ -432,24 +441,93 @@
+ 	*-*-linux*)
+ 		case "$host_cpu" in
+ 		arm*)
+-			_host_cpu=arm
++			_host_ident=arm
+ 			;;
+ 		*)
+-			_host_cpu=$host_cpu
++			_host_ident=$host_cpu
+ 		esac
  		;;
+ 	*-*-cygwin*)
+-		_host_cpu=
++		_host_ident=
++		;;
++  *-apple-ios*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-iphonesimulator-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-iphonesimulator-$host_cpu
++    esac
++    ;;
++  *-apple-ios*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-iphoneos-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-iphoneos-$host_cpu
++    esac
++    ;;
++  *-apple-tvos*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-appletvsimulator-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-appletvsimulator-$host_cpu
++    esac
++    ;;
++  *-apple-tvos*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-appletvos-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-appletvos-$host_cpu
++    esac
++    ;;
++  *-apple-watchos*-simulator)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-watchsimualtor-arm64
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-watchsimualtor-$host_cpu
++    esac
++    ;;
++  *-apple-watchos*)
++    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		case "$host_cpu" in
++		aarch64)
++			_host_ident=${_host_os_min_version:3}-watchosos-arm64_32
++			;;
++		*)
++			_host_ident=${_host_os_min_version:3}-watchosos-$host_cpu
++    esac
++    ;;
 +	*-apple-*)
 +		case "$host_cpu" in
 +		arm*)
-+			_host_cpu=arm
++			_host_ident=arm
 +			;;
 +		*)
-+			_host_cpu=$host_cpu
++			_host_ident=$host_cpu
 +		esac
-+		;;
- 	*-*-vxworks*)
- 		_host_cpu=$host_cpu
  		;;
-@@ -513,6 +531,13 @@
+ 	*-*-vxworks*)
+-		_host_cpu=$host_cpu
++		_host_ident=$host_cpu
+ 		;;
+ 	*)
+ 		# for now, limit cross builds to known configurations
+ 		MACHDEP="unknown"
+ 		AC_MSG_ERROR([cross build not supported for $host])
+ 	esac
+-	_PYTHON_HOST_PLATFORM="$MACHDEP${_host_cpu:+-$_host_cpu}"
++	_PYTHON_HOST_PLATFORM="$MACHDEP${_host_ident:+-$_host_ident}"
+ fi
+ 
+ # Some systems cannot stand _XOPEN_SOURCE being defined at all; they
+@@ -513,6 +591,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -3372,7 +3742,7 @@ index de83332dd3..417cec6de2 100644
    # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but
    # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined
    # or has another value. By not (re)defining it, the defaults come in place.
-@@ -857,7 +882,30 @@
+@@ -857,7 +942,42 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -3380,21 +3750,33 @@ index de83332dd3..417cec6de2 100644
 +#  include "TargetConditionals.h"
 +#  if TARGET_OS_IOS
 +#    if TARGET_OS_SIMULATOR
-+       iphonesimulator
++#      if __x86_64__
++         iphonesimulator-x86_64
++#      else
++         iphonesimulator-arm64
++#      endif
 +#    else
-+       iphoneos
++       iphoneos-arm64
 +#    endif
 +#  elif TARGET_OS_TV
 +#    if TARGET_OS_SIMULATOR
-+       appletvsimulator
++#      if __x86_64__
++         appletvsimulator-x86_64
++#      else
++         appletvsimulator-arm64
++#      endif
 +#    else
-+       appletvos
++       appletvos-arm64
 +#    endif
 +#  elif TARGET_OS_WATCH
 +#    if TARGET_OS_SIMULATOR
-+       watchsimulator
++#      if __x86_64__
++         watchsimulator-x86_64
++#      else
++         watchsimulator-arm64
++#      endif
 +#    else
-+       watchos
++       watchos-arm64_32
 +#    endif
 +#  elif TARGET_OS_OSX
 +     darwin
@@ -3404,7 +3786,7 @@ index de83332dd3..417cec6de2 100644
  #elif defined(__VXWORKS__)
          vxworks
  #else
-@@ -874,10 +922,17 @@
+@@ -874,10 +994,16 @@
  fi
  rm -f conftest.c conftest.out
  
@@ -3415,18 +3797,31 @@ index de83332dd3..417cec6de2 100644
 +AC_MSG_CHECKING([for multiarch])
 +AS_CASE([$ac_sys_system],
 +  [Darwin*], [MULTIARCH=""],
-+  [iOS*], [MULTIARCH=""],
-+  [tvOS*], [MULTIARCH=""],
-+  [watchOS*], [MULTIARCH=""],
++  [iOS], [MULTIARCH=""],
++  [tvOS], [MULTIARCH=""],
++  [watchOS], [MULTIARCH=""],
 +  [FreeBSD*], [MULTIARCH=""],
 +  [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
 +)
 +AC_SUBST([MULTIARCH])
-+AC_MSG_RESULT([$MULTIARCH])
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-@@ -1201,11 +1256,23 @@
+@@ -887,6 +1013,13 @@
+   MULTIARCH=$PLATFORM_TRIPLET
+ fi
+ AC_SUBST(PLATFORM_TRIPLET)
++AC_MSG_RESULT([$MULTIARCH])
++
++AS_CASE([$ac_sys_system],
++  [iOS|tvOS|watchOS], [SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f1`],
++  [SOABI_PLATFORM=$PLATFORM_TRIPLET]
++)
++
+ if test x$MULTIARCH != x; then
+   MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
+ fi
+@@ -1201,11 +1334,23 @@
  
  AC_CHECK_TOOLS([READELF], [readelf], [:])
  if test "$cross_compiling" = yes; then
@@ -3455,18 +3850,26 @@ index de83332dd3..417cec6de2 100644
  fi
  AC_SUBST(READELF)
  
-@@ -2629,6 +2696,10 @@
+@@ -2537,6 +2682,7 @@
+ 		esac
+ 		;;
+ 	CYGWIN*)   SHLIB_SUFFIX=.dll;;
++	iOS|tvOS|watchOS)   SHLIB_SUFFIX=.dylib;;
+ 	*)	   SHLIB_SUFFIX=.so;;
+ 	esac
+ fi
+@@ -2629,6 +2775,10 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
 +  iOS/*|tvOS/*|watchOS/*)
-+    LDSHARED='$(CC) -bundle -undefined dynamic_lookup'
-+    LDCXXSHARED='$(CXX) -bundle -undefined dynamic_lookup'
++    LDSHARED='$(CC) -dynamiclib -undefined dynamic_lookup'
++    LDCXXSHARED='$(CXX) -dynamiclib -undefined dynamic_lookup'
 +    ;;
  	Linux*|GNU*|QNX*|VxWorks*)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -3012,20 +3083,30 @@
+@@ -3012,20 +3162,30 @@
      esac
      AC_MSG_RESULT($with_system_ffi)
  else
@@ -3502,6 +3905,28 @@ index de83332dd3..417cec6de2 100644
  
  # Check for use of the system libmpdec library
  AC_MSG_CHECKING(for --with-system-libmpdec)
+@@ -4692,14 +4852,14 @@
+ AC_MSG_CHECKING(ABIFLAGS)
+ AC_MSG_RESULT($ABIFLAGS)
+ AC_MSG_CHECKING(SOABI)
+-SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++SOABI='cpython-'`echo $VERSION | tr -d .`${ABIFLAGS}${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+ AC_MSG_RESULT($SOABI)
+ 
+ # Release and debug (Py_DEBUG) ABI are compatible, but not Py_TRACE_REFS ABI
+ if test "$Py_DEBUG" = 'true' -a "$with_trace_refs" != "yes"; then
+   # Similar to SOABI but remove "d" flag from ABIFLAGS
+   AC_SUBST(ALT_SOABI)
+-  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${PLATFORM_TRIPLET:+-$PLATFORM_TRIPLET}
++  ALT_SOABI='cpython-'`echo $VERSION | tr -d .``echo $ABIFLAGS | tr -d d`${SOABI_PLATFORM:+-$SOABI_PLATFORM}
+   AC_DEFINE_UNQUOTED(ALT_SOABI, "${ALT_SOABI}",
+             [Alternative SOABI used in debug build to load C extensions built in release mode])
+ fi
+@@ -5706,4 +5866,3 @@
+     echo "" >&AS_MESSAGE_FD
+     echo "" >&AS_MESSAGE_FD
+ fi
+-
 diff --git a/pyconfig.h.in b/pyconfig.h.in
 index 41cfe07902..75cd6905a0 100644
 --- a/pyconfig.h.in
