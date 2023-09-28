@@ -4,13 +4,14 @@ Python Apple Support
 This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
 
-**This branch builds a packaged version of Python 3.11.5**.
+**This branch builds a packaged version of Python 3.12.0rc3**.
 Other Python versions are available by cloning other branches of the main
 repository:
 
 * `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
+* `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 
 It works by downloading, patching, and building a fat binary of Python and selected
 pre-requisites, and packaging them as static libraries that can be incorporated into an
