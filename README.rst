@@ -11,6 +11,7 @@ repository:
 * `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
+* `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
 
 It works by downloading, patching, and building a fat binary of Python and selected
 pre-requisites, and packaging them as static libraries that can be incorporated into an
