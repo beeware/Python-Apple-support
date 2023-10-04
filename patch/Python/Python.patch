@@ -213,7 +213,7 @@ index f603a89f7f..48463efcfc 100644
 +        _bootstrap._verbose_message('Adding Apple Framework dylib finder at {}', frameworks_folder)
 +        sys.meta_path.append(AppleFrameworkFinder(frameworks_folder))
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 9b9d88bf58..6fe084a3a5 100755
+index 9b9d88bf58..764fd6d186 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -452,6 +452,26 @@
@@ -260,17 +260,17 @@ index 9b9d88bf58..6fe084a3a5 100755
 +    # as uname.machine. On device it doesn't; but there's only
 +    # on CPU architecture on device
 +    def get_ios():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64'
 +
 +    def get_tvos():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64'
 +
 +    def get_watchos():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64_32'
 +
@@ -497,10 +497,10 @@ index ebe3711827..5f2456b5db 100644
      return f"{osname}-{release}-{machine}"
  
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 98be9cdd0e..baca44ea62 100644
+index 2e6518cf24..cc08015a73 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -47,7 +47,7 @@
+@@ -48,7 +48,7 @@
      "check__all__", "skip_if_buggy_ucrt_strfptime",
      "check_disallow_instantiation", "check_sanitizer", "skip_if_sanitizer",
      # sys
@@ -509,7 +509,7 @@ index 98be9cdd0e..baca44ea62 100644
      "check_impl_detail", "unix_shell", "setswitchinterval",
      # network
      "open_urlresource",
-@@ -507,7 +507,7 @@
+@@ -511,7 +511,7 @@
  
  is_android = hasattr(sys, 'getandroidapilevel')
  
@@ -518,7 +518,7 @@ index 98be9cdd0e..baca44ea62 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -517,12 +517,25 @@
+@@ -521,12 +521,25 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
@@ -547,18 +547,18 @@ index 98be9cdd0e..baca44ea62 100644
  def requires_subprocess():
      """Used for subprocess, os.spawn calls, fd inheritance"""
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 5728d25254..76e62d4738 100644
+index d7871d3e53..6966ee77af 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
-@@ -33,6 +33,7 @@
- from asyncio import selector_events
+@@ -34,6 +34,7 @@
+ from multiprocessing.util import _cleanup_tests as multiprocessing_cleanup_tests
  from test.test_asyncio import utils as test_utils
  from test import support
 +from test.support import is_apple_mobile
  from test.support import socket_helper
  from test.support import threading_helper
  from test.support import ALWAYS_EQ, LARGEST, SMALLEST
-@@ -542,6 +543,7 @@
+@@ -544,6 +545,7 @@
              self._basetest_create_connection(conn_fut)
  
      @socket_helper.skip_unless_bind_unix_socket
@@ -566,7 +566,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -634,6 +636,7 @@
+@@ -636,6 +638,7 @@
          self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -574,7 +574,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_ssl_connection(self):
          with test_utils.run_test_server(use_ssl=True) as httpd:
              create_connection = functools.partial(
-@@ -645,6 +648,7 @@
+@@ -647,6 +650,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -582,7 +582,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_ssl_unix_connection(self):
          # Issue #20682: On Mac OS X Tiger, getsockname() returns a
          # zero-length address for UNIX socket.
-@@ -901,6 +905,7 @@
+@@ -905,6 +909,7 @@
          return server, path
  
      @socket_helper.skip_unless_bind_unix_socket
@@ -590,7 +590,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_unix_server(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_unix_server(lambda: proto)
-@@ -929,6 +934,7 @@
+@@ -933,6 +938,7 @@
          server.close()
  
      @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
@@ -598,7 +598,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_unix_server_path_socket_error(self):
          proto = MyProto(loop=self.loop)
          sock = socket.socket()
-@@ -994,6 +1000,7 @@
+@@ -998,6 +1004,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -606,7 +606,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_unix_server_ssl(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1024,6 +1031,7 @@
+@@ -1028,6 +1035,7 @@
          server.close()
  
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -614,7 +614,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, host, port = self._make_ssl_server(
-@@ -1054,6 +1062,7 @@
+@@ -1058,6 +1066,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -622,7 +622,7 @@ index 5728d25254..76e62d4738 100644
      def test_create_unix_server_ssl_verify_failed(self):
          proto = MyProto(loop=self.loop)
          server, path = self._make_ssl_unix_server(
-@@ -1114,6 +1123,7 @@
+@@ -1118,6 +1127,7 @@
  
      @socket_helper.skip_unless_bind_unix_socket
      @unittest.skipIf(ssl is None, 'No ssl module')
@@ -717,7 +717,7 @@ index 8e98256a62..819c8ef89c 100644
              off_t = 'l'
              pid_t = 'i'
 diff --git a/Lib/test/test_httpservers.py b/Lib/test/test_httpservers.py
-index cdd1bea754..fdc1750880 100644
+index cfd8a101dc..c350e87eec 100644
 --- a/Lib/test/test_httpservers.py
 +++ b/Lib/test/test_httpservers.py
 @@ -30,6 +30,7 @@
@@ -738,7 +738,7 @@ index cdd1bea754..fdc1750880 100644
              # UTF-8 into a percent-encoded value.
              for name in os.listdir(self.tempdir):
 diff --git a/Lib/test/test_io.py b/Lib/test/test_io.py
-index 79aa2da586..791b5ec018 100644
+index e54a13c2d8..55dac3c3c6 100644
 --- a/Lib/test/test_io.py
 +++ b/Lib/test/test_io.py
 @@ -40,6 +40,7 @@
@@ -759,7 +759,7 @@ index 79aa2da586..791b5ec018 100644
                  'largefile',
                  'test requires %s bytes and a long time to run' % self.LARGE)
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index f1f2b75fef..8d1edd79e7 100644
+index 55c5cd5658..87453f29c2 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -43,6 +43,7 @@
@@ -770,7 +770,7 @@ index f1f2b75fef..8d1edd79e7 100644
  from test.support import os_helper
  from test.support import socket_helper
  from test.support import threading_helper
-@@ -1823,9 +1824,20 @@
+@@ -1824,9 +1825,20 @@
      # just need a name - file can't be present, or we'll get an
      # 'address already in use' error.
      os.remove(fn)
@@ -791,7 +791,7 @@ index f1f2b75fef..8d1edd79e7 100644
  class UnixSocketHandlerTest(SocketHandlerTest):
  
      """Test for SocketHandler with unix sockets."""
-@@ -1909,6 +1921,7 @@
+@@ -1910,6 +1922,7 @@
          self.assertEqual(self.log_output, "spam\neggs\n")
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -799,7 +799,7 @@ index f1f2b75fef..8d1edd79e7 100644
  class UnixDatagramHandlerTest(DatagramHandlerTest):
  
      """Test for DatagramHandler using Unix sockets."""
-@@ -2003,6 +2016,7 @@
+@@ -2004,6 +2017,7 @@
          self.assertEqual(self.log_output, b'<11>sp\xc3\xa4m\x00')
  
  @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
@@ -831,7 +831,7 @@ index a1a91f661b..92fde54f5a 100644
              last.append([0])
              last = last[-1]
 diff --git a/Lib/test/test_mmap.py b/Lib/test/test_mmap.py
-index bab8686008..075786e463 100644
+index dfcf303942..5aabfac885 100644
 --- a/Lib/test/test_mmap.py
 +++ b/Lib/test/test_mmap.py
 @@ -1,5 +1,5 @@
@@ -850,7 +850,7 @@ index bab8686008..075786e463 100644
              # Try incompatible flags, prot and access parameters.
              with open(TESTFN, "r+b") as f:
                  self.assertRaises(ValueError, mmap.mmap, f.fileno(), mapsize,
-@@ -1002,7 +1002,7 @@
+@@ -1007,7 +1007,7 @@
          unlink(TESTFN)
  
      def _make_test_file(self, num_zeroes, tail):
@@ -969,7 +969,7 @@ index 274a8b7377..06cab9848a 100644
                           'need os.get_terminal_size()')
      def test_stty_match(self):
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 13cb2a7945..ccd0ca4d19 100644
+index af0d2a4e6f..3b96cc476f 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -1,5 +1,6 @@
@@ -1137,7 +1137,7 @@ index d96371d242..5634962453 100644
              wanted.extend(['nt_user', 'osx_framework_user', 'posix_user'])
          self.assertEqual(get_scheme_names(), tuple(sorted(wanted)))
 diff --git a/Lib/test/test_threading.py b/Lib/test/test_threading.py
-index 9c6561c099..ccccfb8b0b 100644
+index a4192acd6d..8c00d34e0b 100644
 --- a/Lib/test/test_threading.py
 +++ b/Lib/test/test_threading.py
 @@ -3,7 +3,7 @@
@@ -1149,7 +1149,7 @@ index 9c6561c099..ccccfb8b0b 100644
  from test.support import verbose, cpython_only, os_helper
  from test.support.import_helper import import_module
  from test.support.script_helper import assert_python_ok, assert_python_failure
-@@ -1171,6 +1171,7 @@
+@@ -1184,6 +1184,7 @@
              os.set_blocking(r, False)
          return (r, w)
  
@@ -1157,7 +1157,7 @@ index 9c6561c099..ccccfb8b0b 100644
      def test_threads_join(self):
          # Non-daemon threads should be joined at subinterpreter shutdown
          # (issue #18808)
-@@ -1199,6 +1200,7 @@
+@@ -1212,6 +1213,7 @@
          # The thread was joined properly.
          self.assertEqual(os.read(r, 1), b"x")
  
@@ -1166,7 +1166,7 @@ index 9c6561c099..ccccfb8b0b 100644
          # Same as above, but a delay gets introduced after the thread's
          # Python code returned but before the thread state is deleted.
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index 86ce60fef1..c36e6b6096 100644
+index eb9227a3b7..19f93263c5 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
 @@ -19,7 +19,7 @@
@@ -1175,10 +1175,10 @@ index 86ce60fef1..c36e6b6096 100644
                            skip_if_broken_multiprocessing_synchronize, verbose,
 -                          requires_subprocess, is_emscripten, is_wasi,
 +                          requires_subprocess, is_apple_mobile, is_emscripten, is_wasi,
-                           requires_venv_with_pip, TEST_HOME_DIR)
+                           requires_venv_with_pip, TEST_HOME_DIR,
+                           requires_resource, copy_python_src_ignore)
  from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
- import unittest
-@@ -40,6 +40,8 @@
+@@ -41,6 +41,8 @@
  
  if is_emscripten or is_wasi:
      raise unittest.SkipTest("venv is not available on Emscripten/WASI.")
@@ -1270,7 +1270,7 @@ index 44974d433b..ae4e18802b 100755
  #
  # Platform support for Windows
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 884bea1841..a15df8a03c 100644
+index 0d0ac1315b..50dde04558 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -344,6 +344,8 @@
@@ -1283,7 +1283,7 @@ index 884bea1841..a15df8a03c 100644
  ##########################################################################
  # Parser
 diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
-index ad9daaede4..f295528d4e 100644
+index 072519c91a..14424c46d2 100644
 --- a/Modules/_posixsubprocess.c
 +++ b/Modules/_posixsubprocess.c
 @@ -31,10 +31,20 @@
@@ -1334,7 +1334,7 @@ index ad9daaede4..f295528d4e 100644
      pid_t pid;
  
  #ifdef VFORK_USABLE
-@@ -789,7 +805,7 @@
+@@ -805,7 +821,7 @@
              pid = fork();
          }
      } else
@@ -1343,15 +1343,15 @@ index ad9daaede4..f295528d4e 100644
      {
          pid = fork();
      }
-@@ -797,7 +813,6 @@
-     if (pid != 0) {
+@@ -814,7 +830,6 @@
+         // Parent process.
          return pid;
      }
 -
      /* Child process.
       * See the comment above child_exec() for restrictions imposed on
       * the code below.
-@@ -821,6 +836,9 @@
+@@ -838,6 +853,9 @@
                 preexec_fn, preexec_fn_args_tuple);
      _exit(255);
      return 0;  /* Dead code to avoid a potential compiler warning. */
@@ -1361,7 +1361,7 @@ index ad9daaede4..f295528d4e 100644
  }
  
  
-@@ -852,7 +870,9 @@
+@@ -869,7 +887,9 @@
      int saved_errno = 0;
      int allow_vfork;
      int *c_fds_to_keep = NULL;
@@ -1372,7 +1372,7 @@ index ad9daaede4..f295528d4e 100644
      if (!PyArg_ParseTuple(
              args, "OOpO!OOiiiiiiiiii" _Py_PARSE_PID "OOOiOp:fork_exec",
              &process_args, &executable_list,
-@@ -1069,7 +1089,7 @@
+@@ -1086,7 +1106,7 @@
          }
          old_sigmask = &old_sigs;
      }
@@ -1381,7 +1381,7 @@ index ad9daaede4..f295528d4e 100644
  
      pid = do_fork_exec(exec_array, argv, envp, cwd,
                         p2cread, p2cwrite, c2pread, c2pwrite,
-@@ -1102,7 +1122,7 @@
+@@ -1119,7 +1139,7 @@
           * the thread signal mask. */
          (void) pthread_sigmask(SIG_SETMASK, old_sigmask, NULL);
      }
@@ -1390,7 +1390,7 @@ index ad9daaede4..f295528d4e 100644
  
      if (need_after_fork)
          PyOS_AfterFork_Parent();
-@@ -1135,8 +1155,10 @@
+@@ -1152,8 +1172,10 @@
          PyGC_Enable();
      }
      Py_XDECREF(gc_module);
@@ -1403,7 +1403,7 @@ index ad9daaede4..f295528d4e 100644
  
  
 diff --git a/Modules/faulthandler.c b/Modules/faulthandler.c
-index 04995d2e74..a57daca284 100644
+index 520b7b603e..0177632cd5 100644
 --- a/Modules/faulthandler.c
 +++ b/Modules/faulthandler.c
 @@ -1,3 +1,7 @@
@@ -1442,7 +1442,7 @@ index 5f5b71c4c0..20faeee4db 100644
     sin(pi*x), giving accurate results for all finite x (especially x
     integral or close to an integer).  This is here for use in the
 diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
-index cfadb6a066..f9b89bc6af 100644
+index 2e4a66ab1b..673e26b3b2 100644
 --- a/Modules/posixmodule.c
 +++ b/Modules/posixmodule.c
 @@ -72,6 +72,8 @@
@@ -1507,7 +1507,7 @@ index cfadb6a066..f9b89bc6af 100644
      return d;
  }
  
-@@ -4959,6 +4985,9 @@
+@@ -4981,6 +5007,9 @@
  /*[clinic end generated code: output=290fc437dd4f33a0 input=86a58554ba6094af]*/
  {
      long result;
@@ -1517,7 +1517,7 @@ index cfadb6a066..f9b89bc6af 100644
      const char *bytes = PyBytes_AsString(command);
  
      if (PySys_Audit("os.system", "(O)", command) < 0) {
-@@ -4968,6 +4997,7 @@
+@@ -4990,6 +5019,7 @@
      Py_BEGIN_ALLOW_THREADS
      result = system(bytes);
      Py_END_ALLOW_THREADS
@@ -1525,7 +1525,7 @@ index cfadb6a066..f9b89bc6af 100644
      return result;
  }
  #endif
-@@ -13765,6 +13795,7 @@
+@@ -13821,6 +13851,7 @@
      int is_symlink;
      int need_stat;
  #endif
@@ -1533,7 +1533,7 @@ index cfadb6a066..f9b89bc6af 100644
  #ifdef MS_WINDOWS
      unsigned long dir_bits;
  #endif
-@@ -13825,6 +13856,7 @@
+@@ -13881,6 +13912,7 @@
  #endif
  
      return result;
@@ -1749,7 +1749,7 @@ index 29f3bab60a..ea3b25a978 100644
  
  #define TYPE_NULL               '0'
 diff --git a/Python/sysmodule.c b/Python/sysmodule.c
-index 6e9ec90c9d..16b0a6ab11 100644
+index d0941e8cfe..7e07a6ae55 100644
 --- a/Python/sysmodule.c
 +++ b/Python/sysmodule.c
 @@ -49,6 +49,10 @@
