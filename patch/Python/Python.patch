@@ -375,7 +375,7 @@ index f3828b10e1..03bce2aa25 100644
 +        _bootstrap._verbose_message('Adding Apple Framework dylib finder at {}', frameworks_folder)
 +        sys.meta_path.append(AppleFrameworkFinder(frameworks_folder))
 diff --git a/Lib/platform.py b/Lib/platform.py
-index d6412e169b..2bf6b979b0 100755
+index d6412e169b..d1532ba89c 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -449,6 +449,25 @@
@@ -421,17 +421,17 @@ index d6412e169b..2bf6b979b0 100755
 +    # as uname.machine. On device it doesn't; but there's only
 +    # on CPU architecture on device
 +    def get_ios():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64'
 +
 +    def get_tvos():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64'
 +
 +    def get_watchos():
-+        if sys.implementation._multiarch.endswith('simulator'):
++        if getattr(sys.implementation, "_simulator", False):
 +            return os.uname().machine
 +        return 'arm64_32'
 +
