@@ -376,7 +376,7 @@ index 509f99ae8e..a1bf71dee7 100644
 +        _bootstrap._verbose_message('Adding Apple Framework dylib finder at {}', frameworks_folder)
 +        sys.meta_path.append(AppleFrameworkFinder(frameworks_folder))
 diff --git a/Lib/platform.py b/Lib/platform.py
-index b7e7bc439e..b19881890a 100755
+index b7e7bc439e..bbe36759a6 100755
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -445,6 +445,26 @@
@@ -400,7 +400,7 @@ index b7e7bc439e..b19881890a 100755
 +    from actual devices because they are reproducing actual device
 +    properties.
 +    """
-+    return getattr(sys.implementation, "_multiarch", False)
++    return getattr(sys.implementation, "_simulator", False)
 +
 +
  def _java_getprop(name, default):
@@ -434,7 +434,7 @@ index b7e7bc439e..b19881890a 100755
 +        system, release, model = iOS_ver()
 +        # Simulator devices report as "arm64" or "x86_64";
 +        # use the model as the basis for the normalized machine name.
-+        if sys.implementation._multiarch.endswith("simulator"):
++        if getattr(sys.implementation, "_simulator", False):
 +            machine = f"{model} Simulator"
 +            processor = os.uname().machine
 +        else:
