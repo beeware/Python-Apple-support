@@ -70,7 +70,7 @@ index 0c2510e161..5567080ba5 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 73ac4405cb..5abec62047 100644
+index 73ac4405cb..0d830eed7b 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -82,7 +82,7 @@ index 73ac4405cb..5abec62047 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1690,6 +1690,60 @@
+@@ -1690,6 +1690,59 @@
          return f'FileFinder({self.path!r})'
  
  
@@ -129,10 +129,9 @@ index 73ac4405cb..5abec62047 100644
 +
 +    def find_spec(self, fullname, path, target=None):
 +        name = fullname.split(".")[-1]
-+        framework_name = "_".join(fullname.split("."))
 +
 +        for extension in EXTENSION_SUFFIXES:
-+            dylib_file = _path_join(self.frameworks_path, f"{framework_name}.framework", f"{name}{extension}")
++            dylib_file = _path_join(self.frameworks_path, f"{fullname}.framework", f"{name}{extension}")
 +            _bootstrap._verbose_message('Looking for Apple Framework dylib {}', dylib_file)
 +            if _path_isfile(dylib_file):
 +                loader = AppleFrameworkLoader(fullname, dylib_file, path)
@@ -143,7 +142,7 @@ index 73ac4405cb..5abec62047 100644
  # Import setup ###############################################################
  
  def _fix_up_module(ns, name, pathname, cpathname=None):
-@@ -1739,3 +1793,7 @@
+@@ -1739,3 +1792,7 @@
      supported_loaders = _get_supported_file_loaders()
      sys.path_hooks.extend([FileFinder.path_hook(*supported_loaders)])
      sys.meta_path.append(PathFinder)
