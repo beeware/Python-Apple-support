@@ -39,7 +39,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.12.0
+PYTHON_VERSION=3.13.0a1
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -65,7 +65,7 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-VERSION_MIN-macOS=10.15
+VERSION_MIN-macOS=11.0
 CFLAGS-macOS=-mmacosx-version-min=$(VERSION_MIN-macOS)
 
 # iOS targets
@@ -846,6 +846,7 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 			LIBLZMA_LIBS="-L$$(XZ_MERGE-$(sdk))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$(sdk))/include" \
 			BZIP2_LIBS="-L$$(BZIP2_MERGE-$(sdk))/lib -lbz2" \
+			MACOSX_DEPLOYMENT_TARGET="$$(VERSION_MIN-$(os))" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
 			--enable-ipv6 \
 			--enable-universalsdk \
