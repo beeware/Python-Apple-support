@@ -65,7 +65,7 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
-VERSION_MIN-macOS=10.15
+VERSION_MIN-macOS=11.0
 CFLAGS-macOS=-mmacosx-version-min=$(VERSION_MIN-macOS)
 
 # iOS targets
@@ -847,6 +847,7 @@ $$(PYTHON_SRCDIR-$(sdk))/Makefile: \
 			LIBLZMA_LIBS="-L$$(XZ_MERGE-$(sdk))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_MERGE-$(sdk))/include" \
 			BZIP2_LIBS="-L$$(BZIP2_MERGE-$(sdk))/lib -lbz2" \
+			MACOSX_DEPLOYMENT_TARGET="$$(VERSION_MIN-$(os))" \
 			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
 			--enable-ipv6 \
 			--enable-universalsdk \
