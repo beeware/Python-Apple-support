@@ -12,6 +12,7 @@ repository:
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 * `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
+* `Python 3.13 <https://github.com/beeware/Python-Apple-support/tree/3.13>`__
 
 It works by downloading, patching, and building a fat binary of Python and selected
 pre-requisites, and packaging them as static libraries that can be incorporated into an
@@ -41,10 +42,10 @@ The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
 devices; and arm64_32 for watchOS. It also supports device simulators on both
 x86_64 and M1 hardware. This should enable the code to run on:
 
-* macOS 10.15 (Catalina) or later, on:
+* macOS 11 (Big Sur) or later, on:
     * MacBook (including MacBooks using Apple Silicon)
     * iMac (including iMacs using Apple Silicon)
-    * Mac Mini (including M1 Apple Silicon Mac minis)
+    * Mac Mini (including Apple Silicon Mac minis)
     * Mac Studio (all models)
     * Mac Pro (all models)
 * iOS 12.0 or later, on:
