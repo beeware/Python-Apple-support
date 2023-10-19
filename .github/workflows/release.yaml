@@ -39,15 +39,15 @@ jobs:
 
           Includes:
           * Python ${{ env.PY_VERSION }}.?
-          * OpenSSL 3.0.5
+          * OpenSSL 3.1.2
           * BZip2 1.0.8
-          * XZ 5.2.6
-          * LibFFI 3.4.2
+          * XZ 5.4.4
+          * LibFFI 3.4.4
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
   build:
-    runs-on: macOS-12
+    runs-on: macOS-latest
     needs: make-release
     strategy:
       max-parallel: 4
