@@ -43,7 +43,7 @@ jobs:
         echo "BUILD_NUMBER=${BUILD_NUMBER}" >> ${GITHUB_OUTPUT}
 
     - name: Set up Python
-      uses: actions/setup-python@v4.7.1
+      uses: actions/setup-python@v4
       with:
         python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
 
