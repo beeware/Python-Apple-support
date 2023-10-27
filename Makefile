@@ -74,13 +74,9 @@ all: $(OS_LIST)
 	$(foreach os,$(OS_LIST),$(foreach sdk,$$(sort $$(basename $$(TARGETS-$(os)))),$(sdk) vars-$(sdk)))
 	$(foreach os,$(OS_LIST),$(foreach target,$$(TARGETS-$(os)),$(target) vars-$(target)))
 
-# Clean all builds
-clean:
-	rm -rf build dist install support
-
 # Full clean - includes all downloaded products
 distclean: clean
-	rm -rf downloads
+	rm -rf downloads build dist install support
 
 update-patch:
 	# Generate a diff from the clone of the python/cpython Github repository,
