@@ -8,7 +8,6 @@ on:
     - '*-b*'
 
 jobs:
-
   build:
     runs-on: macOS-latest
     outputs:
@@ -46,21 +45,21 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4.7.1
       with:
-        python-version: "${{ steps.build-vars.output.PYTHON_VER }}-dev"
+        python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
 
     - name: Build ${{ matrix.target }}
       run: |
         # Do the build for the requested target.
-        make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.output.BUILD_NUMBER }}
+        make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.outputs.BUILD_NUMBER }}
 
     - name: Extract version details
       id: version-details
       run: |
-        export PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.output.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
-        export BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.output.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.output.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.output.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.output.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
+        export BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
 
         echo "PYTHON_VERSION=${PYTHON_VERSION}"
         echo "BZIP2_VERSION=${BZIP2_VERSION}"
