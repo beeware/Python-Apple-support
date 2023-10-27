@@ -8,89 +8,101 @@ on:
     - '*-b*'
 
 jobs:
-  make-release:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set build variables
-      env:
-        TAG_NAME: ${{ github.ref }}
-      run: |
-        export TAG=$(basename $TAG_NAME)
-        echo "TAG=${TAG}"
-        export TAG_VERSION="${TAG%-*}"
-        export TAG_BUILD="${TAG#*-}"
-        echo "PY_VERSION=${TAG_VERSION}"
-        echo "BUILD_NUMBER=${TAG_BUILD}"
-        echo "TAG=${TAG}" >> $GITHUB_ENV
-        echo "PY_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
-        echo "BUILD_NUMBER=${TAG_BUILD}" >> $GITHUB_ENV
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.ref }}
-        draft: true
-        prerelease: false
-        body: |
-          Build ${{ env.BUILD_NUMBER }} of the BeeWare support package for Python ${{ env.PY_VERSION }}.
-
-          Includes:
-          * Python ${{ env.PY_VERSION }}.?
-          * OpenSSL 3.1.2
-          * BZip2 1.0.8
-          * XZ 5.4.4
-          * LibFFI 3.4.4
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-
   build:
     runs-on: macOS-latest
-    needs: make-release
+    outputs:
+      TAG: ${{ steps.build-vars.outputs.TAG }}
+      PYTHON_VER: ${{ steps.build-vars.outputs.PYTHON_VER }}
+      BUILD_NUMBER: ${{ steps.build-vars.outputs.BUILD_NUMBER }}
+      PYTHON_VERSION: ${{ steps.version-details.outputs.PYTHON_VERSION }}
+      BZIP2_VERSION: ${{ steps.version-details.outputs.BZIP2_VERSION }}
+      XZ_VERSION: ${{ steps.version-details.outputs.XZ_VERSION }}
+      LIBFFI_VERSION: ${{ steps.version-details.outputs.LIBFFI_VERSION }}
+      OPENSSL_VERSION: ${{ steps.version-details.outputs.OPENSSL_VERSION }}
     strategy:
-      max-parallel: 4
       matrix:
         target: ['macOS', 'iOS', 'tvOS', 'watchOS']
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
     - name: Set build variables
+      id: build-vars
       env:
         TAG_NAME: ${{ github.ref }}
       run: |
         export TAG=$(basename $TAG_NAME)
         echo "TAG=${TAG}"
-        export TAG_VERSION="${TAG%-*}"
-        export TAG_BUILD="${TAG#*-}"
-        echo "PY_VERSION=${TAG_VERSION}"
-        echo "BUILD_NUMBER=${TAG_BUILD}"
-        echo "TAG=${TAG}" >> $GITHUB_ENV
-        echo "PY_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
-        echo "BUILD_NUMBER=${TAG_BUILD}" >> $GITHUB_ENV
-    - name: Set up Python
-      uses: actions/setup-python@v3.1.2
-      with:
-        python-version: ${{ env.TAG_VERSION }}
-    - name: Build ${{ matrix.target }}
-      env:
-        BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
-      run: |
-        # 2020-06-24: The Homebrew copy of gettext leaks into the macOS build
-        # if it is present. Uninstall gettext to make sure that doesn't happen.
-        # 2021-01-02: Uninstall curl as well. We need curl to download the
-        # source bundles, but Homebrew's curl has a runtime dependency on
-        # gettext. However macOS provides a version of curl that works fine.
-        brew uninstall --ignore-dependencies gettext curl
+        export PYTHON_VER="${TAG%-*}"
+        export BUILD_NUMBER="${TAG#*-}"
 
-        # Do the build for the requested target.
-        make -e ${{ matrix.target }}
-    - name: Upload ${{ matrix.target }} release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        echo "PYTHON_VER=${PYTHON_VER}"
+        echo "BUILD_NUMBER=${BUILD_NUMBER}"
+
+        echo "TAG=${TAG}" >> ${GITHUB_OUTPUT}
+        echo "PYTHON_VER=${PYTHON_VER}" >> ${GITHUB_OUTPUT}
+        echo "BUILD_NUMBER=${BUILD_NUMBER}" >> ${GITHUB_OUTPUT}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4.7.1
       with:
-        upload_url: ${{ needs.make-release.outputs.upload_url }}
-        asset_path: ./dist/Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
-        asset_name: Python-${{ env.PY_VERSION }}-${{ matrix.target }}-support.${{ env.BUILD_NUMBER }}.tar.gz
-        asset_content_type: application/gzip
+        python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
+
+    - name: Build ${{ matrix.target }}
+      run: |
+        # Do the build for the requested target.
+        make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.outputs.BUILD_NUMBER }}
+
+    - name: Extract version details
+      id: version-details
+      run: |
+        export PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
+        export BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        export LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+
+        echo "PYTHON_VERSION=${PYTHON_VERSION}"
+        echo "BZIP2_VERSION=${BZIP2_VERSION}"
+        echo "XZ_VERSION=${XZ_VERSION}"
+        echo "OPENSSL_VERSION=${OPENSSL_VERSION}"
+        echo "LIBFFI_VERSION=${LIBFFI_VERSION}"
+
+        echo "PYTHON_VERSION=${PYTHON_VERSION}" >> ${GITHUB_OUTPUT}
+        echo "BZIP2_VERSION=${BZIP2_VERSION}" >> ${GITHUB_OUTPUT}
+        echo "XZ_VERSION=${XZ_VERSION}" >> ${GITHUB_OUTPUT}
+        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" >> ${GITHUB_OUTPUT}
+        echo "LIBFFI_VERSION=${LIBFFI_VERSION}" >> ${GITHUB_OUTPUT}
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3.1.3
+      with:
+        name: dist
+        path: "dist"
+        if-no-files-found: error
+
+  make-release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Get build artifacts
+      uses: actions/download-artifact@v3.0.2
+      with:
+        name: dist
+        path: dist
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1.13.0
+      with:
+        name: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
+        tag: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
+        draft: true
+        body: |
+          Build ${{ needs.build.outputs.BUILD_NUMBER }} of the BeeWare support package for Python ${{ needs.build.outputs.PYTHON_VER }}.
+
+          Includes:
+          * Python ${{ needs.build.outputs.PYTHON_VERSION }}
+          * OpenSSL  ${{ needs.build.outputs.OPENSSL_VERSION }}
+          * BZip2 ${{ needs.build.outputs.BZIP2_VERSION }}
+          * XZ ${{ needs.build.outputs.XZ_VERSION }}
+          * LibFFI ${{ needs.build.outputs.LIBFFI_VERSION }}
+        artifacts: "dist/*"
