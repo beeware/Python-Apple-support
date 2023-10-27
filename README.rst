@@ -4,7 +4,7 @@ Python Apple Support
 This is a meta-package for building a version of Python that can be embedded
 into a macOS, iOS, tvOS or watchOS project.
 
-**This branch builds a packaged version of Python 3.13.0**.
+**This branch builds a packaged version of Python 3.12.0**.
 Other Python versions are available by cloning other branches of the main
 repository:
 
@@ -12,7 +12,7 @@ repository:
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
-* `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
+* `Python 3.13 <https://github.com/beeware/Python-Apple-support/tree/3.13>`__
 
 It works by downloading, patching, and building a fat binary of Python and selected
 pre-requisites, and packaging them as static libraries that can be incorporated into an
@@ -93,6 +93,10 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to build the
   support package;
+* ``bin``, a folder containing shell aliases for the compilers that are needed
+  to build packages. This is required because Xcode uses the ``xcrun`` alias to
+  dynamically generate the name of binaries, but a lot of C tooling expects that ``CC``
+  will not contain spaces.
 * ``platform-site``, a folder that contains site customization scripts that can be used
   to make your local Python install look like it is an on-device install for each of the
   underlying target architectures supported by the platform. This is needed because when
