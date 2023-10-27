@@ -671,7 +671,7 @@ $$(PYTHON_STDLIB-$(os))/VERSIONS: \
 	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "---------------------" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 ifeq ($(os),macOS)
-	echo "libFFI: macOS native" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "libFFI: built-in" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 else
 	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 endif
