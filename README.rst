@@ -93,6 +93,10 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to build the
   support package;
+* ``bin``, a folder containing shell aliases for the compilers that are needed
+  to build packages. This is required because Xcode uses the ``xcrun`` alias to
+  dynamically generate the name of binaries, but a lot of C tooling expects that ``CC``
+  will not contain spaces.
 * ``platform-site``, a folder that contains site customization scripts that can be used
   to make your local Python install look like it is an on-device install for each of the
   underlying target architectures supported by the platform. This is needed because when
