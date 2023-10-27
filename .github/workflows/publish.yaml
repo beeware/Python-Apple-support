@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python environment
       uses: actions/setup-python@v1
       with:
         python-version: "3.X"
+
     - name: Set build variables
       id: build-vars
       env:
@@ -29,6 +31,7 @@ jobs:
         echo "TAG=${TAG}" >> ${GITHUB_OUTPUT}
         echo "PYTHON_VER=${PYTHON_VER}" >> ${GITHUB_OUTPUT}
         echo "BUILD_NUMBER=${BUILD_NUMBER}" >> ${GITHUB_OUTPUT}
+
     - name: Update Release Asset to S3
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
