@@ -104,6 +104,12 @@ downloads/Python-$(PYTHON_VERSION).tar.gz:
 	curl $(CURL_FLAGS) -o $@ \
 		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz
 
+downloads/python-$(PYTHON_VERSION)-macos11.pkg:
+	@echo ">>> Download macOS Python package"
+	mkdir -p downloads
+	curl $(CURL_FLAGS) -o $@ \
+		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/python-$(PYTHON_VERSION)-macos11.pkg
+
 ###########################################################################
 # Build for specified target (from $(TARGETS-*))
 ###########################################################################
@@ -399,145 +405,14 @@ endif
 $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(eval $$(call build-target,$$(target),$(os))))
 
 ###########################################################################
-# SDK: Aliases
-###########################################################################
-
-support/$(PYTHON_VER)/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-clang:
-	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang"
-
-support/$(PYTHON_VER)/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp:
-	patch/make-xcrun-alias $$@ "--sdk $(sdk) clang -E"
-
-support/$(PYTHON_VER)/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-ar:
-	patch/make-xcrun-alias $$@ "--sdk $(sdk) ar"
-
-###########################################################################
-# SDK: BZip2
-###########################################################################
-
-BZIP2_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/bzip2-$(BZIP2_VERSION)
-BZIP2_LIB-$(sdk)=$$(BZIP2_INSTALL-$(sdk))/lib/libbz2.a
-
-# This is only used on macOS.
-downloads/bzip2-$(BZIP2_VERSION)-$(sdk).tar.gz:
-	@echo ">>> Download BZip2 for $(sdk)"
-	mkdir -p downloads
-	curl $(CURL_FLAGS) -o $$@ \
-		https://github.com/beeware/cpython-macOS-source-deps/releases/download/BZip2-$(BZIP2_VERSION)/bzip2-$(BZIP2_VERSION)-$(sdk).tar.gz
-
-$$(BZIP2_LIB-$(sdk)): downloads/bzip2-$(BZIP2_VERSION)-$(sdk).tar.gz
-	@echo ">>> Install BZip2 for $(sdk)"
-	mkdir -p $$(BZIP2_INSTALL-$(sdk))
-	cd $$(BZIP2_INSTALL-$(sdk)) && tar zxvf $(PROJECT_DIR)/downloads/bzip2-$(BZIP2_VERSION)-$(sdk).tar.gz
-	# Ensure the target is marked as clean.
-	touch $$(BZIP2_LIB-$(sdk))
-
-###########################################################################
-# SDK: XZ (LZMA)
-###########################################################################
-
-XZ_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/xz-$(XZ_VERSION)
-XZ_LIB-$(sdk)=$$(XZ_INSTALL-$(sdk))/lib/liblzma.a
-
-# This is only used on macOS.
-downloads/xz-$(XZ_VERSION)-$(sdk).tar.gz:
-	@echo ">>> Download XZ for $(sdk)"
-	mkdir -p downloads
-	curl $(CURL_FLAGS) -o $$@ \
-		https://github.com/beeware/cpython-macOS-source-deps/releases/download/XZ-$(XZ_VERSION)/xz-$(XZ_VERSION)-$(sdk).tar.gz
-
-$$(XZ_LIB-$(sdk)): downloads/xz-$(XZ_VERSION)-$(sdk).tar.gz
-	@echo ">>> Install XZ for $(sdk)"
-	mkdir -p $$(XZ_INSTALL-$(sdk))
-	cd $$(XZ_INSTALL-$(sdk)) && tar zxvf $(PROJECT_DIR)/downloads/xz-$(XZ_VERSION)-$(sdk).tar.gz
-	# Ensure the target is marked as clean.
-	touch $$(XZ_LIB-$(sdk))
-
-###########################################################################
-# SDK: OpenSSL
-###########################################################################
-
-OPENSSL_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/openssl-$(OPENSSL_VERSION)
-OPENSSL_SSL_LIB-$(sdk)=$$(OPENSSL_INSTALL-$(sdk))/lib/libssl.a
-
-# This is only used on macOS.
-downloads/openssl-$(OPENSSL_VERSION)-$(sdk).tar.gz:
-	@echo ">>> Download OpenSSL for $(sdk)"
-	mkdir -p downloads
-	curl $(CURL_FLAGS) -o $$@ \
-		https://github.com/beeware/cpython-macOS-source-deps/releases/download/OpenSSL-$(OPENSSL_VERSION)/openssl-$(OPENSSL_VERSION)-$(sdk).tar.gz
-
-$$(OPENSSL_SSL_LIB-$(sdk)): downloads/openssl-$(OPENSSL_VERSION)-$(sdk).tar.gz
-	@echo ">>> Install OpenSSL for $(sdk)"
-	mkdir -p $$(OPENSSL_INSTALL-$(sdk))
-	cd $$(OPENSSL_INSTALL-$(sdk)) && tar zxvf $(PROJECT_DIR)/downloads/openssl-$(OPENSSL_VERSION)-$(sdk).tar.gz
-	# Ensure the target is marked as clean.
-	touch $$(OPENSSL_SSL_LIB-$(sdk))
-
-###########################################################################
 # SDK: Python
 ###########################################################################
 
-# macOS builds are compiled as a single universal2 build. The fat library is a
-# direct copy of OS build, and the headers and standard library are unmodified
-# from the versions produced by the OS build.
-ifeq ($(os),macOS)
+ifneq ($(os),macOS)
 
-PYTHON_SRCDIR-$(sdk)=build/$(os)/$(sdk)/python-$(PYTHON_VERSION)
-
-$$(PYTHON_SRCDIR-$(sdk))/configure: \
- 		$$(BZIP2_LIB-$$(sdk)) \
- 		$$(XZ_LIB-$$(sdk)) \
- 		$$(OPENSSL_SSL_LIB-$$(sdk)) \
-		downloads/Python-$(PYTHON_VERSION).tar.gz
-	@echo ">>> Unpack and configure Python for $(sdk)"
-	mkdir -p $$(PYTHON_SRCDIR-$(sdk))
-	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(sdk))
-	# Apply target Python patches
-	cd $$(PYTHON_SRCDIR-$(sdk)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
-	# Touch the configure script to ensure that Make identifies it as up to date.
-	touch $$(PYTHON_SRCDIR-$(sdk))/configure
-
-$$(PYTHON_SRCDIR-$(sdk))/Makefile: \
-		support/$(PYTHON_VER)/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-clang \
-		support/$(PYTHON_VER)/$(os)/bin/$$(TARGET_TRIPLE-$(sdk))-cpp \
-		$$(PYTHON_SRCDIR-$(sdk))/configure
-	# Configure target Python
-	cd $$(PYTHON_SRCDIR-$(sdk)) && \
-		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/bin:$(PATH)" \
-		./configure \
-			CC=$$(TARGET_TRIPLE-$(sdk))-clang \
-			CPP=$$(TARGET_TRIPLE-$(sdk))-cpp \
-			CFLAGS="$$(CFLAGS-$(sdk))" \
-			LDFLAGS="$$(LDFLAGS-$(sdk))" \
-			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(sdk))/include" \
-			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(sdk))/lib -llzma" \
-			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(sdk))/include" \
-			BZIP2_LIBS="-L$$(BZIP2_INSTALL-$(sdk))/lib -lbz2" \
-			MACOSX_DEPLOYMENT_TARGET="$$(VERSION_MIN-$(os))" \
-			--prefix="$$(PYTHON_INSTALL-$(sdk))" \
-			--enable-ipv6 \
-			--enable-universalsdk \
-			--with-openssl="$$(OPENSSL_INSTALL-$(sdk))" \
-			--with-universal-archs=universal2 \
-			--without-ensurepip \
-			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
-
-$$(PYTHON_SRCDIR-$(sdk))/python.exe: $$(PYTHON_SRCDIR-$(sdk))/Makefile
-	@echo ">>> Build Python for $(sdk)"
-	cd $$(PYTHON_SRCDIR-$(sdk)) && \
-		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/bin:$(PATH)" \
-		make all \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
-
-$$(PYTHON_LIB-$(sdk)) $$(PYTHON_INCLUDE-$$(sdk))/Python.h $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_SRCDIR-$(sdk))/python.exe
-	@echo ">>> Install Python for $(sdk)"
-	cd $$(PYTHON_SRCDIR-$(sdk)) && \
-		make install \
-		2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
-
-else
-
+# macOS builds are extracted from the official installer package, then
+# reprocessed into an XCFramework.
+#
 # Non-macOS builds need to be merged on a per-SDK basis. The merge covers:
 # * Merging a fat libPython.a
 # * Installing an architecture-sensitive pyconfig.h
@@ -632,6 +507,47 @@ $$(foreach sdk,$$(SDKS-$(os)),$$(eval $$(call build-sdk,$$(sdk),$(os))))
 # Build: Python
 ###########################################################################
 
+ifeq ($(os),macOS)
+
+$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
+		downloads/python-$(PYTHON_VERSION)-macos11.pkg
+	@echo ">>> Repackage macOS package as XCFramework"
+
+	# Unpack .pkg file. It turns out .pkg files are readable by tar... although
+	# their internal format is a bit of a mess. From tar's perspective, the .pkg
+	# is a tarball that contains additional tarballs; the inner tarball has the
+	# "payload" that is the framework.
+	mkdir -p build/macOS/macosx/python-$(PYTHON_VERSION)
+	tar zxf downloads/python-$(PYTHON_VERSION)-macos11.pkg -C build/macOS/macosx/python-$(PYTHON_VERSION)
+
+	# Unpack payload inside .pkg file
+	mkdir -p install/macOS/macosx/python-$(PYTHON_VERSION)/Python.framework
+	tar zxf build/macOS/macosx/python-$(PYTHON_VERSION)/Python_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/Payload -C install/macOS/macosx/python-$(PYTHON_VERSION)/Python.framework -X patch/Python/release.macOS.exclude
+
+	# Remove the signature from the extracted framework
+	codesign --remove-signature install/macOS/macosx/python-$(PYTHON_VERSION)/Python.framework
+
+	# Create XCFramework out of the extracted framework
+	xcodebuild -create-xcframework -output $$(PYTHON_XCFRAMEWORK-$(os)) -framework install/macOS/macosx/python-$(PYTHON_VERSION)/Python.framework
+
+support/$(PYTHON_VER)/macOS/VERSIONS:
+	@echo ">>> Create VERSIONS file for macOS"
+	echo "Python version: $(PYTHON_VERSION) " > support/$(PYTHON_VER)/macOS/VERSIONS
+	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/macOS/VERSIONS
+	echo "Min macOS version: $$(VERSION_MIN-macOS)" >> support/$(PYTHON_VER)/macOS/VERSIONS
+
+dist/Python-$(PYTHON_VER)-macOS-support.$(BUILD_NUMBER).tar.gz: \
+	$$(PYTHON_XCFRAMEWORK-macOS)/Info.plist \
+	support/$(PYTHON_VER)/macOS/VERSIONS \
+	$$(foreach target,$$(TARGETS-macOS), $$(PYTHON_SITECUSTOMIZE-$$(target)))
+
+	@echo ">>> Create final distribution artefact for macOS"
+	mkdir -p dist
+	# Build a distributable tarball
+	tar zcvf $$@ -C support/$(PYTHON_VER)/macOS `ls -A support/$(PYTHON_VER)/macOS/`
+
+else
+
 $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		$$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_LIB-$$(sdk)) $$(PYTHON_INCLUDE-$$(sdk))/Python.h)
 	@echo ">>> Create Python.XCFramework on $(os)"
@@ -666,11 +582,7 @@ $$(PYTHON_STDLIB-$(os))/VERSIONS: \
 	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "---------------------" >> support/$(PYTHON_VER)/$(os)/VERSIONS
-ifeq ($(os),macOS)
-	echo "libFFI: built-in" >> support/$(PYTHON_VER)/$(os)/VERSIONS
-else
 	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
-endif
 	echo "BZip2: $(BZIP2_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
@@ -686,6 +598,8 @@ dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
 	tar zcvf dist/Python-$(PYTHON_VER)-$(os)-support.test-$(BUILD_NUMBER).tar.gz -X patch/Python/test.exclude -C support/$(PYTHON_VER)/$(os) `ls -A support/$(PYTHON_VER)/$(os)/`
 	# Build a distributable tarball
 	tar zcvf $$@ -X patch/Python/release.common.exclude -X patch/Python/release.$(os).exclude -C support/$(PYTHON_VER)/$(os) `ls -A support/$(PYTHON_VER)/$(os)/`
+
+endif
 
 clean-$(os):
 	@echo ">>> Clean Python build products on $(os)"
