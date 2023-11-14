@@ -1152,6 +1152,139 @@ index 8b0628745c..2d8de8aecb 100755
  
  #
  # Platform support for Windows
+diff --git a/Makefile.pre.in b/Makefile.pre.in
+index 4996c5c309..24ee442643 100644
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -184,6 +184,8 @@
+ PYTHONFRAMEWORKDIR=	@PYTHONFRAMEWORKDIR@
+ PYTHONFRAMEWORKPREFIX=	@PYTHONFRAMEWORKPREFIX@
+ PYTHONFRAMEWORKINSTALLDIR= @PYTHONFRAMEWORKINSTALLDIR@
++PYTHONFRAMEWORKINSTALLNAMEPREFIX= @PYTHONFRAMEWORKINSTALLNAMEPREFIX@
++RESSRCDIR= @RESSRCDIR@
+ # Deployment target selected during configure, to be checked
+ # by distutils. The export statement is needed to ensure that the
+ # deployment target is active during build.
+@@ -843,7 +845,7 @@
+ 	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
+ 
+ libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
+-	 $(CC) -dynamiclib -Wl,-single_module $(PY_CORE_LDFLAGS) -undefined dynamic_lookup -Wl,-install_name,$(prefix)/lib/libpython$(LDVERSION).dylib -Wl,-compatibility_version,$(VERSION) -Wl,-current_version,$(VERSION) -o $@ $(LIBRARY_OBJS) $(DTRACE_OBJS) $(SHLIBS) $(LIBC) $(LIBM); \
++	 $(CC) -dynamiclib $(PY_CORE_LDFLAGS) -undefined dynamic_lookup -Wl,-install_name,$(PYTHONFRAMEWORKINSTALLNAMEPREFIX)/lib/libpython$(LDVERSION).dylib -Wl,-compatibility_version,$(VERSION) -Wl,-current_version,$(VERSION) -o $@ $(LIBRARY_OBJS) $(DTRACE_OBJS) $(SHLIBS) $(LIBC) $(LIBM); \
+ 
+ 
+ libpython$(VERSION).sl: $(LIBRARY_OBJS)
+@@ -868,14 +870,13 @@
+ # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
+ # minimal framework (not including the Lib directory and such) in the current
+ # directory.
+-RESSRCDIR=Mac/Resources/framework
+ $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK): \
+ 		$(LIBRARY) \
+ 		$(RESSRCDIR)/Info.plist
+ 	$(INSTALL) -d -m $(DIRMODE) $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)
+ 	$(CC) -o $(LDLIBRARY) $(PY_CORE_LDFLAGS) -dynamiclib \
+-		-all_load $(LIBRARY) -Wl,-single_module \
+-		-install_name $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK) \
++		-all_load $(LIBRARY) \
++		-install_name $(PYTHONFRAMEWORKINSTALLNAMEPREFIX)/Versions/$(VERSION)/$(PYTHONFRAMEWORK) \
+ 		-compatibility_version $(VERSION) \
+ 		-current_version $(VERSION) \
+ 		-framework CoreFoundation $(LIBS);
+@@ -887,6 +888,21 @@
+ 	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
+ 	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
+ 
++# This rule is for iOS, which requires an annoyingly just slighly different
++# format for frameworks to macOS. It *doesn't* use a versioned framework, and
++# the Info.plist must be in the root of the framework.
++$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK): \
++		$(LIBRARY) \
++		$(RESSRCDIR)/Info.plist
++	$(INSTALL) -d -m $(DIRMODE) $(PYTHONFRAMEWORKDIR)
++	$(CC) -o $(LDLIBRARY) $(PY_CORE_LDFLAGS) -dynamiclib \
++		-all_load $(LIBRARY) \
++		-install_name $(PYTHONFRAMEWORKINSTALLNAMEPREFIX)/$(PYTHONFRAMEWORK) \
++		-compatibility_version $(VERSION) \
++		-current_version $(VERSION) \
++		-framework CoreFoundation $(LIBS);
++	$(INSTALL_DATA) $(RESSRCDIR)/Info.plist $(PYTHONFRAMEWORKDIR)/Info.plist
++
+ # This rule builds the Cygwin Python DLL and import library if configured
+ # for a shared core library; otherwise, this rule is a noop.
+ $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
+@@ -1924,7 +1940,7 @@
+ # which can lead to two parallel `./python setup.py build` processes that
+ # step on each others toes.
+ .PHONY: install
+-install: @FRAMEWORKINSTALLFIRST@ commoninstall bininstall maninstall @FRAMEWORKINSTALLLAST@
++install: @FRAMEWORKINSTALLFIRST@ @INSTALLTARGETS@ @FRAMEWORKINSTALLLAST@
+ 	if test "x$(ENSUREPIP)" != "xno"  ; then \
+ 		case $(ENSUREPIP) in \
+ 			upgrade) ensurepip="--upgrade" ;; \
+@@ -2507,20 +2523,32 @@
+ 		exit 1; \
+ 	else true; \
+ 	fi
+-	@for i in $(prefix)/Resources/English.lproj $(prefix)/lib; do\
+-		if test ! -d $(DESTDIR)$$i; then \
+-			echo "Creating directory $(DESTDIR)$$i"; \
+-			$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$$i; \
+-		else	true; \
+-		fi; \
+-	done
+-	$(LN) -fsn include/python$(LDVERSION) $(DESTDIR)$(prefix)/Headers
+-	sed 's/%VERSION%/'"`$(RUNSHARED) ./$(BUILDPYTHON) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(prefix)/Resources/Info.plist
+-	$(LN) -fsn $(VERSION) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Versions/Current
+-	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/$(PYTHONFRAMEWORK)
+-	$(LN) -fsn Versions/Current/Headers $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers
+-	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
+-	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
++	# iOS/tvOS/watchOS uses a non-versioned framework with Info.plist in the
++	# framework root, no .lproj data, and binaries
++	@if test "$(MACHDEP)" = ios -o "$(MACHDEP)" = tvos -o "$(MACHDEP)" = watchos; then \
++		$(INSTALL) -d -m $(DIRMODE) $(PYTHONFRAMEWORKINSTALLDIR); \
++		sed 's/%VERSION%/'"`$(RUNSHARED) $(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(PYTHONFRAMEWORKINSTALLDIR)/Info.plist; \
++		$(INSTALL_SHARED) $(LDLIBRARY) $(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY); \
++		$(INSTALL) -d -m $(DIRMODE) $(BINDIR); \
++		for file in $(RESSRCDIR)/bin/* ; do \
++	    	$(INSTALL) -m $(EXEMODE) $$file $(BINDIR); \
++		done; \
++	else \
++		for i in $(prefix)/Resources/English.lproj $(prefix)/lib; do \
++			if test ! -d $(DESTDIR)$$i; then \
++				echo "Creating directory $(DESTDIR)$$i"; \
++				$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$$i; \
++			else	true; \
++			fi; \
++		done; \
++		$(LN) -fsn include/python$(LDVERSION) $(DESTDIR)$(prefix)/Headers; \
++		sed 's/%VERSION%/'"`$(RUNSHARED) $(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(prefix)/Resources/Info.plist; \
++		$(LN) -fsn $(VERSION) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Versions/Current; \
++		$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/$(PYTHONFRAMEWORK); \
++		$(LN) -fsn Versions/Current/Headers $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers; \
++		$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources; \
++		$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY); \
++	fi
+ 
+ # This installs Mac/Lib into the framework
+ # Install a number of symlinks to keep software that expects a normal unix
+@@ -2562,6 +2590,15 @@
+ frameworkinstallextras:
+ 	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
+ 
++# On iOS, bin/lib can't live inside the framework; include needs to be called
++# "Headers", but *must* be in the framework, and *not* include the `python3.X`
++# subdirectory. The install has put these folders in the same folder as
++# Python.framework; Move the headers to their final framework-compatible home.
++.PHONY: frameworkinstallmobileheaders
++frameworkinstallmobileheaders:
++	mv "$(PYTHONFRAMEWORKPREFIX)/include/python$(VERSION)" "$(PYTHONFRAMEWORKINSTALLDIR)/Headers"
++	$(LN) -fs "$(PYTHONFRAMEWORKDIR)" "$(PYTHONFRAMEWORKPREFIX)/include/python$(VERSION)"
++
+ # Build the toplevel Makefile
+ Makefile.pre: $(srcdir)/Makefile.pre.in config.status
+ 	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= ./config.status
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
 index 3307260544..b5db9e8a80 100644
 --- a/Misc/platform_triplet.c
@@ -1311,6 +1444,19 @@ index 2898eedc3e..b48a143c34 100644
  }
  
  /* module level code ********************************************************/
+diff --git a/Modules/getpath.c b/Modules/getpath.c
+index 6f76a84e78..e91272f833 100644
+--- a/Modules/getpath.c
++++ b/Modules/getpath.c
+@@ -758,7 +758,7 @@
+         return winmodule_to_dict(dict, key, PyWin_DLLhModule);
+     }
+ #endif
+-#elif defined(WITH_NEXT_FRAMEWORK)
++#elif defined(WITH_NEXT_FRAMEWORK) && !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+     static char modPath[MAXPATHLEN + 1];
+     static int modPathInitialized = -1;
+     if (modPathInitialized < 0) {
 diff --git a/Modules/mathmodule.c b/Modules/mathmodule.c
 index a4d9466559..8f51bef22d 100644
 --- a/Modules/mathmodule.c
@@ -1696,13 +1842,66 @@ index d74fb6deac..09ebc4287c 100755
  		# Blank kernel with real OS is always fine.
  		;;
 diff --git a/configure b/configure
-index c87f518382..69685cd25a 100755
+index c87f518382..45f021d1b1 100755
 --- a/configure
 +++ b/configure
-@@ -4247,6 +4247,15 @@
- 	*-*-cygwin*)
- 		ac_sys_system=Cygwin
- 		;;
+@@ -963,10 +963,13 @@
+ CFLAGS
+ CC
+ HAS_XCRUN
++WATCHOS_DEPLOYMENT_TARGET
++TVOS_DEPLOYMENT_TARGET
++IOS_DEPLOYMENT_TARGET
+ EXPORT_MACOSX_DEPLOYMENT_TARGET
+ CONFIGURE_MACOSX_DEPLOYMENT_TARGET
+ _PYTHON_HOST_PLATFORM
+-MACHDEP
++INSTALLTARGETS
+ FRAMEWORKINSTALLAPPSPREFIX
+ FRAMEWORKUNIXTOOLSPREFIX
+ FRAMEWORKPYTHONW
+@@ -974,6 +977,8 @@
+ FRAMEWORKALTINSTALLFIRST
+ FRAMEWORKINSTALLLAST
+ FRAMEWORKINSTALLFIRST
++RESSRCDIR
++PYTHONFRAMEWORKINSTALLNAMEPREFIX
+ PYTHONFRAMEWORKINSTALLDIR
+ PYTHONFRAMEWORKPREFIX
+ PYTHONFRAMEWORKDIR
+@@ -983,6 +988,7 @@
+ LIPO_32BIT_FLAGS
+ ARCH_RUN_32BIT
+ UNIVERSALSDK
++MACHDEP
+ PKG_CONFIG_LIBDIR
+ PKG_CONFIG_PATH
+ PKG_CONFIG
+@@ -3988,6 +3994,86 @@
+   as_fn_error $? "pkg-config is required" "$LINENO" 5]
+ fi
+ 
++# Set name for machine-dependent library files
++
++{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking MACHDEP" >&5
++printf %s "checking MACHDEP... " >&6; }
++if test -z "$MACHDEP"
++then
++    # avoid using uname for cross builds
++    if test "$cross_compiling" = yes; then
++       # ac_sys_system and ac_sys_release are used for setting
++       # a lot of different things including 'define_xopen_source'
++       # in the case statement below.
++	case "$host" in
++	*-*-linux-android*)
++		ac_sys_system=Linux-android
++		;;
++	*-*-linux*)
++		ac_sys_system=Linux
++		;;
++	*-*-cygwin*)
++		ac_sys_system=Cygwin
++		;;
 +	*-apple-ios*)
 +		ac_sys_system=iOS
 +		;;
@@ -1712,10 +1911,326 @@ index c87f518382..69685cd25a 100755
 +	*-apple-watchos*)
 +		ac_sys_system=watchOS
 +		;;
- 	*-*-vxworks*)
- 	    ac_sys_system=VxWorks
- 	    ;;
-@@ -4303,27 +4312,96 @@
++	*-*-vxworks*)
++	    ac_sys_system=VxWorks
++	    ;;
++	*-*-emscripten)
++	    ac_sys_system=Emscripten
++	    ;;
++	*-*-wasi)
++	    ac_sys_system=WASI
++	    ;;
++	*)
++		# for now, limit cross builds to known configurations
++		MACHDEP="unknown"
++		as_fn_error $? "cross build not supported for $host" "$LINENO" 5
++	esac
++	ac_sys_release=
++    else
++	ac_sys_system=`uname -s`
++	if test "$ac_sys_system" = "AIX" \
++	-o "$ac_sys_system" = "UnixWare" -o "$ac_sys_system" = "OpenUNIX"; then
++		ac_sys_release=`uname -v`
++	else
++		ac_sys_release=`uname -r`
++	fi
++    fi
++    ac_md_system=`echo $ac_sys_system |
++			tr -d '/ ' | tr '[A-Z]' '[a-z]'`
++    ac_md_release=`echo $ac_sys_release |
++			tr -d '/ ' | sed 's/^[A-Z]\.//' | sed 's/\..*//'`
++    MACHDEP="$ac_md_system$ac_md_release"
++
++    case $MACHDEP in
++	aix*) MACHDEP="aix";;
++	linux*) MACHDEP="linux";;
++	cygwin*) MACHDEP="cygwin";;
++	darwin*) MACHDEP="darwin";;
++	'')	MACHDEP="unknown";;
++    esac
++
++    if test "$ac_sys_system" = "SunOS"; then
++	# For Solaris, there isn't an OS version specific macro defined
++	# in most compilers, so we define one here.
++	SUNOS_VERSION=`echo $ac_sys_release | sed -e 's!\.\(0-9\)$!.0\1!g' | tr -d '.'`
++
++printf "%s\n" "#define Py_SUNOS_VERSION $SUNOS_VERSION" >>confdefs.h
++
++    fi
++fi
++{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: \"$MACHDEP\"" >&5
++printf "%s\n" "\"$MACHDEP\"" >&6; }
++
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for --enable-universalsdk" >&5
+ printf %s "checking for --enable-universalsdk... " >&6; }
+ # Check whether --enable-universalsdk was given.
+@@ -4111,11 +4197,15 @@
+ 		PYTHONFRAMEWORKDIR=no-framework
+ 		PYTHONFRAMEWORKPREFIX=
+ 		PYTHONFRAMEWORKINSTALLDIR=
++    PYTHONFRAMEWORKINSTALLNAMEPREFIX=
++    RESSRCDIR=
+ 		FRAMEWORKINSTALLFIRST=
+ 		FRAMEWORKINSTALLLAST=
+ 		FRAMEWORKALTINSTALLFIRST=
+ 		FRAMEWORKALTINSTALLLAST=
+ 		FRAMEWORKPYTHONW=
++		INSTALLTARGETS="commoninstall bininstall maninstall"
++
+ 		if test "x${prefix}" = "xNONE"; then
+ 			FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
+ 		else
+@@ -4128,65 +4218,112 @@
+ 		PYTHONFRAMEWORKINSTALLDIR=$PYTHONFRAMEWORKPREFIX/$PYTHONFRAMEWORKDIR
+ 		FRAMEWORKINSTALLFIRST="frameworkinstallstructure"
+ 		FRAMEWORKALTINSTALLFIRST="frameworkinstallstructure "
+-		FRAMEWORKINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkinstallunixtools"
+-		FRAMEWORKALTINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkaltinstallunixtools"
+-		FRAMEWORKPYTHONW="frameworkpythonw"
+-		FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+ 
+-		if test "x${prefix}" = "xNONE" ; then
+-			FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
++    case $ac_sys_system in #(
++      iOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		else
+-			FRAMEWORKUNIXTOOLSPREFIX="${prefix}"
+-		fi
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=iOS/Resources
+ 
+-		case "${enableval}" in
+-		/System*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			if test "${prefix}" = "NONE" ; then
+-				# See below
+-				FRAMEWORKUNIXTOOLSPREFIX="/usr"
+-			fi
+-			;;
++        ac_config_files="$ac_config_files iOS/Resources/Info.plist"
+ 
+-		/Library*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			;;
++        ;;
++      tvOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		*/Library/Frameworks)
+-			MDIR="`dirname "${enableval}"`"
+-			MDIR="`dirname "${MDIR}"`"
+-			FRAMEWORKINSTALLAPPSPREFIX="${MDIR}/Applications"
+-
+-			if test "${prefix}" = "NONE"; then
+-				# User hasn't specified the
+-				# --prefix option, but wants to install
+-				# the framework in a non-default location,
+-				# ensure that the compatibility links get
+-				# installed relative to that prefix as well
+-				# instead of in /usr/local.
+-				FRAMEWORKUNIXTOOLSPREFIX="${MDIR}"
+-			fi
+-			;;
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=tvOS/Resources
+ 
+-		*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			;;
+-		esac
++        ac_config_files="$ac_config_files tvOS/Resources/Info.plist"
+ 
+-		prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++        ;;
++      watchOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		# Add files for Mac specific code to the list of output
+-		# files:
+-		ac_config_files="$ac_config_files Mac/Makefile"
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=watchOS/Resources
+ 
+-		ac_config_files="$ac_config_files Mac/PythonLauncher/Makefile"
++        ac_config_files="$ac_config_files watchOS/Resources/Info.plist"
+ 
+-		ac_config_files="$ac_config_files Mac/Resources/framework/Info.plist"
++        ;;
++      *) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkinstallunixtools"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkaltinstallunixtools"
++        FRAMEWORKPYTHONW="frameworkpythonw"
++        FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++        INSTALLTARGETS="commoninstall bininstall maninstall"
+ 
+-		ac_config_files="$ac_config_files Mac/Resources/app/Info.plist"
++        if test "x${prefix}" = "xNONE" ; then
++		      FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
+ 
+-	esac
++        else
++          FRAMEWORKUNIXTOOLSPREFIX="${prefix}"
++        fi
++
++        case "${enableval}" in
++        /System*)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          if test "${prefix}" = "NONE" ; then
++            # See below
++            FRAMEWORKUNIXTOOLSPREFIX="/usr"
++          fi
++          ;;
++
++        /Library*)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          ;;
++
++        */Library/Frameworks)
++          MDIR="`dirname "${enableval}"`"
++          MDIR="`dirname "${MDIR}"`"
++          FRAMEWORKINSTALLAPPSPREFIX="${MDIR}/Applications"
++
++          if test "${prefix}" = "NONE"; then
++            # User hasn't specified the
++            # --prefix option, but wants to install
++            # the framework in a non-default location,
++            # ensure that the compatibility links get
++            # installed relative to that prefix as well
++            # instead of in /usr/local.
++            FRAMEWORKUNIXTOOLSPREFIX="${MDIR}"
++          fi
++          ;;
++
++        *)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          ;;
++        esac
++
++        prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX=$(prefix)
++        RESSRCDIR=Mac/Resources/framework
++
++        # Add files for Mac specific code to the list of output
++        # files:
++        ac_config_files="$ac_config_files Mac/Makefile"
++
++        ac_config_files="$ac_config_files Mac/PythonLauncher/Makefile"
++
++        ac_config_files="$ac_config_files Mac/Resources/app/Info.plist"
++
++        ac_config_files="$ac_config_files Mac/Resources/framework/Info.plist"
++
++        ;;
++      esac
++  	esac
+ 
+ else $as_nop
+ 
+@@ -4194,6 +4331,8 @@
+ 	PYTHONFRAMEWORKDIR=no-framework
+ 	PYTHONFRAMEWORKPREFIX=
+ 	PYTHONFRAMEWORKINSTALLDIR=
++  PYTHONFRAMEWORKINSTALLNAMEPREFIX=
++  RESSRCDIR=
+ 	FRAMEWORKINSTALLFIRST=
+ 	FRAMEWORKINSTALLLAST=
+ 	FRAMEWORKALTINSTALLFIRST=
+@@ -4223,79 +4362,11 @@
+ 
+ 
+ 
+-printf "%s\n" "#define _PYTHONFRAMEWORK \"${PYTHONFRAMEWORK}\"" >>confdefs.h
+ 
+ 
+-# Set name for machine-dependent library files
+ 
+-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking MACHDEP" >&5
+-printf %s "checking MACHDEP... " >&6; }
+-if test -z "$MACHDEP"
+-then
+-    # avoid using uname for cross builds
+-    if test "$cross_compiling" = yes; then
+-       # ac_sys_system and ac_sys_release are used for setting
+-       # a lot of different things including 'define_xopen_source'
+-       # in the case statement below.
+-	case "$host" in
+-	*-*-linux-android*)
+-		ac_sys_system=Linux-android
+-		;;
+-	*-*-linux*)
+-		ac_sys_system=Linux
+-		;;
+-	*-*-cygwin*)
+-		ac_sys_system=Cygwin
+-		;;
+-	*-*-vxworks*)
+-	    ac_sys_system=VxWorks
+-	    ;;
+-	*-*-emscripten)
+-	    ac_sys_system=Emscripten
+-	    ;;
+-	*-*-wasi)
+-	    ac_sys_system=WASI
+-	    ;;
+-	*)
+-		# for now, limit cross builds to known configurations
+-		MACHDEP="unknown"
+-		as_fn_error $? "cross build not supported for $host" "$LINENO" 5
+-	esac
+-	ac_sys_release=
+-    else
+-	ac_sys_system=`uname -s`
+-	if test "$ac_sys_system" = "AIX" \
+-	-o "$ac_sys_system" = "UnixWare" -o "$ac_sys_system" = "OpenUNIX"; then
+-		ac_sys_release=`uname -v`
+-	else
+-		ac_sys_release=`uname -r`
+-	fi
+-    fi
+-    ac_md_system=`echo $ac_sys_system |
+-			tr -d '/ ' | tr '[A-Z]' '[a-z]'`
+-    ac_md_release=`echo $ac_sys_release |
+-			tr -d '/ ' | sed 's/^[A-Z]\.//' | sed 's/\..*//'`
+-    MACHDEP="$ac_md_system$ac_md_release"
+-
+-    case $MACHDEP in
+-	aix*) MACHDEP="aix";;
+-	linux*) MACHDEP="linux";;
+-	cygwin*) MACHDEP="cygwin";;
+-	darwin*) MACHDEP="darwin";;
+-	'')	MACHDEP="unknown";;
+-    esac
+-
+-    if test "$ac_sys_system" = "SunOS"; then
+-	# For Solaris, there isn't an OS version specific macro defined
+-	# in most compilers, so we define one here.
+-	SUNOS_VERSION=`echo $ac_sys_release | sed -e 's!\.\(0-9\)$!.0\1!g' | tr -d '.'`
+-
+-printf "%s\n" "#define Py_SUNOS_VERSION $SUNOS_VERSION" >>confdefs.h
++printf "%s\n" "#define _PYTHONFRAMEWORK \"${PYTHONFRAMEWORK}\"" >>confdefs.h
+ 
+-    fi
+-fi
+-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: \"$MACHDEP\"" >&5
+-printf "%s\n" "\"$MACHDEP\"" >&6; }
+ 
+ 
+ if test "$cross_compiling" = yes; then
+@@ -4303,27 +4374,102 @@
  	*-*-linux*)
  		case "$host_cpu" in
  		arm*)
@@ -1732,63 +2247,69 @@ index c87f518382..69685cd25a 100755
 +		_host_ident=
 +		;;
 +  *-apple-ios*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    IOS_DEPLOYMENT_TARGET=${_host_os:3}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-iphonesimulator-arm64
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphonesimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-iphonesimulator-$host_cpu
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphonesimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-ios*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    IOS_DEPLOYMENT_TARGET=${_host_os:3}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-iphoneos-arm64
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphoneos-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-iphoneos-$host_cpu
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphoneos-$host_cpu
 +    esac
 +    ;;
 +  *-apple-tvos*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    TVOS_DEPLOYMENT_TARGET=${_host_os:4}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-appletvsimulator-arm64
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvsimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-appletvsimulator-$host_cpu
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvsimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-tvos*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    TVOS_DEPLOYMENT_TARGET=${_host_os:4}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-appletvos-arm64
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvos-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-appletvos-$host_cpu
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvos-$host_cpu
 +    esac
 +    ;;
 +  *-apple-watchos*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-watchsimualtor-arm64
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchsimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-watchsimualtor-$host_cpu
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchsimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-watchos*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-watchosos-arm64_32
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchosos-arm64_32
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-watchosos-$host_cpu
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchosos-$host_cpu
 +    esac
 +    ;;
 +	*-apple-*)
@@ -1818,7 +2339,7 @@ index c87f518382..69685cd25a 100755
  fi
  
  # Some systems cannot stand _XOPEN_SOURCE being defined at all; they
-@@ -4390,6 +4468,13 @@
+@@ -4390,6 +4536,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -1832,7 +2353,40 @@ index c87f518382..69685cd25a 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -6746,6 +6831,12 @@
+@@ -4484,6 +4637,32 @@
+      ;;
+ esac
+ 
++case $ac_sys_system in #(
++  iOS) :
++
++    IOS_DEPLOYMENT_TARGET=${IOS_DEPLOYMENT_TARGET:=12.0}
++    as_fn_append CFLAGS " -mios-version-min=${IOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mios-version-min=${IOS_DEPLOYMENT_TARGET}"
++
++   ;; #(
++  tvOS) :
++
++    TVOS_DEPLOYMENT_TARGET=${TVOS_DEPLOYMENT_TARGET:=9.0}
++    as_fn_append CFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
++
++   ;; #(
++  watchOS) :
++
++    WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=4.0}
++    as_fn_append CFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
++
++   ;; #(
++  *) :
++     ;;
++esac
++
+ if test "$ac_sys_system" = "Darwin"
+ then
+     # Extract the first word of "xcrun", so it can be a program name with args.
+@@ -6746,6 +6925,12 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
@@ -1845,17 +2399,16 @@ index c87f518382..69685cd25a 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -6753,9 +6844,6 @@
+@@ -6753,8 +6938,6 @@
   ;;
  esac
  
 -{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $MULTIARCH" >&5
 -printf "%s\n" "$MULTIARCH" >&6; }
--
+ 
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-     as_fn_error $? "internal configure error for the platform triplet, please file a bug report" "$LINENO" 5
-@@ -6764,6 +6852,16 @@
+@@ -6764,6 +6947,16 @@
    MULTIARCH=$PLATFORM_TRIPLET
  fi
  
@@ -1872,7 +2425,7 @@ index c87f518382..69685cd25a 100755
  
  if test x$MULTIARCH != x; then
    MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
-@@ -6807,8 +6905,14 @@
+@@ -6807,6 +7000,12 @@
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-freebsd*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
@@ -1883,12 +2436,58 @@ index c87f518382..69685cd25a 100755
 +    aarch64-apple-ios*/clang) :
 +    PY_SUPPORT_TIER=3 ;; #(
    *) :
--      PY_SUPPORT_TIER=0
-+                  PY_SUPPORT_TIER=0
+       PY_SUPPORT_TIER=0
   ;;
- esac
+@@ -7257,17 +7456,23 @@
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking LDLIBRARY" >&5
+ printf %s "checking LDLIBRARY... " >&6; }
  
-@@ -12515,6 +12619,7 @@
+-# MacOSX framework builds need more magic. LDLIBRARY is the dynamic
++# iOS/MacOSX framework builds need more magic. LDLIBRARY is the dynamic
+ # library that we build, but we do not want to link against it (we
+ # will find it with a -framework option). For this reason there is an
+ # extra variable BLDLIBRARY against which Python and the extension
+ # modules are linked, BLDLIBRARY. This is normally the same as
+-# LDLIBRARY, but empty for MacOSX framework builds.
++# LDLIBRARY, but empty for MacOSX framework builds. iOS does the same,
++# but uses a non-versioned framework layout.
+ if test "$enable_framework"
+ then
+-  LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+-  RUNSHARED=DYLD_FRAMEWORK_PATH=`pwd`${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}
++  case $ac_sys_system in
++  iOS|tvOS|watchOS)
++    LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
++  *)
++    LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
++  esac
+   BLDLIBRARY=''
++  RUNSHARED=DYLD_FRAMEWORK_PATH=`pwd`${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}
+ else
+   BLDLIBRARY='$(LDLIBRARY)'
+ fi
+@@ -7317,12 +7522,16 @@
+ 	  ;;
+     Darwin*)
+     	LDLIBRARY='libpython$(LDVERSION).dylib'
+-	BLDLIBRARY='-L. -lpython$(LDVERSION)'
+-	RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
++      BLDLIBRARY='-L. -lpython$(LDVERSION)'
++      RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
++	;;
++    iOS|tvOS|watchOS)
++    	LDLIBRARY='libpython$(LDVERSION).dylib'
++      BLDLIBRARY='-L. -lpython$(LDVERSION)'
+ 	;;
+     AIX*)
+-	LDLIBRARY='libpython$(LDVERSION).so'
+-	RUNSHARED=LIBPATH=`pwd`${LIBPATH:+:${LIBPATH}}
++      LDLIBRARY='libpython$(LDVERSION).so'
++      RUNSHARED=LIBPATH=`pwd`${LIBPATH:+:${LIBPATH}}
+ 	;;
+ 
+   esac
+@@ -12515,6 +12724,7 @@
  		esac
  		;;
  	CYGWIN*)   SHLIB_SUFFIX=.dll;;
@@ -1896,17 +2495,44 @@ index c87f518382..69685cd25a 100755
  	*)	   SHLIB_SUFFIX=.so;;
  	esac
  fi
-@@ -12597,6 +12702,9 @@
+@@ -12597,6 +12807,11 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
 +	iOS/*|tvOS/*|watchOS/*)
-+		LDSHARED='$(CC) -dynamiclib -undefined dynamic_lookup'
-+		LDCXXSHARED='$(CXX) -dynamiclib -undefined dynamic_lookup';;
++		LDSHARED='$(CC) -dynamiclib -F . -framework Python'
++		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework Python'
++    BLDSHARED="$LDSHARED"
++    ;;
  	Emscripten|WASI)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -14138,6 +14246,10 @@
+@@ -12750,6 +12965,24 @@
+ 			LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+ 		fi
+ 		LINKFORSHARED="$LINKFORSHARED";;
++	iOS/*|tvOS/*|watchOS/*)
++		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
++
++		# Issue #18075: the default maximum stack size (8MBytes) is too
++		# small for the default recursion limit. Increase the stack size
++		# to ensure that tests don't crash
++    stack_size="1000000"  # 16 MB
++    if test "$with_ubsan" = "yes"
++    then
++        # Undefined behavior sanitizer requires an even deeper stack
++        stack_size="4000000"  # 64 MB
++    fi
++
++
++printf "%s\n" "#define THREAD_STACK_SIZE 0x$stack_size" >>confdefs.h
++
++
++    LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
+ 	OpenUNIX*|UnixWare*) LINKFORSHARED="-Wl,-Bexport";;
+ 	SCO_SV*) LINKFORSHARED="-Wl,-Bexport";;
+ 	ReliantUNIX*) LINKFORSHARED="-W1 -Blargedynsym";;
+@@ -14138,6 +14371,10 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -1917,7 +2543,7 @@ index c87f518382..69685cd25a 100755
    sunos5) :
      as_fn_append LIBFFI_LIBS " -mimpure-text"
     ;; #(
-@@ -23651,7 +23763,7 @@
+@@ -23651,7 +23888,7 @@
  printf "%s\n" "$ABIFLAGS" >&6; }
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking SOABI" >&5
  printf %s "checking SOABI... " >&6; }
@@ -1926,7 +2552,7 @@ index c87f518382..69685cd25a 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $SOABI" >&5
  printf "%s\n" "$SOABI" >&6; }
  
-@@ -23660,7 +23772,7 @@
+@@ -23660,7 +23897,7 @@
  if test "$Py_DEBUG" = 'true'; then
    # Similar to SOABI but remove "d" flag from ABIFLAGS
  
@@ -1935,7 +2561,7 @@ index c87f518382..69685cd25a 100755
  
  printf "%s\n" "#define ALT_SOABI \"${ALT_SOABI}\"" >>confdefs.h
  
-@@ -27949,6 +28061,28 @@
+@@ -27949,6 +28186,28 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -1964,19 +2590,49 @@ index c87f518382..69685cd25a 100755
    CYGWIN*) :
  
  
-@@ -32186,4 +32320,3 @@
- CPython core team, see https://peps.python.org/pep-0011/ for more information.
- " >&2;}
- fi
--
+@@ -31528,10 +31787,13 @@
+ do
+   case $ac_config_target in
+     "pyconfig.h") CONFIG_HEADERS="$CONFIG_HEADERS pyconfig.h" ;;
++    "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
++    "tvOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES tvOS/Resources/Info.plist" ;;
++    "watchOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES watchOS/Resources/Info.plist" ;;
+     "Mac/Makefile") CONFIG_FILES="$CONFIG_FILES Mac/Makefile" ;;
+     "Mac/PythonLauncher/Makefile") CONFIG_FILES="$CONFIG_FILES Mac/PythonLauncher/Makefile" ;;
+-    "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
+     "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
++    "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
+     "Makefile.pre") CONFIG_FILES="$CONFIG_FILES Makefile.pre" ;;
+     "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
+     "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index cd69f0ede5..135036bf67 100644
+index cd69f0ede5..a96ca3a3c7 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -553,6 +553,15 @@
- 	*-*-cygwin*)
- 		ac_sys_system=Cygwin
- 		;;
+@@ -310,6 +310,83 @@
+   AC_MSG_ERROR([pkg-config is required])]
+ fi
+ 
++# Set name for machine-dependent library files
++AC_ARG_VAR([MACHDEP], [name for machine-dependent library files])
++AC_MSG_CHECKING([MACHDEP])
++if test -z "$MACHDEP"
++then
++    # avoid using uname for cross builds
++    if test "$cross_compiling" = yes; then
++       # ac_sys_system and ac_sys_release are used for setting
++       # a lot of different things including 'define_xopen_source'
++       # in the case statement below.
++	case "$host" in
++	*-*-linux-android*)
++		ac_sys_system=Linux-android
++		;;
++	*-*-linux*)
++		ac_sys_system=Linux
++		;;
++	*-*-cygwin*)
++		ac_sys_system=Cygwin
++		;;
 +	*-apple-ios*)
 +		ac_sys_system=iOS
 +		;;
@@ -1986,10 +2642,322 @@ index cd69f0ede5..135036bf67 100644
 +	*-apple-watchos*)
 +		ac_sys_system=watchOS
 +		;;
- 	*-*-vxworks*)
- 	    ac_sys_system=VxWorks
- 	    ;;
-@@ -607,27 +616,96 @@
++	*-*-vxworks*)
++	    ac_sys_system=VxWorks
++	    ;;
++	*-*-emscripten)
++	    ac_sys_system=Emscripten
++	    ;;
++	*-*-wasi)
++	    ac_sys_system=WASI
++	    ;;
++	*)
++		# for now, limit cross builds to known configurations
++		MACHDEP="unknown"
++		AC_MSG_ERROR([cross build not supported for $host])
++	esac
++	ac_sys_release=
++    else
++	ac_sys_system=`uname -s`
++	if test "$ac_sys_system" = "AIX" \
++	-o "$ac_sys_system" = "UnixWare" -o "$ac_sys_system" = "OpenUNIX"; then
++		ac_sys_release=`uname -v`
++	else
++		ac_sys_release=`uname -r`
++	fi
++    fi
++    ac_md_system=`echo $ac_sys_system |
++			tr -d '[/ ]' | tr '[[A-Z]]' '[[a-z]]'`
++    ac_md_release=`echo $ac_sys_release |
++			tr -d '[/ ]' | sed 's/^[[A-Z]]\.//' | sed 's/\..*//'`
++    MACHDEP="$ac_md_system$ac_md_release"
++
++    case $MACHDEP in
++	aix*) MACHDEP="aix";;
++	linux*) MACHDEP="linux";;
++	cygwin*) MACHDEP="cygwin";;
++	darwin*) MACHDEP="darwin";;
++	'')	MACHDEP="unknown";;
++    esac
++
++    if test "$ac_sys_system" = "SunOS"; then
++	# For Solaris, there isn't an OS version specific macro defined
++	# in most compilers, so we define one here.
++	SUNOS_VERSION=`echo $ac_sys_release | sed -e 's!\.\([0-9]\)$!.0\1!g' | tr -d '.'`
++	AC_DEFINE_UNQUOTED([Py_SUNOS_VERSION], [$SUNOS_VERSION],
++	                   [The version of SunOS/Solaris as reported by `uname -r' without the dot.])
++    fi
++fi
++AC_MSG_RESULT(["$MACHDEP"])
++
+ AC_MSG_CHECKING([for --enable-universalsdk])
+ AC_ARG_ENABLE([universalsdk],
+ 	AS_HELP_STRING([--enable-universalsdk@<:@=SDKDIR@:>@],
+@@ -427,11 +504,15 @@
+ 		PYTHONFRAMEWORKDIR=no-framework
+ 		PYTHONFRAMEWORKPREFIX=
+ 		PYTHONFRAMEWORKINSTALLDIR=
++    PYTHONFRAMEWORKINSTALLNAMEPREFIX=
++    RESSRCDIR=
+ 		FRAMEWORKINSTALLFIRST=
+ 		FRAMEWORKINSTALLLAST=
+ 		FRAMEWORKALTINSTALLFIRST=
+ 		FRAMEWORKALTINSTALLLAST=
+ 		FRAMEWORKPYTHONW=
++		INSTALLTARGETS="commoninstall bininstall maninstall"
++
+ 		if test "x${prefix}" = "xNONE"; then
+ 			FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
+ 		else
+@@ -444,66 +525,112 @@
+ 		PYTHONFRAMEWORKINSTALLDIR=$PYTHONFRAMEWORKPREFIX/$PYTHONFRAMEWORKDIR
+ 		FRAMEWORKINSTALLFIRST="frameworkinstallstructure"
+ 		FRAMEWORKALTINSTALLFIRST="frameworkinstallstructure "
+-		FRAMEWORKINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkinstallunixtools"
+-		FRAMEWORKALTINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkaltinstallunixtools"
+-		FRAMEWORKPYTHONW="frameworkpythonw"
+-		FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+ 
+-		if test "x${prefix}" = "xNONE" ; then
+-			FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
++    case $ac_sys_system in #(
++      iOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		else
+-			FRAMEWORKUNIXTOOLSPREFIX="${prefix}"
+-		fi
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=iOS/Resources
+ 
+-		case "${enableval}" in
+-		/System*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			if test "${prefix}" = "NONE" ; then
+-				# See below
+-				FRAMEWORKUNIXTOOLSPREFIX="/usr"
+-			fi
+-			;;
++        AC_CONFIG_FILES([iOS/Resources/Info.plist])
++        ;;
++      tvOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		/Library*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			;;
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=tvOS/Resources
+ 
+-		*/Library/Frameworks)
+-			MDIR="`dirname "${enableval}"`"
+-			MDIR="`dirname "${MDIR}"`"
+-			FRAMEWORKINSTALLAPPSPREFIX="${MDIR}/Applications"
+-
+-			if test "${prefix}" = "NONE"; then
+-				# User hasn't specified the
+-				# --prefix option, but wants to install
+-				# the framework in a non-default location,
+-				# ensure that the compatibility links get
+-				# installed relative to that prefix as well
+-				# instead of in /usr/local.
+-				FRAMEWORKUNIXTOOLSPREFIX="${MDIR}"
+-			fi
+-			;;
++        AC_CONFIG_FILES([tvOS/Resources/Info.plist])
++        ;;
++      watchOS) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++        FRAMEWORKPYTHONW=
++        INSTALLTARGETS="libinstall inclinstall sharedinstall"
+ 
+-		*)
+-			FRAMEWORKINSTALLAPPSPREFIX="/Applications"
+-			;;
+-		esac
++        prefix=$PYTHONFRAMEWORKPREFIX
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++        RESSRCDIR=watchOS/Resources
+ 
+-		prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++        AC_CONFIG_FILES([watchOS/Resources/Info.plist])
++        ;;
++      *) :
++        FRAMEWORKINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkinstallunixtools"
++        FRAMEWORKALTINSTALLLAST="frameworkinstallmaclib frameworkinstallapps frameworkaltinstallunixtools"
++        FRAMEWORKPYTHONW="frameworkpythonw"
++        FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++        INSTALLTARGETS="commoninstall bininstall maninstall"
+ 
+-		# Add files for Mac specific code to the list of output
+-		# files:
+-		AC_CONFIG_FILES([Mac/Makefile])
+-		AC_CONFIG_FILES([Mac/PythonLauncher/Makefile])
+-		AC_CONFIG_FILES([Mac/Resources/framework/Info.plist])
+-		AC_CONFIG_FILES([Mac/Resources/app/Info.plist])
+-	esac
++        if test "x${prefix}" = "xNONE" ; then
++		      FRAMEWORKUNIXTOOLSPREFIX="${ac_default_prefix}"
++
++        else
++          FRAMEWORKUNIXTOOLSPREFIX="${prefix}"
++        fi
++
++        case "${enableval}" in
++        /System*)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          if test "${prefix}" = "NONE" ; then
++            # See below
++            FRAMEWORKUNIXTOOLSPREFIX="/usr"
++          fi
++          ;;
++
++        /Library*)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          ;;
++
++        */Library/Frameworks)
++          MDIR="`dirname "${enableval}"`"
++          MDIR="`dirname "${MDIR}"`"
++          FRAMEWORKINSTALLAPPSPREFIX="${MDIR}/Applications"
++
++          if test "${prefix}" = "NONE"; then
++            # User hasn't specified the
++            # --prefix option, but wants to install
++            # the framework in a non-default location,
++            # ensure that the compatibility links get
++            # installed relative to that prefix as well
++            # instead of in /usr/local.
++            FRAMEWORKUNIXTOOLSPREFIX="${MDIR}"
++          fi
++          ;;
++
++        *)
++          FRAMEWORKINSTALLAPPSPREFIX="/Applications"
++          ;;
++        esac
++
++        prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX=$(prefix)
++        RESSRCDIR=Mac/Resources/framework
++
++        # Add files for Mac specific code to the list of output
++        # files:
++        AC_CONFIG_FILES([Mac/Makefile])
++        AC_CONFIG_FILES([Mac/PythonLauncher/Makefile])
++        AC_CONFIG_FILES([Mac/Resources/app/Info.plist])
++        AC_CONFIG_FILES([Mac/Resources/framework/Info.plist])
++        ;;
++      esac
++  	esac
+ 	],[
+ 	PYTHONFRAMEWORK=
+ 	PYTHONFRAMEWORKDIR=no-framework
+ 	PYTHONFRAMEWORKPREFIX=
+ 	PYTHONFRAMEWORKINSTALLDIR=
++  PYTHONFRAMEWORKINSTALLNAMEPREFIX=
++  RESSRCDIR=
+ 	FRAMEWORKINSTALLFIRST=
+ 	FRAMEWORKINSTALLLAST=
+ 	FRAMEWORKALTINSTALLFIRST=
+@@ -522,6 +649,8 @@
+ AC_SUBST([PYTHONFRAMEWORKDIR])
+ AC_SUBST([PYTHONFRAMEWORKPREFIX])
+ AC_SUBST([PYTHONFRAMEWORKINSTALLDIR])
++AC_SUBST([PYTHONFRAMEWORKINSTALLNAMEPREFIX])
++AC_SUBST([RESSRCDIR])
+ AC_SUBST([FRAMEWORKINSTALLFIRST])
+ AC_SUBST([FRAMEWORKINSTALLLAST])
+ AC_SUBST([FRAMEWORKALTINSTALLFIRST])
+@@ -529,105 +658,113 @@
+ AC_SUBST([FRAMEWORKPYTHONW])
+ AC_SUBST([FRAMEWORKUNIXTOOLSPREFIX])
+ AC_SUBST([FRAMEWORKINSTALLAPPSPREFIX])
++AC_SUBST([INSTALLTARGETS])
+ 
+ AC_DEFINE_UNQUOTED([_PYTHONFRAMEWORK], ["${PYTHONFRAMEWORK}"],
+                    [framework name])
+ 
+-# Set name for machine-dependent library files
+-AC_ARG_VAR([MACHDEP], [name for machine-dependent library files])
+-AC_MSG_CHECKING([MACHDEP])
+-if test -z "$MACHDEP"
+-then
+-    # avoid using uname for cross builds
+-    if test "$cross_compiling" = yes; then
+-       # ac_sys_system and ac_sys_release are used for setting
+-       # a lot of different things including 'define_xopen_source'
+-       # in the case statement below.
+-	case "$host" in
+-	*-*-linux-android*)
+-		ac_sys_system=Linux-android
+-		;;
+-	*-*-linux*)
+-		ac_sys_system=Linux
+-		;;
+-	*-*-cygwin*)
+-		ac_sys_system=Cygwin
+-		;;
+-	*-*-vxworks*)
+-	    ac_sys_system=VxWorks
+-	    ;;
+-	*-*-emscripten)
+-	    ac_sys_system=Emscripten
+-	    ;;
+-	*-*-wasi)
+-	    ac_sys_system=WASI
+-	    ;;
+-	*)
+-		# for now, limit cross builds to known configurations
+-		MACHDEP="unknown"
+-		AC_MSG_ERROR([cross build not supported for $host])
+-	esac
+-	ac_sys_release=
+-    else
+-	ac_sys_system=`uname -s`
+-	if test "$ac_sys_system" = "AIX" \
+-	-o "$ac_sys_system" = "UnixWare" -o "$ac_sys_system" = "OpenUNIX"; then
+-		ac_sys_release=`uname -v`
+-	else
+-		ac_sys_release=`uname -r`
+-	fi
+-    fi
+-    ac_md_system=`echo $ac_sys_system |
+-			tr -d '[/ ]' | tr '[[A-Z]]' '[[a-z]]'`
+-    ac_md_release=`echo $ac_sys_release |
+-			tr -d '[/ ]' | sed 's/^[[A-Z]]\.//' | sed 's/\..*//'`
+-    MACHDEP="$ac_md_system$ac_md_release"
+-
+-    case $MACHDEP in
+-	aix*) MACHDEP="aix";;
+-	linux*) MACHDEP="linux";;
+-	cygwin*) MACHDEP="cygwin";;
+-	darwin*) MACHDEP="darwin";;
+-	'')	MACHDEP="unknown";;
+-    esac
+-
+-    if test "$ac_sys_system" = "SunOS"; then
+-	# For Solaris, there isn't an OS version specific macro defined
+-	# in most compilers, so we define one here.
+-	SUNOS_VERSION=`echo $ac_sys_release | sed -e 's!\.\([0-9]\)$!.0\1!g' | tr -d '.'`
+-	AC_DEFINE_UNQUOTED([Py_SUNOS_VERSION], [$SUNOS_VERSION],
+-	                   [The version of SunOS/Solaris as reported by `uname -r' without the dot.])
+-    fi
+-fi
+-AC_MSG_RESULT(["$MACHDEP"])
+-
+ AC_SUBST([_PYTHON_HOST_PLATFORM])
+ if test "$cross_compiling" = yes; then
+ 	case "$host" in
  	*-*-linux*)
  		case "$host_cpu" in
  		arm*)
@@ -2006,63 +2974,69 @@ index cd69f0ede5..135036bf67 100644
 +		_host_ident=
 +		;;
 +  *-apple-ios*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    IOS_DEPLOYMENT_TARGET=${_host_os:3}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-iphonesimulator-arm64
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphonesimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-iphonesimulator-$host_cpu
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphonesimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-ios*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    IOS_DEPLOYMENT_TARGET=${_host_os:3}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-iphoneos-arm64
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphoneos-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-iphoneos-$host_cpu
++			_host_ident=${IOS_DEPLOYMENT_TARGET}-iphoneos-$host_cpu
 +    esac
 +    ;;
 +  *-apple-tvos*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    TVOS_DEPLOYMENT_TARGET=${_host_os:4}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-appletvsimulator-arm64
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvsimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-appletvsimulator-$host_cpu
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvsimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-tvos*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    TVOS_DEPLOYMENT_TARGET=${_host_os:4}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-appletvos-arm64
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvos-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-appletvos-$host_cpu
++			_host_ident=${TVOS_DEPLOYMENT_TARGET}-appletvos-$host_cpu
 +    esac
 +    ;;
 +  *-apple-watchos*-simulator)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-watchsimualtor-arm64
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchsimulator-arm64
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-watchsimualtor-$host_cpu
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchsimulator-$host_cpu
 +    esac
 +    ;;
 +  *-apple-watchos*)
-+    _host_os_min_version=`echo $host | cut -d '-' -f3`
++		_host_os=`echo $host | cut -d '-' -f3`
++    WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
 +		case "$host_cpu" in
 +		aarch64)
-+			_host_ident=${_host_os_min_version:3}-watchosos-arm64_32
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchosos-arm64_32
 +			;;
 +		*)
-+			_host_ident=${_host_os_min_version:3}-watchosos-$host_cpu
++			_host_ident=${WATCHOS_DEPLOYMENT_TARGET}-watchosos-$host_cpu
 +    esac
 +    ;;
 +	*-apple-*)
@@ -2092,7 +3066,7 @@ index cd69f0ede5..135036bf67 100644
  fi
  
  # Some systems cannot stand _XOPEN_SOURCE being defined at all; they
-@@ -693,6 +771,13 @@
+@@ -693,6 +830,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -2106,7 +3080,34 @@ index cd69f0ede5..135036bf67 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -941,11 +1026,13 @@
+@@ -783,6 +927,26 @@
+   ],
+ )
+ 
++dnl iOS/tvOS/watchOS need to enforce the deployment target.
++AS_CASE([$ac_sys_system],
++  [iOS], [
++    IOS_DEPLOYMENT_TARGET=${IOS_DEPLOYMENT_TARGET:=12.0}
++    AS_VAR_APPEND([CFLAGS], [" -mios-version-min=${IOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mios-version-min=${IOS_DEPLOYMENT_TARGET}"])
++    AC_SUBST([IOS_DEPLOYMENT_TARGET])
++  ],[tvOS], [
++    TVOS_DEPLOYMENT_TARGET=${TVOS_DEPLOYMENT_TARGET:=9.0}
++    AS_VAR_APPEND([CFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
++    AC_SUBST([TVOS_DEPLOYMENT_TARGET])
++  ],[watchOS], [
++    WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=4.0}
++    AS_VAR_APPEND([CFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
++    AC_SUBST([WATCHOS_DEPLOYMENT_TARGET])
++  ],
++)
++
+ if test "$ac_sys_system" = "Darwin"
+ then
+   dnl look for SDKROOT
+@@ -941,11 +1105,13 @@
  AC_MSG_CHECKING([for multiarch])
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
@@ -2121,7 +3122,7 @@ index cd69f0ede5..135036bf67 100644
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-@@ -955,6 +1042,12 @@
+@@ -955,6 +1121,12 @@
    MULTIARCH=$PLATFORM_TRIPLET
  fi
  AC_SUBST([PLATFORM_TRIPLET])
@@ -2134,7 +3135,7 @@ index cd69f0ede5..135036bf67 100644
  
  if test x$MULTIARCH != x; then
    MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
-@@ -985,6 +1078,9 @@
+@@ -985,6 +1157,9 @@
    [wasm32-unknown-emscripten/clang], [PY_SUPPORT_TIER=3], dnl WebAssembly Emscripten
    [wasm32-unknown-wasi/clang],       [PY_SUPPORT_TIER=3], dnl WebAssembly System Interface
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
@@ -2144,7 +3145,56 @@ index cd69f0ede5..135036bf67 100644
    [PY_SUPPORT_TIER=0]
  )
  
-@@ -3085,6 +3181,7 @@
+@@ -1298,17 +1473,23 @@
+ 
+ AC_MSG_CHECKING([LDLIBRARY])
+ 
+-# MacOSX framework builds need more magic. LDLIBRARY is the dynamic
++# iOS/MacOSX framework builds need more magic. LDLIBRARY is the dynamic
+ # library that we build, but we do not want to link against it (we
+ # will find it with a -framework option). For this reason there is an
+ # extra variable BLDLIBRARY against which Python and the extension
+ # modules are linked, BLDLIBRARY. This is normally the same as
+-# LDLIBRARY, but empty for MacOSX framework builds.
++# LDLIBRARY, but empty for MacOSX framework builds. iOS does the same,
++# but uses a non-versioned framework layout.
+ if test "$enable_framework"
+ then
+-  LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+-  RUNSHARED=DYLD_FRAMEWORK_PATH=`pwd`${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}
++  case $ac_sys_system in
++  iOS|tvOS|watchOS)
++    LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
++  *)
++    LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
++  esac
+   BLDLIBRARY=''
++  RUNSHARED=DYLD_FRAMEWORK_PATH=`pwd`${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}
+ else
+   BLDLIBRARY='$(LDLIBRARY)'
+ fi
+@@ -1357,12 +1538,16 @@
+ 	  ;;
+     Darwin*)
+     	LDLIBRARY='libpython$(LDVERSION).dylib'
+-	BLDLIBRARY='-L. -lpython$(LDVERSION)'
+-	RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
++      BLDLIBRARY='-L. -lpython$(LDVERSION)'
++      RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
++	;;
++    iOS|tvOS|watchOS)
++    	LDLIBRARY='libpython$(LDVERSION).dylib'
++      BLDLIBRARY='-L. -lpython$(LDVERSION)'
+ 	;;
+     AIX*)
+-	LDLIBRARY='libpython$(LDVERSION).so'
+-	RUNSHARED=LIBPATH=`pwd`${LIBPATH:+:${LIBPATH}}
++      LDLIBRARY='libpython$(LDVERSION).so'
++      RUNSHARED=LIBPATH=`pwd`${LIBPATH:+:${LIBPATH}}
+ 	;;
+ 
+   esac
+@@ -3085,6 +3270,7 @@
  		esac
  		;;
  	CYGWIN*)   SHLIB_SUFFIX=.dll;;
@@ -2152,17 +3202,44 @@ index cd69f0ede5..135036bf67 100644
  	*)	   SHLIB_SUFFIX=.so;;
  	esac
  fi
-@@ -3165,6 +3262,9 @@
+@@ -3165,6 +3351,11 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
 +	iOS/*|tvOS/*|watchOS/*)
-+		LDSHARED='$(CC) -dynamiclib -undefined dynamic_lookup'
-+		LDCXXSHARED='$(CXX) -dynamiclib -undefined dynamic_lookup';;
++		LDSHARED='$(CC) -dynamiclib -F . -framework Python'
++		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework Python'
++    BLDSHARED="$LDSHARED"
++    ;;
  	Emscripten|WASI)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -3682,6 +3782,9 @@
+@@ -3309,6 +3500,24 @@
+ 			LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
+ 		fi
+ 		LINKFORSHARED="$LINKFORSHARED";;
++	iOS/*|tvOS/*|watchOS/*)
++		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
++
++		# Issue #18075: the default maximum stack size (8MBytes) is too
++		# small for the default recursion limit. Increase the stack size
++		# to ensure that tests don't crash
++    stack_size="1000000"  # 16 MB
++    if test "$with_ubsan" = "yes"
++    then
++        # Undefined behavior sanitizer requires an even deeper stack
++        stack_size="4000000"  # 64 MB
++    fi
++
++    AC_DEFINE_UNQUOTED([THREAD_STACK_SIZE],
++        [0x$stack_size],
++        [Custom thread stack size depending on chosen sanitizer runtimes.])
++
++    LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
+ 	OpenUNIX*|UnixWare*) LINKFORSHARED="-Wl,-Bexport";;
+ 	SCO_SV*) LINKFORSHARED="-Wl,-Bexport";;
+ 	ReliantUNIX*) LINKFORSHARED="-W1 -Blargedynsym";;
+@@ -3682,6 +3891,9 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -2172,7 +3249,7 @@ index cd69f0ede5..135036bf67 100644
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
    )
    AS_VAR_IF([ctypes_malloc_closure], [yes], [
-@@ -5714,7 +5817,7 @@
+@@ -5714,7 +5926,7 @@
  AC_MSG_CHECKING([ABIFLAGS])
  AC_MSG_RESULT([$ABIFLAGS])
  AC_MSG_CHECKING([SOABI])
@@ -2181,7 +3258,7 @@ index cd69f0ede5..135036bf67 100644
  AC_MSG_RESULT([$SOABI])
  
  # Release build, debug build (Py_DEBUG), and trace refs build (Py_TRACE_REFS)
-@@ -5722,7 +5825,7 @@
+@@ -5722,7 +5934,7 @@
  if test "$Py_DEBUG" = 'true'; then
    # Similar to SOABI but remove "d" flag from ABIFLAGS
    AC_SUBST([ALT_SOABI])
@@ -2190,7 +3267,7 @@ index cd69f0ede5..135036bf67 100644
    AC_DEFINE_UNQUOTED([ALT_SOABI], ["${ALT_SOABI}"],
              [Alternative SOABI used in debug build to load C extensions built in release mode])
  fi
-@@ -7068,6 +7171,29 @@
+@@ -7068,6 +7280,29 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
@@ -2220,3 +3297,581 @@ index cd69f0ede5..135036bf67 100644
    [CYGWIN*], [PY_STDLIB_MOD_SET_NA([_scproxy])],
    [QNX*], [PY_STDLIB_MOD_SET_NA([_scproxy])],
    [FreeBSD*], [PY_STDLIB_MOD_SET_NA([_scproxy])],
+--- /dev/null
++++ b/iOS/README.rst
+@@ -0,0 +1,107 @@
++====================
++Python on iOS README
++====================
++
++:Authors:
++    Russell Keith-Magee (2023-11)
++
++This document provides a quick overview of some iOS specific features in the
++Python distribution.
++
++Compilers for building on iOS
++=============================
++
++Building for iOS requires the use of Apple's Xcode tooling. It is strongly
++recommended that you use the most recent stable release of Xcode, on the
++most recently released macOS.
++
++iOS specific arguments to configure
++===================================
++
++* ``--enable-framework[=DIR]``
++
++  This argument specifies the location where the Python.framework will
++  be installed.
++
++* ``--with-framework-name=NAME``
++
++  Specify the name for the python framework, defaults to ``Python``.
++
++
++Building and using Python on iOS
++================================
++
++ABIs and Architectures
++----------------------
++
++iOS apps can be deployed on physical devices, and on the iOS simulator. Although
++the API used on these devices is identical, the ABI is different - you need to
++link against different libraries for an iOS device build (``iphoneos``) or an
++iOS simulator build (``iphonesimulator``). Apple uses the XCframework format to
++allow specifying a single dependency that supports multiple ABIs. An XCframework
++is a wrapper around multiple ABI-specific frameworks.
++
++iOS can also support different CPU architectures within each ABI. At present,
++there is only a single support ed architecture on physical devices - ARM64.
++However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
++Silicon machines), and x86_64 (for running on older Intel-based machines.)
++
++To support multiple CPU architectures on a single platform, Apple uses a "fat
++binary" format - a single physical file that contains support for multiple
++architectures.
++
++How do I build Python for iOS?
++------------------------------
++
++The Python build system will build a ``Python.framework`` that supports a
++*single* ABI with a *single* architecture. If you want to use Python in an iOS
++project, you need to:
++
++1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
++2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
++3. Merge the "fat" frameworks for each ABI into a single XCframework.
++
++iOS builds of Python *must* be constructed as framework builds. To support this,
++you must provide the ``--enable-framework`` flag when configuring the build.
++
++The build also requires the use of cross-compilation. The commands for building
++Python for iOS will look somethign like::
++
++  $ ./configure \
++        --enable-framework=/path/to/install \
++        --host=aarch64-apple-ios \
++        --build=aarch64-apple-darwin \
++        --with-build-python=/path/to/python.exe
++  $ make
++  $ make install
++
++In this invocation:
++
++* ``/path/to/install`` is the location where the final Python.framework will be
++  output.
++
++* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
++  triple format. This will be one of:
++
++  - ``aarch64-apple-ios`` for ARM64 iOS devices.
++  - ``aarch64-apple-ios-simulator`` for the iOS simulator running on Apple
++    Silicon devices.
++  - ``x86_64-apple-ios-simulator`` for the iOS simulator running on Intel
++    devices.
++
++* ``--build`` is the GNU compiler triple for the machine that will be running
++  the compiler. This is one of:
++
++  - ``aarch64-apple-darwin`` for Apple Silicon devices.
++  - ``x86_64-apple-darwin`` for Intel devices.
++
++* ``/path/to/python.exe`` is the path to a Python binary on the machine that
++  will be running the compiler. This is needed because the Python compilation
++  process involves running some Python code. On a normal desktop build of
++  Python, you can compile a python interpreter and then use that interpreter to
++  run Python code. However, the binaries produced for iOS won't run on macOS, so
++  you need to provide an external Python interpreter. This interpreter must be
++  the version as the Python that is being compiled.
++
++Using a framework-based Python on iOS
++=====================================
+--- /dev/null
++++ b/iOS/Resources/Info.plist.in
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2023 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>%VERSION%</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>iPhoneOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>@IOS_DEPLOYMENT_TARGET@</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphoneos ar $@
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphoneos clang -target arm64-apple-ios $@
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphoneos clang -target arm64-apple-ios -E $@
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator ar $@
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator clang -target arm64-apple-ios-simulator $@
+--- /dev/null
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator clang -target arm64-apple-ios-simulator -E $@
+--- /dev/null
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator ar $@
+--- /dev/null
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator clang -target x86_64-apple-ios-simulator $@
+--- /dev/null
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk iphonesimulator clang -target x86_64-apple-ios-simulator -E $@
+--- /dev/null
++++ b/tvOS/README.rst
+@@ -0,0 +1,108 @@
++=====================
++Python on tvOS README
++=====================
++
++:Authors:
++    Russell Keith-Magee (2023-11)
++
++This document provides a quick overview of some tvOS specific features in the
++Python distribution.
++
++Compilers for building on tvOS
++==============================
++
++Building for tvOS requires the use of Apple's Xcode tooling. It is strongly
++recommended that you use the most recent stable release of Xcode, on the
++most recently released macOS.
++
++tvOS specific arguments to configure
++===================================
++
++* ``--enable-framework[=DIR]``
++
++  This argument specifies the location where the Python.framework will
++  be installed.
++
++* ``--with-framework-name=NAME``
++
++  Specify the name for the python framework, defaults to ``Python``.
++
++
++Building and using Python on tvOS
++=================================
++
++ABIs and Architectures
++----------------------
++
++tvOS apps can be deployed on physical devices, and on the tvOS simulator.
++Although the API used on these devices is identical, the ABI is different - you
++need to link against different libraries for an tvOS device build
++(``appletvos``) or an tvOS simulator build (``appletvsimulator``). Apple uses
++the XCframework format to allow specifying a single dependency that supports
++multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
++frameworks.
++
++tvOS can also support different CPU architectures within each ABI. At present,
++there is only a single support ed architecture on physical devices - ARM64.
++However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
++Silicon machines), and x86_64 (for running on older Intel-based machines.)
++
++To support multiple CPU architectures on a single platform, Apple uses a "fat
++binary" format - a single physical file that contains support for multiple
++architectures.
++
++How do I build Python for tvOS?
++-------------------------------
++
++The Python build system will build a ``Python.framework`` that supports a
++*single* ABI with a *single* architecture. If you want to use Python in an tvOS
++project, you need to:
++
++1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
++2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
++3. Merge the "fat" frameworks for each ABI into a single XCframework.
++
++tvOS builds of Python *must* be constructed as framework builds. To support this,
++you must provide the ``--enable-framework`` flag when configuring the build.
++
++The build also requires the use of cross-compilation. The commands for building
++Python for tvOS will look somethign like::
++
++  $ ./configure \
++        --enable-framework=/path/to/install \
++        --host=aarch64-apple-tvos \
++        --build=aarch64-apple-darwin \
++        --with-build-python=/path/to/python.exe
++  $ make
++  $ make install
++
++In this invocation:
++
++* ``/path/to/install`` is the location where the final Python.framework will be
++  output.
++
++* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
++  triple format. This will be one of:
++
++  - ``aarch64-apple-tvos`` for ARM64 tvOS devices.
++  - ``aarch64-apple-tvos-simulator`` for the tvOS simulator running on Apple
++    Silicon devices.
++  - ``x86_64-apple-tvos-simulator`` for the tvOS simulator running on Intel
++    devices.
++
++* ``--build`` is the GNU compiler triple for the machine that will be running
++  the compiler. This is one of:
++
++  - ``aarch64-apple-darwin`` for Apple Silicon devices.
++  - ``x86_64-apple-darwin`` for Intel devices.
++
++* ``/path/to/python.exe`` is the path to a Python binary on the machine that
++  will be running the compiler. This is needed because the Python compilation
++  process involves running some Python code. On a normal desktop build of
++  Python, you can compile a python interpreter and then use that interpreter to
++  run Python code. However, the binaries produced for tvOS won't run on macOS, so
++  you need to provide an external Python interpreter. This interpreter must be
++  the version as the Python that is being compiled.
++
++Using a framework-based Python on tvOS
++======================================
+--- /dev/null
++++ b/tvOS/Resources/Info.plist.in
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2023 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>%VERSION%</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>tvOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>@TVOS_DEPLOYMENT_TARGET@</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos ar $@
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos clang -target arm64-apple-tvos $@
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos clang -target arm64-apple-tvos -E $@
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator ar $@
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator clang -target arm64-apple-tvos-simulator $@
+--- /dev/null
++++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator clang -target arm64-apple-tvos-simulator -E $@
+--- /dev/null
++++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator ar $@
+--- /dev/null
++++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator clang -target x86_64-apple-tvos-simulator $@
+--- /dev/null
++++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator clang -target x86_64-apple-tvos-simulator -E $@
+--- /dev/null
++++ b/watchOS/README.rst
+@@ -0,0 +1,108 @@
++========================
++Python on watchOS README
++========================
++
++:Authors:
++    Russell Keith-Magee (2023-11)
++
++This document provides a quick overview of some watchOS specific features in the
++Python distribution.
++
++Compilers for building on watchOS
++=================================
++
++Building for watchOS requires the use of Apple's Xcode tooling. It is strongly
++recommended that you use the most recent stable release of Xcode, on the
++most recently released macOS.
++
++watchOS specific arguments to configure
++=======================================
++
++* ``--enable-framework[=DIR]``
++
++  This argument specifies the location where the Python.framework will
++  be installed.
++
++* ``--with-framework-name=NAME``
++
++  Specify the name for the python framework, defaults to ``Python``.
++
++
++Building and using Python on watchOS
++====================================
++
++ABIs and Architectures
++----------------------
++
++watchOS apps can be deployed on physical devices, and on the watchOS simulator.
++Although the API used on these devices is identical, the ABI is different - you
++need to link against different libraries for an watchOS device build
++(``watchos``) or an watchOS simulator build (``watchsimulator``). Apple uses the
++XCframework format to allow specifying a single dependency that supports
++multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
++frameworks.
++
++watchOS can also support different CPU architectures within each ABI. At present,
++there is only a single support ed architecture on physical devices - ARM64.
++However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
++Silicon machines), and x86_64 (for running on older Intel-based machines.)
++
++To support multiple CPU architectures on a single platform, Apple uses a "fat
++binary" format - a single physical file that contains support for multiple
++architectures.
++
++How do I build Python for watchOS?
++-------------------------------
++
++The Python build system will build a ``Python.framework`` that supports a
++*single* ABI with a *single* architecture. If you want to use Python in an watchOS
++project, you need to:
++
++1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
++2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
++3. Merge the "fat" frameworks for each ABI into a single XCframework.
++
++watchOS builds of Python *must* be constructed as framework builds. To support this,
++you must provide the ``--enable-framework`` flag when configuring the build.
++
++The build also requires the use of cross-compilation. The commands for building
++Python for watchOS will look somethign like::
++
++  $ ./configure \
++        --enable-framework=/path/to/install \
++        --host=aarch64-apple-watchos \
++        --build=aarch64-apple-darwin \
++        --with-build-python=/path/to/python.exe
++  $ make
++  $ make install
++
++In this invocation:
++
++* ``/path/to/install`` is the location where the final Python.framework will be
++  output.
++
++* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
++  triple format. This will be one of:
++
++  - ``arm64_32-apple-watchos`` for ARM64-32 watchOS devices.
++  - ``aarch64-apple-watchos-simulator`` for the watchOS simulator running on Apple
++    Silicon devices.
++  - ``x86_64-apple-watchos-simulator`` for the watchOS simulator running on Intel
++    devices.
++
++* ``--build`` is the GNU compiler triple for the machine that will be running
++  the compiler. This is one of:
++
++  - ``aarch64-apple-darwin`` for Apple Silicon devices.
++  - ``x86_64-apple-darwin`` for Intel devices.
++
++* ``/path/to/python.exe`` is the path to a Python binary on the machine that
++  will be running the compiler. This is needed because the Python compilation
++  process involves running some Python code. On a normal desktop build of
++  Python, you can compile a python interpreter and then use that interpreter to
++  run Python code. However, the binaries produced for watchOS won't run on macOS, so
++  you need to provide an external Python interpreter. This interpreter must be
++  the version as the Python that is being compiled.
++
++Using a framework-based Python on watchOS
++======================================
+--- /dev/null
++++ b/watchOS/Resources/Info.plist.in
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2023 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>%VERSION%</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>watchOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>@WATCHOS_DEPLOYMENT_TARGET@</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator ar $@
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator $@
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E $@
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64_32-apple-watchos-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos ar $@
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos clang -target arm64_32-apple-watchos $@
+--- /dev/null
++++ b/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos clang -target arm64_32-apple-watchos -E $@
+--- /dev/null
++++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator ar $@
+--- /dev/null
++++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator clang -target x86_64-apple-watchos-simulator $@
+--- /dev/null
++++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator clang -target x86_64-apple-watchos-simulator -E $@
