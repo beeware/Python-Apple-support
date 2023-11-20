@@ -1,0 +1,64 @@
+name: CI
+on:
+  pull_request:
+
+env:
+  FORCE_COLOR: "1"
+
+defaults:
+  run:
+    shell: bash
+
+# Cancel active CI runs for a PR before starting another run
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macOS-latest
+    strategy:
+      matrix:
+        # target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+        target: ['macOS']
+        include:
+            - briefcase-run-args:
+
+            # - target: iOS
+            #   briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Extract config variables
+      id: config-vars
+      run: |
+        PYTHON_VER=$(make config | grep "PYTHON_VER=" | cut -d "=" -f 2)
+        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4.7.1
+      with:
+        # Appending -dev ensures that we can always build the dev release.
+        # It's a no-op for versions that have been published.
+        python-version: ${{ steps.config-vars.outputs.PYTHON_VER }}-dev
+
+    - name: Build ${{ matrix.target }}
+      run: |
+        # Do the build for the requested target.
+        make ${{ matrix.target }}
+
+    - uses: actions/checkout@v4
+      with:
+        repository: beeware/Python-support-testbed
+        path: Python-support-testbed
+        ref: py3.13-support
+
+    - name: Install dependencies
+      run: |
+        # Use the development version of Briefcase
+        python -m pip install git+https://github.com/beeware/briefcase.git
+
+    - name: Run support testbed check
+      working-directory: Python-support-testbed
+      # TODO - remove the template_branch option.
+      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz\' -C template_branch=\'framework-lib\'
