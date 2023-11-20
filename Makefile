@@ -65,7 +65,7 @@ PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
 all: $(OS_LIST)
 
 .PHONY: \
-	all clean distclean update-patch vars \
+	all clean distclean update-patch vars config \
 	$(foreach os,$(OS_LIST),$(os) clean-$(os) dev-clean-$(os) vars-$(os)) \
 	$(foreach os,$(OS_LIST),$(foreach sdk,$$(sort $$(basename $$(TARGETS-$(os)))),$(sdk) vars-$(sdk)))
 	$(foreach os,$(OS_LIST),$(foreach target,$$(TARGETS-$(os)),$(target) vars-$(target)))
@@ -641,6 +641,15 @@ vars: $(foreach os,$(OS_LIST),vars-$(os))
 	@echo "HOST_ARCH: $(HOST_ARCH)"
 	@echo "HOST_PYTHON: $(HOST_PYTHON)"
 	@echo
+
+config:
+	@echo "PYTHON_VERSION=$(PYTHON_VERSION)"
+	@echo "PYTHON_VER=$(PYTHON_VER)"
+	@echo "BUILD_NUMBER=$(BUILD_NUMBER)"
+	@echo "BZIP2_VERSION=$(BZIP2_VERSION)"
+	@echo "XZ_VERSION=$(XZ_VERSION)"
+	@echo "OPENSSL_VERSION=$(OPENSSL_VERSION)"
+	@echo "LIBFFI_VERSION=$(LIBFFI_VERSION)"
 
 # Expand cross-platform build and clean targets for each output product
 clean: $(foreach os,$(OS_LIST),clean-$(os))
