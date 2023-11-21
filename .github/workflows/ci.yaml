@@ -53,11 +53,18 @@ jobs:
         # Do the build for the requested target.
         make ${{ matrix.target }}
 
+    - name: Upload build artefacts
+      uses: actions/upload-artifact@v3.1.3
+      with:
+        name: Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
+        path: dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
+
     - uses: actions/checkout@v4
       if: matrix.run-tests
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
+        # TODO - remove the py3.13 reference option.
         ref: py3.13-support
 
     - name: Install dependencies
