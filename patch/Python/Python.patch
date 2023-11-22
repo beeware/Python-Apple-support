@@ -1842,7 +1842,7 @@ index d74fb6deac..09ebc4287c 100755
  		# Blank kernel with real OS is always fine.
  		;;
 diff --git a/configure b/configure
-index c87f518382..45f021d1b1 100755
+index c87f518382..ad0cd39350 100755
 --- a/configure
 +++ b/configure
 @@ -963,10 +963,13 @@
@@ -2121,7 +2121,7 @@ index c87f518382..45f021d1b1 100755
 +        esac
 +
 +        prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
-+        PYTHONFRAMEWORKINSTALLNAMEPREFIX=$(prefix)
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX=${prefix}
 +        RESSRCDIR=Mac/Resources/framework
 +
 +        # Add files for Mac specific code to the list of output
@@ -2606,7 +2606,7 @@ index c87f518382..45f021d1b1 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index cd69f0ede5..a96ca3a3c7 100644
+index cd69f0ede5..9306e1270b 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -310,6 +310,83 @@
@@ -2847,7 +2847,7 @@ index cd69f0ede5..a96ca3a3c7 100644
 +        esac
 +
 +        prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
-+        PYTHONFRAMEWORKINSTALLNAMEPREFIX=$(prefix)
++        PYTHONFRAMEWORKINSTALLNAMEPREFIX=${prefix}
 +        RESSRCDIR=Mac/Resources/framework
 +
 +        # Add files for Mac specific code to the list of output

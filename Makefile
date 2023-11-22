@@ -20,10 +20,7 @@ PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
-# macOS:
-#     https://github.com/beeware/cpython-macOS-source-deps/releases
-# iOS, tvOS, watchOS:
-#     https://github.com/beeware/cpython-apple-source-deps/releases
+# https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
 XZ_VERSION=5.4.4-1
 OPENSSL_VERSION=3.0.12-1
@@ -417,13 +414,21 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Build Python fat headers for the $(sdk) SDK"
 	# Copy binary helpers from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_BIN-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_BIN-$(sdk))
+
+	# Create a non-executable stub binary python3
+	echo "#!/bin/bash\necho Can\\'t run $(sdk) binary\nexit 1" > $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
+	chmod 755 $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
+
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
+
 	# Link the PYTHONHOME version of the headers
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
+
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
+
 	# Copy the cross-target header from the patch folder
 	cp $(PROJECT_DIR)/patch/Python/pyconfig-$(os).h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
