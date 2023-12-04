@@ -429,8 +429,9 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
-	# Copy the cross-target header from the patch folder
-	cp $(PROJECT_DIR)/patch/Python/pyconfig-$(os).h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+
 
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
