@@ -23,31 +23,42 @@ To add this support package to your own project:
 1. [Download a release tarball for your desired Python version and Apple
    platform](https://github.com/beeware/Python-Apple-support/releases)
 
-2. Add the `python-stdlib` and `Python.xcframework` to your Xcode project. Both
-   the `python-stdlib` folder and the `Python.xcframework` should be members of
-   any target that needs to use Python.
+2. Add `Python.xcframework` to your Xcode project. You can put it anywhere in your
+   project that you want; the following instructions assume it has been put in a
+   folder named "Support".
 
 3. In Xcode, select the root node of the project tree, and select the target you
    want to build.
 
 4. Select "General" -> "Frameworks, Libraries and Embedded Content", and ensure
    that `Python.xcframework` is on the list of frameworks. It should be marked
-   "Do not embed".
+   "Embed and sign".
 
-5. Select "General" -> "Build Phases", and ensure that the `python-stdlib` folder
-   is listed in the "Copy Bundle Resources" step.
+5. Select "General" -> "Build Settings", and set the following values:
+   - Linking - General:
+     - `@executable_path/Frameworks`
+   - Search paths:
+     - Framework Search paths: `"$(PROJECT_DIR)/Support"`
+     - Header Search paths: `"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers"`
 
-6. If you're on iOS, Add a new "Run script" build phase named "Purge Python Binary
-   Modules for Non-Target Platforms". This script will purge any dynamic module for the
-   platform you are *not* targeting. The script should have the following content:
+6. Add a new "Run script" build phase named "Install target specific Python
+   Modules". This script will install the standard library for your target. The
+   script should have the following content:
 
 ```bash
+set -e
+
+mkdir -p "$CODESIGNING_FOLDER_PATH/python/lib"
 if [ "$EFFECTIVE_PLATFORM_NAME" = "-iphonesimulator" ]; then
-    echo "Purging Python modules for iOS Device"
-    find "$CODESIGNING_FOLDER_PATH/python-stdlib" -name "*.*-iphoneos.dylib" -exec rm -f "{}" \;
+    echo "Installing Python modules for iOS Simulator"
+    rsync -au --delete "$PROJECT_DIR/Support/Python.xcframework/iphonesimulator/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/"
+    # Also install any user-provided modules
+    # rsync -au --delete "$PROJECT_DIR/Testbed/app_packages.iphonesimulator/" "$CODESIGNING_FOLDER_PATH/app_packages"
 else
-    echo "Purging Python modules for iOS Simulator"
-    find "$CODESIGNING_FOLDER_PATH" -name "*.*-iphonesimulator.dylib" -exec rm -f "{}" \;
+    echo "Installing Python modules for iOS Device"
+    rsync -au --delete "$PROJECT_DIR/Support/Python.xcframework/iphoneos/lib/" "$CODESIGNING_FOLDER_PATH/python/lib"
+    # Also install any user-provided modules
+    # rsync -au --delete "$PROJECT_DIR/Testbed/app_packages.iphoneos/" "$CODESIGNING_FOLDER_PATH/app_packages"
 fi
 ```
 
@@ -69,13 +80,12 @@ install_dylib () {
     DYLIB=$(basename "$FULL_DYLIB")
     # The name of the .dylib file, relative to the install base
     RELATIVE_DYLIB=${FULL_DYLIB#$CODESIGNING_FOLDER_PATH/$INSTALL_BASE/}
-    # The (hopefully unique) name of the framework, constructed by replacing path
-    # separators in the relative name with underscores.
-    FRAMEWORK_NAME=$(echo $RELATIVE_DYLIB | cut -d "." -f 1 | tr "/" "_");
+    # The full dotted name of the binary module, constructed from the file path.
+    FULL_MODULE_NAME=$(echo $RELATIVE_DYLIB | cut -d "." -f 1 | tr "/" ".");
     # A bundle identifier; not actually used, but required by Xcode framework packaging
-    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FRAMEWORK_NAME | tr "_" "-")
+    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr "_" "-")
     # The name of the framework folder.
-    FRAMEWORK_FOLDER="Frameworks/$FRAMEWORK_NAME.framework"
+    FRAMEWORK_FOLDER="Frameworks/$FULL_MODULE_NAME.framework"
 
     # If the framework folder doesn't exist, create it.
     if [ ! -d "$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER" ]; then
@@ -91,10 +101,16 @@ install_dylib () {
     mv "$FULL_DYLIB" "$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER"
 }
 
+# Make sure to update the Python version version reference here
 echo "Install standard library dylibs..."
-find "$CODESIGNING_FOLDER_PATH/python-stdlib/lib-dynload" -name "*.dylib" | while read FULL_DYLIB; do
-    install_dylib python-stdlib/lib-dynload "$FULL_DYLIB"
+find "$CODESIGNING_FOLDER_PATH/python/lib/python3.13/lib-dynload" -name "*.dylib" | while read FULL_DYLIB; do
+    install_dylib python/lib/python3.13/lib-dynload "$FULL_DYLIB"
 done
+# Also install any user-provided dynamic modules; e.g.,
+# echo "Install app package dylibs..."
+# find "$CODESIGNING_FOLDER_PATH/app_packages" -name "*.dylib" | while read FULL_DYLIB; do
+#     install_dylib app_packages "$FULL_DYLIB"
+# done
 
 # Clean up dylib template
 rm -f "$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist"
@@ -102,6 +118,11 @@ rm -f "$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist"
 echo "Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)..."
 find "$CODESIGNING_FOLDER_PATH/Frameworks" -name "*.framework" -exec /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der "{}" \;
 ```
+
+   Make sure that you update these scripts to update the references to the
+   Python version, and include any user-provided code that you want to bundle.
+   If you use the ``rsync`` approach above, user-provided code should *not* be
+   included as part of the "Copy Bundle Resources" step.
 
    You'll also need to add a file named `dylib-Info-template.plist` to your Xcode
    project, and make it a member of any target that needs to use Python. The template

@@ -1,7 +1,0 @@
-# This is a list of Python standard library path patterns
-# we exclude from the embedded device Python-Apple-support test tarballs.
-# It is used by `tar -X` during the Makefile build.
-#
-# Remove pyc files. These take up space, but since most stdlib modules are
-# never imported by user code, they mostly have no value.
-*/__pycache__

@@ -19,24 +19,24 @@ pre-requisites, and packaging them as static libraries that can be incorporated 
 XCode project. The binary modules in the Python standard library are statically
 compiled, but are distributed as objects that can be dynamically loaded at runtime.
 
-It exposes *almost* all the modules in the Python standard library except for:
+The macOS package is a re-bundling of the official macOS binary, modified so that
+it is relocatable.
 
-* ``dbm.gnu``
-* ``tkinter``
-* ``readline``
-* ``nis`` (Deprecated by PEP594)
-* ``ossaudiodev`` (Deprecated by PEP594)
-* ``spwd`` (Deprecated by PEP594)
-
-The following standard library modules are available on macOS, but not the other
-Apple platforms:
+The iOS, tvOS and watchOS packages are compiled by this project. They expose
+*almost* all the modules in the Python standard library except for:
 
 * ``curses``
+* ``dbm.gnu``
 * ``grp``
 * ``multiprocessing``
+* ``nis`` (Deprecated by PEP594)
+* ``ossaudiodev`` (Deprecated by PEP594)
 * ``posixshmem``
 * ``posixsubprocess``
+* ``readline``
+* ``spwd`` (Deprecated by PEP594)
 * ``syslog``
+* ``tkinter``
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
 devices; and arm64_32 for watchOS. It also supports device simulators on both
@@ -93,10 +93,6 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to build the
   support package;
-* ``bin``, a folder containing shell aliases for the compilers that are needed
-  to build packages. This is required because Xcode uses the ``xcrun`` alias to
-  dynamically generate the name of binaries, but a lot of C tooling expects that ``CC``
-  will not contain spaces.
 * ``platform-site``, a folder that contains site customization scripts that can be used
   to make your local Python install look like it is an on-device install for each of the
   underlying target architectures supported by the platform. This is needed because when
@@ -107,10 +103,17 @@ Each support package contains:
   return ``platform`` and ``sysconfig`` responses consistent with on-device behavior,
   which will cause ``pip`` to install platform-appropriate packages.
 * ``Python.xcframework``, a multi-architecture build of the Python runtime library
-* ``python-stdlib``, the code and binary modules comprising the Python standard library.
-  On iOS, tvOS and watchOS, there are 2 copies of every binary module - one for physical
-  devices, and one for the simulator. The simulator binaries are "fat", containing code
-  for both x86_64 and arm64.
+
+On iOS/tvOS/watchOS, the ``Python.xcframework`` contains a
+slice for each supported ABI (device and simulator). The folder containing the
+slice can also be used as a ``PYTHONHOME``, as it contains a ``bin``, ``include``
+and ``lib`` directory.
+
+The ``bin`` folder does not contain Python executables (as they can't be
+invoked). However, it *does* contain shell aliases for the compilers that are
+needed to build packages. This is required because Xcode uses the ``xcrun``
+alias to dynamically generate the name of binaries, but a lot of C tooling
+expects that ``CC`` will not contain spaces.
 
 For a detailed instructions on using the support package in your own project,
 see the `usage guide <./USAGE.md>`__
