@@ -73,7 +73,7 @@ index c550883e7c..cd307fe7ce 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 61dafc0f4c..11a79cf505 100644
+index 61dafc0f4c..6784a84014 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -85,7 +85,7 @@ index 61dafc0f4c..11a79cf505 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1694,6 +1694,59 @@ def __repr__(self):
+@@ -1694,6 +1694,71 @@ def __repr__(self):
          return f'FileFinder({self.path!r})'
  
  
@@ -131,8 +131,20 @@ index 61dafc0f4c..11a79cf505 100644
 +        self.frameworks_path = path
 +
 +    def find_spec(self, fullname, path, target=None):
-+        name = fullname.split(".")[-1]
 +
++        # Try to locate a framework with a binary in the format:
++        # /Frameworks/module_full_name.framework/module_full_name
++        framework_name = fullname.replace(".", "_")
++        binary_file = _path_join(self.frameworks_path, f"{framework_name}.framework", framework_name)
++        _bootstrap._verbose_message('Looking for Apple Framework binary {}', binary_file)
++
++        if _path_isfile(binary_file):
++            loader = AppleFrameworkLoader(fullname, binary_file, path)
++            return _bootstrap.spec_from_loader(fullname, loader)
++
++        # Try to locate a framework with a dylib in the format:
++        # /Frameworks/module.full.name.framework/name.dylib
++        name = fullname.split(".")[-1]
 +        for extension in EXTENSION_SUFFIXES:
 +            dylib_file = _path_join(self.frameworks_path, f"{fullname}.framework", f"{name}{extension}")
 +            _bootstrap._verbose_message('Looking for Apple Framework dylib {}', dylib_file)
@@ -145,7 +157,7 @@ index 61dafc0f4c..11a79cf505 100644
  # Import setup ###############################################################
  
  def _fix_up_module(ns, name, pathname, cpathname=None):
-@@ -1743,3 +1796,7 @@ def _install(_bootstrap_module):
+@@ -1743,3 +1808,7 @@ def _install(_bootstrap_module):
      supported_loaders = _get_supported_file_loaders()
      sys.path_hooks.extend([FileFinder.path_hook(*supported_loaders)])
      sys.meta_path.append(PathFinder)
