@@ -134,7 +134,7 @@ index 61dafc0f4c..6784a84014 100644
 +
 +        # Try to locate a framework with a binary in the format:
 +        # /Frameworks/module_full_name.framework/module_full_name
-+        framework_name = fullname.replace(".", "_")
++        framework_name = fullname
 +        binary_file = _path_join(self.frameworks_path, f"{framework_name}.framework", framework_name)
 +        _bootstrap._verbose_message('Looking for Apple Framework binary {}', binary_file)
 +
