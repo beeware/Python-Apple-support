@@ -78,7 +78,7 @@ jobs:
     needs: build
     steps:
     - name: Get build artifacts
-      uses: actions/download-artifact@v4.1.7
+      uses: actions/download-artifact@v4.1.8
       with:
         pattern: dist-*
         path: dist
