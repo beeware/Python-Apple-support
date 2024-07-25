@@ -166,6 +166,9 @@ echo "Signing as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY
 find "$CODESIGNING_FOLDER_PATH/Contents/Resources/python-stdlib/lib-dynload" -name "*.so" -exec /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der {} \;
 ```
 
+8. Disable dead code removal. As of March 2024 Xcode has "Dead Code Stripping" enabled by default. This _will_ remove functions from linked Python library that linker found unused.
+   Navigate to Build Settings -> Linkin - General. Find "Dead Code Stripping" and select "No"
+
 You will now be able to access the Python runtime in your Python code.
 
 If you are on iOS, you will be able to deploy to an iOS simulator without specifying

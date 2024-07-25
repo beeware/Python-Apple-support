@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: Build
     runs-on: macOS-latest
     outputs:
       TAG: ${{ steps.build-vars.outputs.TAG }}
@@ -21,25 +22,26 @@ jobs:
       OPENSSL_VERSION: ${{ steps.version-details.outputs.OPENSSL_VERSION }}
     strategy:
       matrix:
-        target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+        target: [ "macOS", "iOS", "tvOS", "watchOS" ]
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4.1.1
 
-    - name: Set build variables
+    - name: Set Build Variables
       id: build-vars
       env:
         TAG_NAME: ${{ github.ref }}
       run: |
-        TAG=$(basename $TAG_NAME)
-        echo "TAG=${TAG}" | tee -a ${GITHUB_OUTPUT}
+        export TAG=$(basename $TAG_NAME)
+        export PYTHON_VER="${TAG%-*}"
+        export BUILD_NUMBER="${TAG#*-}"
 
-        PYTHON_VER="${TAG%-*}"
-        BUILD_NUMBER="${TAG#*-}"
+        echo "TAG=${TAG}" | tee -a ${GITHUB_OUTPUT}
         echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
         echo "BUILD_NUMBER=${BUILD_NUMBER}" | tee -a ${GITHUB_OUTPUT}
 
     - name: Set up Python
-      uses: actions/setup-python@v4.7.1
+      uses: actions/setup-python@v5.1.1
       with:
         python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
 
@@ -48,7 +50,7 @@ jobs:
         # Do the build for the requested target.
         make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.outputs.BUILD_NUMBER }}
 
-    - name: Extract version details
+    - name: Extract Version Details
       id: version-details
       run: |
         PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
@@ -63,25 +65,27 @@ jobs:
         echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "LIBFFI_VERSION=${LIBFFI_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v3.1.3
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4.3.4
       with:
-        name: dist
-        path: "dist"
+        name: dist-${{ matrix.target }}
+        path: dist
         if-no-files-found: error
 
   make-release:
+    name: Make Release
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Get build artifacts
-      uses: actions/download-artifact@v3.0.2
+      uses: actions/download-artifact@v4.1.8
       with:
-        name: dist
+        pattern: dist-*
         path: dist
+        merge-multiple: true
 
     - name: Create Release
-      uses: ncipollo/release-action@v1.13.0
+      uses: ncipollo/release-action@v1.14.0
       with:
         name: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
         tag: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
