@@ -2,7 +2,13 @@
 # when building macOS Python-Apple-support tarballs from the official Framework
 # It is used by `tar -X` during the Makefile build.
 #
-./Versions/*/Resources/Python.app
-./Versions/*/bin
-./Versions/*/etc
-./Versions/*/share
+Resources/Python.app
+Versions/*/bin
+Versions/*/etc
+Versions/*/Frameworks
+Versions/*/lib/python*/idlelib
+Versions/*/lib/python*/lib-dynload/_tkinter.*
+Versions/*/lib/python*/tkinter
+Versions/*/lib/python*/turtle.py
+Versions/*/lib/python*/turtledemo
+Versions/*/share

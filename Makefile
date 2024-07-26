@@ -15,16 +15,17 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.13.0a1
+PYTHON_VERSION=3.13.0b4
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
-XZ_VERSION=5.4.4-1
-OPENSSL_VERSION=3.0.12-1
-LIBFFI_VERSION=3.4.4-1
+MPDECIMAL_VERSION=4.0.0-1
+OPENSSL_VERSION=3.0.14-1
+XZ_VERSION=5.4.7-1
+LIBFFI_VERSION=3.4.6-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -37,17 +38,15 @@ VERSION_MIN-macOS=11.0
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-VERSION_MIN-iOS=12.0
+VERSION_MIN-iOS=13.0
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
-VERSION_MIN-tvOS=9.0
-PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
+VERSION_MIN-tvOS=12.0
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 VERSION_MIN-watchOS=4.0
-PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -82,7 +81,7 @@ update-patch:
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER) \
+		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
@@ -121,8 +120,6 @@ OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
 SDK-$(target)=$$(basename $(target))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
-
-WHEEL_TAG-$(target)=py3-none-$$(shell echo $$(OS_LOWER-$(target))_$$(VERSION_MIN-$(os))_$(target) | sed "s/\./_/g")
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
@@ -175,6 +172,26 @@ $$(XZ_LIB-$(target)): downloads/xz-$(XZ_VERSION)-$(target).tar.gz
 	cd $$(XZ_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/xz-$(XZ_VERSION)-$(target).tar.gz
 	# Ensure the target is marked as clean.
 	touch $$(XZ_LIB-$(target))
+
+###########################################################################
+# Target: mpdecimal
+###########################################################################
+
+MPDECIMAL_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/mpdecimal-$(MPDECIMAL_VERSION)
+MPDECIMAL_LIB-$(target)=$$(MPDECIMAL_INSTALL-$(target))/lib/libmpdec.a
+
+downloads/mpdecimal-$(MPDECIMAL_VERSION)-$(target).tar.gz:
+	@echo ">>> Download mpdecimal for $(target)"
+	mkdir -p downloads
+	curl $(CURL_FLAGS) -o $$@ \
+		https://github.com/beeware/cpython-apple-source-deps/releases/download/mpdecimal-$(MPDECIMAL_VERSION)/mpdecimal-$(MPDECIMAL_VERSION)-$(target).tar.gz
+
+$$(MPDECIMAL_LIB-$(target)): downloads/mpdecimal-$(MPDECIMAL_VERSION)-$(target).tar.gz
+	@echo ">>> Install mpdecimal for $(target)"
+	mkdir -p $$(MPDECIMAL_INSTALL-$(target))
+	cd $$(MPDECIMAL_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/mpdecimal-$(MPDECIMAL_VERSION)-$(target).tar.gz
+	# Ensure the target is marked as clean.
+	touch $$(MPDECIMAL_LIB-$(target))
 
 ###########################################################################
 # Target: OpenSSL
@@ -245,6 +262,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 		$$(BZIP2_LIB-$(target)) \
 		$$(XZ_LIB-$(target)) \
 		$$(OPENSSL_SSL_LIB-$(target)) \
+		$$(MPDECIMAL_LIB-$(target)) \
 		$$(LIBFFI_LIB-$(target))
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_SRCDIR-$(target))
@@ -270,6 +288,8 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
 			BZIP2_LIBS="-L$$(BZIP2_INSTALL-$(target))/lib -lbz2" \
+			LIBMPDEC_CFLAGS="-I$$(MPDECIMAL_INSTALL-$(target))/include" \
+			LIBMPDEC_LIBS="-L$$(MPDECIMAL_INSTALL-$(target))/lib -lmpdec" \
 			LIBFFI_CFLAGS="-I$$(LIBFFI_INSTALL-$(target))/include" \
 			LIBFFI_LIBS="-L$$(LIBFFI_INSTALL-$(target))/lib -lffi" \
 			--host=$$(TARGET_TRIPLE-$(target)) \
@@ -277,18 +297,15 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			--with-build-python=$(HOST_PYTHON) \
 			--enable-ipv6 \
 			--with-openssl="$$(OPENSSL_INSTALL-$(target))" \
-			--without-ensurepip \
 			--enable-framework="$$(PYTHON_INSTALL-$(target))" \
-			ac_cv_file__dev_ptmx=no \
-			ac_cv_file__dev_ptc=no \
-			$$(PYTHON_CONFIGURE-$(os)) \
+			--with-system-libmpdec \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
 
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
-			make all \
+			make -j8 all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
@@ -308,7 +325,7 @@ $$(PYTHON_SITECUSTOMIZE-$(target)):
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.$(os).py \
 		| sed -e "s/{{os}}/$(os)/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
-		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(SDK-$(target))-$$(ARCH-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(SDK-$(target))/g" \
 		> $$(PYTHON_SITECUSTOMIZE-$(target))
 
 $(target): $$(PYTHON_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
@@ -329,6 +346,8 @@ vars-$(target):
 	@echo "XZ_LIB-$(target): $$(XZ_LIB-$(target))"
 	@echo "OPENSSL_INSTALL-$(target): $$(OPENSSL_INSTALL-$(target))"
 	@echo "OPENSSL_SSL_LIB-$(target): $$(OPENSSL_SSL_LIB-$(target))"
+	@echo "MPDECIMAL_INSTALL-$(target): $$(MPDECIMAL_INSTALL-$(target))"
+	@echo "MPDECIMAL_LIB-$(target): $$(MPDECIMAL_LIB-$(target))"
 	@echo "LIBFFI_INSTALL-$(target): $$(LIBFFI_INSTALL-$(target))"
 	@echo "LIBFFI_LIB-$(target): $$(LIBFFI_LIB-$(target))"
 	@echo "PYTHON_SRCDIR-$(target): $$(PYTHON_SRCDIR-$(target))"
@@ -524,20 +543,14 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	tar zxf build/macOS/macosx/python-$(PYTHON_VERSION)/Python_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/Payload -C $$(PYTHON_FRAMEWORK-macosx) -X patch/Python/release.macOS.exclude
 
 	# Rewrite the framework to make it standalone
-	python3 patch/make-macho-standalone.py $$(PYTHON_FRAMEWORK-macosx) \
-		2>&1 | tee $$(PYTHON_INSTALL-macosx)/python-$(PY_VERSION).make-macho-standalone.log
-
-	# Remove the "development" versions of the libs
-	rm -f $$(PYTHON_INSTALL_VERSION-macosx)/lib/*.dylib
-	rm -f $$(PYTHON_INSTALL_VERSION-macosx)/lib/*.a
-	rm -rf $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PY_VERSION)/config-*
+	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
 
 	# Re-apply the signature on the binaries.
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_LIB-macosx) \
 		2>&1 | tee $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
-	find install/macOS/macosx/python-3.13.0a1/Python.framework -name "*.dylib" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
+	find $$(PYTHON_FRAMEWORK-macosx) -name "*.dylib" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
-	find install/macOS/macosx/python-3.13.0a1/Python.framework -name "*.so" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
+	find $$(PYTHON_FRAMEWORK-macosx) -name "*.so" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_FRAMEWORK-macosx) \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
@@ -588,6 +601,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "BZip2: $(BZIP2_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "mpdecimal: $(MPDECIMAL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \

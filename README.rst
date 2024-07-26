@@ -8,39 +8,28 @@ into a macOS, iOS, tvOS or watchOS project.
 Other Python versions are available by cloning other branches of the main
 repository:
 
-* `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__
 * `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 * `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
+* `Python 3.13 <https://github.com/beeware/Python-Apple-support/tree/3.13>`__
 
-It works by downloading, patching, and building a fat binary of Python and selected
-pre-requisites, and packaging them as static libraries that can be incorporated into an
-XCode project. The binary modules in the Python standard library are statically
-compiled, but are distributed as objects that can be dynamically loaded at runtime.
+It works by downloading, patching, and building a fat binary of Python and
+selected pre-requisites, and packaging them as frameworks that can be
+incorporated into an XCode project. The binary modules in the Python standard
+library are distributed as binaries that can be dynamically loaded at runtime.
 
 The macOS package is a re-bundling of the official macOS binary, modified so that
-it is relocatable.
+it is relocatable, with the IDLE, Tkinter and turtle packages removed.
 
-The iOS, tvOS and watchOS packages are compiled by this project. They expose
-*almost* all the modules in the Python standard library except for:
-
-* ``curses``
-* ``dbm.gnu``
-* ``grp``
-* ``multiprocessing``
-* ``nis`` (Deprecated by PEP594)
-* ``ossaudiodev`` (Deprecated by PEP594)
-* ``posixshmem``
-* ``posixsubprocess``
-* ``readline``
-* ``spwd`` (Deprecated by PEP594)
-* ``syslog``
-* ``tkinter``
+The iOS, tvOS and watchOS packages compiled by this project use the official
+`PEP 730 <https://peps.python.org/pep-0730/>`__ code that is part of Python 3.13
+to provide iOS support; the relevant patches have been backported to 3.9-3.12.
+Additional patches have been applied to add tvOS and watchOS support.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
-devices; and arm64_32 for watchOS. It also supports device simulators on both
-x86_64 and M1 hardware. This should enable the code to run on:
+devices; and arm64_32 for watchOS devices. It also supports device simulators on
+both x86_64 and M1 hardware. This should enable the code to run on:
 
 * macOS 11 (Big Sur) or later, on:
     * MacBook (including MacBooks using Apple Silicon)
@@ -48,14 +37,14 @@ x86_64 and M1 hardware. This should enable the code to run on:
     * Mac Mini (including Apple Silicon Mac minis)
     * Mac Studio (all models)
     * Mac Pro (all models)
-* iOS 12.0 or later, on:
+* iOS 13.0 or later, on:
     * iPhone (6s or later)
     * iPad (5th gen or later)
     * iPad Air (all models)
     * iPad Mini (2 or later)
     * iPad Pro (all models)
     * iPod Touch (7th gen or later)
-* tvOS 9.0 or later, on:
+* tvOS 12.0 or later, on:
     * Apple TV (4th gen or later)
 * watchOS 4.0 or later, on:
     * Apple Watch (4th gen or later)
@@ -121,18 +110,11 @@ see the `usage guide <./USAGE.md>`__
 Building binary wheels
 ----------------------
 
-When building binary wheels, you may need to use the libraries built by this
-project as inputs (e.g., the `cffi` module uses `libffi`). To support this, this
-project is able to package these dependencies as "wheels" that can be added to
-the ``dist`` directory of the `Mobile Forge
-project <https://github.com/beeware/mobile-forge>`__.
-
-To build these wheels, run:
-
-* ``make wheels`` to make all wheels for all mobile platforms
-* ``make wheels-iOS`` to build all the iOS wheels
-* ``make wheels-tvOS`` to build all the tvOS wheels
-* ``make wheels-watchOS`` to build all the watchOS wheels
+This project packages the Python standard library, but does not address building
+binary wheels. Binary wheels for macOS can be obtained from PyPI. `Mobile Forge
+<https://github.com/beeware/mobile-forge>`__ is a project that provides the
+tooling to build build binary wheels for iOS (and potentially for tvOS and
+watchOS, although that hasn't been tested).
 
 Historical support
 ------------------
@@ -145,3 +127,4 @@ maintained:
 * `Python 3.5 <https://github.com/beeware/Python-Apple-support/tree/3.5>`__ (EOL February 2021)
 * `Python 3.6 <https://github.com/beeware/Python-Apple-support/tree/3.6>`__ (EOL December 2021)
 * `Python 3.7 <https://github.com/beeware/Python-Apple-support/tree/3.7>`__ (EOL September 2022)
+* `Python 3.8 <https://github.com/beeware/Python-Apple-support/tree/3.8>`__ (EOL October 2024)
