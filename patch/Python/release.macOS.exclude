@@ -1,8 +1,14 @@
-# This is a list of support package path patterns that we exclude
-# from macOS Python-Apple-support tarballs.
+# This is a list of Framework path patterns that we exclude
+# when building macOS Python-Apple-support tarballs from the official Framework
 # It is used by `tar -X` during the Makefile build.
 #
-# Remove the testing binary modules
-python-stdlib/lib-dynload/*_test*.so
-python-stdlib/lib-dynload/_xx*.so
-python-stdlib/lib-dynload/xx*.so
+Resources/Python.app
+Versions/*/bin
+Versions/*/etc
+Versions/*/Frameworks
+Versions/*/lib/python*/idlelib
+Versions/*/lib/python*/lib-dynload/_tkinter.*
+Versions/*/lib/python*/tkinter
+Versions/*/lib/python*/turtle.py
+Versions/*/lib/python*/turtledemo
+Versions/*/share

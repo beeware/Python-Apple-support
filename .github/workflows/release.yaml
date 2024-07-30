@@ -53,11 +53,11 @@ jobs:
     - name: Extract Version Details
       id: version-details
       run: |
-        export PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
-        export BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
+        BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
 
         echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "BZIP2_VERSION=${BZIP2_VERSION}" | tee -a ${GITHUB_OUTPUT}
