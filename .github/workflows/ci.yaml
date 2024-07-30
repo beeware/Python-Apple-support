@@ -68,8 +68,10 @@ jobs:
     - name: Install dependencies
       if: matrix.run-tests
       run: |
+        # TODO - Revert to the development version of Briefcase
         # Use the development version of Briefcase
-        python -m pip install git+https://github.com/beeware/briefcase.git
+        # python -m pip install git+https://github.com/beeware/briefcase.git
+        python -m pip install git+https://github.com/freakboy3742/briefcase.git@version-bumps
     - name: Run support testbed check
       if: matrix.run-tests
       working-directory: Python-support-testbed
