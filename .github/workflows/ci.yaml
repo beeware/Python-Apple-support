@@ -33,13 +33,14 @@ jobs:
               run-tests: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.1.7
 
     - name: Extract config variables
       id: config-vars
       run: |
         PYTHON_VER=$(make config | grep "PYTHON_VER=" | cut -d "=" -f 2)
         echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
+
     - name: Set up Python
       uses: actions/setup-python@v5.1.1
       with:
@@ -51,6 +52,7 @@ jobs:
       run: |
         # Do the build for the requested target.
         make ${{ matrix.target }}
+
     - name: Upload build artefacts
       uses: actions/upload-artifact@v4.3.4
       with:
@@ -72,8 +74,10 @@ jobs:
         # Use the development version of Briefcase
         # python -m pip install git+https://github.com/beeware/briefcase.git
         python -m pip install git+https://github.com/freakboy3742/briefcase.git@version-bumps
+
     - name: Run support testbed check
       if: matrix.run-tests
+      timeout-minutes: 10
       working-directory: Python-support-testbed
       # TODO - remove the template_branch option.
       run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz\' -C template_branch=\'framework-lib\'
