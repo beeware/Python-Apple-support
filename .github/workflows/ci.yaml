@@ -54,7 +54,7 @@ jobs:
         make ${{ matrix.target }}
 
     - name: Upload build artefacts
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
         path: dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
