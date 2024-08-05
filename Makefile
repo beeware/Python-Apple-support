@@ -15,7 +15,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.12.0
+PYTHON_VERSION=3.12.4
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -124,10 +124,8 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulator
 	endif
 endif
 
@@ -280,10 +278,6 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 		./configure \
-			AR=$$(TARGET_TOOL_TRIPLE-$(target))-ar \
-			CC=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
-			CPP=$$(TARGET_TOOL_TRIPLE-$(target))-cpp \
-			CXX=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
