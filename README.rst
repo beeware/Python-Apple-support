@@ -20,7 +20,8 @@ incorporated into an XCode project. The binary modules in the Python standard
 library are distributed as binaries that can be dynamically loaded at runtime.
 
 The macOS package is a re-bundling of the official macOS binary, modified so that
-it is relocatable, with the IDLE, Tkinter and turtle packages removed.
+it is relocatable, with the IDLE, Tkinter and turtle packages removed, and the
+App Store compliance patch applied.
 
 The iOS, tvOS and watchOS packages compiled by this project use the official
 `PEP 730 <https://peps.python.org/pep-0730/>`__ code that is part of Python 3.13
