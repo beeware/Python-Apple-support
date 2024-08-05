@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: Build
     runs-on: macOS-latest
     outputs:
       TAG: ${{ steps.build-vars.outputs.TAG }}
@@ -21,29 +22,26 @@ jobs:
       OPENSSL_VERSION: ${{ steps.version-details.outputs.OPENSSL_VERSION }}
     strategy:
       matrix:
-        target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+        target: [ "macOS", "iOS", "tvOS", "watchOS" ]
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4.1.1
 
-    - name: Set build variables
+    - name: Set Build Variables
       id: build-vars
       env:
         TAG_NAME: ${{ github.ref }}
       run: |
         export TAG=$(basename $TAG_NAME)
-        echo "TAG=${TAG}"
         export PYTHON_VER="${TAG%-*}"
         export BUILD_NUMBER="${TAG#*-}"
 
-        echo "PYTHON_VER=${PYTHON_VER}"
-        echo "BUILD_NUMBER=${BUILD_NUMBER}"
-
-        echo "TAG=${TAG}" >> ${GITHUB_OUTPUT}
-        echo "PYTHON_VER=${PYTHON_VER}" >> ${GITHUB_OUTPUT}
-        echo "BUILD_NUMBER=${BUILD_NUMBER}" >> ${GITHUB_OUTPUT}
+        echo "TAG=${TAG}" | tee -a ${GITHUB_OUTPUT}
+        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
+        echo "BUILD_NUMBER=${BUILD_NUMBER}" | tee -a ${GITHUB_OUTPUT}
 
     - name: Set up Python
-      uses: actions/setup-python@v4.7.1
+      uses: actions/setup-python@v5.1.1
       with:
         python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
 
@@ -52,46 +50,42 @@ jobs:
         # Do the build for the requested target.
         make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.outputs.BUILD_NUMBER }}
 
-    - name: Extract version details
+    - name: Extract Version Details
       id: version-details
       run: |
-        export PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
-        export BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        export LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
+        BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
 
-        echo "PYTHON_VERSION=${PYTHON_VERSION}"
-        echo "BZIP2_VERSION=${BZIP2_VERSION}"
-        echo "XZ_VERSION=${XZ_VERSION}"
-        echo "OPENSSL_VERSION=${OPENSSL_VERSION}"
-        echo "LIBFFI_VERSION=${LIBFFI_VERSION}"
+        echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "BZIP2_VERSION=${BZIP2_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "LIBFFI_VERSION=${LIBFFI_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
-        echo "PYTHON_VERSION=${PYTHON_VERSION}" >> ${GITHUB_OUTPUT}
-        echo "BZIP2_VERSION=${BZIP2_VERSION}" >> ${GITHUB_OUTPUT}
-        echo "XZ_VERSION=${XZ_VERSION}" >> ${GITHUB_OUTPUT}
-        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" >> ${GITHUB_OUTPUT}
-        echo "LIBFFI_VERSION=${LIBFFI_VERSION}" >> ${GITHUB_OUTPUT}
-
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v3.1.3
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4.3.5
       with:
-        name: dist
-        path: "dist"
+        name: dist-${{ matrix.target }}
+        path: dist
         if-no-files-found: error
 
   make-release:
+    name: Make Release
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Get build artifacts
-      uses: actions/download-artifact@v3.0.2
+      uses: actions/download-artifact@v4.1.8
       with:
-        name: dist
+        pattern: dist-*
         path: dist
+        merge-multiple: true
 
     - name: Create Release
-      uses: ncipollo/release-action@v1.13.0
+      uses: ncipollo/release-action@v1.14.0
       with:
         name: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
         tag: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
