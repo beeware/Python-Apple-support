@@ -124,10 +124,8 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulator
 	endif
 endif
 
@@ -280,10 +278,6 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 		./configure \
-			AR=$$(TARGET_TOOL_TRIPLE-$(target))-ar \
-			CC=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
-			CPP=$$(TARGET_TOOL_TRIPLE-$(target))-cpp \
-			CXX=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
