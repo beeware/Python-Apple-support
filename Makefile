@@ -15,7 +15,7 @@ BUILD_NUMBER=custom
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.6
+PYTHON_VERSION=3.11.9
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
@@ -25,9 +25,10 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 # iOS, tvOS, watchOS:
 #     https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
-XZ_VERSION=5.4.4-1
-OPENSSL_VERSION=3.0.12-1
-LIBFFI_VERSION=3.4.4-1
+MPDECIMAL_VERSION=4.0.0-1
+OPENSSL_VERSION=3.0.14-1
+LIBFFI_VERSION=3.4.6-1
+XZ_VERSION=5.4.7-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -41,12 +42,12 @@ CFLAGS-macOS=-mmacosx-version-min=$(VERSION_MIN-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-VERSION_MIN-iOS=12.0
+VERSION_MIN-iOS=13.0
 CFLAGS-iOS=-mios-version-min=$(VERSION_MIN-iOS)
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
-VERSION_MIN-tvOS=9.0
+VERSION_MIN-tvOS=12.0
 CFLAGS-tvOS=-mtvos-version-min=$(VERSION_MIN-tvOS)
 PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
@@ -132,10 +133,8 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
-TARGET_TOOL_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))-simulator
 	endif
 endif
 
@@ -288,10 +287,6 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 		./configure \
-			AR=$$(TARGET_TOOL_TRIPLE-$(target))-ar \
-			CC=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
-			CPP=$$(TARGET_TOOL_TRIPLE-$(target))-cpp \
-			CXX=$$(TARGET_TOOL_TRIPLE-$(target))-clang \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
@@ -551,7 +546,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	tar zxf build/macOS/macosx/python-$(PYTHON_VERSION)/Python_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/Payload -C $$(PYTHON_FRAMEWORK-macosx) -X patch/Python/release.macOS.exclude
 
 	# Apply the App Store compliance patch
-	patch --strip 2 --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
+	# patch --strip 2 --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
 
 	# Rewrite the framework to make it standalone
 	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
