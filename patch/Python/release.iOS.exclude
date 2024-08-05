@@ -1,10 +1,6 @@
 # This is a list of support package path patterns that we exclude
-# from iOS Python-Apple-support tarballs.
+# from all Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
-#
-# Remove command-line curses toolkit.
-python-stdlib/curses
-# Remove the testing binary modules
-python-stdlib/lib-dynload/*_test*.dylib
-python-stdlib/lib-dynload/_xx*.dylib
-python-stdlib/lib-dynload/xx*.dylib
+# Remove pyc files. These take up space, but since most stdlib modules are
+# never imported by user code, they mostly have no value.
+*/__pycache__

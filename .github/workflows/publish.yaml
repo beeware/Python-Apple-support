@@ -11,7 +11,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Python environment
-      uses: actions/setup-python@v4.7.1
+      uses: actions/setup-python@v5.1.1
       with:
         python-version: "3.X"
 
@@ -20,17 +20,13 @@ jobs:
       env:
         TAG_NAME: ${{ github.ref }}
       run: |
-        export TAG=$(basename $TAG_NAME)
-        echo "TAG=${TAG}"
-        export PYTHON_VER="${TAG%-*}"
-        export BUILD_NUMBER="${TAG#*-}"
+        TAG=$(basename $TAG_NAME)
+        PYTHON_VER="${TAG%-*}"
+        BUILD_NUMBER="${TAG#*-}"
 
-        echo "PYTHON_VER=${PYTHON_VER}"
-        echo "BUILD_NUMBER=${BUILD_NUMBER}"
-
-        echo "TAG=${TAG}" >> ${GITHUB_OUTPUT}
-        echo "PYTHON_VER=${PYTHON_VER}" >> ${GITHUB_OUTPUT}
-        echo "BUILD_NUMBER=${BUILD_NUMBER}" >> ${GITHUB_OUTPUT}
+        echo "TAG=${TAG}" | tee -a ${GITHUB_OUTPUT}
+        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
+        echo "BUILD_NUMBER=${BUILD_NUMBER}" | tee -a ${GITHUB_OUTPUT}
 
     - name: Update Release Asset to S3
       env:
