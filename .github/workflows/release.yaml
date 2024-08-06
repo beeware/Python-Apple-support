@@ -8,74 +8,36 @@ on:
     - '*-b*'
 
 jobs:
-  build:
-    name: Build
+  config:
+    name: Build vars
     runs-on: macOS-latest
     outputs:
       TAG: ${{ steps.build-vars.outputs.TAG }}
-      PYTHON_VER: ${{ steps.build-vars.outputs.PYTHON_VER }}
       BUILD_NUMBER: ${{ steps.build-vars.outputs.BUILD_NUMBER }}
-      PYTHON_VERSION: ${{ steps.version-details.outputs.PYTHON_VERSION }}
-      BZIP2_VERSION: ${{ steps.version-details.outputs.BZIP2_VERSION }}
-      XZ_VERSION: ${{ steps.version-details.outputs.XZ_VERSION }}
-      LIBFFI_VERSION: ${{ steps.version-details.outputs.LIBFFI_VERSION }}
-      OPENSSL_VERSION: ${{ steps.version-details.outputs.OPENSSL_VERSION }}
-    strategy:
-      matrix:
-        target: [ "macOS", "iOS", "tvOS", "watchOS" ]
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4.1.1
 
+    steps:
     - name: Set Build Variables
       id: build-vars
       env:
         TAG_NAME: ${{ github.ref }}
       run: |
         export TAG=$(basename $TAG_NAME)
-        export PYTHON_VER="${TAG%-*}"
         export BUILD_NUMBER="${TAG#*-}"
 
         echo "TAG=${TAG}" | tee -a ${GITHUB_OUTPUT}
-        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
         echo "BUILD_NUMBER=${BUILD_NUMBER}" | tee -a ${GITHUB_OUTPUT}
 
-    - name: Set up Python
-      uses: actions/setup-python@v5.1.1
-      with:
-        python-version: "${{ steps.build-vars.outputs.PYTHON_VER }}-dev"
-
-    - name: Build ${{ matrix.target }}
-      run: |
-        # Do the build for the requested target.
-        make ${{ matrix.target }} BUILD_NUMBER=${{ steps.build-vars.outputs.BUILD_NUMBER }}
-
-    - name: Extract Version Details
-      id: version-details
-      run: |
-        PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
-        BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-
-        echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "BZIP2_VERSION=${BZIP2_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "LIBFFI_VERSION=${LIBFFI_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
-
-    - name: Upload Build Artifact
-      uses: actions/upload-artifact@v4.3.5
-      with:
-        name: dist-${{ matrix.target }}
-        path: dist
-        if-no-files-found: error
+  ci:
+    name: CI
+    needs: [ config ]
+    uses: ./.github/workflows/ci.yaml
+    with:
+      build-number: ${{ needs.config.outputs.BUILD_NUMBER }}
 
   make-release:
     name: Make Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [ config, ci ]
     steps:
     - name: Get build artifacts
       uses: actions/download-artifact@v4.1.8
@@ -87,16 +49,16 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1.14.0
       with:
-        name: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
-        tag: ${{ needs.build.outputs.PYTHON_VER }}-${{ needs.build.outputs.BUILD_NUMBER }}
+        name: ${{ needs.ci.outputs.PYTHON_VER }}-${{ needs.config.outputs.BUILD_NUMBER }}
+        tag: ${{ needs.ci.outputs.PYTHON_VER }}-${{ needs.config.outputs.BUILD_NUMBER }}
         draft: true
         body: |
-          Build ${{ needs.build.outputs.BUILD_NUMBER }} of the BeeWare support package for Python ${{ needs.build.outputs.PYTHON_VER }}.
+          Build ${{ needs.config.outputs.BUILD_NUMBER }} of the BeeWare support package for Python ${{ needs.ci.outputs.PYTHON_VER }}.
 
           Includes:
-          * Python ${{ needs.build.outputs.PYTHON_VERSION }}
-          * BZip2 ${{ needs.build.outputs.BZIP2_VERSION }}
-          * libFFI ${{ needs.build.outputs.LIBFFI_VERSION }}
-          * OpenSSL  ${{ needs.build.outputs.OPENSSL_VERSION }}
-          * XZ ${{ needs.build.outputs.XZ_VERSION }}
+          * Python ${{ needs.ci.outputs.PYTHON_VERSION }}
+          * BZip2 ${{ needs.ci.outputs.BZIP2_VERSION }}
+          * libFFI ${{ needs.ci.outputs.LIBFFI_VERSION }}
+          * OpenSSL  ${{ needs.ci.outputs.OPENSSL_VERSION }}
+          * XZ ${{ needs.ci.outputs.XZ_VERSION }}
         artifacts: "dist/*"
