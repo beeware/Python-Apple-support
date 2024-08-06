@@ -14,19 +14,22 @@ BUILD_NUMBER=custom
 # Version of packages that will be compiled by this meta-package
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
 # PYTHON_PKG_VERSION is the version number with binary package releases to use
+# for macOS binaries. This will be less than PYTHON_VERSION towards the end
+# of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
 PYTHON_VERSION=3.9.19
 PYTHON_PKG_VERSION=3.9.13
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
+PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
+LIBFFI_VERSION=3.4.6-1
 OPENSSL_VERSION=3.0.14-1
 XZ_VERSION=5.4.7-1
-LIBFFI_VERSION=3.4.6-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -101,7 +104,7 @@ downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg:
 	@echo ">>> Download macOS Python package"
 	mkdir -p downloads
 	curl $(CURL_FLAGS) -o $@ \
-		https://www.python.org/ftp/python/$(PYTHON_PKG_VERSION)/python-$(PYTHON_PKG_VERSION)-macos11.pkg
+		https://www.python.org/ftp/python/$(PYTHON_PKG_MICRO_VERSION)/python-$(PYTHON_PKG_VERSION)-macos11.pkg
 
 ###########################################################################
 # Build for specified target (from $(TARGETS-*))
@@ -239,9 +242,9 @@ PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
 $$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
 		$$(BZIP2_LIB-$(target)) \
-		$$(XZ_LIB-$(target)) \
+		$$(LIBFFI_LIB-$(target)) \
 		$$(OPENSSL_SSL_LIB-$(target)) \
-		$$(LIBFFI_LIB-$(target))
+		$$(XZ_LIB-$(target))
 	@echo ">>> Unpack and configure Python for $(target)"
 	mkdir -p $$(PYTHON_SRCDIR-$(target))
 	tar zxf downloads/Python-$(PYTHON_VERSION).tar.gz --strip-components 1 -C $$(PYTHON_SRCDIR-$(target))
@@ -311,12 +314,12 @@ vars-$(target):
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
 	@echo "BZIP2_INSTALL-$(target): $$(BZIP2_INSTALL-$(target))"
 	@echo "BZIP2_LIB-$(target): $$(BZIP2_LIB-$(target))"
-	@echo "XZ_INSTALL-$(target): $$(XZ_INSTALL-$(target))"
-	@echo "XZ_LIB-$(target): $$(XZ_LIB-$(target))"
-	@echo "OPENSSL_INSTALL-$(target): $$(OPENSSL_INSTALL-$(target))"
-	@echo "OPENSSL_SSL_LIB-$(target): $$(OPENSSL_SSL_LIB-$(target))"
 	@echo "LIBFFI_INSTALL-$(target): $$(LIBFFI_INSTALL-$(target))"
 	@echo "LIBFFI_LIB-$(target): $$(LIBFFI_LIB-$(target))"
+	@echo "OPENSSL_INSTALL-$(target): $$(OPENSSL_INSTALL-$(target))"
+	@echo "OPENSSL_SSL_LIB-$(target): $$(OPENSSL_SSL_LIB-$(target))"
+	@echo "XZ_INSTALL-$(target): $$(XZ_INSTALL-$(target))"
+	@echo "XZ_LIB-$(target): $$(XZ_LIB-$(target))"
 	@echo "PYTHON_SRCDIR-$(target): $$(PYTHON_SRCDIR-$(target))"
 	@echo "PYTHON_INSTALL-$(target): $$(PYTHON_INSTALL-$(target))"
 	@echo "PYTHON_FRAMEWORK-$(target): $$(PYTHON_FRAMEWORK-$(target))"
@@ -568,8 +571,8 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "Min $(os) version: $$(VERSION_MIN-$(os))" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "---------------------" >> support/$(PYTHON_VER)/$(os)/VERSIONS
-	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "BZip2: $(BZIP2_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
+	echo "libFFI: $(LIBFFI_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "OpenSSL: $(OPENSSL_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "XZ: $(XZ_VERSION)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
 

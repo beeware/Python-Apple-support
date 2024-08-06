@@ -55,15 +55,15 @@ jobs:
       run: |
         PYTHON_VERSION=$(grep "Python version:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 3)
         BZIP2_VERSION=$(grep "BZip2:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
-        OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
         LIBFFI_VERSION=$(grep "libFFI:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        OPENSSL_VERSION=$(grep "OpenSSL:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
+        XZ_VERSION=$(grep "XZ:" support/${{ steps.build-vars.outputs.PYTHON_VER }}/${{ matrix.target }}/VERSIONS | cut -d " " -f 2)
 
         echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "BZIP2_VERSION=${BZIP2_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
-        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "LIBFFI_VERSION=${LIBFFI_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4.3.5
@@ -95,8 +95,8 @@ jobs:
 
           Includes:
           * Python ${{ needs.build.outputs.PYTHON_VERSION }}
-          * OpenSSL  ${{ needs.build.outputs.OPENSSL_VERSION }}
           * BZip2 ${{ needs.build.outputs.BZIP2_VERSION }}
+          * libFFI ${{ needs.build.outputs.LIBFFI_VERSION }}
+          * OpenSSL  ${{ needs.build.outputs.OPENSSL_VERSION }}
           * XZ ${{ needs.build.outputs.XZ_VERSION }}
-          * LibFFI ${{ needs.build.outputs.LIBFFI_VERSION }}
         artifacts: "dist/*"
