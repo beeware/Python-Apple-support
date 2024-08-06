@@ -5,6 +5,31 @@ on:
     branches:
       - main
       - 3.*
+  workflow_call:
+    inputs:
+      build-number:
+        description: "The build number to add to the built package"
+        default: "custom"
+        type: "string"
+    outputs:
+      PYTHON_VER:
+        description: "The Python major.minor version."
+        value: ${{ jobs.config.outputs.PYTHON_VER }}
+      PYTHON_VERSION:
+        description: "The full Python version."
+        value: ${{ jobs.config.outputs.PYTHON_VERSION }}
+      BZIP2_VERSION:
+        description: "The BZip2 version used for the build."
+        value: ${{ jobs.config.outputs.BZIP2_VERSION }}
+      LIBFFI_VERSION:
+        description: "The libFFI version used for the build."
+        value: ${{ jobs.config.outputs.LIBFFI_VERSION }}
+      OPENSSL_VERSION:
+        description: "The OpenSSL version used for the build."
+        value: ${{ jobs.config.outputs.OPENSSL_VERSION }}
+      XZ_VERSION:
+        description: "The XZ version used for the build."
+        value: ${{ jobs.config.outputs.XZ_VERSION }}
 
 env:
   FORCE_COLOR: "1"
@@ -19,8 +44,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  config:
+    runs-on: macOS-latest
+    outputs:
+      PYTHON_VER: ${{ steps.extract.outputs.PYTHON_VER }}
+      PYTHON_VERSION: ${{ steps.extract.outputs.PYTHON_VERSION }}
+      BUILD_NUMBER: ${{ steps.extract.outputs.BUILD_NUMBER }}
+      BZIP2_VERSION: ${{ steps.extract.outputs.BZIP2_VERSION }}
+      LIBFFI_VERSION: ${{ steps.extract.outputs.LIBFFI_VERSION }}
+      OPENSSL_VERSION: ${{ steps.extract.outputs.OPENSSL_VERSION }}
+      XZ_VERSION: ${{ steps.extract.outputs.XZ_VERSION }}
+
+    steps:
+    - uses: actions/checkout@v4.1.7
+
+    - name: Extract config variables
+      id: extract
+      run: |
+        PYTHON_VER=$(make config | grep "PYTHON_VER=" | cut -d "=" -f 2)
+        PYTHON_VERSION=$(make config | grep "PYTHON_VERSION=" | cut -d "=" -f 2)
+        BZIP2_VERSION=$(make config | grep "BZIP2_VERSION=" | cut -d "=" -f 2)
+        LIBFFI_VERSION=$(make config | grep "LIBFFI_VERSION=" | cut -d "=" -f 2)
+        OPENSSL_VERSION=$(make config | grep "OPENSSL_VERSION=" | cut -d "=" -f 2)
+        XZ_VERSION=$(make config | grep "XZ_VERSION=" | cut -d "=" -f 2)
+        if [ -z "${{ inputs.build-number }}" ]; then
+          BUILD_NUMBER=custom
+        else
+          BUILD_NUMBER=${{ inputs.build-number }}
+        fi
+
+        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
+        echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "BUILD_NUMBER=${BUILD_NUMBER}" | tee -a ${GITHUB_OUTPUT}
+        echo "BZIP2_VERSION=${BZIP2_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "LIBFFI_VERSION=${LIBFFI_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
+
   build:
     runs-on: macOS-latest
+    needs: [ config ]
     strategy:
       fail-fast: false
       matrix:
@@ -39,29 +102,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.7
 
-    - name: Extract config variables
-      id: config-vars
-      run: |
-        PYTHON_VER=$(make config | grep "PYTHON_VER=" | cut -d "=" -f 2)
-        echo "PYTHON_VER=${PYTHON_VER}" | tee -a ${GITHUB_OUTPUT}
-
     - name: Set up Python
       uses: actions/setup-python@v5.1.1
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
-        python-version: ${{ steps.config-vars.outputs.PYTHON_VER }}-dev
+        python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
 
     - name: Build ${{ matrix.target }}
       run: |
         # Do the build for the requested target.
-        make ${{ matrix.target }}
+        make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
       uses: actions/upload-artifact@v4.3.5
       with:
-        name: Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
-        path: dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz
+        name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
     - uses: actions/checkout@v4.1.7
       if: matrix.run-tests
@@ -84,4 +141,4 @@ jobs:
       timeout-minutes: 10
       working-directory: Python-support-testbed
       # TODO - remove the template_branch option.
-      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ steps.config-vars.outputs.PYTHON_VER }}-${{ matrix.target }}-support.custom.tar.gz\' -C template_branch=\'framework-lib\'
+      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\' -C template_branch=\'framework-lib\'
