@@ -668,9 +668,10 @@ config:
 	@echo "PYTHON_VER=$(PYTHON_VER)"
 	@echo "BUILD_NUMBER=$(BUILD_NUMBER)"
 	@echo "BZIP2_VERSION=$(BZIP2_VERSION)"
-	@echo "XZ_VERSION=$(XZ_VERSION)"
-	@echo "OPENSSL_VERSION=$(OPENSSL_VERSION)"
 	@echo "LIBFFI_VERSION=$(LIBFFI_VERSION)"
+	@echo "MPDECIMAL_VERSION=$(MPDECIMAL_VERSION)"
+	@echo "OPENSSL_VERSION=$(OPENSSL_VERSION)"
+	@echo "XZ_VERSION=$(XZ_VERSION)"
 
 # Expand cross-platform build and clean targets for each output product
 clean: $(foreach os,$(OS_LIST),clean-$(os))
