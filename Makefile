@@ -13,10 +13,15 @@ BUILD_NUMBER=custom
 
 # Version of packages that will be compiled by this meta-package
 # PYTHON_VERSION is the full version number (e.g., 3.10.0b3)
+# PYTHON_PKG_VERSION is the version number with binary package releases to use
+# for macOS binaries. This will be less than PYTHON_VERSION towards the end
+# of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
 PYTHON_VERSION=3.13.0rc1
+PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
+PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
@@ -96,11 +101,11 @@ downloads/Python-$(PYTHON_VERSION).tar.gz:
 	curl $(CURL_FLAGS) -o $@ \
 		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/Python-$(PYTHON_VERSION).tgz
 
-downloads/python-$(PYTHON_VERSION)-macos11.pkg:
+downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg:
 	@echo ">>> Download macOS Python package"
 	mkdir -p downloads
 	curl $(CURL_FLAGS) -o $@ \
-		https://www.python.org/ftp/python/$(PYTHON_MICRO_VERSION)/python-$(PYTHON_VERSION)-macos11.pkg
+		https://www.python.org/ftp/python/$(PYTHON_PKG_MICRO_VERSION)/python-$(PYTHON_PKG_VERSION)-macos11.pkg
 
 ###########################################################################
 # Build for specified target (from $(TARGETS-*))
@@ -522,7 +527,7 @@ ifeq ($(os),macOS)
 PYTHON_FRAMEWORK-$(os)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
 
 $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
-		downloads/python-$(PYTHON_VERSION)-macos11.pkg
+		downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg
 	@echo ">>> Repackage macOS package as XCFramework"
 
 	# Unpack .pkg file. It turns out .pkg files are readable by tar... although
@@ -530,7 +535,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# is a tarball that contains additional tarballs; the inner tarball has the
 	# "payload" that is the framework.
 	mkdir -p build/macOS/macosx/python-$(PYTHON_VERSION)
-	tar zxf downloads/python-$(PYTHON_VERSION)-macos11.pkg -C build/macOS/macosx/python-$(PYTHON_VERSION)
+	tar zxf downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg -C build/macOS/macosx/python-$(PYTHON_VERSION)
 
 	# Unpack payload inside .pkg file
 	mkdir -p $$(PYTHON_FRAMEWORK-macosx)
