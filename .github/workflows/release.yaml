@@ -42,7 +42,7 @@ jobs:
     - name: Get build artifacts
       uses: actions/download-artifact@v4.1.8
       with:
-        pattern: dist-*
+        pattern: Python-*
         path: dist
         merge-multiple: true
 
