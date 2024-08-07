@@ -37,14 +37,14 @@ jobs:
         python -m pip install -U setuptools
         python -m pip install awscli
         # macOS build
-        curl -o macOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PY_VERSION }}-macOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        aws s3 cp macOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PY_VERSION }}/macOS/Python-${{ steps.build-vars.outputs.PY_VERSION }}-macOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        curl -o macOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-macOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        aws s3 cp macOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/macOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-macOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
         # iOS build
-        curl -o iOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PY_VERSION }}-iOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        aws s3 cp iOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PY_VERSION }}/iOS/Python-${{ steps.build-vars.outputs.PY_VERSION }}-iOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        curl -o iOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-iOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        aws s3 cp iOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/iOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-iOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
         # tvOS build
-        curl -o tvOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PY_VERSION }}-tvOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        aws s3 cp tvOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PY_VERSION }}/tvOS/Python-${{ steps.build-vars.outputs.PY_VERSION }}-tvOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        curl -o tvOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-tvOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        aws s3 cp tvOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/tvOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-tvOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
         # watchOS build
-        curl -o watchOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PY_VERSION }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        aws s3 cp watchOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PY_VERSION }}/watchOS/Python-${{ steps.build-vars.outputs.PY_VERSION }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        curl -o watchOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        aws s3 cp watchOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/watchOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
