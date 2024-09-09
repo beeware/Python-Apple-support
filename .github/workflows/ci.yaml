@@ -103,7 +103,7 @@ jobs:
     - uses: actions/checkout@v4.1.7
 
     - name: Set up Python
-      uses: actions/setup-python@v5.1.1
+      uses: actions/setup-python@v5.2.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -115,7 +115,7 @@ jobs:
         make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
-      uses: actions/upload-artifact@v4.3.5
+      uses: actions/upload-artifact@v4.4.0
       with:
         name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
@@ -125,20 +125,15 @@ jobs:
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
-        # TODO - remove the py3.13 reference option.
-        ref: py3.13-support
 
     - name: Install dependencies
       if: matrix.run-tests
       run: |
-        # TODO - Revert to the development version of Briefcase
         # Use the development version of Briefcase
-        # python -m pip install git+https://github.com/beeware/briefcase.git
-        python -m pip install git+https://github.com/freakboy3742/briefcase.git@version-bumps
+        python -m pip install git+https://github.com/beeware/briefcase.git
 
     - name: Run support testbed check
       if: matrix.run-tests
       timeout-minutes: 10
       working-directory: Python-support-testbed
-      # TODO - remove the template_branch option.
-      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\' -C template_branch=\'framework-lib\'
+      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\'
