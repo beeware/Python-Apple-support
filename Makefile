@@ -28,8 +28,8 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 # https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
 LIBFFI_VERSION=3.4.6-1
-OPENSSL_VERSION=3.0.14-1
-XZ_VERSION=5.4.7-1
+OPENSSL_VERSION=3.0.15-1
+XZ_VERSION=5.6.2-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -151,7 +151,7 @@ downloads/bzip2-$(BZIP2_VERSION)-$(target).tar.gz:
 $$(BZIP2_LIB-$(target)): downloads/bzip2-$(BZIP2_VERSION)-$(target).tar.gz
 	@echo ">>> Install BZip2 for $(target)"
 	mkdir -p $$(BZIP2_INSTALL-$(target))
-	cd $$(BZIP2_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/bzip2-$(BZIP2_VERSION)-$(target).tar.gz
+	cd $$(BZIP2_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/bzip2-$(BZIP2_VERSION)-$(target).tar.gz --exclude="*.dylib"
 	# Ensure the target is marked as clean.
 	touch $$(BZIP2_LIB-$(target))
 
@@ -171,7 +171,7 @@ downloads/xz-$(XZ_VERSION)-$(target).tar.gz:
 $$(XZ_LIB-$(target)): downloads/xz-$(XZ_VERSION)-$(target).tar.gz
 	@echo ">>> Install XZ for $(target)"
 	mkdir -p $$(XZ_INSTALL-$(target))
-	cd $$(XZ_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/xz-$(XZ_VERSION)-$(target).tar.gz
+	cd $$(XZ_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/xz-$(XZ_VERSION)-$(target).tar.gz --exclude="*.dylib"
 	# Ensure the target is marked as clean.
 	touch $$(XZ_LIB-$(target))
 
@@ -191,7 +191,7 @@ downloads/openssl-$(OPENSSL_VERSION)-$(target).tar.gz:
 $$(OPENSSL_SSL_LIB-$(target)): downloads/openssl-$(OPENSSL_VERSION)-$(target).tar.gz
 	@echo ">>> Install OpenSSL for $(target)"
 	mkdir -p $$(OPENSSL_INSTALL-$(target))
-	cd $$(OPENSSL_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/openssl-$(OPENSSL_VERSION)-$(target).tar.gz
+	cd $$(OPENSSL_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/openssl-$(OPENSSL_VERSION)-$(target).tar.gz --exclude="*.dylib"
 	# Ensure the target is marked as clean.
 	touch $$(OPENSSL_SSL_LIB-$(target))
 
@@ -216,7 +216,7 @@ downloads/libffi-$(LIBFFI_VERSION)-$(target).tar.gz:
 $$(LIBFFI_LIB-$(target)): downloads/libffi-$(LIBFFI_VERSION)-$(target).tar.gz
 	@echo ">>> Install libFFI for $(target)"
 	mkdir -p $$(LIBFFI_INSTALL-$(target))
-	cd $$(LIBFFI_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/libffi-$(LIBFFI_VERSION)-$(target).tar.gz
+	cd $$(LIBFFI_INSTALL-$(target)) && tar zxvf $(PROJECT_DIR)/downloads/libffi-$(LIBFFI_VERSION)-$(target).tar.gz --exclude="*.dylib"
 	# Ensure the target is marked as clean.
 	touch $$(LIBFFI_LIB-$(target))
 
