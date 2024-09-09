@@ -2,7 +2,21 @@
 # when building macOS Python-Apple-support tarballs from the official Framework
 # It is used by `tar -X` during the Makefile build.
 #
+._Headers
+._Python
+._Resources
+Resources/._Python.app
 Resources/Python.app
+Versions/._Current
+Versions/*/.__CodeSignature
+Versions/*/._bin
+Versions/*/._etc
+Versions/*/._Frameworks
+Versions/*/._Headers
+Versions/*/._include
+Versions/*/._lib
+Versions/*/._Resources
+Versions/*/._share
 Versions/*/bin
 Versions/*/etc
 Versions/*/Frameworks
