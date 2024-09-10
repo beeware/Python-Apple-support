@@ -8,7 +8,6 @@ into a macOS, iOS, tvOS or watchOS project.
 Other Python versions are available by cloning other branches of the main
 repository:
 
-* `Python 3.9 <https://github.com/beeware/Python-Apple-support/tree/3.9>`__
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.11 <https://github.com/beeware/Python-Apple-support/tree/3.11>`__
 * `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
