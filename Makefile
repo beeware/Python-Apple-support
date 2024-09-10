@@ -580,6 +580,8 @@ dist/Python-$(PYTHON_VER)-macOS-support.$(BUILD_NUMBER).tar.gz: \
 
 	@echo ">>> Create final distribution artefact for macOS"
 	mkdir -p dist
+	# Strip xattrs from the support files
+	xattr -cr support/$(PYTHON_VER)/macOS
 	# Build a distributable tarball
 	tar zcvf $$@ -C support/$(PYTHON_VER)/macOS `ls -A support/$(PYTHON_VER)/macOS/`
 
