@@ -128,8 +128,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+IS_SIMULATOR-$(target)="False"
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+IS_SIMULATOR-$(target)="True"
 	endif
 endif
 
@@ -297,6 +299,9 @@ $$(PYTHON_SITECUSTOMIZE-$(target)):
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.$(os).py \
 		| sed -e "s/{{os}}/$(os)/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
+		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
+		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(SDK-$(target))/g" \
 		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(SDK-$(target))/g" \
 		> $$(PYTHON_SITECUSTOMIZE-$(target))
 

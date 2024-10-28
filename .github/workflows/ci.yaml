@@ -115,7 +115,7 @@ jobs:
         make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
-      uses: actions/upload-artifact@v4.4.0
+      uses: actions/upload-artifact@v4.4.3
       with:
         name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
