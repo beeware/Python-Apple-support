@@ -101,6 +101,9 @@ sys.modules["distutils.disabledcompiler"] = disabled_mod
 for tool in ["ar", "as", "cc", "cxx", "ld"]:
     os.environ[tool.upper()] = DISABLED_COMPILER_ERROR.replace(" ", "_")
 
+# Although we're building for {{os}}, we need to tell distutils.sysconfig
+# to load the *native* sysconfigdata.
+os.environ["_PYTHON_SYSCONFIGDATA_NAME"] = "_sysconfigdata__darwin_darwin"
 
 # Call the next sitecustomize script if there is one
 # (https://nedbatchelder.com/blog/201001/running_code_at_python_startup.html).
