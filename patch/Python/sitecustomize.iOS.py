@@ -2,6 +2,7 @@
 # packages cross-platform. If the folder containing this file is on
 # your PYTHONPATH when you invoke pip, pip will behave as if it were
 # running on {{os}}.
+import collections
 import distutils.ccompiler
 import distutils.unixccompiler
 import os
@@ -16,7 +17,21 @@ def custom_system():
 
 platform.system = custom_system
 
-# Make sysconfig.get_platform() return "{{tag}}"
+# Make platform.ios_ver() return an appropriate namedtuple
+IOSVersionInfo = collections.namedtuple(
+    "IOSVersionInfo",
+    ["system", "release", "model", "is_simulator"]
+)
+
+def custom_ios_ver(system="", release="", model="", is_simulator=False):
+    return IOSVersionInfo("{{os}}", "{{version_min}}", "iPhone", {{is_simulator}})
+
+platform.ios_ver = custom_ios_ver
+
+# Make sys.implementation._multiarch return the multiarch description
+sys.implementation._multiarch = "{{multiarch}}"
+
+# Make sysconfig.get_platform() return the platform tag
 def custom_get_platform():
     return "{{tag}}"
 
