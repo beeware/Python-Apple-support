@@ -7948,62 +7948,62 @@ index d0d54050286..46d3019c5ca 100644
 +++ b/iOS/Resources/bin/arm64-apple-ios-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -9135,62 +9135,62 @@ index d0d54050286..46d3019c5ca 100644
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -9382,62 +9382,62 @@ index d0d54050286..46d3019c5ca 100644
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E $@
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
