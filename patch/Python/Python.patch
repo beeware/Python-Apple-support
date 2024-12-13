@@ -1,3 +1,25 @@
+diff --git a/Doc/c-api/init_config.rst b/Doc/c-api/init_config.rst
+index 15794fb5fc5..e3999a60f16 100644
+--- a/Doc/c-api/init_config.rst
++++ b/Doc/c-api/init_config.rst
+@@ -1101,6 +1101,17 @@
+ 
+       Default: ``1`` in Python config and ``0`` in isolated config.
+ 
++   .. c:member:: int use_system_logger
++
++      If non-zero, ``stdout`` and ``stderr`` will be redirected to the system
++      log.
++
++      Only available on macOS 10.12 and later, and on iOS.
++
++      Default: ``0`` (don't use system log).
++
++      .. versionadded:: 3.13.2
++
+    .. c:member:: int user_site_directory
+ 
+       If non-zero, add the user site directory to :data:`sys.path`.
 diff --git a/Doc/library/importlib.rst b/Doc/library/importlib.rst
 index 21c19903464..61baa722359 100644
 --- a/Doc/library/importlib.rst
@@ -323,6 +345,89 @@ index 9ae0270eaee..2bb14d88dc9 100644
  Other Resources
  ===============
  
+diff --git a/Include/cpython/initconfig.h b/Include/cpython/initconfig.h
+index 583165bee48..a0f3c418360 100644
+--- a/Include/cpython/initconfig.h
++++ b/Include/cpython/initconfig.h
+@@ -173,6 +173,9 @@
+     int legacy_windows_stdio;
+ #endif
+     wchar_t *check_hash_pycs_mode;
++#ifdef __APPLE__
++    int use_system_logger;
++#endif
+ 
+     /* --- Path configuration inputs ------------ */
+     int pathconfig_warnings;
+--- /dev/null
++++ b/Lib/_apple_support.py
+@@ -0,0 +1,66 @@
++import io
++import sys
++
++
++def init_streams(log_write, stdout_level, stderr_level):
++    # Redirect stdout and stderr to the Apple system log. This method is
++    # invoked by init_apple_streams() (initconfig.c) if config->use_system_logger
++    # is enabled.
++    sys.stdout = SystemLog(log_write, stdout_level, errors=sys.stderr.errors)
++    sys.stderr = SystemLog(log_write, stderr_level, errors=sys.stderr.errors)
++
++
++class SystemLog(io.TextIOWrapper):
++    def __init__(self, log_write, level, **kwargs):
++        kwargs.setdefault("encoding", "UTF-8")
++        kwargs.setdefault("line_buffering", True)
++        super().__init__(LogStream(log_write, level), **kwargs)
++
++    def __repr__(self):
++        return f"<SystemLog (level {self.buffer.level})>"
++
++    def write(self, s):
++        if not isinstance(s, str):
++            raise TypeError(
++                f"write() argument must be str, not {type(s).__name__}")
++
++        # In case `s` is a str subclass that writes itself to stdout or stderr
++        # when we call its methods, convert it to an actual str.
++        s = str.__str__(s)
++
++        # We want to emit one log message per line, so split
++        # the string before sending it to the superclass.
++        for line in s.splitlines(keepends=True):
++            super().write(line)
++
++        return len(s)
++
++
++class LogStream(io.RawIOBase):
++    def __init__(self, log_write, level):
++        self.log_write = log_write
++        self.level = level
++
++    def __repr__(self):
++        return f"<LogStream (level {self.level!r})>"
++
++    def writable(self):
++        return True
++
++    def write(self, b):
++        if type(b) is not bytes:
++            try:
++                b = bytes(memoryview(b))
++            except TypeError:
++                raise TypeError(
++                    f"write() argument must be bytes-like, not {type(b).__name__}"
++                ) from None
++
++        # Writing an empty string to the stream should have no effect.
++        if b:
++            # Encode null bytes using "modified UTF-8" to avoid truncating the
++            # message. This should not affect the return value, as the caller
++            # may be expecting it to match the length of the input.
++            self.log_write(self.level, b.replace(b"\x00", b"\xc0\x80"))
++
++        return len(b)
 --- /dev/null
 +++ b/Lib/_ios_support.py
 @@ -0,0 +1,71 @@
@@ -1302,6 +1407,164 @@ index 38c499bf722..8de55306053 100644
 +    """
 +    return tempfile.mktemp(prefix="test_python_", suffix='.sock',
 +                           dir=os.path.curdir)
+--- /dev/null
++++ b/Lib/test/test_apple.py
+@@ -0,0 +1,155 @@
++import unittest
++from _apple_support import SystemLog
++from test.support import is_apple
++from unittest.mock import Mock, call
++
++if not is_apple:
++    raise unittest.SkipTest("Apple-specific")
++
++
++# Test redirection of stdout and stderr to the Apple system log.
++class TestAppleSystemLogOutput(unittest.TestCase):
++    maxDiff = None
++
++    def assert_writes(self, output):
++        self.assertEqual(
++            self.log_write.mock_calls,
++            [
++                call(self.log_level, line)
++                for line in output
++            ]
++        )
++
++        self.log_write.reset_mock()
++
++    def setUp(self):
++        self.log_write = Mock()
++        self.log_level = 42
++        self.log = SystemLog(self.log_write, self.log_level, errors="replace")
++
++    def test_repr(self):
++        self.assertEqual(repr(self.log), "<SystemLog (level 42)>")
++        self.assertEqual(repr(self.log.buffer), "<LogStream (level 42)>")
++
++    def test_log_config(self):
++        self.assertIs(self.log.writable(), True)
++        self.assertIs(self.log.readable(), False)
++
++        self.assertEqual("UTF-8", self.log.encoding)
++        self.assertEqual("replace", self.log.errors)
++
++        self.assertIs(self.log.line_buffering, True)
++        self.assertIs(self.log.write_through, False)
++
++    def test_empty_str(self):
++        self.log.write("")
++        self.log.flush()
++
++        self.assert_writes([])
++
++    def test_simple_str(self):
++        self.log.write("hello world\n")
++
++        self.assert_writes([b"hello world\n"])
++
++    def test_buffered_str(self):
++        self.log.write("h")
++        self.log.write("ello")
++        self.log.write(" ")
++        self.log.write("world\n")
++        self.log.write("goodbye.")
++        self.log.flush()
++
++        self.assert_writes([b"hello world\n", b"goodbye."])
++
++    def test_manual_flush(self):
++        self.log.write("Hello")
++
++        self.assert_writes([])
++
++        self.log.write(" world\nHere for a while...\nGoodbye")
++        self.assert_writes([b"Hello world\n", b"Here for a while...\n"])
++
++        self.log.write(" world\nHello again")
++        self.assert_writes([b"Goodbye world\n"])
++
++        self.log.flush()
++        self.assert_writes([b"Hello again"])
++
++    def test_non_ascii(self):
++        # Spanish
++        self.log.write("ol\u00e9\n")
++        self.assert_writes([b"ol\xc3\xa9\n"])
++
++        # Chinese
++        self.log.write("\u4e2d\u6587\n")
++        self.assert_writes([b"\xe4\xb8\xad\xe6\x96\x87\n"])
++
++        # Printing Non-BMP emoji
++        self.log.write("\U0001f600\n")
++        self.assert_writes([b"\xf0\x9f\x98\x80\n"])
++
++        # Non-encodable surrogates are replaced
++        self.log.write("\ud800\udc00\n")
++        self.assert_writes([b"??\n"])
++
++    def test_modified_null(self):
++        # Null characters are logged using "modified UTF-8".
++        self.log.write("\u0000\n")
++        self.assert_writes([b"\xc0\x80\n"])
++        self.log.write("a\u0000\n")
++        self.assert_writes([b"a\xc0\x80\n"])
++        self.log.write("\u0000b\n")
++        self.assert_writes([b"\xc0\x80b\n"])
++        self.log.write("a\u0000b\n")
++        self.assert_writes([b"a\xc0\x80b\n"])
++
++    def test_nonstandard_str(self):
++        # String subclasses are accepted, but they should be converted
++        # to a standard str without calling any of their methods.
++        class CustomStr(str):
++            def splitlines(self, *args, **kwargs):
++                raise AssertionError()
++
++            def __len__(self):
++                raise AssertionError()
++
++            def __str__(self):
++                raise AssertionError()
++
++        self.log.write(CustomStr("custom\n"))
++        self.assert_writes([b"custom\n"])
++
++    def test_non_str(self):
++        # Non-string classes are not accepted.
++        for obj in [b"", b"hello", None, 42]:
++            with self.subTest(obj=obj):
++                with self.assertRaisesRegex(
++                    TypeError,
++                    fr"write\(\) argument must be str, not "
++                    fr"{type(obj).__name__}"
++                ):
++                    self.log.write(obj)
++
++    def test_byteslike_in_buffer(self):
++        # The underlying buffer *can* accept bytes-like objects
++        self.log.buffer.write(bytearray(b"hello"))
++        self.log.flush()
++
++        self.log.buffer.write(b"")
++        self.log.flush()
++
++        self.log.buffer.write(b"goodbye")
++        self.log.flush()
++
++        self.assert_writes([b"hello", b"goodbye"])
++
++    def test_non_byteslike_in_buffer(self):
++        for obj in ["hello", None, 42]:
++            with self.subTest(obj=obj):
++                with self.assertRaisesRegex(
++                    TypeError,
++                    fr"write\(\) argument must be bytes-like, not "
++                    fr"{type(obj).__name__}"
++                ):
++                    self.log.buffer.write(obj)
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
 index 253a6c119c9..1640193c798 100644
 --- a/Lib/test/test_asyncio/test_events.py
@@ -1620,7 +1883,7 @@ index 404a13a0bcc..ffe6053aeb8 100644
          module = importlib.util.module_from_spec(spec)
          loader.exec_module(module)
 diff --git a/Lib/test/test_cmd_line_script.py b/Lib/test/test_cmd_line_script.py
-index ccacfd606d1..7c6718ff8a1 100644
+index 86bcafcf0e3..529d9fd61e7 100644
 --- a/Lib/test/test_cmd_line_script.py
 +++ b/Lib/test/test_cmd_line_script.py
 @@ -14,8 +14,7 @@
@@ -1783,7 +2046,7 @@ index 8a436ad123b..4fa7571fe43 100644
          command = self.generate_trace_command(script_file, subcommand)
          stdout, _ = subprocess.Popen(command,
 diff --git a/Lib/test/test_embed.py b/Lib/test/test_embed.py
-index 8c343f37210..f13b5a1745b 100644
+index 8c343f37210..f36c1aef84e 100644
 --- a/Lib/test/test_embed.py
 +++ b/Lib/test/test_embed.py
 @@ -72,6 +72,7 @@
@@ -1794,7 +2057,16 @@ index 8c343f37210..f13b5a1745b 100644
      def run_embedded_interpreter(self, *args, env=None,
                                   timeout=None, returncode=0, input=None,
                                   cwd=None):
-@@ -1421,6 +1422,7 @@
+@@ -438,6 +439,8 @@
+         CONFIG_COMPAT.update({
+             'legacy_windows_stdio': 0,
+         })
++    if support.is_apple:
++        CONFIG_COMPAT['use_system_logger'] = False
+ 
+     CONFIG_PYTHON = dict(CONFIG_COMPAT,
+         _config_init=API_PYTHON,
+@@ -1421,6 +1424,7 @@
  
  
  class SetConfigTests(unittest.TestCase):
@@ -4873,7 +5145,7 @@ index c70e1fa9ae1..18086ac55b9 100644
          libpath = os.path.dirname(os.path.dirname(encodings.__file__))
          exe_prefix = os.path.dirname(sys.executable)
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index 4c8f55d3e13..9cbe03d8838 100644
+index 0050298b416..99d267a663e 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -3,6 +3,7 @@
@@ -5036,7 +5308,7 @@ index 2e1e2c349c8..867c4723086 100644
  from test.support.os_helper import TESTFN
  
 diff --git a/Lib/test/test_subprocess.py b/Lib/test/test_subprocess.py
-index 139ef41e573..da888591222 100644
+index 0d3afe612a3..3fc38f8a754 100644
 --- a/Lib/test/test_subprocess.py
 +++ b/Lib/test/test_subprocess.py
 @@ -48,6 +48,8 @@
@@ -5315,12 +5587,12 @@ index fe17aac6c1f..0df55745afd 100644
          # A file reading from a pipe.
          # A pipe cannot be seek'ed.  There is no way to determine the
 diff --git a/Lib/test/test_venv.py b/Lib/test/test_venv.py
-index fea986b9d86..f25fd5916e4 100644
+index d8ee66e4990..ebbd71aabe7 100644
 --- a/Lib/test/test_venv.py
 +++ b/Lib/test/test_venv.py
-@@ -16,7 +16,8 @@
- import sys
+@@ -17,7 +17,8 @@
  import tempfile
+ import shlex
  from test.support import (captured_stdout, captured_stderr, requires_zlib,
 -                          skip_if_broken_multiprocessing_synchronize)
 +                          skip_if_broken_multiprocessing_synchronize,
@@ -5328,7 +5600,7 @@ index fea986b9d86..f25fd5916e4 100644
  from test.support.os_helper import (can_symlink, EnvironmentVarGuard, rmtree)
  import unittest
  import venv
-@@ -34,6 +35,12 @@
+@@ -35,6 +36,12 @@
      or sys._base_executable != sys.executable,
      'cannot run venv.create from within a venv on this platform')
  
@@ -5652,7 +5924,7 @@ index ec3cece48c9..34a772ab3c4 100755
 @@ -0,0 +1 @@
 +# No compliance patching required.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index fa99dd86c41..6a84a1b0c50 100644
+index fa99dd86c41..f6aa9d68d57 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -170,18 +170,29 @@
@@ -5769,7 +6041,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1236,6 +1273,54 @@
+@@ -1236,6 +1273,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -5778,7 +6050,6 @@ index fa99dd86c41..6a84a1b0c50 100644
 +# This must be run *after* a `make install` has completed the build. The
 +# `--with-framework-name` argument *cannot* be used when configuring the build.
 +XCFOLDER:=iOSTestbed.$(MULTIARCH).$(shell date +%s)
-+XCRESULT=$(XCFOLDER)/$(MULTIARCH).xcresult
 +.PHONY: testios
 +testios:
 +	@if test "$(MACHDEP)" != "ios"; then \
@@ -5797,34 +6068,17 @@ index fa99dd86c41..6a84a1b0c50 100644
 +		echo "Cannot find a finalized iOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
 +		exit 1;\
 +	fi
-+	# Copy the testbed project into the build folder
-+	cp -r $(srcdir)/iOS/testbed $(XCFOLDER)
-+	# Copy the framework from the install location to the testbed project.
-+	cp -r $(PYTHONFRAMEWORKPREFIX)/* $(XCFOLDER)/Python.xcframework/ios-arm64_x86_64-simulator
 +
-+	# Run the test suite for the Xcode project, targeting the iOS simulator.
-+	# If the suite fails, touch a file in the test folder as a marker
-+	if ! xcodebuild test -project $(XCFOLDER)/iOSTestbed.xcodeproj -scheme "iOSTestbed" -destination "platform=iOS Simulator,name=iPhone SE (3rd Generation)" -resultBundlePath $(XCRESULT) -derivedDataPath $(XCFOLDER)/DerivedData ; then \
-+	 	touch $(XCFOLDER)/failed; \
-+	fi
++	# Clone the testbed project into the XCFOLDER
++	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
 +
-+	# Regardless of success or failure, extract and print the test output
-+	xcrun xcresulttool get --path $(XCRESULT) \
-+		--id $$( \
-+			xcrun xcresulttool get --path $(XCRESULT) --format json | \
-+			$(PYTHON_FOR_BUILD) -c "import sys, json; result = json.load(sys.stdin); print(result['actions']['_values'][0]['actionResult']['logRef']['id']['_value'])" \
-+		) \
-+		--format json | \
-+		$(PYTHON_FOR_BUILD) -c "import sys, json; result = json.load(sys.stdin); print(result['subsections']['_values'][1]['subsections']['_values'][0]['emittedOutput']['_value'])"
-+
-+	@if test -e $(XCFOLDER)/failed ; then \
-+		exit 1; \
-+	fi
++	# Run the testbed project
++	$(PYTHON_FOR_BUILD) "$(XCFOLDER)" run --verbose -- test -uall --single-process --rerun -W
 +
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  buildbottest:	build_all platform
-@@ -1264,7 +1349,11 @@
+@@ -1264,7 +1331,11 @@
  multissltest: build_all
  	$(RUNSHARED) ./$(BUILDPYTHON) $(srcdir)/Tools/ssl/multissltests.py
  
@@ -5837,7 +6091,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -1601,7 +1690,16 @@
+@@ -1601,7 +1672,16 @@
  		$(INSTALL_DATA) $(srcdir)/Modules/xxmodule.c \
  			$(DESTDIR)$(LIBDEST)/distutils/tests ; \
  	fi
@@ -5855,7 +6109,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
  		-j0 -d $(LIBDEST) -f \
  		-x 'bad_coding|badsyntax|site-packages|lib2to3/tests/data' \
-@@ -1771,9 +1869,11 @@
+@@ -1771,9 +1851,11 @@
  # automatically set prefix to the location deep down in the framework, so we
  # only have to cater for the structural bits of the framework.
  
@@ -5869,7 +6123,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -1794,6 +1894,27 @@
+@@ -1794,6 +1876,27 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -5897,7 +6151,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -1828,6 +1949,19 @@
+@@ -1828,6 +1931,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -5917,7 +6171,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= $(SHELL) config.status
-@@ -1928,6 +2062,10 @@
+@@ -1928,6 +2044,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -5928,7 +6182,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  
  profile-removal:
  	find . -name '*.gc??' -exec rm -f {} ';'
-@@ -1949,6 +2087,8 @@
+@@ -1949,6 +2069,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -5937,7 +6191,7 @@ index fa99dd86c41..6a84a1b0c50 100644
  	-rm -f python-config.py python-config
  
  # Make things extra clean, before making a distribution:
-@@ -2028,7 +2168,7 @@
+@@ -2028,7 +2150,7 @@
  .PHONY: all build_all sharedmods check-clean-src oldsharedmods test quicktest
  .PHONY: install altinstall oldsharedinstall bininstall altbininstall
  .PHONY: maninstall libinstall inclinstall libainstall sharedinstall
@@ -11439,6 +11693,50 @@ index e77ca4c2194..724aefabdee 100644
 +    18,45,18,25,14,53,14,69,14,49,0,127,14,32,0,127,
 +    16,28,10,42,8,23,8,18,12,5,
  };
+diff --git a/Python/initconfig.c b/Python/initconfig.c
+index 1e10e6659cb..a3e80eb196e 100644
+--- a/Python/initconfig.c
++++ b/Python/initconfig.c
+@@ -644,6 +644,9 @@
+     assert(config->check_hash_pycs_mode != NULL);
+     assert(config->_install_importlib >= 0);
+     assert(config->pathconfig_warnings >= 0);
++#ifdef __APPLE__
++    assert(config->use_system_logger >= 0);
++#endif
+     return 1;
+ }
+ #endif
+@@ -728,6 +731,9 @@
+ #ifdef MS_WINDOWS
+     config->legacy_windows_stdio = -1;
+ #endif
++#ifdef __APPLE__
++    config->use_system_logger = 0;
++#endif
+ }
+ 
+ /* Excluded from public struct PyConfig for backporting reasons. */
+@@ -757,6 +763,9 @@
+ #ifdef MS_WINDOWS
+     config->legacy_windows_stdio = 0;
+ #endif
++#ifdef __APPLE__
++    config->use_system_logger = 0;
++#endif
+ }
+ 
+ 
+@@ -789,6 +798,9 @@
+ #ifdef MS_WINDOWS
+     config->legacy_windows_stdio = 0;
+ #endif
++#ifdef __APPLE__
++    config->use_system_logger = 0;
++#endif
+ }
+ 
+ 
 diff --git a/Python/marshal.c b/Python/marshal.c
 index 67540e08ed9..062e3047fb8 100644
 --- a/Python/marshal.c
@@ -11469,11 +11767,140 @@ index 67540e08ed9..062e3047fb8 100644
  #endif
  
  #define TYPE_NULL               '0'
+diff --git a/Python/pylifecycle.c b/Python/pylifecycle.c
+index b0c5da56c4f..3e1c8674030 100644
+--- a/Python/pylifecycle.c
++++ b/Python/pylifecycle.c
+@@ -18,7 +18,9 @@
+ #include <locale.h>               // setlocale()
+ 
+ #if defined(__APPLE__)
+-#include <mach-o/loader.h>
++#  include <AvailabilityMacros.h>
++#  include <mach-o/loader.h>
++#  include <os/log.h>
+ #endif
+ 
+ #ifdef HAVE_SIGNAL_H
+@@ -58,6 +60,9 @@
+ static PyStatus init_import_site(void);
+ static PyStatus init_set_builtins_open(void);
+ static PyStatus init_sys_streams(PyThreadState *tstate);
++#if defined(__APPLE__)
++static PyStatus init_apple_streams(PyThreadState *tstate);
++#endif
+ static void wait_for_thread_shutdown(PyThreadState *tstate);
+ static void call_ll_exitfuncs(_PyRuntimeState *runtime);
+ 
+@@ -1126,6 +1131,19 @@
+         return status;
+     }
+ 
++#if defined(__APPLE__)
++    if (config->use_system_logger) {
++        status = init_apple_streams(tstate);
++        if (_PyStatus_EXCEPTION(status)) {
++            return status;
++        }
++    }
++#endif
++
++#ifdef Py_DEBUG
++    run_presite(tstate);
++#endif
++
+     status = add_main_module(interp);
+     if (_PyStatus_EXCEPTION(status)) {
+         return status;
+@@ -2408,6 +2426,75 @@
+     return res;
+ }
+ 
++#if defined(__APPLE__)
++
++static PyObject *
++apple_log_write_impl(PyObject *self, PyObject *args)
++{
++    int logtype = 0;
++    const char *text = NULL;
++    if (!PyArg_ParseTuple(args, "iy", &logtype, &text)) {
++        return NULL;
++    }
++
++    // Call the underlying Apple logging API. The os_log unified logging APIs
++    // were introduced in macOS 10.12, iOS 10.0, tvOS 10.0, and watchOS 3.0;
++    // this call is a no-op on older versions.
++    #if TARGET_OS_IPHONE || (TARGET_OS_OSX && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12)
++    // Pass the user-provided text through explicit %s formatting
++    // to avoid % literals being interpreted as a formatting directive.
++    os_log_with_type(OS_LOG_DEFAULT, logtype, "%s", text);
++    #endif
++    Py_RETURN_NONE;
++}
++
++
++static PyMethodDef apple_log_write_method = {
++    "apple_log_write", apple_log_write_impl, METH_VARARGS
++};
++
++
++static PyStatus
++init_apple_streams(PyThreadState *tstate)
++{
++    PyStatus status = _PyStatus_OK();
++    PyObject *_apple_support = NULL;
++    PyObject *apple_log_write = NULL;
++    PyObject *result = NULL;
++
++    _apple_support = PyImport_ImportModule("_apple_support");
++    if (_apple_support == NULL) {
++        goto error;
++    }
++
++    apple_log_write = PyCFunction_New(&apple_log_write_method, NULL);
++    if (apple_log_write == NULL) {
++        goto error;
++    }
++
++    // Initialize the logging streams, sending stdout -> Default; stderr -> Error
++    result = PyObject_CallMethod(
++        _apple_support, "init_streams", "Oii",
++        apple_log_write, OS_LOG_TYPE_DEFAULT, OS_LOG_TYPE_ERROR);
++    if (result == NULL) {
++        goto error;
++    }
++
++    goto done;
++
++error:
++    _PyErr_Print(tstate);
++    status = _PyStatus_ERR("failed to initialize Apple log streams");
++
++done:
++    Py_XDECREF(result);
++    Py_XDECREF(apple_log_write);
++    Py_XDECREF(_apple_support);
++    return status;
++}
++
++#endif  // __APPLE__
++
+ 
+ static void
+ _Py_FatalError_DumpTracebacks(int fd, PyInterpreterState *interp,
 diff --git a/Python/stdlib_module_names.h b/Python/stdlib_module_names.h
-index 50cf340e543..bd2c036bb53 100644
+index 50cf340e543..c1d391e5229 100644
 --- a/Python/stdlib_module_names.h
 +++ b/Python/stdlib_module_names.h
-@@ -40,6 +40,7 @@
+@@ -5,6 +5,7 @@
+ "__future__",
+ "_abc",
+ "_aix_support",
++"_apple_support",
+ "_ast",
+ "_asyncio",
+ "_bisect",
+@@ -40,6 +41,7 @@
  "_heapq",
  "_imp",
  "_io",
@@ -14783,7 +15210,7 @@ index ac3be3850a9..4bfd669aa87 100644
      [install],[ENSUREPIP=install],
 --- /dev/null
 +++ b/iOS/README.rst
-@@ -0,0 +1,344 @@
+@@ -0,0 +1,377 @@
 +====================
 +Python on iOS README
 +====================
@@ -15073,36 +15500,69 @@ index ac3be3850a9..4bfd669aa87 100644
 +* Install the Python iOS framework into the copy of the testbed project; and
 +* Run the test suite on an "iPhone SE (3rd generation)" simulator.
 +
-+While the test suite is running, Xcode does not display any console output.
-+After showing some Xcode build commands, the console output will print ``Testing
-+started``, and then appear to stop. It will remain in this state until the test
-+suite completes. On a 2022 M1 MacBook Pro, the test suite takes approximately 12
-+minutes to run; a couple of extra minutes is required to boot and prepare the
-+iOS simulator.
-+
 +On success, the test suite will exit and report successful completion of the
-+test suite. No output of the Python test suite will be displayed.
-+
-+On failure, the output of the Python test suite *will* be displayed. This will
-+show the details of the tests that failed.
++test suite. On a 2022 M1 MacBook Pro, the test suite takes approximately 15
++minutes to run; a couple of extra minutes is required to compile the testbed
++project, and then boot and prepare the iOS simulator.
 +
 +Debugging test failures
 +-----------------------
 +
-+The easiest way to diagnose a single test failure is to open the testbed project
-+in Xcode and run the tests from there using the "Product > Test" menu item.
++Running ``make test`` generates a standalone version of the ``iOS/testbed``
++project, and runs the full test suite. It does this using ``iOS/testbed``
++itself - the folder is an executable module that can be used to create and run
++a clone of the testbed project.
++
++You can generate your own standalone testbed instance by running::
++
++    $ python iOS/testbed clone --framework iOS/Frameworks/arm64-iphonesimulator my-testbed
++
++This invocation assumes that ``iOS/Frameworks/arm64-iphonesimulator`` is the
++path to the iOS simulator framework for your platform (ARM64 in this case);
++``my-testbed`` is the name of the folder for the new testbed clone.
++
++You can then use the ``my-testbed`` folder to run the Python test suite,
++passing in any command line arguments you may require. For example, if you're
++trying to diagnose a failure in the ``os`` module, you might run::
++
++    $ python my-testbed run -- test -W test_os
++
++This is the equivalent of running ``python -m test -W test_os`` on a desktop
++Python build. Any arguments after the ``--`` will be passed to testbed as if
++they were arguments to ``python -m`` on a desktop machine.
++
++You can also open the testbed project in Xcode by running::
++
++    $ open my-testbed/iOSTestbed.xcodeproj
++
++This will allow you to use the full Xcode suite of tools for debugging.
++
++Testing on an iOS device
++^^^^^^^^^^^^^^^^^^^^^^^^
++
++To test on an iOS device, the app needs to be signed with known developer
++credentials. To obtain these credentials, you must have an iOS Developer
++account, and your Xcode install will need to be logged into your account (see
++the Accounts tab of the Preferences dialog).
++
++Once the project is open, and you're signed into your Apple Developer account,
++select the root node of the project tree (labeled "iOSTestbed"), then the
++"Signing & Capabilities" tab in the details page. Select a development team
++(this will likely be your own name), and plug in a physical device to your
++macOS machine with a USB cable. You should then be able to select your physical
++device from the list of targets in the pulldown in the Xcode titlebar.
 +
 +Running specific tests
 +^^^^^^^^^^^^^^^^^^^^^^
 +
 +As the test suite is being executed on an iOS simulator, it is not possible to
-+pass in command line arguments to configure test suite operation. To work around
-+this limitation, the arguments that would normally be passed as command line
-+arguments are configured as a static string at the start of the XCTest method
-+``- (void)testPython`` in ``iOSTestbedTests.m``. To pass an argument to the test
-+suite, add a a string to the ``argv`` defintion. These arguments will be passed
-+to the test suite as if they had been passed to ``python -m test`` at the
-+command line.
++pass in command line arguments to configure test suite operation. To work
++around this limitation, the arguments that would normally be passed as command
++line arguments are configured as part of the ``iOSTestbed-Info.plist`` file
++that is used to configure the iOS testbed app. In this file, the ``TestArgs``
++key is an array containing the arguments that would be passed to ``python -m``
++on the command line (including ``test`` in position 0, the name of the test
++module to be executed).
 +
 +Disabling automated breakpoints
 +^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15169,62 +15629,62 @@ index ac3be3850a9..4bfd669aa87 100644
 +++ b/iOS/Resources/bin/arm64-apple-ios-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E $@
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator "$@"
 --- /dev/null
 +++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E $@
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E "$@"
 --- /dev/null
 +++ b/iOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -15326,8 +15786,418 @@ index ac3be3850a9..4bfd669aa87 100644
 +It should be used as a target for `--enable-framework` when compiling an iOS simulator
 +build for testing purposes (either x86_64 or ARM64).
 --- /dev/null
++++ b/iOS/testbed/__main__.py
+@@ -0,0 +1,407 @@
++import argparse
++import asyncio
++import json
++import plistlib
++import shutil
++import subprocess
++import sys
++from contextlib import asynccontextmanager
++from datetime import datetime
++from itertools import chain
++from pathlib import Path
++
++
++DECODE_ARGS = ("UTF-8", "backslashreplace")
++
++
++# Work around a bug involving sys.exit and TaskGroups
++# (https://github.com/python/cpython/issues/101515).
++def exit(*args):
++    raise MySystemExit(*args)
++
++
++class MySystemExit(Exception):
++    pass
++
++
++# All subprocesses are executed through this context manager so that no matter
++# what happens, they can always be cancelled from another task, and they will
++# always be cleaned up on exit.
++@asynccontextmanager
++async def async_process(*args, **kwargs):
++    process = await asyncio.create_subprocess_exec(*args, **kwargs)
++    try:
++        yield process
++    finally:
++        if process.returncode is None:
++            # Allow a reasonably long time for Xcode to clean itself up,
++            # because we don't want stale emulators left behind.
++            timeout = 10
++            process.terminate()
++            try:
++                await asyncio.wait_for(process.wait(), timeout)
++            except TimeoutError:
++                print(
++                    f"Command {args} did not terminate after {timeout} seconds "
++                    f" - sending SIGKILL"
++                )
++                process.kill()
++
++                # Even after killing the process we must still wait for it,
++                # otherwise we'll get the warning "Exception ignored in __del__".
++                await asyncio.wait_for(process.wait(), timeout=1)
++
++
++async def async_check_output(*args, **kwargs):
++    async with async_process(
++        *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
++    ) as process:
++        stdout, stderr = await process.communicate()
++        if process.returncode == 0:
++            return stdout.decode(*DECODE_ARGS)
++        else:
++            raise subprocess.CalledProcessError(
++                process.returncode,
++                args,
++                stdout.decode(*DECODE_ARGS),
++                stderr.decode(*DECODE_ARGS),
++            )
++
++
++# Return a list of UDIDs associated with booted simulators
++async def list_devices():
++    # List the testing simulators, in JSON format
++    raw_json = await async_check_output(
++        "xcrun", "simctl", "--set", "testing", "list", "-j"
++    )
++    json_data = json.loads(raw_json)
++
++    # Filter out the booted iOS simulators
++    return [
++        simulator["udid"]
++        for runtime, simulators in json_data["devices"].items()
++        for simulator in simulators
++        if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
++    ]
++
++
++async def find_device(initial_devices):
++    while True:
++        new_devices = set(await list_devices()).difference(initial_devices)
++        if len(new_devices) == 0:
++            await asyncio.sleep(1)
++        elif len(new_devices) == 1:
++            udid = new_devices.pop()
++            print(f"{datetime.now():%Y-%m-%d %H:%M:%S}: New test simulator detected")
++            print(f"UDID: {udid}")
++            return udid
++        else:
++            exit(f"Found more than one new device: {new_devices}")
++
++
++async def log_stream_task(initial_devices):
++    # Wait up to 5 minutes for the build to complete and the simulator to boot.
++    udid = await asyncio.wait_for(find_device(initial_devices), 5 * 60)
++
++    # Stream the iOS device's logs, filtering out messages that come from the
++    # XCTest test suite (catching NSLog messages from the test method), or
++    # Python itself (catching stdout/stderr content routed to the system log
++    # with config->use_system_logger).
++    args = [
++        "xcrun",
++        "simctl",
++        "--set",
++        "testing",
++        "spawn",
++        udid,
++        "log",
++        "stream",
++        "--style",
++        "compact",
++        "--predicate",
++        (
++            'senderImagePath ENDSWITH "/iOSTestbedTests.xctest/iOSTestbedTests"'
++            ' OR senderImagePath ENDSWITH "/Python.framework/Python"'
++        ),
++    ]
++
++    async with async_process(
++        *args,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.STDOUT,
++    ) as process:
++        suppress_dupes = False
++        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
++            # The iOS log streamer can sometimes lag; when it does, it outputs
++            # a warning about messages being dropped... often multiple times.
++            # Only print the first of these duplicated warnings.
++            if line.startswith("=== Messages dropped "):
++                if not suppress_dupes:
++                    suppress_dupes = True
++                    sys.stdout.write(line)
++            else:
++                suppress_dupes = False
++                sys.stdout.write(line)
++            sys.stdout.flush()
++
++
++async def xcode_test(location, simulator, verbose):
++    # Run the test suite on the named simulator
++    print("Starting xcodebuild...")
++    args = [
++        "xcodebuild",
++        "test",
++        "-project",
++        str(location / "iOSTestbed.xcodeproj"),
++        "-scheme",
++        "iOSTestbed",
++        "-destination",
++        f"platform=iOS Simulator,name={simulator}",
++        "-resultBundlePath",
++        str(location / f"{datetime.now():%Y%m%d-%H%M%S}.xcresult"),
++        "-derivedDataPath",
++        str(location / "DerivedData"),
++    ]
++    if not verbose:
++        args += ["-quiet"]
++
++    async with async_process(
++        *args,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.STDOUT,
++    ) as process:
++        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
++            sys.stdout.write(line)
++            sys.stdout.flush()
++
++        status = await asyncio.wait_for(process.wait(), timeout=1)
++        exit(status)
++
++
++# A backport of Path.relative_to(*, walk_up=True)
++def relative_to(target, other):
++    for step, path in enumerate(chain([other], other.parents)):
++        if path == target or path in target.parents:
++            break
++    else:
++        raise ValueError(f"{str(target)!r} and {str(other)!r} have different anchors")
++    parts = ['..'] * step + list(target.parts[len(path.parts):])
++    return Path("/".join(parts))
++
++
++def clone_testbed(
++    source: Path,
++    target: Path,
++    framework: Path,
++    apps: list[Path],
++) -> None:
++    if target.exists():
++        print(f"{target} already exists; aborting without creating project.")
++        sys.exit(10)
++
++    if framework is None:
++        if not (
++            source / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
++        ).is_dir():
++            print(
++                f"The testbed being cloned ({source}) does not contain "
++                f"a simulator framework. Re-run with --framework"
++            )
++            sys.exit(11)
++    else:
++        if not framework.is_dir():
++            print(f"{framework} does not exist.")
++            sys.exit(12)
++        elif not (
++            framework.suffix == ".xcframework"
++            or (framework / "Python.framework").is_dir()
++        ):
++            print(
++                f"{framework} is not an XCframework, "
++                f"or a simulator slice of a framework build."
++            )
++            sys.exit(13)
++
++    print("Cloning testbed project:")
++    print(f"  Cloning {source}...", end="", flush=True)
++    shutil.copytree(source, target, symlinks=True)
++    print(" done")
++
++    if framework is not None:
++        if framework.suffix == ".xcframework":
++            print("  Installing XCFramework...", end="", flush=True)
++            xc_framework_path = (target / "Python.xcframework").resolve()
++            if xc_framework_path.is_dir():
++                shutil.rmtree(xc_framework_path)
++            else:
++                xc_framework_path.unlink()
++            xc_framework_path.symlink_to(
++                relative_to(framework, xc_framework_path.parent)
++            )
++            print(" done")
++        else:
++            print("  Installing simulator framework...", end="", flush=True)
++            sim_framework_path = (
++                target / "Python.xcframework" / "ios-arm64_x86_64-simulator"
++            ).resolve()
++            if sim_framework_path.is_dir():
++                shutil.rmtree(sim_framework_path)
++            else:
++                sim_framework_path.unlink()
++            sim_framework_path.symlink_to(
++                relative_to(framework, sim_framework_path.parent)
++            )
++            print(" done")
++    else:
++        print("  Using pre-existing iOS framework.")
++
++    for app_src in apps:
++        print(f"  Installing app {app_src.name!r}...", end="", flush=True)
++        app_target = target / f"iOSTestbed/app/{app_src.name}"
++        if app_target.is_dir():
++            shutil.rmtree(app_target)
++        shutil.copytree(app_src, app_target)
++        print(" done")
++
++    print(f"Successfully cloned testbed: {target.resolve()}")
++
++
++def update_plist(testbed_path, args):
++    # Add the test runner arguments to the testbed's Info.plist file.
++    info_plist = testbed_path / "iOSTestbed" / "iOSTestbed-Info.plist"
++    with info_plist.open("rb") as f:
++        info = plistlib.load(f)
++
++    info["TestArgs"] = args
++
++    with info_plist.open("wb") as f:
++        plistlib.dump(info, f)
++
++
++async def run_testbed(simulator: str, args: list[str], verbose: bool=False):
++    location = Path(__file__).parent
++    print("Updating plist...", end="", flush=True)
++    update_plist(location, args)
++    print(" done.")
++
++    # Get the list of devices that are booted at the start of the test run.
++    # The simulator started by the test suite will be detected as the new
++    # entry that appears on the device list.
++    initial_devices = await list_devices()
++
++    try:
++        async with asyncio.TaskGroup() as tg:
++            tg.create_task(log_stream_task(initial_devices))
++            tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose))
++    except MySystemExit as e:
++        raise SystemExit(*e.exceptions[0].args) from None
++    except subprocess.CalledProcessError as e:
++        # Extract it from the ExceptionGroup so it can be handled by `main`.
++        raise e.exceptions[0]
++
++
++def main():
++    parser = argparse.ArgumentParser(
++        description=(
++            "Manages the process of testing a Python project in the iOS simulator."
++        ),
++    )
++
++    subcommands = parser.add_subparsers(dest="subcommand")
++
++    clone = subcommands.add_parser(
++        "clone",
++        description=(
++            "Clone the testbed project, copying in an iOS Python framework and"
++            "any specified application code."
++        ),
++        help="Clone a testbed project to a new location.",
++    )
++    clone.add_argument(
++        "--framework",
++        help=(
++            "The location of the XCFramework (or simulator-only slice of an "
++            "XCFramework) to use when running the testbed"
++        ),
++    )
++    clone.add_argument(
++        "--app",
++        dest="apps",
++        action="append",
++        default=[],
++        help="The location of any code to include in the testbed project",
++    )
++    clone.add_argument(
++        "location",
++        help="The path where the testbed will be cloned.",
++    )
++
++    run = subcommands.add_parser(
++        "run",
++        usage="%(prog)s [-h] [--simulator SIMULATOR] -- <test arg> [<test arg> ...]",
++        description=(
++            "Run a testbed project. The arguments provided after `--` will be "
++            "passed to the running iOS process as if they were arguments to "
++            "`python -m`."
++        ),
++        help="Run a testbed project",
++    )
++    run.add_argument(
++        "--simulator",
++        default="iPhone SE (3rd Generation)",
++        help="The name of the simulator to use (default: 'iPhone SE (3rd Generation)')",
++    )
++    run.add_argument(
++        "-v", "--verbose",
++        action="store_true",
++        help="Enable verbose output",
++    )
++
++    try:
++        pos = sys.argv.index("--")
++        testbed_args = sys.argv[1:pos]
++        test_args = sys.argv[pos + 1 :]
++    except ValueError:
++        testbed_args = sys.argv[1:]
++        test_args = []
++
++    context = parser.parse_args(testbed_args)
++
++    if context.subcommand == "clone":
++        clone_testbed(
++            source=Path(__file__).parent,
++            target=Path(context.location),
++            framework=Path(context.framework).resolve() if context.framework else None,
++            apps=[Path(app) for app in context.apps],
++        )
++    elif context.subcommand == "run":
++        if test_args:
++            if not (
++                Path(__file__).parent / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
++            ).is_dir():
++                print(
++                    f"Testbed does not contain a compiled iOS framework. Use "
++                    f"`python {sys.argv[0]} clone ...` to create a runnable "
++                    f"clone of this testbed."
++                )
++                sys.exit(20)
++
++            asyncio.run(
++                run_testbed(
++                    simulator=context.simulator,
++                    verbose=context.verbose,
++                    args=test_args,
++                )
++            )
++        else:
++            print(f"Must specify test arguments (e.g., {sys.argv[0]} run -- test)")
++            print()
++            parser.print_help(sys.stderr)
++            sys.exit(21)
++    else:
++        parser.print_help(sys.stderr)
++        sys.exit(1)
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
 +++ b/iOS/testbed/iOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,570 @@
+@@ -0,0 +1,580 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -15347,6 +16217,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +		607A66502B0EFFE00010BFC8 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; };
 +		607A66512B0EFFE00010BFC8 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 +		607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */ = {isa = PBXBuildFile; fileRef = 607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */; };
++		608619542CB77BA900F46182 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 608619532CB77BA900F46182 /* app_packages */; };
++		608619562CB7819B00F46182 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 608619552CB7819B00F46182 /* app */; };
 +/* End PBXBuildFile section */
 +
 +/* Begin PBXContainerItemProxy section */
@@ -15396,6 +16268,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +		607A664A2B0EFB310010BFC8 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
 +		607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "dylib-Info-template.plist"; sourceTree = "<group>"; };
 +		607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOSTestbed-Info.plist"; sourceTree = "<group>"; };
++		608619532CB77BA900F46182 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = "<group>"; };
++		608619552CB7819B00F46182 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = "<group>"; };
 +/* End PBXFileReference section */
 +
 +/* Begin PBXFrameworksBuildPhase section */
@@ -15441,6 +16315,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +		607A66142B0EFA380010BFC8 /* iOSTestbed */ = {
 +			isa = PBXGroup;
 +			children = (
++				608619552CB7819B00F46182 /* app */,
++				608619532CB77BA900F46182 /* app_packages */,
 +				607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */,
 +				607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */,
 +				607A66152B0EFA380010BFC8 /* AppDelegate.h */,
@@ -15553,7 +16429,9 @@ index ac3be3850a9..4bfd669aa87 100644
 +			files = (
 +				607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */,
 +				607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */,
++				608619562CB7819B00F46182 /* app in Resources */,
 +				607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */,
++				608619542CB77BA900F46182 /* app_packages in Resources */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -15585,6 +16463,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
 +			shellScript = "set -e\n\nmkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-iphonesimulator\" ]; then\n    echo \"Installing Python modules for iOS Simulator\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64_x86_64-simulator/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nelse\n    echo \"Installing Python modules for iOS Device\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nfi\n";
++			showEnvVarsInLog = 0;
 +		};
 +		607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */ = {
 +			isa = PBXShellScriptBuildPhase;
@@ -15603,7 +16482,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
-+			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nPYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\necho \"Install Python $PYTHON_VER standard library extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\ndone\n\n# Clean up dylib template \nrm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\necho \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\nfind \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \n";
++			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nPYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\necho \"Install Python $PYTHON_VER standard library extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\ndone\necho \"Install app package extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app_packages\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app_packages/ \"$FULL_EXT\"\ndone\necho \"Install app extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app/ \"$FULL_EXT\"\ndone\n\n# Clean up dylib template \nrm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\necho \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\nfind \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \n";
++			showEnvVarsInLog = 0;
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
@@ -15986,6 +16866,26 @@ index ac3be3850a9..4bfd669aa87 100644
 +    <scenes/>
 +</document>
 --- /dev/null
++++ b/iOS/testbed/iOSTestbed/app/README
+@@ -0,0 +1,7 @@
++This folder can contain any Python application code.
++
++During the build, any binary modules found in this folder will be processed into
++iOS Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH, and will be the
++working directory for the test suite.
+--- /dev/null
++++ b/iOS/testbed/iOSTestbed/app_packages/README
+@@ -0,0 +1,7 @@
++This folder can be a target for installing any Python dependencies needed by the
++test suite.
++
++During the build, any binary modules found in this folder will be processed into
++iOS Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH.
+--- /dev/null
 +++ b/iOS/testbed/iOSTestbed/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
 +<?xml version="1.0" encoding="UTF-8"?>
@@ -16016,7 +16916,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +</plist>
 --- /dev/null
 +++ b/iOS/testbed/iOSTestbed/iOSTestbed-Info.plist
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,62 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
@@ -16060,8 +16960,16 @@ index ac3be3850a9..4bfd669aa87 100644
 +		<string>UIInterfaceOrientationLandscapeLeft</string>
 +		<string>UIInterfaceOrientationLandscapeRight</string>
 +	</array>
-+	<key>MainModule</key>
-+	<string>ios</string>
++	<key>TestArgs</key>
++	<array>
++		<string>test</string> <!-- Invoke "python -m test" -->
++        <string>-uall</string> <!-- Enable all resources -->
++        <string>-W</string> <!-- Display test output on failure -->
++		<!-- To run a subset of tests, add the test names below; e.g.,
++        <string>test_os</string>
++        <string>test_sys</string>
++		-->
++    </array>
 +	<key>UIApplicationSceneManifest</key>
 +	<dict>
 +		<key>UIApplicationSupportsMultipleScenes</key>
@@ -16092,7 +17000,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +}
 --- /dev/null
 +++ b/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,162 @@
 +#import <XCTest/XCTest.h>
 +#import <Python/Python.h>
 +
@@ -16104,27 +17012,40 @@ index ac3be3850a9..4bfd669aa87 100644
 +
 +
 +- (void)testPython {
-+    // Arguments to pass into the test suite runner.
-+    // argv[0] must identify the process; any subsequent arg
-+    // will be handled as if it were an argument to `python -m test`
-+    const char *argv[] = {
-+        "iOSTestbed", // argv[0] is the process that is running.
-+        "-uall",  // Enable all resources
-+        "-W",  // Display test output on failure
-+        // To run a subset of tests, add the test names below; e.g.,
-+        // "test_os",
-+        // "test_sys",
-+    };
-+
-+    // Start a Python interpreter.
++    const char **argv;
 +    int exit_code;
++    int failed;
 +    PyStatus status;
 +    PyPreConfig preconfig;
 +    PyConfig config;
++    PyObject *sys_module;
++    PyObject *sys_path_attr;
++    NSArray *test_args;
 +    NSString *python_home;
++    NSString *path;
 +    wchar_t *wtmp_str;
 +
 +    NSString *resourcePath = [[NSBundle mainBundle] resourcePath];
++
++    // Set some other common environment indicators to disable color, as the
++    // Xcode log can't display color. Stdout will report that it is *not* a
++    // TTY.
++    setenv("NO_COLOR", "1", true);
++    setenv("PY_COLORS", "0", true);
++
++    // Arguments to pass into the test suite runner.
++    // argv[0] must identify the process; any subsequent arg
++    // will be handled as if it were an argument to `python -m test`
++    test_args = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"TestArgs"];
++    if (test_args == NULL) {
++        NSLog(@"Unable to identify test arguments.");
++    }
++    argv = malloc(sizeof(char *) * ([test_args count] + 1));
++    argv[0] = "iOSTestbed";
++    for (int i = 1; i < [test_args count]; i++) {
++        argv[i] = [[test_args objectAtIndex:i] UTF8String];
++    }
++    NSLog(@"Test command: %@", test_args);
 +
 +    // Generate an isolated Python configuration.
 +    NSLog(@"Configuring isolated Python...");
@@ -16135,6 +17056,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +    // Enforce UTF-8 encoding for stderr, stdout, file-system encoding and locale.
 +    // See https://docs.python.org/3/library/os.html#python-utf-8-mode.
 +    preconfig.utf8_mode = 1;
++    // Use the system logger for stdout/err
++    config.use_system_logger = 1;
 +    // Don't buffer stdio. We want output to appears in the log immediately
 +    config.buffered_stdio = 0;
 +    // Don't write bytecode; we can't modify the app bundle
@@ -16143,7 +17066,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +    // Ensure that signal handlers are installed
 +    config.install_signal_handlers = 1;
 +    // Run the test module.
-+    config.run_module = Py_DecodeLocale("test", NULL);
++    config.run_module = Py_DecodeLocale([[test_args objectAtIndex:0] UTF8String], NULL);
 +    // For debugging - enable verbose mode.
 +    // config.verbose = 1;
 +
@@ -16176,7 +17099,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +    }
 +
 +    NSLog(@"Configure argc/argv...");
-+    status = PyConfig_SetBytesArgv(&config, sizeof(argv) / sizeof(char *), (char**) argv);
++    status = PyConfig_SetBytesArgv(&config, [test_args count], (char**) argv);
 +    if (PyStatus_Exception(status)) {
 +        XCTFail(@"Unable to configure argc/argv: %s", status.err_msg);
 +        PyConfig_Clear(&config);
@@ -16191,11 +17114,47 @@ index ac3be3850a9..4bfd669aa87 100644
 +        return;
 +    }
 +
++    sys_module = PyImport_ImportModule("sys");
++    if (sys_module == NULL) {
++        XCTFail(@"Could not import sys module");
++        return;
++    }
++
++    sys_path_attr = PyObject_GetAttrString(sys_module, "path");
++    if (sys_path_attr == NULL) {
++        XCTFail(@"Could not access sys.path");
++        return;
++    }
++
++    // Add the app packages path
++    path = [NSString stringWithFormat:@"%@/app_packages", resourcePath, nil];
++    NSLog(@"App packages path: %@", path);
++    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
++    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
++    if (failed) {
++        XCTFail(@"Unable to add app packages to sys.path");
++        return;
++    }
++    PyMem_RawFree(wtmp_str);
++
++    path = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
++    NSLog(@"App path: %@", path);
++    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
++    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
++    if (failed) {
++        XCTFail(@"Unable to add app to sys.path");
++        return;
++    }
++    PyMem_RawFree(wtmp_str);
++
++    // Ensure the working directory is the app folder.
++    chdir([path UTF8String]);
++
 +    // Start the test suite. Print a separator to differentiate Python startup logs from app logs
 +    NSLog(@"---------------------------------------------------------------------------");
 +
 +    exit_code = Py_RunMain();
-+    XCTAssertEqual(exit_code, 0, @"Python test suite did not pass");
++    XCTAssertEqual(exit_code, 0, @"Test suite did not pass");
 +
 +    NSLog(@"---------------------------------------------------------------------------");
 +
@@ -16518,62 +17477,62 @@ index a39610a1c7c..09ea06965e9 100644
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E $@
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator "$@"
 --- /dev/null
 +++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E $@
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E "$@"
 --- /dev/null
 +++ b/tvOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -16765,62 +17724,62 @@ index a39610a1c7c..09ea06965e9 100644
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E $@
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E $@
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator "$@"
 --- /dev/null
 +++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E $@
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E "$@"
 --- /dev/null
 +++ b/watchOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
