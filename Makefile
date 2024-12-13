@@ -316,6 +316,9 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
+		# Remove any .orig files produced by the compliance patching process
+		find $$(PYTHON_INSTALL-$(target)) -name "*.orig" -exec rm {} \;
+
 endif
 
 PYTHON_SITECUSTOMIZE-$(target)=$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/platform-site/$(target)/sitecustomize.py
@@ -548,6 +551,9 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	# Apply the App Store compliance patch
 	patch --strip 2 --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
+
+	# Remove any .orig files produced by the patching process
+	find $$(PYTHON_INSTALL_VERSION-macosx) -name "*.orig" -exec rm {} \;
 
 	# Rewrite the framework to make it standalone
 	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
