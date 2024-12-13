@@ -608,6 +608,11 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	@echo ">>> Create helper links in XCframework for $(os)"
 	$$(foreach sdk,$$(SDKS-$(os)),ln -si $$(SDK_SLICE-$$(sdk)) $$(PYTHON_XCFRAMEWORK-$(os))/$$(sdk); )
 
+ifeq ($(os),iOS)
+	@echo ">>> Clone testbed project for $(os)"
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/iOS/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+endif
+
 	@echo ">>> Create VERSIONS file for $(os)"
 	echo "Python version: $(PYTHON_VERSION) " > support/$(PYTHON_VER)/$(os)/VERSIONS
 	echo "Build: $(BUILD_NUMBER)" >> support/$(PYTHON_VER)/$(os)/VERSIONS
