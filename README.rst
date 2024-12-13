@@ -12,6 +12,7 @@ repository:
 * `Python 3.10 <https://github.com/beeware/Python-Apple-support/tree/3.10>`__
 * `Python 3.12 <https://github.com/beeware/Python-Apple-support/tree/3.12>`__
 * `Python 3.13 <https://github.com/beeware/Python-Apple-support/tree/3.13>`__
+* `Python 3.14 <https://github.com/beeware/Python-Apple-support/tree/3.14>`__
 
 It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as frameworks that can be
