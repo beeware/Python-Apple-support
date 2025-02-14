@@ -68,7 +68,9 @@ If you want to use Python framework in Swift, you should do some additional setu
 ```swift
 import Python
 func setEnvs() {
-    #if not os(macOS)
+    #if os(macOS)
+    print("macOS do not need set envs")
+    #else
     guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
     setenv("PYTHONHOME", pythonHome, 1)
     
