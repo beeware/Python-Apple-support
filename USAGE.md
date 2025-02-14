@@ -20,7 +20,7 @@ what Briefcase is doing). The steps required are documented in the CPython usage
 guides:
 
 * [macOS](https://docs.python.org/3/using/mac.html)
-* [iOS](https://docs.python.org/3.14/using/ios.html)
+* [iOS](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project)
 
 For tvOS and watchOS, you should be able to broadly follow the instructions in
 the iOS guide.
