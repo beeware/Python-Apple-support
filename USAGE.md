@@ -62,8 +62,9 @@ If you want to use Python framework in Swift, you should do some additional setu
         - replace ``cpython/pyatomic_gcc.h`` with ``pyatomic_gcc.h``
         - replace ``cpython/pyatomic_std.h`` with ``pyatomic_std.h``
         - replace ``cpython/pyatomic_msc.h`` with ``pyatomic_msc.h``
-
-2. In your Swift code, initialize the Python runtime. This should generally be
+2. Drag `Python.xcframework` into the root of the macOS/iOS project in Xcode Navigator
+   
+4. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
    needs to be done before you invoke Python code:
 
