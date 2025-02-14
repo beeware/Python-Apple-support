@@ -63,44 +63,40 @@ If you want to use Python framework in Swift, you should do some additional setu
         - replace ``cpython/pyatomic_std.h`` with ``pyatomic_std.h``
         - replace ``cpython/pyatomic_msc.h`` with ``pyatomic_msc.h``
 
-2. In your Swift code, set environment variables before init Python (iOS only, macOS do not need this step)
-
-```swift
-import Python
-func setEnvs() {
-    #if os(macOS)
-    print("macOS do not need set envs")
-    #else
-    guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
-    setenv("PYTHONHOME", pythonHome, 1)
-    
-    /*
-         The PYTHONPATH for the interpreter includes:
-         the python/lib/python3.X subfolder of your app’s bundle,
-         the python/lib/python3.X/lib-dynload subfolder of your app’s bundle, and
-         the app subfolder of your app’s bundle
-    */
-    guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
-    guard let libDynLoad = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
-    let appPath = Bundle.main.path(forResource: "app", ofType: nil)
-    setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(separator: ":"), 1)
-    #endif
-}
-```
-
-4. In your Swift code, initialize the Python runtime. This should generally be
+2. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
    needs to be done before you invoke Python code:
-```Swift
-import Foundation
-import Python
 
-setEnvs()
-Py_Initialize()
-let version = String(cString: Py_GetVersion())
-print(version)
-// we now have a Python interpreter ready to be used
-```
+    ```swift
+    import Foundation
+    import Python
+    
+    func setEnvs() {
+        #if os(macOS)
+        print("macOS do not need set envs")
+        #else
+        guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
+        setenv("PYTHONHOME", pythonHome, 1)
+        
+        /*
+             The PYTHONPATH for the interpreter includes:
+             the python/lib/python3.X subfolder of your app’s bundle,
+             the python/lib/python3.X/lib-dynload subfolder of your app’s bundle, and
+             the app subfolder of your app’s bundle
+        */
+        guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
+        guard let libDynLoad = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
+        let appPath = Bundle.main.path(forResource: "app", ofType: nil)
+        setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(separator: ":"), 1)
+        #endif
+    }
+    
+    setEnvs()
+    Py_Initialize()
+    let version = String(cString: Py_GetVersion())
+    print(version)
+    // we now have a Python interpreter ready to be used
+    ```
 
 After init Python, you could use Embed C API in Swift directly.
 
@@ -124,18 +120,19 @@ To use PythonKit in your project:
    PythonKit documentation for details.
 
 3. Invoke Python code in your app. For example:
-```swift
-import Foundation
-import Python
-import PythonKit
-
-setEnvs()
-Py_Initialize()
-let sys = Python.import("sys")
-print("Python Full Version: \(sys.version)")
-print("Python Version: \(sys.version_info.major).\(sys.version_info.minor)")
-print("Python Encoding: \(sys.getdefaultencoding().upper())")
-print("Python Path: \(sys.path)")
-
-_ = Python.import("math") // verifies `lib-dynload` is found and signed successfully
-```
+    ```swift
+    import Foundation
+    import Python
+    
+    // ... setEnv defines
+    setEnvs()
+    Py_Initialize()
+    
+    import PythonKit
+    let sys = Python.import("sys")
+    print("Python Full Version: \(sys.version)")
+    print("Python Version: \(sys.version_info.major).\(sys.version_info.minor)")
+    print("Python Encoding: \(sys.getdefaultencoding().upper())")
+    print("Python Path: \(sys.path)")
+    _ = Python.import("math") // verifies `lib-dynload` is found and signed successfully
+    ```
