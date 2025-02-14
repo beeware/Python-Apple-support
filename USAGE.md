@@ -64,7 +64,7 @@ If you want to use Python framework in Swift, you should do some additional setu
         - replace ``cpython/pyatomic_msc.h`` with ``pyatomic_msc.h``
           
 2. Drag `Python.xcframework` into the root of the macOS/iOS project in Xcode Navigator
-3. If you are making an iOS project, do the steps of 3-9 in the Python offical document [Adding Python to an iOS Project](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project).
+3. If you are making an iOS project, do the steps of 3, 6, 7, 8, 9 in the Python offical document [Adding Python to an iOS Project](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project).
 4. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
    needs to be done before you invoke Python code:
