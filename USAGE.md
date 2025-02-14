@@ -20,7 +20,7 @@ what Briefcase is doing). The steps required are documented in the CPython usage
 guides:
 
 * [macOS](https://docs.python.org/3/using/mac.html)
-* [iOS](https://docs.python.org/3.14/using/ios.html)
+* [iOS](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project)
 
 For tvOS and watchOS, you should be able to broadly follow the instructions in
 the iOS guide.
@@ -29,7 +29,7 @@ the iOS guide.
 
 There are 2 ways to access the Python runtime in your project code.
 
-### Embedded C API.
+### Embedded C API
 
 You can use the [Python Embedded C
 API](https://docs.python.org/3/extending/embedding.html) to instantiate a Python
@@ -43,37 +43,31 @@ An alternate approach is to use
 [PythonKit](https://github.com/pvieito/PythonKit). PythonKit is a package that
 provides a Swift API to running Python code.
 
-To use PythonKit in your project:
+To use PythonKit in your project, add the Python Apple Support package to your
+project as described above; then:
 
 1. Add PythonKit to your project using the Swift Package manager. See the
    PythonKit documentation for details.
 
-2. Create a file called `module.modulemap` inside
-   `Python.xcframework/macos-arm64_x86_64/Headers/`, containing the following
-   code:
-```
-module Python {
-    umbrella header "Python.h"
-    export *
-    link "Python"
-}
-```
-
-3. In your Swift code, initialize the Python runtime. This should generally be
+2. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
-   needs to be done before you invoke Python code:
+   needs to be done before you invoke Python code. References to a specific
+   Python version should reflect the version of Python you are using:
 ```swift
 import Python
 
-guard let stdLibPath = Bundle.main.path(forResource: "python-stdlib", ofType: nil) else { return }
-guard let libDynloadPath = Bundle.main.path(forResource: "python-stdlib/lib-dynload", ofType: nil) else { return }
-setenv("PYTHONHOME", stdLibPath, 1)
-setenv("PYTHONPATH", "\(stdLibPath):\(libDynloadPath)", 1)
+guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
+guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
+guard let libDynloadPath = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
+let appPath = Bundle.main.path(forResource: "app", ofType: nil)
+
+setenv("PYTHONHOME", pythonHome, 1)
+setenv("PYTHONPATH", [pythonPath, libDynloadPath, appPath].compactMap { $0 }.joined(separator: ":"), 1)
 Py_Initialize()
 // we now have a Python interpreter ready to be used
 ```
 
-5. Invoke Python code in your app. For example:
+3. Invoke Python code in your app. For example:
 ```swift
 import PythonKit
 
