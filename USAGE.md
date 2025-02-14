@@ -132,6 +132,7 @@ import PythonKit
 setEnvs()
 Py_Initialize()
 let sys = Python.import("sys")
+print("Python Full Version: \(sys.version)")
 print("Python Version: \(sys.version_info.major).\(sys.version_info.minor)")
 print("Python Encoding: \(sys.getdefaultencoding().upper())")
 print("Python Path: \(sys.path)")
