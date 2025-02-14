@@ -81,7 +81,7 @@ setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(
 4. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
    needs to be done before you invoke Python code:
-```
+```Swift
 import Python
 Py_Initialize()
 // we now have a Python interpreter ready to be used
