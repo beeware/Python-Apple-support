@@ -49,8 +49,10 @@ To use PythonKit in your project:
    PythonKit documentation for details.
 
 2. Create a file called `module.modulemap` inside
-   `Python.xcframework/macos-arm64_x86_64/Headers/`, containing the following
-   code:
+   - `Python.xcframework/macos-arm64_x86_64/Python.framework/Versions/3.13/include/python3.13/` (macOS Device),
+   - `Python.xcframework/ios-arm64_x86_64-simulator/Python.framework/Headers/` (iOS Simulator),
+   - `Python.xcframework/ios-arm64/Python.framework/Headers/` (iOS Device),
+   containing the following code:
 ```
 module Python {
     umbrella header "Python.h"
@@ -59,21 +61,47 @@ module Python {
 }
 ```
 
-3. In your Swift code, initialize the Python runtime. This should generally be
-   done as early as possible in the application's lifecycle, but definitely
-   needs to be done before you invoke Python code:
+3. In the “Build Settings” tab, modify the following:
+- Build Options
+  - User Script Sandboxing: No
+  - Enable Testability: Yes
+- Search Paths
+  - Framework Search Paths: $(PROJECT_DIR)
+  - Header Search Paths: "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers"
+- Apple Clang - Warnings - All languages
+  - Quoted Include In Framework Header: No
+
+4. In your Swift code, set environment variables when init python (iOS only, macOS do not need this step)
+
 ```swift
 import Python
 
-guard let stdLibPath = Bundle.main.path(forResource: "python-stdlib", ofType: nil) else { return }
-guard let libDynloadPath = Bundle.main.path(forResource: "python-stdlib/lib-dynload", ofType: nil) else { return }
-setenv("PYTHONHOME", stdLibPath, 1)
-setenv("PYTHONPATH", "\(stdLibPath):\(libDynloadPath)", 1)
+guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
+setenv("PYTHONHOME", pythonHome, 1)
+
+/*
+     The PYTHONPATH for the interpreter includes:
+     the python/lib/python3.X subfolder of your app’s bundle,
+     the python/lib/python3.X/lib-dynload subfolder of your app’s bundle, and
+     the app subfolder of your app’s bundle
+*/
+guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
+guard let libDynLoad = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
+let appPath = Bundle.main.path(forResource: "app", ofType: nil)
+setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(separator: ":"), 1)
+```
+
+
+5. In your Swift code, initialize the Python runtime. This should generally be
+   done as early as possible in the application's lifecycle, but definitely
+   needs to be done before you invoke Python code:
+```
+import Python
 Py_Initialize()
 // we now have a Python interpreter ready to be used
 ```
 
-5. Invoke Python code in your app. For example:
+6. Invoke Python code in your app. For example:
 ```swift
 import PythonKit
 
