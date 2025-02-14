@@ -466,6 +466,9 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
 
+	# Copy in the modulemap file
+	cp -r patch/Python/module.modulemap $$(PYTHON_INCLUDE-$(sdk))
+
 	# Link the PYTHONHOME version of the headers
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
@@ -581,6 +584,9 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	# Rewrite the framework to make it standalone
 	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
+
+	# Copy in the modulemap file
+	cp -r patch/Python/module.modulemap $$(PYTHON_FRAMEWORK-macosx)/Headers
 
 	# Re-apply the signature on the binaries.
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_LIB-macosx) \
