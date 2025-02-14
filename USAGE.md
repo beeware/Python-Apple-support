@@ -65,7 +65,9 @@ If you want to use Python framework in Swift, you should do some additional setu
           
 2. Drag `Python.xcframework` into the root of the macOS/iOS project in Xcode Navigator
 3. If you are making an iOS project, do the steps of 3, 6, 7, 8, 9 in the Python offical document [Adding Python to an iOS Project](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project).
-4. In your Swift code, initialize the Python runtime. This should generally be
+   `iOS/Resources/dylib-Info-template.plist` for the step 3 is [here]([bee7bb3310b356e99e3a0f75f23efbc97f1b0a24/iOS/Resources/dylib-Info-template.plist](https://github.com/python/cpython/blob/bee7bb3310b356e99e3a0f75f23efbc97f1b0a24/iOS/Resources/dylib-Info-template.plist))
+
+5. In your Swift code, initialize the Python runtime. This should generally be
    done as early as possible in the application's lifecycle, but definitely
    needs to be done before you invoke Python code:
 
