@@ -67,20 +67,23 @@ If you want to use Python framework in Swift, you should do some additional setu
 
 ```swift
 import Python
-
-guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
-setenv("PYTHONHOME", pythonHome, 1)
-
-/*
-     The PYTHONPATH for the interpreter includes:
-     the python/lib/python3.X subfolder of your app’s bundle,
-     the python/lib/python3.X/lib-dynload subfolder of your app’s bundle, and
-     the app subfolder of your app’s bundle
-*/
-guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
-guard let libDynLoad = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
-let appPath = Bundle.main.path(forResource: "app", ofType: nil)
-setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(separator: ":"), 1)
+func setEnvs() {
+    #if not os(macOS)
+    guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
+    setenv("PYTHONHOME", pythonHome, 1)
+    
+    /*
+         The PYTHONPATH for the interpreter includes:
+         the python/lib/python3.X subfolder of your app’s bundle,
+         the python/lib/python3.X/lib-dynload subfolder of your app’s bundle, and
+         the app subfolder of your app’s bundle
+    */
+    guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
+    guard let libDynLoad = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
+    let appPath = Bundle.main.path(forResource: "app", ofType: nil)
+    setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(separator: ":"), 1)
+    #endif
+}
 ```
 
 4. In your Swift code, initialize the Python runtime. This should generally be
@@ -90,6 +93,7 @@ setenv("PYTHONPATH", [pythonPath, libDynLoad, appPath].compactMap { $0 }.joined(
 import Foundation
 import Python
 
+setEnvs()
 Py_Initialize()
 let version = String(cString: Py_GetVersion())
 print(version)
@@ -123,6 +127,7 @@ import Foundation
 import Python
 import PythonKit
 
+setEnvs()
 Py_Initialize()
 let sys = Python.import("sys")
 print("Python Version: \(sys.version_info.major).\(sys.version_info.minor)")
