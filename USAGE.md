@@ -63,13 +63,13 @@ module Python {
 
 3. In the “Build Settings” tab, modify the following:
 - Build Options
-  - User Script Sandboxing: No
-  - Enable Testability: Yes
+  - User Script Sandboxing: ```No```
+  - Enable Testability: ```Yes```
 - Search Paths
-  - Framework Search Paths: $(PROJECT_DIR)
-  - Header Search Paths: "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers"
+  - Framework Search Paths: ```$(PROJECT_DIR)```
+  - Header Search Paths: ```$(BUILT_PRODUCTS_DIR)/Python.framework/Headers```
 - Apple Clang - Warnings - All languages
-  - Quoted Include In Framework Header: No
+  - Quoted Include In Framework Header: ```No```
 
 4. In your Swift code, set environment variables when init python (iOS only, macOS do not need this step)
 
