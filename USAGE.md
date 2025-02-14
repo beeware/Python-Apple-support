@@ -55,7 +55,6 @@ module Python {
 
 2. In the `Build Settings` tab of your app target, make sure the following paths are set:
 - Search Paths
-  - Framework Search Paths: ```$(PROJECT_DIR)```
   - Header Search Paths: ```$(BUILT_PRODUCTS_DIR)/Python.framework/Headers```
 
 3. In your Swift code, set environment variables before init Python (iOS only, macOS do not need this step)
