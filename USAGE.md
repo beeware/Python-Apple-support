@@ -87,7 +87,7 @@ Py_Initialize()
 // we now have a Python interpreter ready to be used
 ```
 
-After init Python, you could use Embed C API in Swift directly
+After init Python, you could use Embed C API in Swift directly.
 
 To integrate 3rd party python code and dependencies, you will need to make sure
 `PYTHONPATH` contains their paths; once this has been done, you can run
