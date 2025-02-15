@@ -110,10 +110,11 @@ ways:
 2. **A make_cross_venv.py script**. If you call ``make_cross_venv.py``,
    providing the location of a virtual environment, the script will add some
    files to the ``site-packages`` folder of that environment that will
-   automatically apply the same set of patches whenever the environment is
-   activated, without any need to modify ``PYTHONPATH``. If you use ``build`` to
-   create an isolated PEP 517 environment to build a wheel, these patches will
-   also be applied to the isolated build environment that is created.
+   automatically apply the same set of patches as the ``sitecustomize.py``
+   script whenever the environment is activated, without any need to modify
+   ``PYTHONPATH``. If you use ``build`` to create an isolated PEP 517
+   environment to build a wheel, these patches will also be applied to the
+   isolated build environment that is created.
 
 iOS distributions also contain a copy of the iOS ``testbed`` project - an Xcode
 project that can be used to run test suites of Python code. See the `CPython
