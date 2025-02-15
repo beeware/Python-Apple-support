@@ -102,12 +102,12 @@ that slice. These subfolders can be used to make a macOS Python environment
 behave as if it were on an iOS/tvOS/watchOS device. This works in one of two
 ways:
 
-1. **A ``sitecustomize.py`` script**. If the ``platform-config`` subfolder is on
+1. **A sitecustomize.py script**. If the ``platform-config`` subfolder is on
    your ``PYTHONPATH`` when a Python interpreter is started, a site
    customization will be applied that patches methods in ``sys``, ``sysconfig``
    and ``platform`` that are used to identify the system.
 
-2. **A ``make_cross_venv.py`` script**. If you call ``make_cross_venv.py``,
+2. **A make_cross_venv.py script**. If you call ``make_cross_venv.py``,
    providing the location of a virtual environment, the script will add some
    files to the ``site-packages`` folder of that environment that will
    automatically apply the same set of patches whenever the environment is
@@ -116,9 +116,9 @@ ways:
    also be applied to the isolated build environment that is created.
 
 iOS distributions also contain a copy of the iOS ``testbed`` project - an Xcode
-project that can be used to run test suites of Python code. See the [CPython
-documentation on testing
-packages](https://docs.python.org/3/using/ios.html#testing-a-python-package) for
+project that can be used to run test suites of Python code. See the `CPython
+documentation on testing packages
+<https://docs.python.org/3/using/ios.html#testing-a-python-package>`__ for
 details on how to use this testbed.
 
 For a detailed instructions on using the support package in your own project,
