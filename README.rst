@@ -83,15 +83,6 @@ Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to build the
   support package;
-* ``platform-site``, a folder that contains site customization scripts that can be used
-  to make your local Python install look like it is an on-device install for each of the
-  underlying target architectures supported by the platform. This is needed because when
-  you run ``pip`` you'll be on a macOS machine with a specific architecture; if ``pip``
-  tries to install a binary package, it will install a macOS binary wheel (which won't
-  work on iOS/tvOS/watchOS). However, if you add the ``platform-site`` folder to your
-  ``PYTHONPATH`` when invoking pip, the site customization will make your Python install
-  return ``platform`` and ``sysconfig`` responses consistent with on-device behavior,
-  which will cause ``pip`` to install platform-appropriate packages.
 * ``Python.xcframework``, a multi-architecture build of the Python runtime library
 
 On iOS/tvOS/watchOS, the ``Python.xcframework`` contains a
@@ -104,6 +95,31 @@ invoked). However, it *does* contain shell aliases for the compilers that are
 needed to build packages. This is required because Xcode uses the ``xcrun``
 alias to dynamically generate the name of binaries, but a lot of C tooling
 expects that ``CC`` will not contain spaces.
+
+Each slice of an iOS/tvOS/watchOS XCframework also contains a
+``platform-config`` folder with a subfolder for each supported architecture in
+that slice. These subfolders can be used to make a macOS Python environment
+behave as if it were on an iOS/tvOS/watchOS device. This works in one of two
+ways:
+
+1. **A ``sitecustomize.py`` script**. If the ``platform-config`` subfolder is on
+   your ``PYTHONPATH`` when a Python interpreter is started, a site
+   customization will be applied that patches methods in ``sys``, ``sysconfig``
+   and ``platform`` that are used to identify the system.
+
+2. **A ``make_cross_venv.py`` script**. If you call ``make_cross_venv.py``,
+   providing the location of a virtual environment, the script will add some
+   files to the ``site-packages`` folder of that environment that will
+   automatically apply the same set of patches whenever the environment is
+   activated, without any need to modify ``PYTHONPATH``. If you use ``build`` to
+   create an isolated PEP 517 environment to build a wheel, these patches will
+   also be applied to the isolated build environment that is created.
+
+iOS distributions also contain a copy of the iOS ``testbed`` project - an Xcode
+project that can be used to run test suites of Python code. See the [CPython
+documentation on testing
+packages](https://docs.python.org/3/using/ios.html#testing-a-python-package) for
+details on how to use this testbed.
 
 For a detailed instructions on using the support package in your own project,
 see the `usage guide <./USAGE.md>`__
