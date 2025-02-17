@@ -2,26 +2,62 @@ framework module Python {
     umbrella header "Python.h"
     export *
     link "Python"
+    module * { export * }
 
-    exclude header "datetime.h"
+    explicit module datetime {
+      header "datetime.h"
+      export *
+    }
+
+    explicit module errcode {
+      header "errcode.h"
+      export *
+    }
+
+    explicit module frameobject {
+      header "frameobject.h"
+      export *
+    }
+
+    explicit module marshal {
+      header "marshal.h"
+      export *
+    }
+
+    explicit module opcode {
+      header "opcode.h"
+      export *
+    }
+
+    explicit module osdefs {
+      header "osdefs.h"
+      export *
+    }
+
+    explicit module py_curses {
+      header "py_curses.h"
+      export *
+    }
+
+    explicit module structmember {
+      header "structmember.h"
+      export *
+    }
+
+    explicit module pydtrace {
+      header "pydtrace.h"
+      export *
+    }
+
     exclude header "dynamic_annotations.h"
-    exclude header "errcode.h"
-    exclude header "frameobject.h"
-    exclude header "marshal.h"
-    exclude header "opcode_ids.h"
-    exclude header "opcode.h"
-    exclude header "osdefs.h"
-    exclude header "py_curses.h"
-    exclude header "pyconfig-arm64.h"
-    exclude header "pyconfig-x86_64.h"
     exclude header "pyconfig-arm32_64.h"
-    exclude header "pydtrace.h"
+    exclude header "pyconfig-x86_64.h"
+    exclude header "pyconfig-arm64.h"
     exclude header "pyexpat.h"
-    exclude header "structmember.h"
 
-    exclude header "cpython/frameobject.h"
     exclude header "cpython/pthread_stubs.h"
     exclude header "cpython/pyatomic_msc.h"
+    exclude header "cpython/pyatomic_gcc.h"
     exclude header "cpython/pyatomic_std.h"
     exclude header "cpython/pystats.h"
 
@@ -31,13 +67,11 @@ framework module Python {
     exclude header "internal/mimalloc/mimalloc/prim.h"
     exclude header "internal/mimalloc/mimalloc/track.h"
     exclude header "internal/mimalloc/mimalloc/types.h"
-
     exclude header "internal/pycore_abstract.h"
     exclude header "internal/pycore_asdl.h"
     exclude header "internal/pycore_ast_state.h"
     exclude header "internal/pycore_ast.h"
     exclude header "internal/pycore_atexit.h"
-    exclude header "internal/pycore_audit.h"
     exclude header "internal/pycore_backoff.h"
     exclude header "internal/pycore_bitutils.h"
     exclude header "internal/pycore_blocks_output_buffer.h"
@@ -56,9 +90,7 @@ framework module Python {
     exclude header "internal/pycore_condvar.h"
     exclude header "internal/pycore_context.h"
     exclude header "internal/pycore_critical_section.h"
-    exclude header "internal/pycore_crossinterp_data_registry.h"
     exclude header "internal/pycore_crossinterp.h"
-    exclude header "internal/pycore_debug_offsets.h"
     exclude header "internal/pycore_descrobject.h"
     exclude header "internal/pycore_dict_state.h"
     exclude header "internal/pycore_dict.h"
@@ -73,7 +105,6 @@ framework module Python {
     exclude header "internal/pycore_flowgraph.h"
     exclude header "internal/pycore_format.h"
     exclude header "internal/pycore_frame.h"
-    exclude header "internal/pycore_freelist_state.h"
     exclude header "internal/pycore_freelist.h"
     exclude header "internal/pycore_function.h"
     exclude header "internal/pycore_gc.h"
@@ -88,7 +119,6 @@ framework module Python {
     exclude header "internal/pycore_identifier.h"
     exclude header "internal/pycore_import.h"
     exclude header "internal/pycore_importdl.h"
-    exclude header "internal/pycore_index_pool.h"
     exclude header "internal/pycore_initconfig.h"
     exclude header "internal/pycore_instruction_sequence.h"
     exclude header "internal/pycore_instruments.h"
@@ -99,14 +129,12 @@ framework module Python {
     exclude header "internal/pycore_llist.h"
     exclude header "internal/pycore_lock.h"
     exclude header "internal/pycore_long.h"
-    exclude header "internal/pycore_magic_number.h"
     exclude header "internal/pycore_memoryobject.h"
     exclude header "internal/pycore_mimalloc.h"
     exclude header "internal/pycore_modsupport.h"
     exclude header "internal/pycore_moduleobject.h"
     exclude header "internal/pycore_namespace.h"
     exclude header "internal/pycore_object_alloc.h"
-    exclude header "internal/pycore_object_deferred.h"
     exclude header "internal/pycore_object_stack.h"
     exclude header "internal/pycore_object_state.h"
     exclude header "internal/pycore_object.h"
@@ -157,7 +185,6 @@ framework module Python {
     exclude header "internal/pycore_unicodeobject_generated.h"
     exclude header "internal/pycore_unicodeobject.h"
     exclude header "internal/pycore_unionobject.h"
-    exclude header "internal/pycore_uniqueid.h"
     exclude header "internal/pycore_uop_ids.h"
     exclude header "internal/pycore_uop_metadata.h"
     exclude header "internal/pycore_warnings.h"
