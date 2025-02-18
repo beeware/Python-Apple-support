@@ -1,0 +1,71 @@
+# A site package that turns a macOS virtual environment
+# into an {{arch}} {{sdk}} cross-platform virtual environment
+import platform
+import subprocess
+import sys
+import sysconfig
+
+###########################################################################
+# sys module patches
+###########################################################################
+sys.cross_compiling = True
+sys.platform = "{{platform}}"
+sys.implementation._multiarch = "{{arch}}-{{sdk}}"
+
+###########################################################################
+# subprocess module patches
+###########################################################################
+subprocess._can_fork_exec = True
+
+
+###########################################################################
+# platform module patches
+###########################################################################
+
+def cross_system():
+    return "{{os}}"
+
+
+def cross_uname():
+    return platform.uname_result(
+        system="{{os}}",
+        node="build",
+        release="{{version_min}}",
+        version="",
+        machine="{{arch}}",
+    )
+
+
+def cross_ios_ver(system="", release="", model="", is_simulator=False):
+    if system == "":
+        system = "{{os}}"
+    if release == "":
+        release = "{{version_min}}"
+    if model == "":
+        model = "{{sdk}}"
+
+    return platform.IOSVersionInfo(system, release, model, {{is_simulator}})
+
+
+platform.system = cross_system
+platform.uname = cross_uname
+platform.ios_ver = cross_ios_ver
+
+
+###########################################################################
+# sysconfig module patches
+###########################################################################
+
+def cross_get_platform():
+    return "{{platform}}-{{version_min}}-{{arch}}-{{sdk}}"
+
+
+def cross_get_sysconfigdata_name():
+    return "_sysconfigdata__{{platform}}_{{arch}}-{{sdk}}"
+
+
+sysconfig.get_platform = cross_get_platform
+sysconfig._get_sysconfigdata_name = cross_get_sysconfigdata_name
+
+# Force sysconfig data to be loaded (and cached).
+sysconfig._init_config_vars()
