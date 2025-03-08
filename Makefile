@@ -18,7 +18,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.14.0a3
+PYTHON_VERSION=3.14.0a5
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -280,6 +280,9 @@ PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Python
 PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/bin
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
+PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
+PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
+
 
 $$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
@@ -343,24 +346,41 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 		# Remove any .orig files produced by the compliance patching process
 		find $$(PYTHON_INSTALL-$(target)) -name "*.orig" -exec rm {} \;
 
-endif
 
-PYTHON_SITECUSTOMIZE-$(target)=$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/platform-site/$(target)/sitecustomize.py
-
-$$(PYTHON_SITECUSTOMIZE-$(target)):
-	@echo ">>> Create cross-platform sitecustomize.py for $(target)"
-	mkdir -p $$(dir $$(PYTHON_SITECUSTOMIZE-$(target)))
-	cat $(PROJECT_DIR)/patch/Python/sitecustomize.$(os).py \
+$$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
+	@echo ">>> Create cross-plaform config for $(target)"
+	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(target))
+	# Create the cross-platform site definition
+	echo "import _cross_$$(ARCH-$(target))_$$(SDK-$(target)); import _cross_venv;" \
+		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_venv.pth
+	cp $(PROJECT_DIR)/patch/Python/make_cross_venv.py \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))/make_cross_venv.py
+	cp $(PROJECT_DIR)/patch/Python/_cross_venv.py \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_venv.py
+	cp $$(PYTHON_STDLIB-$(target))/_sysconfig* \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))
+	cat $(PROJECT_DIR)/patch/Python/_cross_target.py.tmpl \
 		| sed -e "s/{{os}}/$(os)/g" \
+		| sed -e "s/{{platform}}/$$(OS_LOWER-$(target))/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
 		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
 		| sed -e "s/{{abi}}/$$(TARGET_ABI-$(target))/g" \
 		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(subst macosx,iphoneos,$$(SDK-$(target)))$$(TARGET_TRIPLE_SUFFIX-$(target))/g" \
 		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(subst macosx,iphoneos-macabi,$$(SDK-$(target)))/g" \
-		> $$(PYTHON_SITECUSTOMIZE-$(target))
+		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_$$(ARCH-$(target))_$$(SDK-$(target)).py
+	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py.tmpl \
+		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
+		| sed -e "s/{{abi}}/$$(TARGET_ABI-$(target))/g" \
+		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(subst macosx,iphoneos,$$(SDK-$(target)))$$(TARGET_TRIPLE_SUFFIX-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(subst macosx,iphoneos-macabi,$$(SDK-$(target)))/g" \
+		> $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target))
 
-$(target): $$(PYTHON_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
+endif
+
+$(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
 
 
 ###########################################################################
@@ -390,6 +410,8 @@ vars-$(target):
 	@echo "PYTHON_BIN-$(target): $$(PYTHON_BIN-$(target))"
 	@echo "PYTHON_INCLUDE-$(target): $$(PYTHON_INCLUDE-$(target))"
 	@echo "PYTHON_STDLIB-$(target): $$(PYTHON_STDLIB-$(target))"
+	@echo "PYTHON_PLATFORM_CONFIG-$(target): $$(PYTHON_PLATFORM_CONFIG-$(target))"
+	@echo "PYTHON_PLATFORM_SITECUSTOMIZE-$(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target))"
 	@echo
 
 endef # build-target
@@ -453,6 +475,7 @@ PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
+PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
 $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for the $(sdk) SDK"
@@ -477,6 +500,9 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
 
+	# Copy in the modulemap file
+	cp -r patch/Python/module.modulemap $$(PYTHON_INCLUDE-$(sdk))
+
 	# Link the PYTHONHOME version of the headers
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
@@ -488,7 +514,7 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
 
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
@@ -497,11 +523,17 @@ $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-
 	# Delete the single-SDK parts of the standard library
 	rm -rf \
 		$$(PYTHON_STDLIB-$(sdk))/_sysconfigdata__*.py \
+		$$(PYTHON_STDLIB-$(sdk))/_sysconfig_vars__*.json \
 		$$(PYTHON_STDLIB-$(sdk))/config-* \
 		$$(PYTHON_STDLIB-$(sdk))/lib-dynload/*
 
 	# Copy the individual _sysconfigdata modules into names that include the architecture
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfigdata_* $$(PYTHON_STDLIB-$(sdk))/; )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfig_vars_* $$(PYTHON_STDLIB-$(sdk))/; )
+
+	# Copy the platform site folders for each architecture
+	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(sdk))
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_PLATFORM_CONFIG-$$(target)) $$(PYTHON_PLATFORM_CONFIG-$(sdk)); )
 
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
 	$$(foreach module,$$(wildcard $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib-dynload/*),lipo -create -output $$(PYTHON_STDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_STDLIB-$$(target))/lib-dynload/$$(notdir $$(module))); )
@@ -587,6 +619,9 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Rewrite the framework to make it standalone
 	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
 
+	# Copy in the modulemap file
+	cp -r patch/Python/module.modulemap $$(PYTHON_FRAMEWORK-macosx)/Headers
+
 	# Re-apply the signature on the binaries.
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_LIB-macosx) \
 		2>&1 | tee $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
@@ -610,7 +645,7 @@ support/$(PYTHON_VER)/macOS/VERSIONS:
 dist/Python-$(PYTHON_VER)-macOS-support.$(BUILD_NUMBER).tar.gz: \
 	$$(PYTHON_XCFRAMEWORK-macOS)/Info.plist \
 	support/$(PYTHON_VER)/macOS/VERSIONS \
-	$$(foreach target,$$(TARGETS-macOS), $$(PYTHON_SITECUSTOMIZE-$$(target)))
+	$$(foreach target,$$(TARGETS-macOS), $$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for macOS"
 	mkdir -p dist
@@ -633,9 +668,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-
-	@echo ">>> Create helper links in XCframework for $(os)"
-	$$(foreach sdk,$$(SDKS-$(os)),ln -si $$(SDK_SLICE-$$(sdk)) $$(PYTHON_XCFRAMEWORK-$(os))/$$(sdk); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
 ifeq ($(os),iOS)
 	@echo ">>> Clone testbed project for $(os)"
@@ -655,7 +688,7 @@ endif
 
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
 	$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist \
-	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_SITECUSTOMIZE-$$(target)))
+	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for $(os)"
 	mkdir -p dist
