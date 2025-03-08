@@ -23,27 +23,28 @@ PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
+PYTHON_PATCHED_VERSION=$(PYTHON_VER)-patched
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.6-1
+LIBFFI_VERSION=3.4.7-1
 MPDECIMAL_VERSION=4.0.0-1
-OPENSSL_VERSION=3.0.15-1
-XZ_VERSION=5.6.2-1
+OPENSSL_VERSION=3.0.16-1
+XZ_VERSION=5.6.4-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
 
-CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
+CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar -L
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 VERSION_MIN-macOS=11.0
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
-VERSION_MIN-iOS=13.0
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64 maccatalyst.x86_64 maccatalyst.arm64
+VERSION_MIN-iOS=14.2
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
@@ -86,7 +87,7 @@ update-patch:
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
+		git diff -D v$(PYTHON_VERSION) $(PYTHON_PATCHED_VERSION) \
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
@@ -117,26 +118,44 @@ downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg:
 #
 ###########################################################################
 define build-target
+
 target=$1
 os=$2
 
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
-SDK-$(target)=$$(basename $(target))
+SDK-$(target)=$$(subst maccatalyst,macosx,$$(basename $(target)))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
-	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-IS_SIMULATOR-$(target)="False"
-	else
+	ifneq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)="True"
+TARGET_ABI-$(target)=""
+TARGET_TRIPLE_SUFFIX-$(target)=""
+	else ifneq ($$(findstring maccatalyst,$$(target)),)
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-ios$$(VERSION_MIN-$(os))-macabi
+IS_SIMULATOR-$(target)="False"
+TARGET_ABI-$(target)="macabi"
+TARGET_TRIPLE_SUFFIX-$(target)="-macabi"
+	else
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+IS_SIMULATOR-$(target)="False"
+TARGET_ABI-$(target)=""
+TARGET_TRIPLE_SUFFIX-$(target)=""
 	endif
 endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
+CC-$(target)=$$(subst $$(VERSION_MIN-$(os)),,$$(TARGET_TRIPLE-$(target))-clang)
+CXX-$(target)=$$(subst $$(VERSION_MIN-$(os)),,$$(TARGET_TRIPLE-$(target))-clang++)
+CFLAGS-$(target)=\
+	--sysroot=$$(SDK_ROOT-$(target)) \
+	$$(CFLAGS-$(os))
+LDFLAGS-$(target)=\
+	-isysroot $$(SDK_ROOT-$(target)) \
+	$$(CFLAGS-$(os))
 
 ###########################################################################
 # Target: BZip2
@@ -283,8 +302,13 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/Tools:$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 		./configure \
+			CC="$$(CC-$(target))" \
+			CXX="$$(CXX-$(target))" \
+			CPP="$$(CXX-$(target)) -E" \
+			CFLAGS="$$(CFLAGS-$(target))" \
+			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
@@ -305,14 +329,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/Tools:$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 			make -j8 all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/Tools:$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -331,11 +355,13 @@ $$(PYTHON_SITECUSTOMIZE-$(target)):
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
 		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
-		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(SDK-$(target))/g" \
-		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(SDK-$(target))/g" \
+		| sed -e "s/{{abi}}/$$(TARGET_ABI-$(target))/g" \
+		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(subst macosx,iphoneos,$$(SDK-$(target)))$$(TARGET_TRIPLE_SUFFIX-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(subst macosx,iphoneos-macabi,$$(SDK-$(target)))/g" \
 		> $$(PYTHON_SITECUSTOMIZE-$(target))
 
 $(target): $$(PYTHON_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
+
 
 ###########################################################################
 # Target: Debug
@@ -386,10 +412,13 @@ OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
-ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
-else
+ifneq ($$(findstring simulator,$(sdk)),)
 SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+else ifneq ($$(findstring maccatalyst,$(sdk)),)
+SDK_SLICE-$(sdk)=ios-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-maccatalyst
+sdk=macosx
+else
+SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 endif
 
 # Expand the build-target macro for target on this OS

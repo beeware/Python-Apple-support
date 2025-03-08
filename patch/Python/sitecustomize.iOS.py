@@ -20,11 +20,11 @@ platform.system = custom_system
 # Make platform.ios_ver() return an appropriate namedtuple
 IOSVersionInfo = collections.namedtuple(
     "IOSVersionInfo",
-    ["system", "release", "model", "is_simulator"]
+    ["system", "release", "model", "is_simulator", "abi"]
 )
 
-def custom_ios_ver(system="", release="", model="", is_simulator=False):
-    return IOSVersionInfo("{{os}}", "{{version_min}}", "iPhone", {{is_simulator}})
+def custom_ios_ver(system="", release="", model="", is_simulator=False, abi=""):
+    return IOSVersionInfo("{{os}}", "{{version_min}}", "iPhone", {{is_simulator}}, "{{abi}}")
 
 platform.ios_ver = custom_ios_ver
 
