@@ -23,7 +23,6 @@ PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_VER=$(basename $(PYTHON_VERSION))
-PYTHON_PATCHED_VERSION=$(PYTHON_VER)-patched
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
@@ -43,7 +42,11 @@ TARGETS-macOS=macosx.x86_64 macosx.arm64
 VERSION_MIN-macOS=11.0
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64 maccatalyst.x86_64 maccatalyst.arm64
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+VERSION_MIN-iOS=13.0
+
+# MacCatalyst targets
+TARGETS-iOS=maccatalyst.x86_64 maccatalyst.arm64
 VERSION_MIN-iOS=14.2
 
 # tvOS targets
@@ -87,7 +90,7 @@ update-patch:
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_PATCHED_VERSION) \
+		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
