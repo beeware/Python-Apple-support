@@ -3,6 +3,4 @@
 .gitignore
 .mention-bot
 .travis.yml
-PCbuild/*
-Doc/*
 Misc/NEWS.d/*
