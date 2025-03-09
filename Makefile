@@ -33,7 +33,7 @@ OPENSSL_VERSION=3.0.16-1
 XZ_VERSION=5.6.4-1
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS
+OS_LIST=macOS iOS tvOS watchOS MacCatalyst
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar -L
 
@@ -46,8 +46,8 @@ TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
 VERSION_MIN-iOS=13.0
 
 # MacCatalyst targets
-TARGETS-iOS=maccatalyst.x86_64 maccatalyst.arm64
-VERSION_MIN-iOS=14.2
+TARGETS-MacCatalyst=maccatalyst.x86_64 maccatalyst.arm64
+VERSION_MIN-MacCatalyst=14.2
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
