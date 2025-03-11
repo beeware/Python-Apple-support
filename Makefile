@@ -151,14 +151,6 @@ TARGET_TRIPLE_SUFFIX-$(target)=""
 endif
 
 SDK_ROOT-$(target)=$$(shell xcrun --sdk $$(SDK-$(target)) --show-sdk-path)
-CC-$(target)=$$(subst $$(VERSION_MIN-$(os)),,$$(TARGET_TRIPLE-$(target))-clang)
-CXX-$(target)=$$(subst $$(VERSION_MIN-$(os)),,$$(TARGET_TRIPLE-$(target))-clang++)
-CFLAGS-$(target)=\
-	--sysroot=$$(SDK_ROOT-$(target)) \
-	$$(CFLAGS-$(os))
-LDFLAGS-$(target)=\
-	-isysroot $$(SDK_ROOT-$(target)) \
-	$$(CFLAGS-$(os))
 
 ###########################################################################
 # Target: BZip2
@@ -310,11 +302,6 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/Tools:$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 		./configure \
-			CC="$$(CC-$(target))" \
-			CXX="$$(CXX-$(target))" \
-			CPP="$$(CXX-$(target)) -E" \
-			CFLAGS="$$(CFLAGS-$(target))" \
-			LDFLAGS="$$(LDFLAGS-$(target))" \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
 			BZIP2_CFLAGS="-I$$(BZIP2_INSTALL-$(target))/include" \
