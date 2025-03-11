@@ -132,384 +132,6 @@ index 69f72452c40..34ce643340b 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 --- /dev/null
-+++ b/MacCatalyst/README.rst
-@@ -0,0 +1,375 @@
-+====================
-+Python on iOS README
-+====================
-+
-+:Authors:
-+    Russell Keith-Magee (2023-11)
-+
-+This document provides a quick overview of some iOS specific features in the
-+Python distribution.
-+
-+These instructions are only needed if you're planning to compile Python for iOS
-+yourself. Most users should *not* need to do this. If you're looking to
-+experiment with writing an iOS app in Python, tools such as `BeeWare's Briefcase
-+<https://briefcase.readthedocs.io>`__ and `Kivy's Buildozer
-+<https://buildozer.readthedocs.io>`__ will provide a much more approachable
-+user experience.
-+
-+Compilers for building on iOS
-+=============================
-+
-+Building for iOS requires the use of Apple's Xcode tooling. It is strongly
-+recommended that you use the most recent stable release of Xcode. This will
-+require the use of the most (or second-most) recently released macOS version,
-+as Apple does not maintain Xcode for older macOS versions. The Xcode Command
-+Line Tools are not sufficient for iOS development; you need a *full* Xcode
-+install.
-+
-+If you want to run your code on the iOS simulator, you'll also need to install
-+an iOS Simulator Platform. You should be prompted to select an iOS Simulator
-+Platform when you first run Xcode. Alternatively, you can add an iOS Simulator
-+Platform by selecting an open the Platforms tab of the Xcode Settings panel.
-+
-+iOS specific arguments to configure
-+===================================
-+
-+* ``--enable-framework[=DIR]``
-+
-+  This argument specifies the location where the Python.framework will be
-+  installed. If ``DIR`` is not specified, the framework will be installed into
-+  a subdirectory of the ``iOS/Frameworks`` folder.
-+
-+  This argument *must* be provided when configuring iOS builds. iOS does not
-+  support non-framework builds.
-+
-+* ``--with-framework-name=NAME``
-+
-+  Specify the name for the Python framework; defaults to ``Python``.
-+
-+  .. admonition:: Use this option with care!
-+
-+    Unless you know what you're doing, changing the name of the Python
-+    framework on iOS is not advised. If you use this option, you won't be able
-+    to run the ``make testios`` target without making significant manual
-+    alterations, and you won't be able to use any binary packages unless you
-+    compile them yourself using your own framework name.
-+
-+Building Python on iOS
-+======================
-+
-+ABIs and Architectures
-+----------------------
-+
-+iOS apps can be deployed on physical devices, and on the iOS simulator. Although
-+the API used on these devices is identical, the ABI is different - you need to
-+link against different libraries for an iOS device build (``iphoneos``) or an
-+iOS simulator build (``iphonesimulator``).
-+
-+Apple uses the ``XCframework`` format to allow specifying a single dependency
-+that supports multiple ABIs. An ``XCframework`` is a wrapper around multiple
-+ABI-specific frameworks that share a common API.
-+
-+iOS can also support different CPU architectures within each ABI. At present,
-+there is only a single supported architecture on physical devices - ARM64.
-+However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
-+Silicon machines), and x86_64 (for running on older Intel-based machines).
-+
-+To support multiple CPU architectures on a single platform, Apple uses a "fat
-+binary" format - a single physical file that contains support for multiple
-+architectures. It is possible to compile and use a "thin" single architecture
-+version of a binary for testing purposes; however, the "thin" binary will not be
-+portable to machines using other architectures.
-+
-+Building a single-architecture framework
-+----------------------------------------
-+
-+The Python build system will create a ``Python.framework`` that supports a
-+*single* ABI with a *single* architecture. Unlike macOS, iOS does not allow a
-+framework to contain non-library content, so the iOS build will produce a
-+``bin`` and ``lib`` folder in the same output folder as ``Python.framework``.
-+The ``lib`` folder will be needed at runtime to support the Python library.
-+
-+If you want to use Python in a real iOS project, you need to produce multiple
-+``Python.framework`` builds, one for each ABI and architecture. iOS builds of
-+Python *must* be constructed as framework builds. To support this, you must
-+provide the ``--enable-framework`` flag when configuring the build. The build
-+also requires the use of cross-compilation. The minimal commands for building
-+Python for the ARM64 iOS simulator will look something like::
-+
-+  $ export PATH="$(pwd)/iOS/Resources/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin"
-+  $ ./configure \
-+        --enable-framework \
-+        --host=arm64-apple-ios-simulator \
-+        --build=arm64-apple-darwin \
-+        --with-build-python=/path/to/python.exe
-+  $ make
-+  $ make install
-+
-+In this invocation:
-+
-+* ``iOS/Resources/bin`` has been added to the path, providing some shims for the
-+  compilers and linkers needed by the build. Xcode requires the use of ``xcrun``
-+  to invoke compiler tooling. However, if ``xcrun`` is pre-evaluated and the
-+  result passed to ``configure``, these results can embed user- and
-+  version-specific paths into the sysconfig data, which limits the portability
-+  of the compiled Python. Alternatively, if ``xcrun`` is used *as* the compiler,
-+  it requires that compiler variables like ``CC`` include spaces, which can
-+  cause significant problems with many C configuration systems which assume that
-+  ``CC`` will be a single executable.
-+
-+  To work around this problem, the ``iOS/Resources/bin`` folder contains some
-+  wrapper scripts that present as simple compilers and linkers, but wrap
-+  underlying calls to ``xcrun``. This allows configure to use a ``CC``
-+  definition without spaces, and without user- or version-specific paths, while
-+  retaining the ability to adapt to the local Xcode install. These scripts are
-+  included in the ``bin`` directory of an iOS install.
-+
-+  These scripts will, by default, use the currently active Xcode installation.
-+  If you want to use a different Xcode installation, you can use
-+  ``xcode-select`` to set a new default Xcode globally, or you can use the
-+  ``DEVELOPER_DIR`` environment variable to specify an Xcode install. The
-+  scripts will use the default ``iphoneos``/``iphonesimulator`` SDK version for
-+  the select Xcode install; if you want to use a different SDK, you can set the
-+  ``IOS_SDK_VERSION`` environment variable. (e.g, setting
-+  ``IOS_SDK_VERSION=17.1`` would cause the scripts to use the ``iphoneos17.1``
-+  and ``iphonesimulator17.1`` SDKs, regardless of the Xcode default.)
-+
-+  The path has also been cleared of any user customizations. A common source of
-+  bugs is for tools like Homebrew to accidentally leak macOS binaries into an iOS
-+  build. Resetting the path to a known "bare bones" value is the easiest way to
-+  avoid these problems.
-+
-+* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
-+  triple format. This will be one of:
-+
-+  - ``arm64-apple-ios`` for ARM64 iOS devices.
-+  - ``arm64-apple-ios-simulator`` for the iOS simulator running on Apple
-+    Silicon devices.
-+  - ``x86_64-apple-ios-simulator`` for the iOS simulator running on Intel
-+    devices.
-+
-+* ``--build`` is the GNU compiler triple for the machine that will be running
-+  the compiler. This is one of:
-+
-+  - ``arm64-apple-darwin`` for Apple Silicon devices.
-+  - ``x86_64-apple-darwin`` for Intel devices.
-+
-+* ``/path/to/python.exe`` is the path to a Python binary on the machine that
-+  will be running the compiler. This is needed because the Python compilation
-+  process involves running some Python code. On a normal desktop build of
-+  Python, you can compile a python interpreter and then use that interpreter to
-+  run Python code. However, the binaries produced for iOS won't run on macOS, so
-+  you need to provide an external Python interpreter. This interpreter must be
-+  the same version as the Python that is being compiled. To be completely safe,
-+  this should be the *exact* same commit hash. However, the longer a Python
-+  release has been stable, the more likely it is that this constraint can be
-+  relaxed - the same micro version will often be sufficient.
-+
-+* The ``install`` target for iOS builds is slightly different to other
-+  platforms. On most platforms, ``make install`` will install the build into
-+  the final runtime location. This won't be the case for iOS, as the final
-+  runtime location will be on a physical device.
-+
-+  However, you still need to run the ``install`` target for iOS builds, as it
-+  performs some final framework assembly steps. The location specified with
-+  ``--enable-framework`` will be the location where ``make install`` will
-+  assemble the complete iOS framework. This completed framework can then
-+  be copied and relocated as required.
-+
-+For a full CPython build, you also need to specify the paths to iOS builds of
-+the binary libraries that CPython depends on (XZ, BZip2, LibFFI and OpenSSL).
-+This can be done by defining the ``LIBLZMA_CFLAGS``, ``LIBLZMA_LIBS``,
-+``BZIP2_CFLAGS``, ``BZIP2_LIBS``, ``LIBFFI_CFLAGS``, and ``LIBFFI_LIBS``
-+environment variables, and the ``--with-openssl`` configure option. Versions of
-+these libraries pre-compiled for iOS can be found in `this repository
-+<https://github.com/beeware/cpython-apple-source-deps/releases>`__. LibFFI is
-+especially important, as many parts of the standard library (including the
-+``platform``, ``sysconfig`` and ``webbrowser`` modules) require the use of the
-+``ctypes`` module at runtime.
-+
-+By default, Python will be compiled with an iOS deployment target (i.e., the
-+minimum supported iOS version) of 13.0. To specify a different deployment
-+target, provide the version number as part of the ``--host`` argument - for
-+example, ``--host=arm64-apple-ios15.4-simulator`` would compile an ARM64
-+simulator build with a deployment target of 15.4.
-+
-+Merge thin frameworks into fat frameworks
-+-----------------------------------------
-+
-+Once you've built a ``Python.framework`` for each ABI and and architecture, you
-+must produce a "fat" framework for each ABI that contains all the architectures
-+for that ABI.
-+
-+The ``iphoneos`` build only needs to support a single architecture, so it can be
-+used without modification.
-+
-+If you only want to support a single simulator architecture, (e.g., only support
-+ARM64 simulators), you can use a single architecture ``Python.framework`` build.
-+However, if you want to create ``Python.xcframework`` that supports *all*
-+architectures, you'll need to merge the ``iphonesimulator`` builds for ARM64 and
-+x86_64 into a single "fat" framework.
-+
-+The "fat" framework can be constructed by performing a directory merge of the
-+content of the two "thin" ``Python.framework`` directories, plus the ``bin`` and
-+``lib`` folders for each thin framework. When performing this merge:
-+
-+* The pure Python standard library content is identical for each architecture,
-+  except for a handful of platform-specific files (such as the ``sysconfig``
-+  module). Ensure that the "fat" framework has the union of all standard library
-+  files.
-+
-+* Any binary files in the standard library, plus the main
-+  ``libPython3.X.dylib``, can be merged using the ``lipo`` tool, provide by
-+  Xcode::
-+
-+    $ lipo -create -output module.dylib path/to/x86_64/module.dylib path/to/arm64/module.dylib
-+
-+* The header files will be identical on both architectures, except for
-+  ``pyconfig.h``. Copy all the headers from one platform (say, arm64), rename
-+  ``pyconfig.h`` to ``pyconfig-arm64.h``, and copy the ``pyconfig.h`` for the
-+  other architecture into the merged header folder as ``pyconfig-x86_64.h``.
-+  Then copy the ``iOS/Resources/pyconfig.h`` file from the CPython sources into
-+  the merged headers folder. This will allow the two Python architectures to
-+  share a common ``pyconfig.h`` header file.
-+
-+At this point, you should have 2 Python.framework folders - one for ``iphoneos``,
-+and one for ``iphonesimulator`` that is a merge of x86+64 and ARM64 content.
-+
-+Merge frameworks into an XCframework
-+------------------------------------
-+
-+Now that we have 2 (potentially fat) ABI-specific frameworks, we can merge those
-+frameworks into a single ``XCframework``.
-+
-+The initial skeleton of an ``XCframework`` is built using::
-+
-+    xcodebuild -create-xcframework -output Python.xcframework -framework path/to/iphoneos/Python.framework -framework path/to/iphonesimulator/Python.framework
-+
-+Then, copy the ``bin`` and ``lib`` folders into the architecture-specific slices of
-+the XCframework::
-+
-+    cp path/to/iphoneos/bin Python.xcframework/ios-arm64
-+    cp path/to/iphoneos/lib Python.xcframework/ios-arm64
-+
-+    cp path/to/iphonesimulator/bin Python.xcframework/ios-arm64_x86_64-simulator
-+    cp path/to/iphonesimulator/lib Python.xcframework/ios-arm64_x86_64-simulator
-+
-+Note that the name of the architecture-specific slice for the simulator will
-+depend on the CPU architecture(s) that you build.
-+
-+You now have a Python.xcframework that can be used in a project.
-+
-+Testing Python on iOS
-+=====================
-+
-+The ``iOS/testbed`` folder that contains an Xcode project that is able to run
-+the iOS test suite. This project converts the Python test suite into a single
-+test case in Xcode's XCTest framework. The single XCTest passes if the test
-+suite passes.
-+
-+To run the test suite, configure a Python build for an iOS simulator (i.e.,
-+``--host=arm64-apple-ios-simulator`` or ``--host=x86_64-apple-ios-simulator``
-+), specifying a framework build (i.e. ``--enable-framework``). Ensure that your
-+``PATH`` has been configured to include the ``iOS/Resources/bin`` folder and
-+exclude any non-iOS tools, then run::
-+
-+    $ make all
-+    $ make install
-+    $ make testios
-+
-+This will:
-+
-+* Build an iOS framework for your chosen architecture;
-+* Finalize the single-platform framework;
-+* Make a clean copy of the testbed project;
-+* Install the Python iOS framework into the copy of the testbed project; and
-+* Run the test suite on an "iPhone SE (3rd generation)" simulator.
-+
-+On success, the test suite will exit and report successful completion of the
-+test suite. On a 2022 M1 MacBook Pro, the test suite takes approximately 15
-+minutes to run; a couple of extra minutes is required to compile the testbed
-+project, and then boot and prepare the iOS simulator.
-+
-+Debugging test failures
-+-----------------------
-+
-+Running ``make test`` generates a standalone version of the ``iOS/testbed``
-+project, and runs the full test suite. It does this using ``iOS/testbed``
-+itself - the folder is an executable module that can be used to create and run
-+a clone of the testbed project.
-+
-+You can generate your own standalone testbed instance by running::
-+
-+    $ python iOS/testbed clone --framework iOS/Frameworks/arm64-iphonesimulator my-testbed
-+
-+This invocation assumes that ``iOS/Frameworks/arm64-iphonesimulator`` is the
-+path to the iOS simulator framework for your platform (ARM64 in this case);
-+``my-testbed`` is the name of the folder for the new testbed clone.
-+
-+You can then use the ``my-testbed`` folder to run the Python test suite,
-+passing in any command line arguments you may require. For example, if you're
-+trying to diagnose a failure in the ``os`` module, you might run::
-+
-+    $ python my-testbed run -- test -W test_os
-+
-+This is the equivalent of running ``python -m test -W test_os`` on a desktop
-+Python build. Any arguments after the ``--`` will be passed to testbed as if
-+they were arguments to ``python -m`` on a desktop machine.
-+
-+You can also open the testbed project in Xcode by running::
-+
-+    $ open my-testbed/iOSTestbed.xcodeproj
-+
-+This will allow you to use the full Xcode suite of tools for debugging.
-+
-+Testing on an iOS device
-+^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+To test on an iOS device, the app needs to be signed with known developer
-+credentials. To obtain these credentials, you must have an iOS Developer
-+account, and your Xcode install will need to be logged into your account (see
-+the Accounts tab of the Preferences dialog).
-+
-+Once the project is open, and you're signed into your Apple Developer account,
-+select the root node of the project tree (labeled "iOSTestbed"), then the
-+"Signing & Capabilities" tab in the details page. Select a development team
-+(this will likely be your own name), and plug in a physical device to your
-+macOS machine with a USB cable. You should then be able to select your physical
-+device from the list of targets in the pulldown in the Xcode titlebar.
-+
-+Running specific tests
-+^^^^^^^^^^^^^^^^^^^^^^
-+
-+As the test suite is being executed on an iOS simulator, it is not possible to
-+pass in command line arguments to configure test suite operation. To work
-+around this limitation, the arguments that would normally be passed as command
-+line arguments are configured as part of the ``iOSTestbed-Info.plist`` file
-+that is used to configure the iOS testbed app. In this file, the ``TestArgs``
-+key is an array containing the arguments that would be passed to ``python -m``
-+on the command line (including ``test`` in position 0, the name of the test
-+module to be executed).
-+
-+Disabling automated breakpoints
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+By default, Xcode will inserts an automatic breakpoint whenever a signal is
-+raised. The Python test suite raises many of these signals as part of normal
-+operation; unless you are trying to diagnose an issue with signals, the
-+automatic breakpoints can be inconvenient. However, they can be disabled by
-+creating a symbolic breakpoint that is triggered at the start of the test run.
-+
-+Select "Debug > Breakpoints > Create Symbolic Breakpoint" from the Xcode menu, and
-+populate the new brewpoint with the following details:
-+
-+* **Name**: IgnoreSignals
-+* **Symbol**: UIApplicationMain
-+* **Action**: Add debugger commands for:
-+  - ``process handle SIGINT -n true -p true -s false``
-+  - ``process handle SIGUSR1 -n true -p true -s false``
-+  - ``process handle SIGUSR2 -n true -p true -s false``
-+  - ``process handle SIGXFSZ -n true -p true -s false``
-+* Check the "Automatically continue after evaluating" box.
-+
-+All other details can be left blank. When the process executes the
-+``UIApplicationMain`` entry point, the breakpoint will trigger, run the debugger
-+commands to disable the automatic breakpoints, and automatically resume.
---- /dev/null
 +++ b/MacCatalyst/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
 +<?xml version="1.0" encoding="UTF-8"?>
@@ -565,7 +187,7 @@ index 69f72452c40..34ce643340b 100644
 +++ b/MacCatalyst/Resources/bin/arm64-apple-ios-macabi-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target arm64-apple-ios-macabi "$@"
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target arm64-apple-ios-macabi -E "$@"
 --- /dev/null
 +++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-ar
 @@ -0,0 +1,2 @@
@@ -585,7 +207,7 @@ index 69f72452c40..34ce643340b 100644
 +++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
-+xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target x86_64-apple-ios-macabi "$@"
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target x86_64-apple-ios-macabi -E "$@"
 --- /dev/null
 +++ b/MacCatalyst/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -625,1501 +247,11 @@ index 69f72452c40..34ce643340b 100644
 +#ifdef __x86_64__
 +#include "pyconfig-x86_64.h"
 +#endif
---- /dev/null
-+++ b/MacCatalyst/testbed/Python.xcframework/Info.plist
-@@ -0,0 +1,44 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>AvailableLibraries</key>
-+	<array>
-+		<dict>
-+			<key>BinaryPath</key>
-+			<string>Python.framework/Python</string>
-+			<key>LibraryIdentifier</key>
-+			<string>ios-arm64</string>
-+			<key>LibraryPath</key>
-+			<string>Python.framework</string>
-+			<key>SupportedArchitectures</key>
-+			<array>
-+				<string>arm64</string>
-+			</array>
-+			<key>SupportedPlatform</key>
-+			<string>ios</string>
-+		</dict>
-+		<dict>
-+			<key>BinaryPath</key>
-+			<string>Python.framework/Python</string>
-+			<key>LibraryIdentifier</key>
-+			<string>ios-arm64_x86_64-simulator</string>
-+			<key>LibraryPath</key>
-+			<string>Python.framework</string>
-+			<key>SupportedArchitectures</key>
-+			<array>
-+				<string>arm64</string>
-+				<string>x86_64</string>
-+			</array>
-+			<key>SupportedPlatform</key>
-+			<string>ios</string>
-+			<key>SupportedPlatformVariant</key>
-+			<string>simulator</string>
-+		</dict>
-+	</array>
-+	<key>CFBundlePackageType</key>
-+	<string>XFWK</string>
-+	<key>XCFrameworkFormatVersion</key>
-+	<string>1.0</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/MacCatalyst/testbed/Python.xcframework/ios-arm64/README
-@@ -0,0 +1,4 @@
-+This directory is intentionally empty.
-+
-+It should be used as a target for `--enable-framework` when compiling an iOS on-device
-+build for testing purposes.
---- /dev/null
-+++ b/MacCatalyst/testbed/Python.xcframework/ios-arm64_x86_64-simulator/README
-@@ -0,0 +1,4 @@
-+This directory is intentionally empty.
-+
-+It should be used as a target for `--enable-framework` when compiling an iOS simulator
-+build for testing purposes (either x86_64 or ARM64).
---- /dev/null
-+++ b/MacCatalyst/testbed/__main__.py
-@@ -0,0 +1,456 @@
-+import argparse
-+import asyncio
-+import json
-+import plistlib
-+import re
-+import shutil
-+import subprocess
-+import sys
-+from contextlib import asynccontextmanager
-+from datetime import datetime
-+from pathlib import Path
-+
-+
-+DECODE_ARGS = ("UTF-8", "backslashreplace")
-+
-+# The system log prefixes each line:
-+#   2025-01-17 16:14:29.090 Df iOSTestbed[23987:1fd393b4] (Python) ...
-+#   2025-01-17 16:14:29.090 E  iOSTestbed[23987:1fd393b4] (Python) ...
-+
-+LOG_PREFIX_REGEX = re.compile(
-+    r"^\d{4}-\d{2}-\d{2}"  # YYYY-MM-DD
-+    r"\s+\d+:\d{2}:\d{2}\.\d+"  # HH:MM:SS.sss
-+    r"\s+\w+"  # Df/E
-+    r"\s+iOSTestbed\[\d+:\w+\]"  # Process/thread ID
-+    r"\s+\(Python\)\s"  # Logger name
-+)
-+
-+
-+# Work around a bug involving sys.exit and TaskGroups
-+# (https://github.com/python/cpython/issues/101515).
-+def exit(*args):
-+    raise MySystemExit(*args)
-+
-+
-+class MySystemExit(Exception):
-+    pass
-+
-+
-+# All subprocesses are executed through this context manager so that no matter
-+# what happens, they can always be cancelled from another task, and they will
-+# always be cleaned up on exit.
-+@asynccontextmanager
-+async def async_process(*args, **kwargs):
-+    process = await asyncio.create_subprocess_exec(*args, **kwargs)
-+    try:
-+        yield process
-+    finally:
-+        if process.returncode is None:
-+            # Allow a reasonably long time for Xcode to clean itself up,
-+            # because we don't want stale emulators left behind.
-+            timeout = 10
-+            process.terminate()
-+            try:
-+                await asyncio.wait_for(process.wait(), timeout)
-+            except TimeoutError:
-+                print(
-+                    f"Command {args} did not terminate after {timeout} seconds "
-+                    f" - sending SIGKILL"
-+                )
-+                process.kill()
-+
-+                # Even after killing the process we must still wait for it,
-+                # otherwise we'll get the warning "Exception ignored in __del__".
-+                await asyncio.wait_for(process.wait(), timeout=1)
-+
-+
-+async def async_check_output(*args, **kwargs):
-+    async with async_process(
-+        *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
-+    ) as process:
-+        stdout, stderr = await process.communicate()
-+        if process.returncode == 0:
-+            return stdout.decode(*DECODE_ARGS)
-+        else:
-+            raise subprocess.CalledProcessError(
-+                process.returncode,
-+                args,
-+                stdout.decode(*DECODE_ARGS),
-+                stderr.decode(*DECODE_ARGS),
-+            )
-+
-+
-+# Return a list of UDIDs associated with booted simulators
-+async def list_devices():
-+    try:
-+        # List the testing simulators, in JSON format
-+        raw_json = await async_check_output(
-+            "xcrun", "simctl", "--set", "testing", "list", "-j"
-+        )
-+        json_data = json.loads(raw_json)
-+
-+        # Filter out the booted iOS simulators
-+        return [
-+            simulator["udid"]
-+            for runtime, simulators in json_data["devices"].items()
-+            for simulator in simulators
-+            if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
-+        ]
-+    except subprocess.CalledProcessError as e:
-+        # If there's no ~/Library/Developer/XCTestDevices folder (which is the
-+        # case on fresh installs, and in some CI environments), `simctl list`
-+        # returns error code 1, rather than an empty list. Handle that case,
-+        # but raise all other errors.
-+        if e.returncode == 1:
-+            return []
-+        else:
-+            raise
-+
-+
-+async def find_device(initial_devices):
-+    while True:
-+        new_devices = set(await list_devices()).difference(initial_devices)
-+        if len(new_devices) == 0:
-+            await asyncio.sleep(1)
-+        elif len(new_devices) == 1:
-+            udid = new_devices.pop()
-+            print(f"{datetime.now():%Y-%m-%d %H:%M:%S}: New test simulator detected")
-+            print(f"UDID: {udid}")
-+            return udid
-+        else:
-+            exit(f"Found more than one new device: {new_devices}")
-+
-+
-+async def log_stream_task(initial_devices):
-+    # Wait up to 5 minutes for the build to complete and the simulator to boot.
-+    udid = await asyncio.wait_for(find_device(initial_devices), 5 * 60)
-+
-+    # Stream the iOS device's logs, filtering out messages that come from the
-+    # XCTest test suite (catching NSLog messages from the test method), or
-+    # Python itself (catching stdout/stderr content routed to the system log
-+    # with config->use_system_logger).
-+    args = [
-+        "xcrun",
-+        "simctl",
-+        "--set",
-+        "testing",
-+        "spawn",
-+        udid,
-+        "log",
-+        "stream",
-+        "--style",
-+        "compact",
-+        "--predicate",
-+        (
-+            'senderImagePath ENDSWITH "/iOSTestbedTests.xctest/iOSTestbedTests"'
-+            ' OR senderImagePath ENDSWITH "/Python.framework/Python"'
-+        ),
-+    ]
-+
-+    async with async_process(
-+        *args,
-+        stdout=subprocess.PIPE,
-+        stderr=subprocess.STDOUT,
-+    ) as process:
-+        suppress_dupes = False
-+        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
-+            # Strip the prefix from each log line
-+            line = LOG_PREFIX_REGEX.sub("", line)
-+            # The iOS log streamer can sometimes lag; when it does, it outputs
-+            # a warning about messages being dropped... often multiple times.
-+            # Only print the first of these duplicated warnings.
-+            if line.startswith("=== Messages dropped "):
-+                if not suppress_dupes:
-+                    suppress_dupes = True
-+                    sys.stdout.write(line)
-+            else:
-+                suppress_dupes = False
-+                sys.stdout.write(line)
-+            sys.stdout.flush()
-+
-+
-+async def xcode_test(location, simulator, verbose):
-+    # Run the test suite on the named simulator
-+    print("Starting xcodebuild...")
-+    args = [
-+        "xcodebuild",
-+        "test",
-+        "-project",
-+        str(location / "iOSTestbed.xcodeproj"),
-+        "-scheme",
-+        "iOSTestbed",
-+        "-destination",
-+        f"platform=iOS Simulator,name={simulator}",
-+        "-resultBundlePath",
-+        str(location / f"{datetime.now():%Y%m%d-%H%M%S}.xcresult"),
-+        "-derivedDataPath",
-+        str(location / "DerivedData"),
-+    ]
-+    if not verbose:
-+        args += ["-quiet"]
-+
-+    async with async_process(
-+        *args,
-+        stdout=subprocess.PIPE,
-+        stderr=subprocess.STDOUT,
-+    ) as process:
-+        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
-+            sys.stdout.write(line)
-+            sys.stdout.flush()
-+
-+        status = await asyncio.wait_for(process.wait(), timeout=1)
-+        exit(status)
-+
-+
-+def clone_testbed(
-+    source: Path,
-+    target: Path,
-+    framework: Path,
-+    apps: list[Path],
-+) -> None:
-+    if target.exists():
-+        print(f"{target} already exists; aborting without creating project.")
-+        sys.exit(10)
-+
-+    if framework is None:
-+        if not (
-+            source / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
-+        ).is_dir():
-+            print(
-+                f"The testbed being cloned ({source}) does not contain "
-+                f"a simulator framework. Re-run with --framework"
-+            )
-+            sys.exit(11)
-+    else:
-+        if not framework.is_dir():
-+            print(f"{framework} does not exist.")
-+            sys.exit(12)
-+        elif not (
-+            framework.suffix == ".xcframework"
-+            or (framework / "Python.framework").is_dir()
-+        ):
-+            print(
-+                f"{framework} is not an XCframework, "
-+                f"or a simulator slice of a framework build."
-+            )
-+            sys.exit(13)
-+
-+    print("Cloning testbed project:")
-+    print(f"  Cloning {source}...", end="", flush=True)
-+    shutil.copytree(source, target, symlinks=True)
-+    print(" done")
-+
-+    xc_framework_path = target / "Python.xcframework"
-+    sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
-+    if framework is not None:
-+        if framework.suffix == ".xcframework":
-+            print("  Installing XCFramework...", end="", flush=True)
-+            if xc_framework_path.is_dir():
-+                shutil.rmtree(xc_framework_path)
-+            else:
-+                xc_framework_path.unlink(missing_ok=True)
-+            xc_framework_path.symlink_to(
-+                framework.relative_to(xc_framework_path.parent, walk_up=True)
-+            )
-+            print(" done")
-+        else:
-+            print("  Installing simulator framework...", end="", flush=True)
-+            if sim_framework_path.is_dir():
-+                shutil.rmtree(sim_framework_path)
-+            else:
-+                sim_framework_path.unlink(missing_ok=True)
-+            sim_framework_path.symlink_to(
-+                framework.relative_to(sim_framework_path.parent, walk_up=True)
-+            )
-+            print(" done")
-+    else:
-+        if (
-+            xc_framework_path.is_symlink()
-+            and not xc_framework_path.readlink().is_absolute()
-+        ):
-+            # XCFramework is a relative symlink. Rewrite the symlink relative
-+            # to the new location.
-+            print("  Rewriting symlink to XCframework...", end="", flush=True)
-+            orig_xc_framework_path = (
-+                source
-+                / xc_framework_path.readlink()
-+            ).resolve()
-+            xc_framework_path.unlink()
-+            xc_framework_path.symlink_to(
-+                orig_xc_framework_path.relative_to(
-+                    xc_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        elif (
-+            sim_framework_path.is_symlink()
-+            and not sim_framework_path.readlink().is_absolute()
-+        ):
-+            print("  Rewriting symlink to simulator framework...", end="", flush=True)
-+            # Simulator framework is a relative symlink. Rewrite the symlink
-+            # relative to the new location.
-+            orig_sim_framework_path = (
-+                source
-+                / "Python.XCframework"
-+                / sim_framework_path.readlink()
-+            ).resolve()
-+            sim_framework_path.unlink()
-+            sim_framework_path.symlink_to(
-+                orig_sim_framework_path.relative_to(
-+                    sim_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        else:
-+            print("  Using pre-existing iOS framework.")
-+
-+    for app_src in apps:
-+        print(f"  Installing app {app_src.name!r}...", end="", flush=True)
-+        app_target = target / f"iOSTestbed/app/{app_src.name}"
-+        if app_target.is_dir():
-+            shutil.rmtree(app_target)
-+        shutil.copytree(app_src, app_target)
-+        print(" done")
-+
-+    print(f"Successfully cloned testbed: {target.resolve()}")
-+
-+
-+def update_plist(testbed_path, args):
-+    # Add the test runner arguments to the testbed's Info.plist file.
-+    info_plist = testbed_path / "iOSTestbed" / "iOSTestbed-Info.plist"
-+    with info_plist.open("rb") as f:
-+        info = plistlib.load(f)
-+
-+    info["TestArgs"] = args
-+
-+    with info_plist.open("wb") as f:
-+        plistlib.dump(info, f)
-+
-+
-+async def run_testbed(simulator: str, args: list[str], verbose: bool=False):
-+    location = Path(__file__).parent
-+    print("Updating plist...", end="", flush=True)
-+    update_plist(location, args)
-+    print(" done.")
-+
-+    # Get the list of devices that are booted at the start of the test run.
-+    # The simulator started by the test suite will be detected as the new
-+    # entry that appears on the device list.
-+    initial_devices = await list_devices()
-+
-+    try:
-+        async with asyncio.TaskGroup() as tg:
-+            tg.create_task(log_stream_task(initial_devices))
-+            tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose))
-+    except* MySystemExit as e:
-+        raise SystemExit(*e.exceptions[0].args) from None
-+    except* subprocess.CalledProcessError as e:
-+        # Extract it from the ExceptionGroup so it can be handled by `main`.
-+        raise e.exceptions[0]
-+
-+
-+def main():
-+    parser = argparse.ArgumentParser(
-+        description=(
-+            "Manages the process of testing a Python project in the iOS simulator."
-+        ),
-+    )
-+
-+    subcommands = parser.add_subparsers(dest="subcommand")
-+
-+    clone = subcommands.add_parser(
-+        "clone",
-+        description=(
-+            "Clone the testbed project, copying in an iOS Python framework and"
-+            "any specified application code."
-+        ),
-+        help="Clone a testbed project to a new location.",
-+    )
-+    clone.add_argument(
-+        "--framework",
-+        help=(
-+            "The location of the XCFramework (or simulator-only slice of an "
-+            "XCFramework) to use when running the testbed"
-+        ),
-+    )
-+    clone.add_argument(
-+        "--app",
-+        dest="apps",
-+        action="append",
-+        default=[],
-+        help="The location of any code to include in the testbed project",
-+    )
-+    clone.add_argument(
-+        "location",
-+        help="The path where the testbed will be cloned.",
-+    )
-+
-+    run = subcommands.add_parser(
-+        "run",
-+        usage="%(prog)s [-h] [--simulator SIMULATOR] -- <test arg> [<test arg> ...]",
-+        description=(
-+            "Run a testbed project. The arguments provided after `--` will be "
-+            "passed to the running iOS process as if they were arguments to "
-+            "`python -m`."
-+        ),
-+        help="Run a testbed project",
-+    )
-+    run.add_argument(
-+        "--simulator",
-+        default="iPhone SE (3rd Generation)",
-+        help="The name of the simulator to use (default: 'iPhone SE (3rd Generation)')",
-+    )
-+    run.add_argument(
-+        "-v", "--verbose",
-+        action="store_true",
-+        help="Enable verbose output",
-+    )
-+
-+    try:
-+        pos = sys.argv.index("--")
-+        testbed_args = sys.argv[1:pos]
-+        test_args = sys.argv[pos + 1 :]
-+    except ValueError:
-+        testbed_args = sys.argv[1:]
-+        test_args = []
-+
-+    context = parser.parse_args(testbed_args)
-+
-+    if context.subcommand == "clone":
-+        clone_testbed(
-+            source=Path(__file__).parent.resolve(),
-+            target=Path(context.location).resolve(),
-+            framework=Path(context.framework).resolve() if context.framework else None,
-+            apps=[Path(app) for app in context.apps],
-+        )
-+    elif context.subcommand == "run":
-+        if test_args:
-+            if not (
-+                Path(__file__).parent / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
-+            ).is_dir():
-+                print(
-+                    f"Testbed does not contain a compiled iOS framework. Use "
-+                    f"`python {sys.argv[0]} clone ...` to create a runnable "
-+                    f"clone of this testbed."
-+                )
-+                sys.exit(20)
-+
-+            asyncio.run(
-+                run_testbed(
-+                    simulator=context.simulator,
-+                    verbose=context.verbose,
-+                    args=test_args,
-+                )
-+            )
-+        else:
-+            print(f"Must specify test arguments (e.g., {sys.argv[0]} run -- test)")
-+            print()
-+            parser.print_help(sys.stderr)
-+            sys.exit(21)
-+    else:
-+        parser.print_help(sys.stderr)
-+        sys.exit(1)
-+
-+
-+if __name__ == "__main__":
-+    main()
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,580 @@
-+// !$*UTF8*$!
-+{
-+	archiveVersion = 1;
-+	classes = {
-+	};
-+	objectVersion = 56;
-+	objects = {
-+
-+/* Begin PBXBuildFile section */
-+		607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66162B0EFA380010BFC8 /* AppDelegate.m */; };
-+		607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607A66212B0EFA390010BFC8 /* Assets.xcassets */; };
-+		607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */; };
-+		607A66282B0EFA390010BFC8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66272B0EFA390010BFC8 /* main.m */; };
-+		607A66322B0EFA3A0010BFC8 /* iOSTestbedTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66312B0EFA3A0010BFC8 /* iOSTestbedTests.m */; };
-+		607A664C2B0EFC080010BFC8 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; };
-+		607A664D2B0EFC080010BFC8 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-+		607A66502B0EFFE00010BFC8 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; };
-+		607A66512B0EFFE00010BFC8 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 607A664A2B0EFB310010BFC8 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-+		607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */ = {isa = PBXBuildFile; fileRef = 607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */; };
-+		608619542CB77BA900F46182 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 608619532CB77BA900F46182 /* app_packages */; };
-+		608619562CB7819B00F46182 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 608619552CB7819B00F46182 /* app */; };
-+/* End PBXBuildFile section */
-+
-+/* Begin PBXContainerItemProxy section */
-+		607A662E2B0EFA3A0010BFC8 /* PBXContainerItemProxy */ = {
-+			isa = PBXContainerItemProxy;
-+			containerPortal = 607A660A2B0EFA380010BFC8 /* Project object */;
-+			proxyType = 1;
-+			remoteGlobalIDString = 607A66112B0EFA380010BFC8;
-+			remoteInfo = iOSTestbed;
-+		};
-+/* End PBXContainerItemProxy section */
-+
-+/* Begin PBXCopyFilesBuildPhase section */
-+		607A664E2B0EFC080010BFC8 /* Embed Frameworks */ = {
-+			isa = PBXCopyFilesBuildPhase;
-+			buildActionMask = 2147483647;
-+			dstPath = "";
-+			dstSubfolderSpec = 10;
-+			files = (
-+				607A664D2B0EFC080010BFC8 /* Python.xcframework in Embed Frameworks */,
-+			);
-+			name = "Embed Frameworks";
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+		607A66522B0EFFE00010BFC8 /* Embed Frameworks */ = {
-+			isa = PBXCopyFilesBuildPhase;
-+			buildActionMask = 2147483647;
-+			dstPath = "";
-+			dstSubfolderSpec = 10;
-+			files = (
-+				607A66512B0EFFE00010BFC8 /* Python.xcframework in Embed Frameworks */,
-+			);
-+			name = "Embed Frameworks";
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+/* End PBXCopyFilesBuildPhase section */
-+
-+/* Begin PBXFileReference section */
-+		607A66122B0EFA380010BFC8 /* iOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
-+		607A66152B0EFA380010BFC8 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
-+		607A66162B0EFA380010BFC8 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-+		607A66212B0EFA390010BFC8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-+		607A66242B0EFA390010BFC8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-+		607A66272B0EFA390010BFC8 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-+		607A662D2B0EFA3A0010BFC8 /* iOSTestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iOSTestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-+		607A66312B0EFA3A0010BFC8 /* iOSTestbedTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iOSTestbedTests.m; sourceTree = "<group>"; };
-+		607A664A2B0EFB310010BFC8 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
-+		607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "dylib-Info-template.plist"; sourceTree = "<group>"; };
-+		607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOSTestbed-Info.plist"; sourceTree = "<group>"; };
-+		608619532CB77BA900F46182 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = "<group>"; };
-+		608619552CB7819B00F46182 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = "<group>"; };
-+/* End PBXFileReference section */
-+
-+/* Begin PBXFrameworksBuildPhase section */
-+		607A660F2B0EFA380010BFC8 /* Frameworks */ = {
-+			isa = PBXFrameworksBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+				607A664C2B0EFC080010BFC8 /* Python.xcframework in Frameworks */,
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+		607A662A2B0EFA3A0010BFC8 /* Frameworks */ = {
-+			isa = PBXFrameworksBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+				607A66502B0EFFE00010BFC8 /* Python.xcframework in Frameworks */,
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+/* End PBXFrameworksBuildPhase section */
-+
-+/* Begin PBXGroup section */
-+		607A66092B0EFA380010BFC8 = {
-+			isa = PBXGroup;
-+			children = (
-+				607A664A2B0EFB310010BFC8 /* Python.xcframework */,
-+				607A66142B0EFA380010BFC8 /* iOSTestbed */,
-+				607A66302B0EFA3A0010BFC8 /* iOSTestbedTests */,
-+				607A66132B0EFA380010BFC8 /* Products */,
-+				607A664F2B0EFFE00010BFC8 /* Frameworks */,
-+			);
-+			sourceTree = "<group>";
-+		};
-+		607A66132B0EFA380010BFC8 /* Products */ = {
-+			isa = PBXGroup;
-+			children = (
-+				607A66122B0EFA380010BFC8 /* iOSTestbed.app */,
-+				607A662D2B0EFA3A0010BFC8 /* iOSTestbedTests.xctest */,
-+			);
-+			name = Products;
-+			sourceTree = "<group>";
-+		};
-+		607A66142B0EFA380010BFC8 /* iOSTestbed */ = {
-+			isa = PBXGroup;
-+			children = (
-+				608619552CB7819B00F46182 /* app */,
-+				608619532CB77BA900F46182 /* app_packages */,
-+				607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */,
-+				607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */,
-+				607A66152B0EFA380010BFC8 /* AppDelegate.h */,
-+				607A66162B0EFA380010BFC8 /* AppDelegate.m */,
-+				607A66212B0EFA390010BFC8 /* Assets.xcassets */,
-+				607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */,
-+				607A66272B0EFA390010BFC8 /* main.m */,
-+			);
-+			path = iOSTestbed;
-+			sourceTree = "<group>";
-+		};
-+		607A66302B0EFA3A0010BFC8 /* iOSTestbedTests */ = {
-+			isa = PBXGroup;
-+			children = (
-+				607A66312B0EFA3A0010BFC8 /* iOSTestbedTests.m */,
-+			);
-+			path = iOSTestbedTests;
-+			sourceTree = "<group>";
-+		};
-+		607A664F2B0EFFE00010BFC8 /* Frameworks */ = {
-+			isa = PBXGroup;
-+			children = (
-+			);
-+			name = Frameworks;
-+			sourceTree = "<group>";
-+		};
-+/* End PBXGroup section */
-+
-+/* Begin PBXNativeTarget section */
-+		607A66112B0EFA380010BFC8 /* iOSTestbed */ = {
-+			isa = PBXNativeTarget;
-+			buildConfigurationList = 607A66412B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "iOSTestbed" */;
-+			buildPhases = (
-+				607A660E2B0EFA380010BFC8 /* Sources */,
-+				607A660F2B0EFA380010BFC8 /* Frameworks */,
-+				607A66102B0EFA380010BFC8 /* Resources */,
-+				607A66552B0F061D0010BFC8 /* Install Target Specific Python Standard Library */,
-+				607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */,
-+				607A664E2B0EFC080010BFC8 /* Embed Frameworks */,
-+			);
-+			buildRules = (
-+			);
-+			dependencies = (
-+			);
-+			name = iOSTestbed;
-+			productName = iOSTestbed;
-+			productReference = 607A66122B0EFA380010BFC8 /* iOSTestbed.app */;
-+			productType = "com.apple.product-type.application";
-+		};
-+		607A662C2B0EFA3A0010BFC8 /* iOSTestbedTests */ = {
-+			isa = PBXNativeTarget;
-+			buildConfigurationList = 607A66442B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "iOSTestbedTests" */;
-+			buildPhases = (
-+				607A66292B0EFA3A0010BFC8 /* Sources */,
-+				607A662A2B0EFA3A0010BFC8 /* Frameworks */,
-+				607A662B2B0EFA3A0010BFC8 /* Resources */,
-+				607A66522B0EFFE00010BFC8 /* Embed Frameworks */,
-+			);
-+			buildRules = (
-+			);
-+			dependencies = (
-+				607A662F2B0EFA3A0010BFC8 /* PBXTargetDependency */,
-+			);
-+			name = iOSTestbedTests;
-+			productName = iOSTestbedTests;
-+			productReference = 607A662D2B0EFA3A0010BFC8 /* iOSTestbedTests.xctest */;
-+			productType = "com.apple.product-type.bundle.unit-test";
-+		};
-+/* End PBXNativeTarget section */
-+
-+/* Begin PBXProject section */
-+		607A660A2B0EFA380010BFC8 /* Project object */ = {
-+			isa = PBXProject;
-+			attributes = {
-+				BuildIndependentTargetsInParallel = 1;
-+				LastUpgradeCheck = 1500;
-+				TargetAttributes = {
-+					607A66112B0EFA380010BFC8 = {
-+						CreatedOnToolsVersion = 15.0.1;
-+					};
-+					607A662C2B0EFA3A0010BFC8 = {
-+						CreatedOnToolsVersion = 15.0.1;
-+						TestTargetID = 607A66112B0EFA380010BFC8;
-+					};
-+				};
-+			};
-+			buildConfigurationList = 607A660D2B0EFA380010BFC8 /* Build configuration list for PBXProject "iOSTestbed" */;
-+			compatibilityVersion = "Xcode 14.0";
-+			developmentRegion = en;
-+			hasScannedForEncodings = 0;
-+			knownRegions = (
-+				en,
-+				Base,
-+			);
-+			mainGroup = 607A66092B0EFA380010BFC8;
-+			productRefGroup = 607A66132B0EFA380010BFC8 /* Products */;
-+			projectDirPath = "";
-+			projectRoot = "";
-+			targets = (
-+				607A66112B0EFA380010BFC8 /* iOSTestbed */,
-+				607A662C2B0EFA3A0010BFC8 /* iOSTestbedTests */,
-+			);
-+		};
-+/* End PBXProject section */
-+
-+/* Begin PBXResourcesBuildPhase section */
-+		607A66102B0EFA380010BFC8 /* Resources */ = {
-+			isa = PBXResourcesBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+				607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */,
-+				607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */,
-+				608619562CB7819B00F46182 /* app in Resources */,
-+				607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */,
-+				608619542CB77BA900F46182 /* app_packages in Resources */,
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+		607A662B2B0EFA3A0010BFC8 /* Resources */ = {
-+			isa = PBXResourcesBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+/* End PBXResourcesBuildPhase section */
-+
-+/* Begin PBXShellScriptBuildPhase section */
-+		607A66552B0F061D0010BFC8 /* Install Target Specific Python Standard Library */ = {
-+			isa = PBXShellScriptBuildPhase;
-+			alwaysOutOfDate = 1;
-+			buildActionMask = 2147483647;
-+			files = (
-+			);
-+			inputFileListPaths = (
-+			);
-+			inputPaths = (
-+			);
-+			name = "Install Target Specific Python Standard Library";
-+			outputFileListPaths = (
-+			);
-+			outputPaths = (
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+			shellPath = /bin/sh;
-+			shellScript = "set -e\n\nmkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-iphonesimulator\" ]; then\n    echo \"Installing Python modules for iOS Simulator\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64_x86_64-simulator/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nelse\n    echo \"Installing Python modules for iOS Device\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nfi\n";
-+			showEnvVarsInLog = 0;
-+		};
-+		607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */ = {
-+			isa = PBXShellScriptBuildPhase;
-+			alwaysOutOfDate = 1;
-+			buildActionMask = 2147483647;
-+			files = (
-+			);
-+			inputFileListPaths = (
-+			);
-+			inputPaths = (
-+			);
-+			name = "Prepare Python Binary Modules";
-+			outputFileListPaths = (
-+			);
-+			outputPaths = (
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+			shellPath = /bin/sh;
-+			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nPYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\necho \"Install Python $PYTHON_VER standard library extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\ndone\necho \"Install app package extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app_packages\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app_packages/ \"$FULL_EXT\"\ndone\necho \"Install app extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app/ \"$FULL_EXT\"\ndone\n\n# Clean up dylib template \nrm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\necho \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\nfind \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \n";
-+			showEnvVarsInLog = 0;
-+		};
-+/* End PBXShellScriptBuildPhase section */
-+
-+/* Begin PBXSourcesBuildPhase section */
-+		607A660E2B0EFA380010BFC8 /* Sources */ = {
-+			isa = PBXSourcesBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+				607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */,
-+				607A66282B0EFA390010BFC8 /* main.m in Sources */,
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+		607A66292B0EFA3A0010BFC8 /* Sources */ = {
-+			isa = PBXSourcesBuildPhase;
-+			buildActionMask = 2147483647;
-+			files = (
-+				607A66322B0EFA3A0010BFC8 /* iOSTestbedTests.m in Sources */,
-+			);
-+			runOnlyForDeploymentPostprocessing = 0;
-+		};
-+/* End PBXSourcesBuildPhase section */
-+
-+/* Begin PBXTargetDependency section */
-+		607A662F2B0EFA3A0010BFC8 /* PBXTargetDependency */ = {
-+			isa = PBXTargetDependency;
-+			target = 607A66112B0EFA380010BFC8 /* iOSTestbed */;
-+			targetProxy = 607A662E2B0EFA3A0010BFC8 /* PBXContainerItemProxy */;
-+		};
-+/* End PBXTargetDependency section */
-+
-+/* Begin PBXVariantGroup section */
-+		607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */ = {
-+			isa = PBXVariantGroup;
-+			children = (
-+				607A66242B0EFA390010BFC8 /* Base */,
-+			);
-+			name = LaunchScreen.storyboard;
-+			sourceTree = "<group>";
-+		};
-+/* End PBXVariantGroup section */
-+
-+/* Begin XCBuildConfiguration section */
-+		607A663F2B0EFA3A0010BFC8 /* Debug */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				ALWAYS_SEARCH_USER_PATHS = NO;
-+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-+				CLANG_ANALYZER_NONNULL = YES;
-+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-+				CLANG_ENABLE_MODULES = YES;
-+				CLANG_ENABLE_OBJC_ARC = YES;
-+				CLANG_ENABLE_OBJC_WEAK = YES;
-+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-+				CLANG_WARN_BOOL_CONVERSION = YES;
-+				CLANG_WARN_COMMA = YES;
-+				CLANG_WARN_CONSTANT_CONVERSION = YES;
-+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-+				CLANG_WARN_EMPTY_BODY = YES;
-+				CLANG_WARN_ENUM_CONVERSION = YES;
-+				CLANG_WARN_INFINITE_RECURSION = YES;
-+				CLANG_WARN_INT_CONVERSION = YES;
-+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-+				CLANG_WARN_STRICT_PROTOTYPES = YES;
-+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-+				CLANG_WARN_UNREACHABLE_CODE = YES;
-+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-+				COPY_PHASE_STRIP = NO;
-+				DEBUG_INFORMATION_FORMAT = dwarf;
-+				ENABLE_STRICT_OBJC_MSGSEND = YES;
-+				ENABLE_TESTABILITY = YES;
-+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-+				GCC_C_LANGUAGE_STANDARD = gnu17;
-+				GCC_DYNAMIC_NO_PIC = NO;
-+				GCC_NO_COMMON_BLOCKS = YES;
-+				GCC_OPTIMIZATION_LEVEL = 0;
-+				GCC_PREPROCESSOR_DEFINITIONS = (
-+					"DEBUG=1",
-+					"$(inherited)",
-+				);
-+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-+				GCC_WARN_UNDECLARED_SELECTOR = YES;
-+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-+				GCC_WARN_UNUSED_FUNCTION = YES;
-+				GCC_WARN_UNUSED_VARIABLE = YES;
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-+				MTL_FAST_MATH = YES;
-+				ONLY_ACTIVE_ARCH = YES;
-+				SDKROOT = iphoneos;
-+			};
-+			name = Debug;
-+		};
-+		607A66402B0EFA3A0010BFC8 /* Release */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				ALWAYS_SEARCH_USER_PATHS = NO;
-+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-+				CLANG_ANALYZER_NONNULL = YES;
-+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-+				CLANG_ENABLE_MODULES = YES;
-+				CLANG_ENABLE_OBJC_ARC = YES;
-+				CLANG_ENABLE_OBJC_WEAK = YES;
-+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-+				CLANG_WARN_BOOL_CONVERSION = YES;
-+				CLANG_WARN_COMMA = YES;
-+				CLANG_WARN_CONSTANT_CONVERSION = YES;
-+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-+				CLANG_WARN_EMPTY_BODY = YES;
-+				CLANG_WARN_ENUM_CONVERSION = YES;
-+				CLANG_WARN_INFINITE_RECURSION = YES;
-+				CLANG_WARN_INT_CONVERSION = YES;
-+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-+				CLANG_WARN_STRICT_PROTOTYPES = YES;
-+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-+				CLANG_WARN_UNREACHABLE_CODE = YES;
-+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-+				COPY_PHASE_STRIP = NO;
-+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-+				ENABLE_NS_ASSERTIONS = NO;
-+				ENABLE_STRICT_OBJC_MSGSEND = YES;
-+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-+				GCC_C_LANGUAGE_STANDARD = gnu17;
-+				GCC_NO_COMMON_BLOCKS = YES;
-+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-+				GCC_WARN_UNDECLARED_SELECTOR = YES;
-+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-+				GCC_WARN_UNUSED_FUNCTION = YES;
-+				GCC_WARN_UNUSED_VARIABLE = YES;
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-+				MTL_ENABLE_DEBUG_INFO = NO;
-+				MTL_FAST_MATH = YES;
-+				SDKROOT = iphoneos;
-+				VALIDATE_PRODUCT = YES;
-+			};
-+			name = Release;
-+		};
-+		607A66422B0EFA3A0010BFC8 /* Debug */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
-+				CODE_SIGN_STYLE = Automatic;
-+				CURRENT_PROJECT_VERSION = 1;
-+				DEVELOPMENT_TEAM = "";
-+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				INFOPLIST_FILE = "iOSTestbed/iOSTestbed-Info.plist";
-+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				LD_RUNPATH_SEARCH_PATHS = (
-+					"$(inherited)",
-+					"@executable_path/Frameworks",
-+				);
-+				MARKETING_VERSION = 3.13.0a1;
-+				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbed;
-+				PRODUCT_NAME = "$(TARGET_NAME)";
-+				SWIFT_EMIT_LOC_STRINGS = YES;
-+				TARGETED_DEVICE_FAMILY = "1,2";
-+			};
-+			name = Debug;
-+		};
-+		607A66432B0EFA3A0010BFC8 /* Release */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
-+				CODE_SIGN_STYLE = Automatic;
-+				CURRENT_PROJECT_VERSION = 1;
-+				DEVELOPMENT_TEAM = "";
-+				ENABLE_TESTABILITY = YES;
-+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				INFOPLIST_FILE = "iOSTestbed/iOSTestbed-Info.plist";
-+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				LD_RUNPATH_SEARCH_PATHS = (
-+					"$(inherited)",
-+					"@executable_path/Frameworks",
-+				);
-+				MARKETING_VERSION = 3.13.0a1;
-+				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbed;
-+				PRODUCT_NAME = "$(TARGET_NAME)";
-+				SWIFT_EMIT_LOC_STRINGS = YES;
-+				TARGETED_DEVICE_FAMILY = "1,2";
-+			};
-+			name = Release;
-+		};
-+		607A66452B0EFA3A0010BFC8 /* Debug */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				BUNDLE_LOADER = "$(TEST_HOST)";
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
-+				CODE_SIGN_STYLE = Automatic;
-+				CURRENT_PROJECT_VERSION = 1;
-+				DEVELOPMENT_TEAM = 3HEZE76D99;
-+				GENERATE_INFOPLIST_FILE = YES;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				MARKETING_VERSION = 1.0;
-+				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbedTests;
-+				PRODUCT_NAME = "$(TARGET_NAME)";
-+				SWIFT_EMIT_LOC_STRINGS = NO;
-+				TARGETED_DEVICE_FAMILY = "1,2";
-+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/iOSTestbed";
-+			};
-+			name = Debug;
-+		};
-+		607A66462B0EFA3A0010BFC8 /* Release */ = {
-+			isa = XCBuildConfiguration;
-+			buildSettings = {
-+				BUNDLE_LOADER = "$(TEST_HOST)";
-+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
-+				CODE_SIGN_STYLE = Automatic;
-+				CURRENT_PROJECT_VERSION = 1;
-+				DEVELOPMENT_TEAM = 3HEZE76D99;
-+				GENERATE_INFOPLIST_FILE = YES;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-+				MARKETING_VERSION = 1.0;
-+				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbedTests;
-+				PRODUCT_NAME = "$(TARGET_NAME)";
-+				SWIFT_EMIT_LOC_STRINGS = NO;
-+				TARGETED_DEVICE_FAMILY = "1,2";
-+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/iOSTestbed";
-+			};
-+			name = Release;
-+		};
-+/* End XCBuildConfiguration section */
-+
-+/* Begin XCConfigurationList section */
-+		607A660D2B0EFA380010BFC8 /* Build configuration list for PBXProject "iOSTestbed" */ = {
-+			isa = XCConfigurationList;
-+			buildConfigurations = (
-+				607A663F2B0EFA3A0010BFC8 /* Debug */,
-+				607A66402B0EFA3A0010BFC8 /* Release */,
-+			);
-+			defaultConfigurationIsVisible = 0;
-+			defaultConfigurationName = Release;
-+		};
-+		607A66412B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "iOSTestbed" */ = {
-+			isa = XCConfigurationList;
-+			buildConfigurations = (
-+				607A66422B0EFA3A0010BFC8 /* Debug */,
-+				607A66432B0EFA3A0010BFC8 /* Release */,
-+			);
-+			defaultConfigurationIsVisible = 0;
-+			defaultConfigurationName = Release;
-+		};
-+		607A66442B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "iOSTestbedTests" */ = {
-+			isa = XCConfigurationList;
-+			buildConfigurations = (
-+				607A66452B0EFA3A0010BFC8 /* Debug */,
-+				607A66462B0EFA3A0010BFC8 /* Release */,
-+			);
-+			defaultConfigurationIsVisible = 0;
-+			defaultConfigurationName = Release;
-+		};
-+/* End XCConfigurationList section */
-+	};
-+	rootObject = 607A660A2B0EFA380010BFC8 /* Project object */;
-+}
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/AppDelegate.h
-@@ -0,0 +1,11 @@
-+//
-+//  AppDelegate.h
-+//  iOSTestbed
-+//
-+
-+#import <UIKit/UIKit.h>
-+
-+@interface AppDelegate : UIResponder <UIApplicationDelegate>
-+
-+
-+@end
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/AppDelegate.m
-@@ -0,0 +1,19 @@
-+//
-+//  AppDelegate.m
-+//  iOSTestbed
-+//
-+
-+#import "AppDelegate.h"
-+
-+@interface AppDelegate ()
-+
-+@end
-+
-+@implementation AppDelegate
-+
-+
-+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-+    return YES;
-+}
-+
-+@end
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
-@@ -0,0 +1,11 @@
-+{
-+  "colors" : [
-+    {
-+      "idiom" : "universal"
-+    }
-+  ],
-+  "info" : {
-+    "author" : "xcode",
-+    "version" : 1
-+  }
-+}
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
-@@ -0,0 +1,13 @@
-+{
-+  "images" : [
-+    {
-+      "idiom" : "universal",
-+      "platform" : "ios",
-+      "size" : "1024x1024"
-+    }
-+  ],
-+  "info" : {
-+    "author" : "xcode",
-+    "version" : 1
-+  }
-+}
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/Assets.xcassets/Contents.json
-@@ -0,0 +1,6 @@
-+{
-+  "info" : {
-+    "author" : "xcode",
-+    "version" : 1
-+  }
-+}
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/Base.lproj/LaunchScreen.storyboard
-@@ -0,0 +1,9 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22155" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
-+    <device id="retina6_12" orientation="portrait" appearance="light"/>
-+    <dependencies>
-+        <deployment identifier="iOS"/>
-+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22131"/>
-+    </dependencies>
-+    <scenes/>
-+</document>
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/app/README
-@@ -0,0 +1,7 @@
-+This folder can contain any Python application code.
-+
-+During the build, any binary modules found in this folder will be processed into
-+iOS Framework form.
-+
-+When the test suite runs, this folder will be on the PYTHONPATH, and will be the
-+working directory for the test suite.
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/app_packages/README
-@@ -0,0 +1,7 @@
-+This folder can be a target for installing any Python dependencies needed by the
-+test suite.
-+
-+During the build, any binary modules found in this folder will be processed into
-+iOS Framework form.
-+
-+When the test suite runs, this folder will be on the PYTHONPATH.
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string></string>
-+	<key>CFBundleIdentifier</key>
-+	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>iPhoneOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>12.0</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/iOSTestbed-Info.plist
-@@ -0,0 +1,64 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleDisplayName</key>
-+	<string>${PRODUCT_NAME}</string>
-+	<key>CFBundleExecutable</key>
-+	<string>${EXECUTABLE_NAME}</string>
-+	<key>CFBundleIdentifier</key>
-+	<string>org.python.iOSTestbed</string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundleName</key>
-+	<string>${PRODUCT_NAME}</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSignature</key>
-+	<string>????</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+	<key>LSRequiresIPhoneOS</key>
-+	<true/>
-+	<key>UIRequiresFullScreen</key>
-+	<true/>
-+	<key>UILaunchStoryboardName</key>
-+	<string>Launch Screen</string>
-+	<key>UISupportedInterfaceOrientations</key>
-+	<array>
-+		<string>UIInterfaceOrientationPortrait</string>
-+		<string>UIInterfaceOrientationLandscapeLeft</string>
-+		<string>UIInterfaceOrientationLandscapeRight</string>
-+	</array>
-+	<key>UISupportedInterfaceOrientations~ipad</key>
-+	<array>
-+		<string>UIInterfaceOrientationPortrait</string>
-+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-+		<string>UIInterfaceOrientationLandscapeLeft</string>
-+		<string>UIInterfaceOrientationLandscapeRight</string>
-+	</array>
-+	<key>TestArgs</key>
-+	<array>
-+		<string>test</string> <!-- Invoke "python -m test" -->
-+        <string>-uall</string> <!-- Enable all resources -->
-+        <string>--single-process</string> <!-- always run all tests sequentially in a single process -->
-+        <string>--rerun</string> <!-- Re-run failed tests in verbose mode -->
-+        <string>-W</string> <!-- Display test output on failure -->
-+		<!-- To run a subset of tests, add the test names below; e.g.,
-+        <string>test_os</string>
-+        <string>test_sys</string>
-+		-->
-+    </array>
-+	<key>UIApplicationSceneManifest</key>
-+	<dict>
-+		<key>UIApplicationSupportsMultipleScenes</key>
-+		<false/>
-+		<key>UISceneConfigurations</key>
-+		<dict/>
-+	</dict>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbed/main.m
-@@ -0,0 +1,16 @@
-+//
-+//  main.m
-+//  iOSTestbed
-+//
-+
-+#import <UIKit/UIKit.h>
-+#import "AppDelegate.h"
-+
-+int main(int argc, char * argv[]) {
-+    NSString * appDelegateClassName;
-+    @autoreleasepool {
-+        appDelegateClassName = NSStringFromClass([AppDelegate class]);
-+
-+        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
-+    }
-+}
---- /dev/null
-+++ b/MacCatalyst/testbed/iOSTestbedTests/iOSTestbedTests.m
-@@ -0,0 +1,162 @@
-+#import <XCTest/XCTest.h>
-+#import <Python/Python.h>
-+
-+@interface iOSTestbedTests : XCTestCase
-+
-+@end
-+
-+@implementation iOSTestbedTests
-+
-+
-+- (void)testPython {
-+    const char **argv;
-+    int exit_code;
-+    int failed;
-+    PyStatus status;
-+    PyPreConfig preconfig;
-+    PyConfig config;
-+    PyObject *sys_module;
-+    PyObject *sys_path_attr;
-+    NSArray *test_args;
-+    NSString *python_home;
-+    NSString *path;
-+    wchar_t *wtmp_str;
-+
-+    NSString *resourcePath = [[NSBundle mainBundle] resourcePath];
-+
-+    // Set some other common environment indicators to disable color, as the
-+    // Xcode log can't display color. Stdout will report that it is *not* a
-+    // TTY.
-+    setenv("NO_COLOR", "1", true);
-+    setenv("PY_COLORS", "0", true);
-+
-+    // Arguments to pass into the test suite runner.
-+    // argv[0] must identify the process; any subsequent arg
-+    // will be handled as if it were an argument to `python -m test`
-+    test_args = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"TestArgs"];
-+    if (test_args == NULL) {
-+        NSLog(@"Unable to identify test arguments.");
-+    }
-+    argv = malloc(sizeof(char *) * ([test_args count] + 1));
-+    argv[0] = "iOSTestbed";
-+    for (int i = 1; i < [test_args count]; i++) {
-+        argv[i] = [[test_args objectAtIndex:i] UTF8String];
-+    }
-+    NSLog(@"Test command: %@", test_args);
-+
-+    // Generate an isolated Python configuration.
-+    NSLog(@"Configuring isolated Python...");
-+    PyPreConfig_InitIsolatedConfig(&preconfig);
-+    PyConfig_InitIsolatedConfig(&config);
-+
-+    // Configure the Python interpreter:
-+    // Enforce UTF-8 encoding for stderr, stdout, file-system encoding and locale.
-+    // See https://docs.python.org/3/library/os.html#python-utf-8-mode.
-+    preconfig.utf8_mode = 1;
-+    // Use the system logger for stdout/err
-+    config.use_system_logger = 1;
-+    // Don't buffer stdio. We want output to appears in the log immediately
-+    config.buffered_stdio = 0;
-+    // Don't write bytecode; we can't modify the app bundle
-+    // after it has been signed.
-+    config.write_bytecode = 0;
-+    // Ensure that signal handlers are installed
-+    config.install_signal_handlers = 1;
-+    // Run the test module.
-+    config.run_module = Py_DecodeLocale([[test_args objectAtIndex:0] UTF8String], NULL);
-+    // For debugging - enable verbose mode.
-+    // config.verbose = 1;
-+
-+    NSLog(@"Pre-initializing Python runtime...");
-+    status = Py_PreInitialize(&preconfig);
-+    if (PyStatus_Exception(status)) {
-+        XCTFail(@"Unable to pre-initialize Python interpreter: %s", status.err_msg);
-+        PyConfig_Clear(&config);
-+        return;
-+    }
-+
-+    // Set the home for the Python interpreter
-+    python_home = [NSString stringWithFormat:@"%@/python", resourcePath, nil];
-+    NSLog(@"PythonHome: %@", python_home);
-+    wtmp_str = Py_DecodeLocale([python_home UTF8String], NULL);
-+    status = PyConfig_SetString(&config, &config.home, wtmp_str);
-+    if (PyStatus_Exception(status)) {
-+        XCTFail(@"Unable to set PYTHONHOME: %s", status.err_msg);
-+        PyConfig_Clear(&config);
-+        return;
-+    }
-+    PyMem_RawFree(wtmp_str);
-+
-+    // Read the site config
-+    status = PyConfig_Read(&config);
-+    if (PyStatus_Exception(status)) {
-+        XCTFail(@"Unable to read site config: %s", status.err_msg);
-+        PyConfig_Clear(&config);
-+        return;
-+    }
-+
-+    NSLog(@"Configure argc/argv...");
-+    status = PyConfig_SetBytesArgv(&config, [test_args count], (char**) argv);
-+    if (PyStatus_Exception(status)) {
-+        XCTFail(@"Unable to configure argc/argv: %s", status.err_msg);
-+        PyConfig_Clear(&config);
-+        return;
-+    }
-+
-+    NSLog(@"Initializing Python runtime...");
-+    status = Py_InitializeFromConfig(&config);
-+    if (PyStatus_Exception(status)) {
-+        XCTFail(@"Unable to initialize Python interpreter: %s", status.err_msg);
-+        PyConfig_Clear(&config);
-+        return;
-+    }
-+
-+    sys_module = PyImport_ImportModule("sys");
-+    if (sys_module == NULL) {
-+        XCTFail(@"Could not import sys module");
-+        return;
-+    }
-+
-+    sys_path_attr = PyObject_GetAttrString(sys_module, "path");
-+    if (sys_path_attr == NULL) {
-+        XCTFail(@"Could not access sys.path");
-+        return;
-+    }
-+
-+    // Add the app packages path
-+    path = [NSString stringWithFormat:@"%@/app_packages", resourcePath, nil];
-+    NSLog(@"App packages path: %@", path);
-+    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
-+    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
-+    if (failed) {
-+        XCTFail(@"Unable to add app packages to sys.path");
-+        return;
-+    }
-+    PyMem_RawFree(wtmp_str);
-+
-+    path = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
-+    NSLog(@"App path: %@", path);
-+    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
-+    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
-+    if (failed) {
-+        XCTFail(@"Unable to add app to sys.path");
-+        return;
-+    }
-+    PyMem_RawFree(wtmp_str);
-+
-+    // Ensure the working directory is the app folder.
-+    chdir([path UTF8String]);
-+
-+    // Start the test suite. Print a separator to differentiate Python startup logs from app logs
-+    NSLog(@"---------------------------------------------------------------------------");
-+
-+    exit_code = Py_RunMain();
-+    XCTAssertEqual(exit_code, 0, @"Test suite did not pass");
-+
-+    NSLog(@"---------------------------------------------------------------------------");
-+
-+    Py_Finalize();
-+}
-+
-+
-+@end
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
-index ec0857a4a99..190670f271d 100644
+index ec0857a4a99..d6b3fa10092 100644
 --- a/Misc/platform_triplet.c
 +++ b/Misc/platform_triplet.c
-@@ -254,9 +254,55 @@
+@@ -254,6 +254,12 @@
  #      else
  PLATFORM_TRIPLET=arm64-iphonesimulator
  #      endif
@@ -2132,49 +264,6 @@ index ec0857a4a99..190670f271d 100644
  #    else
  PLATFORM_TRIPLET=arm64-iphoneos
  #    endif
-+#  elif defined(TARGET_OS_TV) && TARGET_OS_TV
-+#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
-+#      if __x86_64__
-+PLATFORM_TRIPLET=x86_64-appletvsimulator
-+#      else
-+PLATFORM_TRIPLET=arm64-appletvsimulator
-+#      endif
-+#    else
-+PLATFORM_TRIPLET=arm64-appletvos
-+#    endif
-+#  elif defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
-+#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
-+#      if __x86_64__
-+PLATFORM_TRIPLET=x86_64-watchsimulator
-+#      else
-+PLATFORM_TRIPLET=arm64-watchsimulator
-+#      endif
-+#    else
-+PLATFORM_TRIPLET=arm64_32-watchos
-+#    endif
-+#  elif defined(TARGET_OS_TV) && TARGET_OS_TV
-+#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
-+#      if __x86_64__
-+PLATFORM_TRIPLET=x86_64-appletvsimulator
-+#      else
-+PLATFORM_TRIPLET=arm64-appletvsimulator
-+#      endif
-+#    else
-+PLATFORM_TRIPLET=arm64-appletvos
-+#    endif
-+#  elif defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
-+#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
-+#      if __x86_64__
-+PLATFORM_TRIPLET=x86_64-watchsimulator
-+#      else
-+PLATFORM_TRIPLET=arm64-watchsimulator
-+#      endif
-+#    else
-+PLATFORM_TRIPLET=arm64_32-watchos
-+#    endif
- // Older macOS SDKs do not define TARGET_OS_OSX
- #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
- PLATFORM_TRIPLET=darwin
 diff --git a/config.sub b/config.sub
 index 1bb6a05dc11..7e007ac54c3 100755
 --- a/config.sub
@@ -2198,7 +287,7 @@ index 1bb6a05dc11..7e007ac54c3 100755
  		# None (no kernel, i.e. freestanding / bare metal),
  		# can be paired with an machine code file format
 diff --git a/configure b/configure
-index d46bc563a67..4c05b8dcf21 100755
+index d46bc563a67..d40e0a6981f 100755
 --- a/configure
 +++ b/configure
 @@ -974,6 +974,8 @@
@@ -2232,13 +321,14 @@ index d46bc563a67..4c05b8dcf21 100755
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -4194,32 +4202,68 @@
+@@ -4194,32 +4202,72 @@
  if test -z "$AR"; then
  	case "$host" in
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
 +		aarch64-apple-ios*-macabi) AR=arm64-apple-ios-macabi-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
++		x86_64-apple-ios*-macabi) AR=x86_64-apple-ios-macabi-ar ;;
 +
 +		aarch64-apple-tvos*-simulator) AR=arm64-apple-tvos-simulator-ar ;;
 +		aarch64-apple-tvos*)           AR=arm64-apple-tvos-ar ;;
@@ -2256,6 +346,7 @@ index d46bc563a67..4c05b8dcf21 100755
 +		aarch64-apple-ios*-macabi) CC=arm64-apple-ios-macabi-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
++		x86_64-apple-ios*-macabi) CC=x86_64-apple-ios-macabi-clang ;;
 +
 +		aarch64-apple-tvos*-simulator) CC=arm64-apple-tvos-simulator-clang ;;
 +		aarch64-apple-tvos*)           CC=arm64-apple-tvos-clang ;;
@@ -2273,6 +364,7 @@ index d46bc563a67..4c05b8dcf21 100755
 +		aarch64-apple-ios*-macabi) CPP=arm64-apple-ios-macabi-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
++		x86_64-apple-ios*-macabi) CPP=x86_64-apple-ios-macabi-cpp ;;
 +
 +		aarch64-apple-tvos*-simulator) CPP=arm64-apple-tvos-simulator-cpp ;;
 +		aarch64-apple-tvos*)           CPP=arm64-apple-tvos-cpp ;;
@@ -2290,6 +382,7 @@ index d46bc563a67..4c05b8dcf21 100755
 +		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
++		x86_64-apple-ios*-macabi) CXX=x86_64-apple-ios-macabi-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CXX=arm64-apple-tvos-simulator-clang++ ;;
 +		aarch64-apple-tvos*)           CXX=arm64-apple-tvos-clang++ ;;
@@ -2301,7 +394,7 @@ index d46bc563a67..4c05b8dcf21 100755
  		*)
  	esac
  fi
-@@ -4342,8 +4386,10 @@
+@@ -4342,8 +4390,10 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -2314,7 +407,7 @@ index d46bc563a67..4c05b8dcf21 100755
  			*) as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
  		esac
  	esac
-@@ -4352,6 +4398,8 @@
+@@ -4352,6 +4402,8 @@
  	no)
  		case $ac_sys_system in
  			iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -2323,7 +416,7 @@ index d46bc563a67..4c05b8dcf21 100755
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -4458,6 +4506,36 @@
+@@ -4458,6 +4510,36 @@
  
  				ac_config_files="$ac_config_files iOS/Resources/Info.plist"
  
@@ -2360,7 +453,7 @@ index d46bc563a67..4c05b8dcf21 100755
  				;;
  			*)
  				as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
-@@ -4469,6 +4547,8 @@
+@@ -4469,6 +4551,8 @@
    e)
  	case $ac_sys_system in
  		iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -2369,7 +462,7 @@ index d46bc563a67..4c05b8dcf21 100755
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -4523,8 +4603,8 @@
+@@ -4523,8 +4607,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -2380,7 +473,7 @@ index d46bc563a67..4c05b8dcf21 100755
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) as_fn_error $? "no default app store compliance patch available for $ac_sys_system" "$LINENO" 5 ;;
-@@ -4542,8 +4622,8 @@
+@@ -4542,8 +4626,8 @@
  else case e in #(
    e)
      case $ac_sys_system in
@@ -2391,7 +484,7 @@ index d46bc563a67..4c05b8dcf21 100755
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: applying default app store compliance patch" >&5
  printf "%s\n" "applying default app store compliance patch" >&6; }
-@@ -4598,6 +4678,50 @@
+@@ -4598,6 +4682,50 @@
  				;;
  		esac
  		;;
@@ -2442,7 +535,7 @@ index d46bc563a67..4c05b8dcf21 100755
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -4688,9 +4812,13 @@
+@@ -4688,9 +4816,13 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -2457,7 +550,7 @@ index d46bc563a67..4c05b8dcf21 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -4753,7 +4881,10 @@
+@@ -4753,7 +4885,10 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -2469,7 +562,7 @@ index d46bc563a67..4c05b8dcf21 100755
  
  
  # checks for alternative programs
-@@ -4794,6 +4925,16 @@
+@@ -4794,6 +4929,16 @@
      as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
      as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
     ;; #(
@@ -2486,7 +579,7 @@ index d46bc563a67..4c05b8dcf21 100755
    *) :
       ;;
  esac
-@@ -7163,6 +7304,10 @@
+@@ -7163,6 +7308,10 @@
      MULTIARCH="" ;; #(
    iOS) :
      MULTIARCH="" ;; #(
@@ -2497,7 +590,7 @@ index d46bc563a67..4c05b8dcf21 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -7183,7 +7328,7 @@
+@@ -7183,7 +7332,7 @@
  printf "%s\n" "$MULTIARCH" >&6; }
  
  case $ac_sys_system in #(
@@ -2506,11 +599,15 @@ index d46bc563a67..4c05b8dcf21 100755
      SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f2` ;; #(
    *) :
      SOABI_PLATFORM=$PLATFORM_TRIPLET
-@@ -7234,6 +7379,14 @@
+@@ -7234,6 +7383,18 @@
      PY_SUPPORT_TIER=3 ;; #(
      aarch64-apple-ios*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
 +    aarch64-apple-tvos*-simulator/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-ios*-macabi/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    x86_64-apple-ios*-macabi/clang) :
 +    PY_SUPPORT_TIER=3 ;; #(
 +    aarch64-apple-tvos*/clang) :
 +    PY_SUPPORT_TIER=3 ;; #(
@@ -2521,7 +618,7 @@ index d46bc563a67..4c05b8dcf21 100755
      aarch64-*-linux-android/clang) :
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-linux-android/clang) :
-@@ -7670,7 +7823,7 @@
+@@ -7670,7 +7831,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -2530,7 +627,7 @@ index d46bc563a67..4c05b8dcf21 100755
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        as_fn_error $? "Unknown platform for framework build" "$LINENO" 5;;
-@@ -7736,7 +7889,7 @@
+@@ -7736,7 +7897,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -2539,7 +636,7 @@ index d46bc563a67..4c05b8dcf21 100755
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -13544,7 +13697,7 @@
+@@ -13544,7 +13705,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -2548,7 +645,7 @@ index d46bc563a67..4c05b8dcf21 100755
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -13677,7 +13830,7 @@
+@@ -13677,7 +13838,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -2557,7 +654,7 @@ index d46bc563a67..4c05b8dcf21 100755
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -13701,7 +13854,7 @@
+@@ -13701,7 +13862,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -2566,7 +663,7 @@ index d46bc563a67..4c05b8dcf21 100755
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -15286,7 +15439,7 @@
+@@ -15286,7 +15447,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -2575,7 +672,7 @@ index d46bc563a67..4c05b8dcf21 100755
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -19038,12 +19191,6 @@
+@@ -19038,12 +19199,6 @@
  then :
    printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
  
@@ -2588,7 +685,7 @@ index d46bc563a67..4c05b8dcf21 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -19104,18 +19251,6 @@
+@@ -19104,18 +19259,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -2607,7 +704,7 @@ index d46bc563a67..4c05b8dcf21 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -19542,24 +19677,6 @@
+@@ -19542,24 +19685,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
@@ -2632,7 +729,7 @@ index d46bc563a67..4c05b8dcf21 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -19860,12 +19977,6 @@
+@@ -19860,12 +19985,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -2645,7 +742,7 @@ index d46bc563a67..4c05b8dcf21 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -20134,11 +20245,11 @@
+@@ -20134,11 +20253,11 @@
  
  fi
  
@@ -2659,7 +756,7 @@ index d46bc563a67..4c05b8dcf21 100755
    ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
  if test "x$ac_cv_func_getentropy" = xyes
  then :
-@@ -20160,6 +20271,53 @@
+@@ -20160,6 +20279,53 @@
  
  fi
  
@@ -2713,7 +810,7 @@ index d46bc563a67..4c05b8dcf21 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -23242,7 +23400,8 @@
+@@ -23242,7 +23408,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -2723,7 +820,7 @@ index d46bc563a67..4c05b8dcf21 100755
  
    for ac_func in openpty
  do :
-@@ -23356,7 +23515,7 @@
+@@ -23356,7 +23523,7 @@
  fi
  
  done
@@ -2732,7 +829,7 @@ index d46bc563a67..4c05b8dcf21 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -23539,6 +23698,7 @@
+@@ -23539,6 +23706,7 @@
  fi
  
  done
@@ -2740,7 +837,7 @@ index d46bc563a67..4c05b8dcf21 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -23804,10 +23964,10 @@
+@@ -23804,10 +23972,10 @@
  
  done
  
@@ -2753,7 +850,7 @@ index d46bc563a67..4c05b8dcf21 100755
  then
  
    for ac_func in clock_settime
-@@ -26146,8 +26306,8 @@
+@@ -26146,8 +26314,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -2764,7 +861,7 @@ index d46bc563a67..4c05b8dcf21 100755
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -29017,7 +29177,7 @@
+@@ -29017,7 +29185,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -2773,7 +870,7 @@ index d46bc563a67..4c05b8dcf21 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -29510,7 +29670,7 @@
+@@ -29510,7 +29678,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -2782,7 +879,7 @@ index d46bc563a67..4c05b8dcf21 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -30490,7 +30650,7 @@
+@@ -30490,7 +30658,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -2791,7 +888,7 @@ index d46bc563a67..4c05b8dcf21 100755
  
  
  
-@@ -34493,6 +34653,8 @@
+@@ -34493,6 +34661,8 @@
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
      "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
@@ -2801,7 +898,7 @@ index d46bc563a67..4c05b8dcf21 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index faa89095303..9bd51f7da97 100644
+index faa89095303..321d8117fc0 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,12 @@
@@ -2826,10 +923,14 @@ index faa89095303..9bd51f7da97 100644
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -420,6 +426,14 @@
+@@ -418,32 +424,72 @@
+ if test -z "$AR"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
++		aarch64-apple-ios*-macabi) AR=arm64-apple-ios-macabi-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
++		x86_64-apple-ios*-macabi) AR=x86_64-apple-ios-macabi-ar ;;
 +
 +		aarch64-apple-tvos*-simulator) AR=arm64-apple-tvos-simulator-ar ;;
 +		aarch64-apple-tvos*)           AR=arm64-apple-tvos-ar ;;
@@ -2841,10 +942,13 @@ index faa89095303..9bd51f7da97 100644
  		*)
  	esac
  fi
-@@ -428,6 +442,14 @@
+ if test -z "$CC"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
++		aarch64-apple-ios*-macabi) CC=arm64-apple-ios-macabi-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
++		x86_64-apple-ios*-macabi) CC=x86_64-apple-ios-macabi-clang ;;
 +
 +		aarch64-apple-tvos*-simulator) CC=arm64-apple-tvos-simulator-clang ;;
 +		aarch64-apple-tvos*)           CC=arm64-apple-tvos-clang ;;
@@ -2856,10 +960,13 @@ index faa89095303..9bd51f7da97 100644
  		*)
  	esac
  fi
-@@ -436,6 +458,14 @@
+ if test -z "$CPP"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
++		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
++		x86_64-apple-ios*-macabi) CXX=x86_64-apple-ios-macabi-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CPP=arm64-apple-tvos-simulator-cpp ;;
 +		aarch64-apple-tvos*)           CPP=arm64-apple-tvos-cpp ;;
@@ -2871,10 +978,13 @@ index faa89095303..9bd51f7da97 100644
  		*)
  	esac
  fi
-@@ -444,6 +474,14 @@
+ if test -z "$CXX"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
++		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
++		x86_64-apple-ios*-macabi) CXX=x86_64-apple-ios-macabi-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CXX=arm64-apple-tvos-simulator-clang++ ;;
 +		aarch64-apple-tvos*)           CXX=arm64-apple-tvos-clang++ ;;
@@ -2886,7 +996,7 @@ index faa89095303..9bd51f7da97 100644
  		*)
  	esac
  fi
-@@ -558,8 +596,10 @@
+@@ -558,8 +604,10 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -2899,7 +1009,7 @@ index faa89095303..9bd51f7da97 100644
  			*) AC_MSG_ERROR([Unknown platform for framework build])
  		esac
  	esac
-@@ -568,6 +608,8 @@
+@@ -568,6 +616,8 @@
  	no)
  		case $ac_sys_system in
  			iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -2908,7 +1018,7 @@ index faa89095303..9bd51f7da97 100644
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -670,6 +712,34 @@
+@@ -670,6 +720,34 @@
  
  				AC_CONFIG_FILES([iOS/Resources/Info.plist])
  				;;
@@ -2943,7 +1053,7 @@ index faa89095303..9bd51f7da97 100644
  			*)
  				AC_MSG_ERROR([Unknown platform for framework build])
  				;;
-@@ -678,6 +748,8 @@
+@@ -678,6 +756,8 @@
  	],[
  	case $ac_sys_system in
  		iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -2952,7 +1062,7 @@ index faa89095303..9bd51f7da97 100644
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -730,8 +802,8 @@
+@@ -730,8 +810,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -2963,7 +1073,7 @@ index faa89095303..9bd51f7da97 100644
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) AC_MSG_ERROR([no default app store compliance patch available for $ac_sys_system]) ;;
-@@ -745,8 +817,8 @@
+@@ -745,8 +825,8 @@
      esac
    ],[
      case $ac_sys_system in
@@ -2974,7 +1084,7 @@ index faa89095303..9bd51f7da97 100644
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          AC_MSG_RESULT([applying default app store compliance patch])
          ;;
-@@ -794,6 +866,46 @@
+@@ -794,6 +874,46 @@
  				;;
  		esac
  		;;
@@ -3021,7 +1131,7 @@ index faa89095303..9bd51f7da97 100644
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -883,9 +995,13 @@
+@@ -883,9 +1003,13 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -3036,7 +1146,7 @@ index faa89095303..9bd51f7da97 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -944,8 +1060,11 @@
+@@ -944,8 +1068,11 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -3049,7 +1159,7 @@ index faa89095303..9bd51f7da97 100644
  
  # checks for alternative programs
  
-@@ -979,11 +1098,17 @@
+@@ -979,11 +1106,17 @@
    ],
  )
  
@@ -3068,7 +1178,7 @@ index faa89095303..9bd51f7da97 100644
    ],
  )
  
-@@ -1172,6 +1297,8 @@
+@@ -1172,6 +1305,8 @@
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
    [iOS], [MULTIARCH=""],
@@ -3077,7 +1187,7 @@ index faa89095303..9bd51f7da97 100644
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1193,7 +1320,7 @@
+@@ -1193,7 +1328,7 @@
  dnl use a single "fat" binary at runtime. SOABI_PLATFORM is the component of
  dnl the PLATFORM_TRIPLET that will be used in binary module extensions.
  AS_CASE([$ac_sys_system],
@@ -3086,18 +1196,20 @@ index faa89095303..9bd51f7da97 100644
    [SOABI_PLATFORM=$PLATFORM_TRIPLET]
  )
  
-@@ -1227,6 +1354,10 @@
+@@ -1227,6 +1362,12 @@
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
    [aarch64-apple-ios*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
    [aarch64-apple-ios*/clang],             [PY_SUPPORT_TIER=3], dnl iOS on ARM64
 +  [aarch64-apple-tvos*-simulator/clang],  [PY_SUPPORT_TIER=3], dnl tvOS Simulator on arm64
++  [aarch64-apple-ios*-macabi/clang],  [PY_SUPPORT_TIER=3], dnl MacCatalyst on arm64
++  [x86_64-apple-ios*-macabi/clang],  [PY_SUPPORT_TIER=3], dnl MacCatalyst on x86_64
 +  [aarch64-apple-tvos*/clang],            [PY_SUPPORT_TIER=3], dnl tvOS on ARM64
 +  [aarch64-apple-watchos*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl watchOS Simulator on arm64
 +  [arm64_32-apple-watchos*/clang],            [PY_SUPPORT_TIER=3], dnl watchOS on ARM64
    [aarch64-*-linux-android/clang],   [PY_SUPPORT_TIER=3], dnl Android on ARM64
    [x86_64-*-linux-android/clang],    [PY_SUPPORT_TIER=3], dnl Android on AMD64
  
-@@ -1536,7 +1667,7 @@
+@@ -1536,7 +1677,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -3106,7 +1218,7 @@ index faa89095303..9bd51f7da97 100644
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        AC_MSG_ERROR([Unknown platform for framework build]);;
-@@ -1601,7 +1732,7 @@
+@@ -1601,7 +1742,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -3115,7 +1227,7 @@ index faa89095303..9bd51f7da97 100644
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -3456,7 +3587,7 @@
+@@ -3456,7 +3597,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -3124,7 +1236,7 @@ index faa89095303..9bd51f7da97 100644
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3580,7 +3711,7 @@
+@@ -3580,7 +3721,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -3133,7 +1245,7 @@ index faa89095303..9bd51f7da97 100644
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3604,7 +3735,7 @@
+@@ -3604,7 +3745,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -3142,7 +1254,7 @@ index faa89095303..9bd51f7da97 100644
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -4024,7 +4155,7 @@
+@@ -4024,7 +4165,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -3151,7 +1263,7 @@ index faa89095303..9bd51f7da97 100644
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5133,9 +5264,9 @@
+@@ -5133,9 +5274,9 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock closefrom close_range confstr \
@@ -3163,7 +1275,7 @@ index faa89095303..9bd51f7da97 100644
    gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
    getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5143,8 +5274,7 @@
+@@ -5143,8 +5284,7 @@
    getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
    mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
@@ -3173,7 +1285,7 @@ index faa89095303..9bd51f7da97 100644
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill pthread_getname_np pthread_setname_np \
-@@ -5153,7 +5283,7 @@
+@@ -5153,7 +5293,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
    setitimer setlocale setpgid setpgrp setpriority setregid setresgid \
@@ -3182,7 +1294,7 @@ index faa89095303..9bd51f7da97 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5168,12 +5298,20 @@
+@@ -5168,12 +5308,20 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -3206,7 +1318,7 @@ index faa89095303..9bd51f7da97 100644
  fi
  
  AC_CHECK_DECL([dirfd],
-@@ -5427,20 +5565,22 @@
+@@ -5427,20 +5575,22 @@
  ])
  
  # check for openpty, login_tty, and forkpty
@@ -3243,7 +1355,7 @@ index faa89095303..9bd51f7da97 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5479,10 +5619,10 @@
+@@ -5479,10 +5629,10 @@
      ])
  ])
  
@@ -3256,7 +1368,7 @@ index faa89095303..9bd51f7da97 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -6233,8 +6373,8 @@
+@@ -6233,8 +6383,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -3267,7 +1379,7 @@ index faa89095303..9bd51f7da97 100644
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -6893,7 +7033,7 @@
+@@ -6893,7 +7043,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -3276,7 +1388,7 @@ index faa89095303..9bd51f7da97 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7187,7 +7327,7 @@
+@@ -7187,7 +7337,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -3285,7 +1397,7 @@ index faa89095303..9bd51f7da97 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7598,7 +7738,7 @@
+@@ -7598,7 +7748,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
