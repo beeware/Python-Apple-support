@@ -33,9 +33,9 @@ OPENSSL_VERSION=3.0.16-1
 XZ_VERSION=5.6.4-1
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS
+OS_LIST=macOS iOS tvOS watchOS MacCatalyst
 
-CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
+CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar -L
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
@@ -44,6 +44,10 @@ VERSION_MIN-macOS=11.0
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
 VERSION_MIN-iOS=13.0
+
+# MacCatalyst targets
+TARGETS-MacCatalyst=maccatalyst.x86_64 maccatalyst.arm64
+VERSION_MIN-MacCatalyst=14.2
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
@@ -117,22 +121,32 @@ downloads/python-$(PYTHON_PKG_VERSION)-macos11.pkg:
 #
 ###########################################################################
 define build-target
+
 target=$1
 os=$2
 
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
-SDK-$(target)=$$(basename $(target))
+SDK-$(target)=$$(subst maccatalyst,macosx,$$(basename $(target)))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
-	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-IS_SIMULATOR-$(target)=False
-	else
+	ifneq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
-IS_SIMULATOR-$(target)=True
+IS_SIMULATOR-$(target)="True"
+TARGET_ABI-$(target)=""
+TARGET_TRIPLE_SUFFIX-$(target)=""
+	else ifneq ($$(findstring maccatalyst,$$(target)),)
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-ios$$(VERSION_MIN-$(os))-macabi
+IS_SIMULATOR-$(target)="False"
+TARGET_ABI-$(target)="macabi"
+TARGET_TRIPLE_SUFFIX-$(target)="-macabi"
+	else
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+IS_SIMULATOR-$(target)="False"
+TARGET_ABI-$(target)=""
+TARGET_TRIPLE_SUFFIX-$(target)=""
 	endif
 endif
 
@@ -342,15 +356,22 @@ $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
 		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
 		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
+		| sed -e "s/{{abi}}/$$(TARGET_ABI-$(target))/g" \
+		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(subst macosx,iphoneos,$$(SDK-$(target)))$$(TARGET_TRIPLE_SUFFIX-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(subst macosx,iphoneos-macabi,$$(SDK-$(target)))/g" \
 		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_$$(ARCH-$(target))_$$(SDK-$(target)).py
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py.tmpl \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
 		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
+		| sed -e "s/{{abi}}/$$(TARGET_ABI-$(target))/g" \
+		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(subst macosx,iphoneos,$$(SDK-$(target)))$$(TARGET_TRIPLE_SUFFIX-$(target))/g" \
+		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(subst macosx,iphoneos-macabi,$$(SDK-$(target)))/g" \
 		> $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target))
 
 endif
 
 $(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
+
 
 ###########################################################################
 # Target: Debug
@@ -403,10 +424,13 @@ OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
-ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
-else
+ifneq ($$(findstring simulator,$(sdk)),)
 SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+else ifneq ($$(findstring maccatalyst,$(sdk)),)
+SDK_SLICE-$(sdk)=ios-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-maccatalyst
+sdk=macosx
+else
+SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 endif
 
 # Expand the build-target macro for target on this OS
