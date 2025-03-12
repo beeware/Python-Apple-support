@@ -248,10 +248,10 @@ index 69f72452c40..34ce643340b 100644
 +#include "pyconfig-x86_64.h"
 +#endif
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
-index ec0857a4a99..d6b3fa10092 100644
+index ec0857a4a99..13c9106b872 100644
 --- a/Misc/platform_triplet.c
 +++ b/Misc/platform_triplet.c
-@@ -254,6 +254,12 @@
+@@ -254,9 +254,35 @@
  #      else
  PLATFORM_TRIPLET=arm64-iphonesimulator
  #      endif
@@ -264,6 +264,29 @@ index ec0857a4a99..d6b3fa10092 100644
  #    else
  PLATFORM_TRIPLET=arm64-iphoneos
  #    endif
++#  elif defined(TARGET_OS_TV) && TARGET_OS_TV
++#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
++#      if __x86_64__
++PLATFORM_TRIPLET=x86_64-appletvsimulator
++#      else
++PLATFORM_TRIPLET=arm64-appletvsimulator
++#      endif
++#    else
++PLATFORM_TRIPLET=arm64-appletvos
++#    endif
++#  elif defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
++#    if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
++#      if __x86_64__
++PLATFORM_TRIPLET=x86_64-watchsimulator
++#      else
++PLATFORM_TRIPLET=arm64-watchsimulator
++#      endif
++#    else
++PLATFORM_TRIPLET=arm64_32-watchos
++#    endif
+ // Older macOS SDKs do not define TARGET_OS_OSX
+ #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
+ PLATFORM_TRIPLET=darwin
 diff --git a/config.sub b/config.sub
 index 1bb6a05dc11..7e007ac54c3 100755
 --- a/config.sub
@@ -898,7 +921,7 @@ index d46bc563a67..d40e0a6981f 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index faa89095303..321d8117fc0 100644
+index faa89095303..ea3af02efeb 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,12 @@
@@ -927,10 +950,10 @@ index faa89095303..321d8117fc0 100644
  if test -z "$AR"; then
  	case "$host" in
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
-+		aarch64-apple-ios*-macabi) AR=arm64-apple-ios-macabi-ar ;;
++		aarch64-apple-ios*-macabi)    AR=arm64-apple-ios-macabi-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
-+		x86_64-apple-ios*-macabi) AR=x86_64-apple-ios-macabi-ar ;;
++		x86_64-apple-ios*-macabi)     AR=x86_64-apple-ios-macabi-ar ;;
 +
 +		aarch64-apple-tvos*-simulator) AR=arm64-apple-tvos-simulator-ar ;;
 +		aarch64-apple-tvos*)           AR=arm64-apple-tvos-ar ;;
@@ -945,10 +968,10 @@ index faa89095303..321d8117fc0 100644
  if test -z "$CC"; then
  	case "$host" in
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
-+		aarch64-apple-ios*-macabi) CC=arm64-apple-ios-macabi-clang ;;
++		aarch64-apple-ios*-macabi)    CC=arm64-apple-ios-macabi-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
-+		x86_64-apple-ios*-macabi) CC=x86_64-apple-ios-macabi-clang ;;
++		x86_64-apple-ios*-macabi)     CC=x86_64-apple-ios-macabi-clang ;;
 +
 +		aarch64-apple-tvos*-simulator) CC=arm64-apple-tvos-simulator-clang ;;
 +		aarch64-apple-tvos*)           CC=arm64-apple-tvos-clang ;;
@@ -963,10 +986,10 @@ index faa89095303..321d8117fc0 100644
  if test -z "$CPP"; then
  	case "$host" in
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
-+		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
++		aarch64-apple-ios*-macabi)    CPP=arm64-apple-ios-macabi-clang++ ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
-+		x86_64-apple-ios*-macabi) CXX=x86_64-apple-ios-macabi-clang++ ;;
++		x86_64-apple-ios*-macabi)     CPP=x86_64-apple-ios-macabi-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CPP=arm64-apple-tvos-simulator-cpp ;;
 +		aarch64-apple-tvos*)           CPP=arm64-apple-tvos-cpp ;;
@@ -981,10 +1004,10 @@ index faa89095303..321d8117fc0 100644
  if test -z "$CXX"; then
  	case "$host" in
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
-+		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
++		aarch64-apple-ios*-macabi)    CXX=arm64-apple-ios-macabi-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
-+		x86_64-apple-ios*-macabi) CXX=x86_64-apple-ios-macabi-clang++ ;;
++		x86_64-apple-ios*-macabi)     CXX=x86_64-apple-ios-macabi-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CXX=arm64-apple-tvos-simulator-clang++ ;;
 +		aarch64-apple-tvos*)           CXX=arm64-apple-tvos-clang++ ;;
