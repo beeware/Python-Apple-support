@@ -109,7 +109,7 @@ jobs:
     - uses: actions/checkout@v4.1.7
 
     - name: Set up Python
-      uses: actions/setup-python@v5.3.0
+      uses: actions/setup-python@v5.4.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -121,7 +121,7 @@ jobs:
         make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
-      uses: actions/upload-artifact@v4.4.3
+      uses: actions/upload-artifact@v4.6.1
       with:
         name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
