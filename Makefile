@@ -488,13 +488,11 @@ $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-
 	# Delete the single-SDK parts of the standard library
 	rm -rf \
 		$$(PYTHON_STDLIB-$(sdk))/_sysconfigdata__*.py \
-		$$(PYTHON_STDLIB-$(sdk))/_sysconfig_vars__*.json \
 		$$(PYTHON_STDLIB-$(sdk))/config-* \
 		$$(PYTHON_STDLIB-$(sdk))/lib-dynload/*
 
 	# Copy the individual _sysconfigdata modules into names that include the architecture
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfigdata_* $$(PYTHON_STDLIB-$(sdk))/; )
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfig_vars_* $$(PYTHON_STDLIB-$(sdk))/; )
 
 	# Copy the platform site folders for each architecture
 	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(sdk))
