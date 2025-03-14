@@ -1,5 +1,6 @@
 # A site package that turns a macOS virtual environment
 # into an {{arch}} {{sdk}} cross-platform virtual environment
+import collections
 import platform
 import subprocess
 import sys
@@ -34,6 +35,12 @@ def cross_uname():
         version="",
         machine="{{arch}}",
     )
+
+
+platform.IOSVersionInfo = collections.namedtuple(
+    "IOSVersionInfo",
+    ["system", "release", "model", "is_simulator"]
+)
 
 
 def cross_ios_ver(system="", release="", model="", is_simulator=False):
