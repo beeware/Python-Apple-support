@@ -113,7 +113,7 @@ index 1f6baed66d3..235dd98c60a 100644
              macos_release = mac_ver()[0]
              if macos_release:
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index 69f72452c40..34ce643340b 100644
+index 18e6b8d25e5..4994c56778c 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
 @@ -719,6 +719,14 @@
@@ -163,7 +163,7 @@ index ec0857a4a99..2350e9dc821 100644
  #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
  PLATFORM_TRIPLET=darwin
 diff --git a/configure b/configure
-index d46bc563a67..d5cd81d16a8 100755
+index d0ae103014a..308124ef06d 100755
 --- a/configure
 +++ b/configure
 @@ -974,6 +974,8 @@
@@ -588,7 +588,7 @@ index d46bc563a67..d5cd81d16a8 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -19860,12 +19973,6 @@
+@@ -19866,12 +19979,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -601,7 +601,7 @@ index d46bc563a67..d5cd81d16a8 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -20134,11 +20241,11 @@
+@@ -20140,11 +20247,11 @@
  
  fi
  
@@ -615,7 +615,7 @@ index d46bc563a67..d5cd81d16a8 100755
    ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
  if test "x$ac_cv_func_getentropy" = xyes
  then :
-@@ -20160,6 +20267,53 @@
+@@ -20166,6 +20273,53 @@
  
  fi
  
@@ -669,7 +669,7 @@ index d46bc563a67..d5cd81d16a8 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -23242,7 +23396,8 @@
+@@ -23248,7 +23402,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -679,7 +679,7 @@ index d46bc563a67..d5cd81d16a8 100755
  
    for ac_func in openpty
  do :
-@@ -23356,7 +23511,7 @@
+@@ -23362,7 +23517,7 @@
  fi
  
  done
@@ -688,7 +688,7 @@ index d46bc563a67..d5cd81d16a8 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -23539,6 +23694,7 @@
+@@ -23545,6 +23700,7 @@
  fi
  
  done
@@ -696,7 +696,7 @@ index d46bc563a67..d5cd81d16a8 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -23804,10 +23960,10 @@
+@@ -23810,10 +23966,10 @@
  
  done
  
@@ -709,7 +709,7 @@ index d46bc563a67..d5cd81d16a8 100755
  then
  
    for ac_func in clock_settime
-@@ -26146,8 +26302,8 @@
+@@ -26152,8 +26308,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -720,7 +720,7 @@ index d46bc563a67..d5cd81d16a8 100755
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -29017,7 +29173,7 @@
+@@ -29023,7 +29179,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -729,7 +729,7 @@ index d46bc563a67..d5cd81d16a8 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -29510,7 +29666,7 @@
+@@ -29504,7 +29660,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -738,7 +738,7 @@ index d46bc563a67..d5cd81d16a8 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -30490,7 +30646,7 @@
+@@ -30484,7 +30640,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -747,7 +747,7 @@ index d46bc563a67..d5cd81d16a8 100755
  
  
  
-@@ -34493,6 +34649,8 @@
+@@ -34487,6 +34643,8 @@
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
      "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
@@ -757,7 +757,7 @@ index d46bc563a67..d5cd81d16a8 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index faa89095303..9bd51f7da97 100644
+index 8bb0f1c6ef4..bfd67de48bb 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,12 @@
@@ -1128,7 +1128,7 @@ index faa89095303..9bd51f7da97 100644
 +  pipe2 plock poll posix_fadvise posix_fallocate posix_openpt \
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
-   pthread_kill pthread_getname_np pthread_setname_np \
+   pthread_kill pthread_getname_np pthread_setname_np pthread_getattr_np \
 @@ -5153,7 +5283,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
@@ -1232,7 +1232,7 @@ index faa89095303..9bd51f7da97 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7187,7 +7327,7 @@
+@@ -7174,7 +7314,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -1241,7 +1241,7 @@ index faa89095303..9bd51f7da97 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7598,7 +7738,7 @@
+@@ -7585,7 +7725,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
@@ -1270,141 +1270,6 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
-diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
-index b4499f5ac17..d12a5ab065b 100644
---- a/iOS/testbed/__main__.py
-+++ b/iOS/testbed/__main__.py
-@@ -82,19 +82,29 @@
- 
- # Return a list of UDIDs associated with booted simulators
- async def list_devices():
--    # List the testing simulators, in JSON format
--    raw_json = await async_check_output(
--        "xcrun", "simctl", "--set", "testing", "list", "-j"
--    )
--    json_data = json.loads(raw_json)
--
--    # Filter out the booted iOS simulators
--    return [
--        simulator["udid"]
--        for runtime, simulators in json_data["devices"].items()
--        for simulator in simulators
--        if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
--    ]
-+    try:
-+        # List the testing simulators, in JSON format
-+        raw_json = await async_check_output(
-+            "xcrun", "simctl", "--set", "testing", "list", "-j"
-+        )
-+        json_data = json.loads(raw_json)
-+
-+        # Filter out the booted iOS simulators
-+        return [
-+            simulator["udid"]
-+            for runtime, simulators in json_data["devices"].items()
-+            for simulator in simulators
-+            if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
-+        ]
-+    except subprocess.CalledProcessError as e:
-+        # If there's no ~/Library/Developer/XCTestDevices folder (which is the
-+        # case on fresh installs, and in some CI environments), `simctl list`
-+        # returns error code 1, rather than an empty list. Handle that case,
-+        # but raise all other errors.
-+        if e.returncode == 1:
-+            return []
-+        else:
-+            raise
- 
- 
- async def find_device(initial_devices):
-@@ -230,33 +240,69 @@
-     shutil.copytree(source, target, symlinks=True)
-     print(" done")
- 
-+    xc_framework_path = target / "Python.xcframework"
-+    sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
-     if framework is not None:
-         if framework.suffix == ".xcframework":
-             print("  Installing XCFramework...", end="", flush=True)
--            xc_framework_path = (target / "Python.xcframework").resolve()
-             if xc_framework_path.is_dir():
-                 shutil.rmtree(xc_framework_path)
-             else:
--                xc_framework_path.unlink()
-+                xc_framework_path.unlink(missing_ok=True)
-             xc_framework_path.symlink_to(
-                 framework.relative_to(xc_framework_path.parent, walk_up=True)
-             )
-             print(" done")
-         else:
-             print("  Installing simulator framework...", end="", flush=True)
--            sim_framework_path = (
--                target / "Python.xcframework" / "ios-arm64_x86_64-simulator"
--            ).resolve()
-             if sim_framework_path.is_dir():
-                 shutil.rmtree(sim_framework_path)
-             else:
--                sim_framework_path.unlink()
-+                sim_framework_path.unlink(missing_ok=True)
-             sim_framework_path.symlink_to(
-                 framework.relative_to(sim_framework_path.parent, walk_up=True)
-             )
-             print(" done")
-     else:
--        print("  Using pre-existing iOS framework.")
-+        if (
-+            xc_framework_path.is_symlink()
-+            and not xc_framework_path.readlink().is_absolute()
-+        ):
-+            # XCFramework is a relative symlink. Rewrite the symlink relative
-+            # to the new location.
-+            print("  Rewriting symlink to XCframework...", end="", flush=True)
-+            orig_xc_framework_path = (
-+                source
-+                / xc_framework_path.readlink()
-+            ).resolve()
-+            xc_framework_path.unlink()
-+            xc_framework_path.symlink_to(
-+                orig_xc_framework_path.relative_to(
-+                    xc_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        elif (
-+            sim_framework_path.is_symlink()
-+            and not sim_framework_path.readlink().is_absolute()
-+        ):
-+            print("  Rewriting symlink to simulator framework...", end="", flush=True)
-+            # Simulator framework is a relative symlink. Rewrite the symlink
-+            # relative to the new location.
-+            orig_sim_framework_path = (
-+                source
-+                / "Python.XCframework"
-+                / sim_framework_path.readlink()
-+            ).resolve()
-+            sim_framework_path.unlink()
-+            sim_framework_path.symlink_to(
-+                orig_sim_framework_path.relative_to(
-+                    sim_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        else:
-+            print("  Using pre-existing iOS framework.")
- 
-     for app_src in apps:
-         print(f"  Installing app {app_src.name!r}...", end="", flush=True)
-@@ -372,8 +418,8 @@
- 
-     if context.subcommand == "clone":
-         clone_testbed(
--            source=Path(__file__).parent,
--            target=Path(context.location),
-+            source=Path(__file__).parent.resolve(),
-+            target=Path(context.location).resolve(),
-             framework=Path(context.framework).resolve() if context.framework else None,
-             apps=[Path(app) for app in context.apps],
-         )
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
