@@ -7,6 +7,7 @@ module Python {
     exclude header "dynamic_annotations.h"
     exclude header "errcode.h"
     exclude header "frameobject.h"
+    exclude header "interpreteridobject.h"
     exclude header "marshal.h"
     exclude header "opcode_ids.h"
     exclude header "opcode.h"
