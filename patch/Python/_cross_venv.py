@@ -21,15 +21,13 @@ def patch_env_create(env):
     def pip_env_create(self, path, *args, **kwargs):
         result = old_pip_env_create(self, path, *args, **kwargs)
         # Copy any _cross_*.pth or _cross_*.py file, plus the cross-platform
-        # sysconfigdata module and sysconfig_vars JSON to the new environment.
+        # sysconfigdata module to the new environment.
         data_name = sysconfig._get_sysconfigdata_name()
-        json_name = data_name.replace("_sysconfigdata", "_sysconfig_vars")
         for filename in [
             "_cross_venv.pth",
             "_cross_venv.py",
             f"_cross_{sys.implementation._multiarch.replace('-', '_')}.py",
             f"{data_name}.py",
-            f"{json_name}.json",
         ]:
             src = SITE_PACKAGE_PATH / filename
             target = Path(path) / src.relative_to(

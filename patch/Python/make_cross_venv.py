@@ -1,4 +1,3 @@
-import json
 import pprint
 import shutil
 import sys
@@ -63,25 +62,6 @@ def localize_sysconfigdata(platform_config_path, venv_site_packages):
         )
 
 
-def localize_sysconfig_vars(platform_config_path, venv_site_packages):
-    """Localize a sysconfig_vars.json file.
-
-    :param platform_config_path: The platform config that contains the
-        sysconfigdata module to localize.
-    :param venv_site_packages: The site-packages folder where the localized
-        sysconfig_vars.json file should be output.
-    """
-    # Find the "_sysconfig_vars_*.json" file in the platform config
-    sysconfig_vars_path = next(platform_config_path.glob("_sysconfig_vars_*.json"))
-
-    with sysconfig_vars_path.open("rb") as f:
-        build_time_vars = json.load(f)
-
-    slice_path = sysconfig_vars_path.parent.parent.parent
-    with (venv_site_packages / sysconfig_vars_path.name).open("w") as f:
-        json.dump(localized_vars(build_time_vars, slice_path), f, indent=2)
-
-
 def make_cross_venv(venv_path: Path, platform_config_path: Path):
     """Convert a virtual environment into a cross-platform environment.
 
@@ -103,7 +83,6 @@ def make_cross_venv(venv_path: Path, platform_config_path: Path):
     # Update path references in the sysconfigdata to reflect local conditions.
     venv_site_packages = venv_path / LIB_PATH / "site-packages"
     localize_sysconfigdata(platform_config_path, venv_site_packages)
-    localize_sysconfig_vars(platform_config_path, venv_site_packages)
 
     # Copy in the site-package environment modifications.
     cross_multiarch = f"_cross_{platform_config_path.name.replace('-', '_')}"
