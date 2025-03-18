@@ -1,10 +1,6 @@
 name: CI
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - 3.*
   workflow_call:
     inputs:
       build-number:
@@ -114,6 +110,9 @@ jobs:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
         python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
+        # Ensure that we *always* use the latest build, not a cached version.
+        # It's an edge case, but when a new alpha is released, we need to use it ASAP.
+        check-latest: true
 
     - name: Build ${{ matrix.target }}
       run: |
@@ -121,7 +120,7 @@ jobs:
         make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
-      uses: actions/upload-artifact@v4.6.0
+      uses: actions/upload-artifact@v4.6.1
       with:
         name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
