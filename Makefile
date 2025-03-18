@@ -426,6 +426,7 @@ PYTHON_FRAMEWORK-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
 PYTHON_INSTALL_VERSION-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
 PYTHON_LIB-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/Python
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/include/python$(PYTHON_VER)
+PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INCLUDE-$(sdk))/module.modulemap
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/lib/python$(PYTHON_VER)
 
 else
@@ -592,8 +593,14 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Rewrite the framework to make it standalone
 	patch/make-relocatable.sh $$(PYTHON_INSTALL_VERSION-macosx) 2>&1 > /dev/null
 
-	# Copy in the modulemap file
-	cp -r patch/Python/module.modulemap $$(PYTHON_FRAMEWORK-macosx)/Headers
+	# Create the modulemap file
+	cp -r patch/Python/module.modulemap.prefix $$(PYTHON_MODULEMAP-macosx)
+	echo "" >> $$(PYTHON_MODULEMAP-macosx)
+	cd $$(PYTHON_INCLUDE-macosx) && \
+		find cpython -name "*.h"  | sort | sed -e 's/^/    exclude header "/' | sed 's/$$$$/"/' >> $$(PYTHON_MODULEMAP-macosx) && \
+		echo "" >> $$(PYTHON_MODULEMAP-macosx) && \
+		find internal -name "*.h"  | sort | sed -e 's/^/    exclude header "/' | sed 's/$$$$/"/' >> $$(PYTHON_MODULEMAP-macosx)
+	echo "\n}" >> $$(PYTHON_MODULEMAP-macosx)
 
 	# Re-apply the signature on the binaries.
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_LIB-macosx) \
