@@ -1,0 +1,20 @@
+module Python {
+    umbrella header "Python.h"
+    export *
+    link "Python"
+
+    exclude header "datetime.h"
+    exclude header "dynamic_annotations.h"
+    exclude header "errcode.h"
+    exclude header "frameobject.h"
+    exclude header "marshal.h"
+    exclude header "opcode_ids.h"
+    exclude header "opcode.h"
+    exclude header "osdefs.h"
+    exclude header "py_curses.h"
+    exclude header "pyconfig-arm32_64.h"
+    exclude header "pyconfig-arm64.h"
+    exclude header "pyconfig-x86_64.h"
+    exclude header "pydtrace.h"
+    exclude header "pyexpat.h"
+    exclude header "structmember.h"
