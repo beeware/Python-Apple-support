@@ -1,25 +1,3 @@
-diff --git a/Doc/c-api/init_config.rst b/Doc/c-api/init_config.rst
-index 15794fb5fc5..e3999a60f16 100644
---- a/Doc/c-api/init_config.rst
-+++ b/Doc/c-api/init_config.rst
-@@ -1101,6 +1101,17 @@
- 
-       Default: ``1`` in Python config and ``0`` in isolated config.
- 
-+   .. c:member:: int use_system_logger
-+
-+      If non-zero, ``stdout`` and ``stderr`` will be redirected to the system
-+      log.
-+
-+      Only available on macOS 10.12 and later, and on iOS.
-+
-+      Default: ``0`` (don't use system log).
-+
-+      .. versionadded:: 3.13.2
-+
-    .. c:member:: int user_site_directory
- 
-       If non-zero, add the user site directory to :data:`sys.path`.
 diff --git a/Doc/library/importlib.rst b/Doc/library/importlib.rst
 index 21c19903464..61baa722359 100644
 --- a/Doc/library/importlib.rst
@@ -345,20 +323,6 @@ index 9ae0270eaee..2bb14d88dc9 100644
  Other Resources
  ===============
  
-diff --git a/Include/cpython/initconfig.h b/Include/cpython/initconfig.h
-index 583165bee48..a0f3c418360 100644
---- a/Include/cpython/initconfig.h
-+++ b/Include/cpython/initconfig.h
-@@ -173,6 +173,9 @@
-     int legacy_windows_stdio;
- #endif
-     wchar_t *check_hash_pycs_mode;
-+#ifdef __APPLE__
-+    int use_system_logger;
-+#endif
- 
-     /* --- Path configuration inputs ------------ */
-     int pathconfig_warnings;
 --- /dev/null
 +++ b/Lib/_apple_support.py
 @@ -0,0 +1,66 @@
@@ -1412,11 +1376,11 @@ index 38c499bf722..8de55306053 100644
 @@ -0,0 +1,155 @@
 +import unittest
 +from _apple_support import SystemLog
-+from test.support import is_apple
++from test.support import is_apple_mobile
 +from unittest.mock import Mock, call
 +
-+if not is_apple:
-+    raise unittest.SkipTest("Apple-specific")
++if not is_apple_mobile:
++    raise unittest.SkipTest("iOS-specific")
 +
 +
 +# Test redirection of stdout and stderr to the Apple system log.
@@ -2046,7 +2010,7 @@ index 8a436ad123b..4fa7571fe43 100644
          command = self.generate_trace_command(script_file, subcommand)
          stdout, _ = subprocess.Popen(command,
 diff --git a/Lib/test/test_embed.py b/Lib/test/test_embed.py
-index 8c343f37210..f36c1aef84e 100644
+index 8c343f37210..f13b5a1745b 100644
 --- a/Lib/test/test_embed.py
 +++ b/Lib/test/test_embed.py
 @@ -72,6 +72,7 @@
@@ -2057,16 +2021,7 @@ index 8c343f37210..f36c1aef84e 100644
      def run_embedded_interpreter(self, *args, env=None,
                                   timeout=None, returncode=0, input=None,
                                   cwd=None):
-@@ -438,6 +439,8 @@
-         CONFIG_COMPAT.update({
-             'legacy_windows_stdio': 0,
-         })
-+    if support.is_apple:
-+        CONFIG_COMPAT['use_system_logger'] = False
- 
-     CONFIG_PYTHON = dict(CONFIG_COMPAT,
-         _config_init=API_PYTHON,
-@@ -1421,6 +1424,7 @@
+@@ -1421,6 +1422,7 @@
  
  
  class SetConfigTests(unittest.TestCase):
@@ -11693,50 +11648,6 @@ index e77ca4c2194..724aefabdee 100644
 +    18,45,18,25,14,53,14,69,14,49,0,127,14,32,0,127,
 +    16,28,10,42,8,23,8,18,12,5,
  };
-diff --git a/Python/initconfig.c b/Python/initconfig.c
-index 1e10e6659cb..a3e80eb196e 100644
---- a/Python/initconfig.c
-+++ b/Python/initconfig.c
-@@ -644,6 +644,9 @@
-     assert(config->check_hash_pycs_mode != NULL);
-     assert(config->_install_importlib >= 0);
-     assert(config->pathconfig_warnings >= 0);
-+#ifdef __APPLE__
-+    assert(config->use_system_logger >= 0);
-+#endif
-     return 1;
- }
- #endif
-@@ -728,6 +731,9 @@
- #ifdef MS_WINDOWS
-     config->legacy_windows_stdio = -1;
- #endif
-+#ifdef __APPLE__
-+    config->use_system_logger = 0;
-+#endif
- }
- 
- /* Excluded from public struct PyConfig for backporting reasons. */
-@@ -757,6 +763,9 @@
- #ifdef MS_WINDOWS
-     config->legacy_windows_stdio = 0;
- #endif
-+#ifdef __APPLE__
-+    config->use_system_logger = 0;
-+#endif
- }
- 
- 
-@@ -789,6 +798,9 @@
- #ifdef MS_WINDOWS
-     config->legacy_windows_stdio = 0;
- #endif
-+#ifdef __APPLE__
-+    config->use_system_logger = 0;
-+#endif
- }
- 
- 
 diff --git a/Python/marshal.c b/Python/marshal.c
 index 67540e08ed9..062e3047fb8 100644
 --- a/Python/marshal.c
@@ -11768,40 +11679,50 @@ index 67540e08ed9..062e3047fb8 100644
  
  #define TYPE_NULL               '0'
 diff --git a/Python/pylifecycle.c b/Python/pylifecycle.c
-index b0c5da56c4f..3e1c8674030 100644
+index b0c5da56c4f..ec53e7484fc 100644
 --- a/Python/pylifecycle.c
 +++ b/Python/pylifecycle.c
-@@ -18,7 +18,9 @@
+@@ -18,7 +18,21 @@
  #include <locale.h>               // setlocale()
  
  #if defined(__APPLE__)
 -#include <mach-o/loader.h>
 +#  include <AvailabilityMacros.h>
++#  include <TargetConditionals.h>
 +#  include <mach-o/loader.h>
-+#  include <os/log.h>
++// The os_log unified logging APIs were introduced in macOS 10.12, iOS 10.0,
++// tvOS 10.0, and watchOS 3.0; we enable the use of the system logger
++// automatically on non-macOS platforms.
++#  if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
++#    define USE_APPLE_SYSTEM_LOG 1
++#  else
++#    define USE_APPLE_SYSTEM_LOG 0
++#  endif
++
++#  if USE_APPLE_SYSTEM_LOG
++#    include <os/log.h>
++#  endif
  #endif
  
  #ifdef HAVE_SIGNAL_H
-@@ -58,6 +60,9 @@
+@@ -58,6 +72,9 @@
  static PyStatus init_import_site(void);
  static PyStatus init_set_builtins_open(void);
  static PyStatus init_sys_streams(PyThreadState *tstate);
-+#if defined(__APPLE__)
++#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
 +static PyStatus init_apple_streams(PyThreadState *tstate);
 +#endif
  static void wait_for_thread_shutdown(PyThreadState *tstate);
  static void call_ll_exitfuncs(_PyRuntimeState *runtime);
  
-@@ -1126,6 +1131,19 @@
+@@ -1126,6 +1143,17 @@
          return status;
      }
  
-+#if defined(__APPLE__)
-+    if (config->use_system_logger) {
-+        status = init_apple_streams(tstate);
-+        if (_PyStatus_EXCEPTION(status)) {
-+            return status;
-+        }
++#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
++    status = init_apple_streams(tstate);
++    if (_PyStatus_EXCEPTION(status)) {
++        return status;
 +    }
 +#endif
 +
@@ -11812,11 +11733,11 @@ index b0c5da56c4f..3e1c8674030 100644
      status = add_main_module(interp);
      if (_PyStatus_EXCEPTION(status)) {
          return status;
-@@ -2408,6 +2426,75 @@
+@@ -2408,6 +2436,69 @@
      return res;
  }
  
-+#if defined(__APPLE__)
++#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
 +
 +static PyObject *
 +apple_log_write_impl(PyObject *self, PyObject *args)
@@ -11827,14 +11748,9 @@ index b0c5da56c4f..3e1c8674030 100644
 +        return NULL;
 +    }
 +
-+    // Call the underlying Apple logging API. The os_log unified logging APIs
-+    // were introduced in macOS 10.12, iOS 10.0, tvOS 10.0, and watchOS 3.0;
-+    // this call is a no-op on older versions.
-+    #if TARGET_OS_IPHONE || (TARGET_OS_OSX && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12)
 +    // Pass the user-provided text through explicit %s formatting
 +    // to avoid % literals being interpreted as a formatting directive.
 +    os_log_with_type(OS_LOG_DEFAULT, logtype, "%s", text);
-+    #endif
 +    Py_RETURN_NONE;
 +}
 +
@@ -11869,7 +11785,6 @@ index b0c5da56c4f..3e1c8674030 100644
 +    if (result == NULL) {
 +        goto error;
 +    }
-+
 +    goto done;
 +
 +error:
@@ -11883,7 +11798,7 @@ index b0c5da56c4f..3e1c8674030 100644
 +    return status;
 +}
 +
-+#endif  // __APPLE__
++#endif  // __APPLE__ && USE_APPLE_SYSTEM_LOG
 +
  
  static void
@@ -15787,11 +15702,12 @@ index ac3be3850a9..4bfd669aa87 100644
 +build for testing purposes (either x86_64 or ARM64).
 --- /dev/null
 +++ b/iOS/testbed/__main__.py
-@@ -0,0 +1,407 @@
+@@ -0,0 +1,468 @@
 +import argparse
 +import asyncio
 +import json
 +import plistlib
++import re
 +import shutil
 +import subprocess
 +import sys
@@ -15802,6 +15718,18 @@ index ac3be3850a9..4bfd669aa87 100644
 +
 +
 +DECODE_ARGS = ("UTF-8", "backslashreplace")
++
++# The system log prefixes each line:
++#   2025-01-17 16:14:29.090 Df iOSTestbed[23987:1fd393b4] (Python) ...
++#   2025-01-17 16:14:29.090 E  iOSTestbed[23987:1fd393b4] (Python) ...
++
++LOG_PREFIX_REGEX = re.compile(
++    r"^\d{4}-\d{2}-\d{2}"  # YYYY-MM-DD
++    r"\s+\d+:\d{2}:\d{2}\.\d+"  # HH:MM:SS.sss
++    r"\s+\w+"  # Df/E
++    r"\s+iOSTestbed\[\d+:\w+\]"  # Process/thread ID
++    r"\s+\(Python\)\s"  # Logger name
++)
 +
 +
 +# Work around a bug involving sys.exit and TaskGroups
@@ -15860,19 +15788,29 @@ index ac3be3850a9..4bfd669aa87 100644
 +
 +# Return a list of UDIDs associated with booted simulators
 +async def list_devices():
-+    # List the testing simulators, in JSON format
-+    raw_json = await async_check_output(
-+        "xcrun", "simctl", "--set", "testing", "list", "-j"
-+    )
-+    json_data = json.loads(raw_json)
++    try:
++        # List the testing simulators, in JSON format
++        raw_json = await async_check_output(
++            "xcrun", "simctl", "--set", "testing", "list", "-j"
++        )
++        json_data = json.loads(raw_json)
 +
-+    # Filter out the booted iOS simulators
-+    return [
-+        simulator["udid"]
-+        for runtime, simulators in json_data["devices"].items()
-+        for simulator in simulators
-+        if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
-+    ]
++        # Filter out the booted iOS simulators
++        return [
++            simulator["udid"]
++            for runtime, simulators in json_data["devices"].items()
++            for simulator in simulators
++            if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
++        ]
++    except subprocess.CalledProcessError as e:
++        # If there's no ~/Library/Developer/XCTestDevices folder (which is the
++        # case on fresh installs, and in some CI environments), `simctl list`
++        # returns error code 1, rather than an empty list. Handle that case,
++        # but raise all other errors.
++        if e.returncode == 1:
++            return []
++        else:
++            raise
 +
 +
 +async def find_device(initial_devices):
@@ -15922,6 +15860,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +    ) as process:
 +        suppress_dupes = False
 +        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
++            # Strip the prefix from each log line
++            line = LOG_PREFIX_REGEX.sub("", line)
 +            # The iOS log streamer can sometimes lag; when it does, it outputs
 +            # a warning about messages being dropped... often multiple times.
 +            # Only print the first of these duplicated warnings.
@@ -16017,33 +15957,69 @@ index ac3be3850a9..4bfd669aa87 100644
 +    shutil.copytree(source, target, symlinks=True)
 +    print(" done")
 +
++    xc_framework_path = target / "Python.xcframework"
++    sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
 +    if framework is not None:
 +        if framework.suffix == ".xcframework":
 +            print("  Installing XCFramework...", end="", flush=True)
-+            xc_framework_path = (target / "Python.xcframework").resolve()
 +            if xc_framework_path.is_dir():
 +                shutil.rmtree(xc_framework_path)
 +            else:
-+                xc_framework_path.unlink()
++                xc_framework_path.unlink(missing_ok=True)
 +            xc_framework_path.symlink_to(
 +                relative_to(framework, xc_framework_path.parent)
 +            )
 +            print(" done")
 +        else:
 +            print("  Installing simulator framework...", end="", flush=True)
-+            sim_framework_path = (
-+                target / "Python.xcframework" / "ios-arm64_x86_64-simulator"
-+            ).resolve()
 +            if sim_framework_path.is_dir():
 +                shutil.rmtree(sim_framework_path)
 +            else:
-+                sim_framework_path.unlink()
++                sim_framework_path.unlink(missing_ok=True)
 +            sim_framework_path.symlink_to(
 +                relative_to(framework, sim_framework_path.parent)
 +            )
 +            print(" done")
 +    else:
-+        print("  Using pre-existing iOS framework.")
++        if (
++            xc_framework_path.is_symlink()
++            and not xc_framework_path.readlink().is_absolute()
++        ):
++            # XCFramework is a relative symlink. Rewrite the symlink relative
++            # to the new location.
++            print("  Rewriting symlink to XCframework...", end="", flush=True)
++            orig_xc_framework_path = (
++                source
++                / xc_framework_path.readlink()
++            ).resolve()
++            xc_framework_path.unlink()
++            xc_framework_path.symlink_to(
++                orig_xc_framework_path.relative_to(
++                    xc_framework_path.parent, walk_up=True
++                )
++            )
++            print(" done")
++        elif (
++            sim_framework_path.is_symlink()
++            and not sim_framework_path.readlink().is_absolute()
++        ):
++            print("  Rewriting symlink to simulator framework...", end="", flush=True)
++            # Simulator framework is a relative symlink. Rewrite the symlink
++            # relative to the new location.
++            orig_sim_framework_path = (
++                source
++                / "Python.XCframework"
++                / sim_framework_path.readlink()
++            ).resolve()
++            sim_framework_path.unlink()
++            sim_framework_path.symlink_to(
++                orig_sim_framework_path.relative_to(
++                    sim_framework_path.parent, walk_up=True
++                )
++            )
++            print(" done")
++        else:
++            print("  Using pre-existing iOS framework.")
 +
 +    for app_src in apps:
 +        print(f"  Installing app {app_src.name!r}...", end="", flush=True)
@@ -16159,8 +16135,8 @@ index ac3be3850a9..4bfd669aa87 100644
 +
 +    if context.subcommand == "clone":
 +        clone_testbed(
-+            source=Path(__file__).parent,
-+            target=Path(context.location),
++            source=Path(__file__).parent.resolve(),
++            target=Path(context.location).resolve(),
 +            framework=Path(context.framework).resolve() if context.framework else None,
 +            apps=[Path(app) for app in context.apps],
 +        )
@@ -17000,7 +16976,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +}
 --- /dev/null
 +++ b/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,160 @@
 +#import <XCTest/XCTest.h>
 +#import <Python/Python.h>
 +
@@ -17031,7 +17007,7 @@ index ac3be3850a9..4bfd669aa87 100644
 +    // Xcode log can't display color. Stdout will report that it is *not* a
 +    // TTY.
 +    setenv("NO_COLOR", "1", true);
-+    setenv("PY_COLORS", "0", true);
++    setenv("PYTHON_COLORS", "0", true);
 +
 +    // Arguments to pass into the test suite runner.
 +    // argv[0] must identify the process; any subsequent arg
@@ -17056,8 +17032,6 @@ index ac3be3850a9..4bfd669aa87 100644
 +    // Enforce UTF-8 encoding for stderr, stdout, file-system encoding and locale.
 +    // See https://docs.python.org/3/library/os.html#python-utf-8-mode.
 +    preconfig.utf8_mode = 1;
-+    // Use the system logger for stdout/err
-+    config.use_system_logger = 1;
 +    // Don't buffer stdio. We want output to appears in the log immediately
 +    config.buffered_stdio = 0;
 +    // Don't write bytecode; we can't modify the app bundle
