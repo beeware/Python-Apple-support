@@ -18,3 +18,4 @@ module Python {
     exclude header "pydtrace.h"
     exclude header "pyexpat.h"
     exclude header "structmember.h"
+    exclude header "token.h"
