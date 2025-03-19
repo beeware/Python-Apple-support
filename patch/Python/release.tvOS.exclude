@@ -1,6 +1,3 @@
 # This is a list of support package path patterns that we exclude
 # from all Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
-# Remove pyc files. These take up space, but since most stdlib modules are
-# never imported by user code, they mostly have no value.
-*/__pycache__
