@@ -1,3 +1,6 @@
 # This is a list of support package path patterns that we exclude
 # from all Python-Apple-support tarballs.
 # It is used by `tar -X` during the Makefile build.
+# Remove -opt-*.pyc files. These take up a lot of space, but won't be used for
+# most deployments.
+*.opt-*.pyc
