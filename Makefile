@@ -27,10 +27,10 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
 BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.6-1
+LIBFFI_VERSION=3.4.7-1
 MPDECIMAL_VERSION=4.0.0-1
-OPENSSL_VERSION=3.0.15-1
-XZ_VERSION=5.6.2-1
+OPENSSL_VERSION=3.0.16-1
+XZ_VERSION=5.6.4-1
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -40,24 +40,18 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 VERSION_MIN-macOS=11.0
-CFLAGS-macOS=-mmacosx-version-min=$(VERSION_MIN-macOS)
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
 VERSION_MIN-iOS=13.0
-CFLAGS-iOS=-mios-version-min=$(VERSION_MIN-iOS)
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
 VERSION_MIN-tvOS=12.0
-CFLAGS-tvOS=-mtvos-version-min=$(VERSION_MIN-tvOS)
-PYTHON_CONFIGURE-tvOS=ac_cv_func_sigaltstack=no
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 VERSION_MIN-watchOS=4.0
-CFLAGS-watchOS=-mwatchos-version-min=$(VERSION_MIN-watchOS)
-PYTHON_CONFIGURE-watchOS=ac_cv_func_sigaltstack=no
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -72,7 +66,7 @@ PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
 all: $(OS_LIST)
 
 .PHONY: \
-	all clean distclean update-patch vars \
+	all clean distclean update-patch vars config \
 	$(foreach os,$(OS_LIST),$(os) clean-$(os) dev-clean-$(os) vars-$(os)) \
 	$(foreach os,$(OS_LIST),$(foreach sdk,$$(sort $$(basename $$(TARGETS-$(os)))),$(sdk) vars-$(sdk)))
 	$(foreach os,$(OS_LIST),$(foreach target,$$(TARGETS-$(os)),$(target) vars-$(target)))
@@ -135,10 +129,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
-IS_SIMULATOR-$(target)="False"
+IS_SIMULATOR-$(target)=False
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
-IS_SIMULATOR-$(target)="True"
+IS_SIMULATOR-$(target)=True
 	endif
 endif
 
@@ -267,6 +261,9 @@ PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Python
 PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/bin
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
+PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
+PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
+
 
 $$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
@@ -325,23 +322,35 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 		# Remove any .orig files produced by the compliance patching process
 		find $$(PYTHON_INSTALL-$(target)) -name "*.orig" -exec rm {} \;
 
-endif
 
-PYTHON_SITECUSTOMIZE-$(target)=$(PROJECT_DIR)/support/$(PYTHON_VER)/$(os)/platform-site/$(target)/sitecustomize.py
-
-$$(PYTHON_SITECUSTOMIZE-$(target)):
-	@echo ">>> Create cross-platform sitecustomize.py for $(target)"
-	mkdir -p $$(dir $$(PYTHON_SITECUSTOMIZE-$(target)))
-	cat $(PROJECT_DIR)/patch/Python/sitecustomize.$(os).py \
+$$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
+	@echo ">>> Create cross-plaform config for $(target)"
+	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(target))
+	# Create the cross-platform site definition
+	echo "import _cross_$$(ARCH-$(target))_$$(SDK-$(target)); import _cross_venv;" \
+		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_venv.pth
+	cp $(PROJECT_DIR)/patch/Python/make_cross_venv.py \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))/make_cross_venv.py
+	cp $(PROJECT_DIR)/patch/Python/_cross_venv.py \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_venv.py
+	cp $$(PYTHON_STDLIB-$(target))/_sysconfig* \
+		$$(PYTHON_PLATFORM_CONFIG-$(target))
+	cat $(PROJECT_DIR)/patch/Python/_cross_target.py.tmpl \
 		| sed -e "s/{{os}}/$(os)/g" \
+		| sed -e "s/{{platform}}/$$(OS_LOWER-$(target))/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
 		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
-		| sed -e "s/{{multiarch}}/$$(ARCH-$(target))-$$(SDK-$(target))/g" \
-		| sed -e "s/{{tag}}/$$(OS_LOWER-$(target))-$$(VERSION_MIN-$(os))-$$(ARCH-$(target))-$$(SDK-$(target))/g" \
-		> $$(PYTHON_SITECUSTOMIZE-$(target))
+		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_$$(ARCH-$(target))_$$(SDK-$(target)).py
+	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py.tmpl \
+		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
+		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
+		> $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target))
 
-$(target): $$(PYTHON_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
+endif
+
+$(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
 
 ###########################################################################
 # Target: Debug
@@ -370,6 +379,8 @@ vars-$(target):
 	@echo "PYTHON_BIN-$(target): $$(PYTHON_BIN-$(target))"
 	@echo "PYTHON_INCLUDE-$(target): $$(PYTHON_INCLUDE-$(target))"
 	@echo "PYTHON_STDLIB-$(target): $$(PYTHON_STDLIB-$(target))"
+	@echo "PYTHON_PLATFORM_CONFIG-$(target): $$(PYTHON_PLATFORM_CONFIG-$(target))"
+	@echo "PYTHON_PLATFORM_SITECUSTOMIZE-$(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target))"
 	@echo
 
 endef # build-target
@@ -432,6 +443,7 @@ PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
+PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
 $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for the $(sdk) SDK"
@@ -476,7 +488,7 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
 
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
@@ -611,7 +623,7 @@ support/$(PYTHON_VER)/macOS/VERSIONS:
 dist/Python-$(PYTHON_VER)-macOS-support.$(BUILD_NUMBER).tar.gz: \
 	$$(PYTHON_XCFRAMEWORK-macOS)/Info.plist \
 	support/$(PYTHON_VER)/macOS/VERSIONS \
-	$$(foreach target,$$(TARGETS-macOS), $$(PYTHON_SITECUSTOMIZE-$$(target)))
+	$$(foreach target,$$(TARGETS-macOS), $$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for macOS"
 	mkdir -p dist
@@ -634,9 +646,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-
-	@echo ">>> Create helper links in XCframework for $(os)"
-	$$(foreach sdk,$$(SDKS-$(os)),ln -si $$(SDK_SLICE-$$(sdk)) $$(PYTHON_XCFRAMEWORK-$(os))/$$(sdk); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
 ifeq ($(os),iOS)
 	@echo ">>> Clone testbed project for $(os)"
@@ -656,7 +666,7 @@ endif
 
 dist/Python-$(PYTHON_VER)-$(os)-support.$(BUILD_NUMBER).tar.gz: \
 	$$(PYTHON_XCFRAMEWORK-$(os))/Info.plist \
-	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_SITECUSTOMIZE-$$(target)))
+	$$(foreach target,$$(TARGETS-$(os)), $$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 
 	@echo ">>> Create final distribution artefact for $(os)"
 	mkdir -p dist
