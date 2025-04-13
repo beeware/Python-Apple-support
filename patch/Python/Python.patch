@@ -204,7 +204,7 @@ diff -ur Python-3.14.0a6-orig/Misc/platform_triplet.c Python-3.14.0a6/Misc/platf
  PLATFORM_TRIPLET=darwin
 diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
 --- Python-3.14.0a6-orig/aclocal.m4	2025-03-14 10:05:02
-+++ Python-3.14.0a6/aclocal.m4	2025-04-12 21:03:14
++++ Python-3.14.0a6/aclocal.m4	2025-04-12 21:11:05
 @@ -1,6 +1,6 @@
 -# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
 +# generated automatically by aclocal 1.17 -*- Autoconf -*-
@@ -378,6 +378,16 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  AC_DEFUN([PKG_PROG_PKG_CONFIG],
  [m4_pattern_forbid([^_?PKG_[A-Z_]+$])
  m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
+@@ -475,6 +489,9 @@
+ 		AC_MSG_RESULT([no])
+ 		PKG_CONFIG=""
+ 	fi
++fi
++if test -z "$PKG_CONFIG"; then
++	m4_default([$2], [AC_MSG_ERROR([pkg-config not found])])
+ fi[]dnl
+ ])dnl PKG_PROG_PKG_CONFIG
+ 
 @@ -744,7 +761,7 @@
  
  # AM_CONDITIONAL                                            -*- Autoconf -*-
@@ -396,6 +406,7 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  #
  # This file is free software; the Free Software Foundation
  # gives unlimited permission to copy and/or distribute it,
+Only in Python-3.14.0a6: autom4te.cache
 diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
 --- Python-3.14.0a6-orig/config.sub	2025-03-14 10:05:02
 +++ Python-3.14.0a6/config.sub	2025-04-12 20:43:35
@@ -419,7 +430,7 @@ diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
  		# None (no kernel, i.e. freestanding / bare metal),
 diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 --- Python-3.14.0a6-orig/configure	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure	2025-04-12 21:03:15
++++ Python-3.14.0a6/configure	2025-04-12 21:11:06
 @@ -974,6 +974,9 @@
  CFLAGS
  CC
@@ -430,6 +441,16 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
+@@ -4061,6 +4064,9 @@
+ 		PKG_CONFIG=""
+ 	fi
+ fi
++if test -z "$PKG_CONFIG"; then
++	as_fn_error $? "pkg-config not found" "$LINENO" 5
++fi
+    ;; #(
+   no) :
+ 
 @@ -4100,6 +4106,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -487,9 +508,9 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		aarch64-apple-watchos*)           CC=arm64_32-apple-watchos-clang ;;
 +		x86_64-apple-watchos*-simulator)  CC=x86_64-apple-watchos-simulator-clang ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-clang ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-clang ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*-simulator) CC=arm64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*)           CC=arm64_32-apple-xros-clang ;;
++		x86_64-apple-xros*-simulator)  CC=x86_64-apple-xros-simulator-clang ;;
  		*)
  	esac
  fi
@@ -525,9 +546,9 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		aarch64-apple-watchos*)           CXX=arm64_32-apple-watchos-clang++ ;;
 +		x86_64-apple-watchos*-simulator)  CXX=x86_64-apple-watchos-simulator-clang++ ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-clang++ ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-clang++ ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*-simulator) CXX=arm64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*)           CXX=arm64_32-apple-xros-clang++ ;;
++		x86_64-apple-xros*-simulator)  CXX=x86_64-apple-xros-simulator-clang++ ;;
  		*)
  	esac
  fi
@@ -1448,7 +1469,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 --- Python-3.14.0a6-orig/configure.ac	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure.ac	2025-04-12 21:02:34
++++ Python-3.14.0a6/configure.ac	2025-04-12 21:10:44
 @@ -330,6 +330,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -1506,9 +1527,9 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		aarch64-apple-watchos*)           CC=arm64_32-apple-watchos-clang ;;
 +		x86_64-apple-watchos*-simulator)  CC=x86_64-apple-watchos-simulator-clang ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-clang ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-clang ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*-simulator) CC=arm64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*)           CC=arm64_32-apple-xros-clang ;;
++		x86_64-apple-xros*-simulator)  CC=x86_64-apple-xros-simulator-clang ;;
  		*)
  	esac
  fi
@@ -1544,9 +1565,9 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		aarch64-apple-watchos*)           CXX=arm64_32-apple-watchos-clang++ ;;
 +		x86_64-apple-watchos*-simulator)  CXX=x86_64-apple-watchos-simulator-clang++ ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-clang++ ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-clang++ ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*-simulator) CXX=arm64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*)           CXX=arm64_32-apple-xros-clang++ ;;
++		x86_64-apple-xros*-simulator)  CXX=x86_64-apple-xros-simulator-clang++ ;;
  		*)
  	esac
  fi
