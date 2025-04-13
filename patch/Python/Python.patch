@@ -1,3 +1,4 @@
+Only in Python-3.14.0a6: .DS_Store
 diff -ur Python-3.14.0a6-orig/Lib/platform.py Python-3.14.0a6/Lib/platform.py
 --- Python-3.14.0a6-orig/Lib/platform.py	2025-03-14 10:05:02
 +++ Python-3.14.0a6/Lib/platform.py	2025-04-12 20:43:35
@@ -204,7 +205,7 @@ diff -ur Python-3.14.0a6-orig/Misc/platform_triplet.c Python-3.14.0a6/Misc/platf
  PLATFORM_TRIPLET=darwin
 diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
 --- Python-3.14.0a6-orig/aclocal.m4	2025-03-14 10:05:02
-+++ Python-3.14.0a6/aclocal.m4	2025-04-12 21:11:05
++++ Python-3.14.0a6/aclocal.m4	2025-04-12 21:42:11
 @@ -1,6 +1,6 @@
 -# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
 +# generated automatically by aclocal 1.17 -*- Autoconf -*-
@@ -378,6 +379,16 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  AC_DEFUN([PKG_PROG_PKG_CONFIG],
  [m4_pattern_forbid([^_?PKG_[A-Z_]+$])
  m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
+@@ -475,6 +489,9 @@
+ 		AC_MSG_RESULT([no])
+ 		PKG_CONFIG=""
+ 	fi
++fi
++if test -z "$PKG_CONFIG"; then
++	m4_default([$2], [AC_MSG_ERROR([pkg-config not found])])
+ fi[]dnl
+ ])dnl PKG_PROG_PKG_CONFIG
+ 
 @@ -744,7 +761,7 @@
  
  # AM_CONDITIONAL                                            -*- Autoconf -*-
@@ -396,6 +407,7 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  #
  # This file is free software; the Free Software Foundation
  # gives unlimited permission to copy and/or distribute it,
+Only in Python-3.14.0a6: autom4te.cache
 diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
 --- Python-3.14.0a6-orig/config.sub	2025-03-14 10:05:02
 +++ Python-3.14.0a6/config.sub	2025-04-12 20:43:35
@@ -419,7 +431,7 @@ diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
  		# None (no kernel, i.e. freestanding / bare metal),
 diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 --- Python-3.14.0a6-orig/configure	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure	2025-04-12 21:11:06
++++ Python-3.14.0a6/configure	2025-04-12 21:42:12
 @@ -974,6 +974,9 @@
  CFLAGS
  CC
@@ -430,6 +442,16 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
+@@ -4061,6 +4064,9 @@
+ 		PKG_CONFIG=""
+ 	fi
+ fi
++if test -z "$PKG_CONFIG"; then
++	as_fn_error $? "pkg-config not found" "$LINENO" 5
++fi
+    ;; #(
+   no) :
+ 
 @@ -4100,6 +4106,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -455,7 +477,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -4196,6 +4211,18 @@
+@@ -4196,6 +4211,17 @@
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
@@ -469,12 +491,11 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		x86_64-apple-watchos*-simulator)  AR=x86_64-apple-watchos-simulator-ar ;;
 +
 +		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-ar ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-ar ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-ar ;;
++		aarch64-apple-xros*)           AR=arm64-apple-xros-ar ;;
  		*)
  	esac
  fi
-@@ -4204,6 +4231,18 @@
+@@ -4204,6 +4230,17 @@
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
@@ -488,12 +509,11 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		x86_64-apple-watchos*-simulator)  CC=x86_64-apple-watchos-simulator-clang ;;
 +
 +		aarch64-apple-xros*-simulator) CC=arm64-apple-xros-simulator-clang ;;
-+		aarch64-apple-xros*)           CC=arm64_32-apple-xros-clang ;;
-+		x86_64-apple-xros*-simulator)  CC=x86_64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*)           CC=arm64-apple-xros-clang ;;
  		*)
  	esac
  fi
-@@ -4212,6 +4251,18 @@
+@@ -4212,6 +4249,17 @@
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
@@ -507,12 +527,11 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		x86_64-apple-watchos*-simulator)  CPP=x86_64-apple-watchos-simulator-cpp ;;
 +
 +		aarch64-apple-xros*-simulator) CPP=arm64-apple-xros-simulator-cpp ;;
-+		aarch64-apple-xros*)           CPP=arm64_32-apple-xros-cpp ;;
-+		x86_64-apple-xros*-simulator)  CPP=x86_64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*)           CPP=arm64-apple-xros-cpp ;;
  		*)
  	esac
  fi
-@@ -4220,6 +4271,18 @@
+@@ -4220,6 +4268,17 @@
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
@@ -522,16 +541,15 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		x86_64-apple-tvos*-simulator)  CXX=x86_64-apple-tvos-simulator-clang++ ;;
 +
 +		aarch64-apple-watchos*-simulator) CXX=arm64-apple-watchos-simulator-clang++ ;;
-+		aarch64-apple-watchos*)           CXX=arm64_32-apple-watchos-clang++ ;;
++		aarch64-apple-watchos*)           CXX=arm64-apple-watchos-clang++ ;;
 +		x86_64-apple-watchos*-simulator)  CXX=x86_64-apple-watchos-simulator-clang++ ;;
 +
 +		aarch64-apple-xros*-simulator) CXX=arm64-apple-xros-simulator-clang++ ;;
-+		aarch64-apple-xros*)           CXX=arm64_32-apple-xros-clang++ ;;
-+		x86_64-apple-xros*-simulator)  CXX=x86_64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*)           CXX=arm64-apple-xros-clang++ ;;
  		*)
  	esac
  fi
-@@ -4342,8 +4405,11 @@
+@@ -4342,8 +4401,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -545,7 +563,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  			*) as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
  		esac
  	esac
-@@ -4352,6 +4418,9 @@
+@@ -4352,6 +4414,9 @@
  	no)
  		case $ac_sys_system in
  			iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -555,7 +573,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -4459,6 +4528,50 @@
+@@ -4459,6 +4524,50 @@
  				ac_config_files="$ac_config_files iOS/Resources/Info.plist"
  
  				;;
@@ -606,7 +624,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  			*)
  				as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
  				;;
-@@ -4469,6 +4582,9 @@
+@@ -4469,6 +4578,9 @@
    e)
  	case $ac_sys_system in
  		iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -616,7 +634,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -4523,8 +4639,8 @@
+@@ -4523,8 +4635,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -627,7 +645,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) as_fn_error $? "no default app store compliance patch available for $ac_sys_system" "$LINENO" 5 ;;
-@@ -4542,8 +4658,8 @@
+@@ -4542,8 +4654,8 @@
  else case e in #(
    e)
      case $ac_sys_system in
@@ -638,7 +656,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: applying default app store compliance patch" >&5
  printf "%s\n" "applying default app store compliance patch" >&6; }
-@@ -4598,6 +4714,72 @@
+@@ -4598,6 +4710,72 @@
  				;;
  		esac
  		;;
@@ -711,7 +729,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -4688,9 +4870,15 @@
+@@ -4688,9 +4866,15 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -728,7 +746,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -4753,9 +4941,13 @@
+@@ -4753,9 +4937,13 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -743,7 +761,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  # checks for alternative programs
  
  # compiler flags are generated in two sets, BASECFLAGS and OPT.  OPT is just
-@@ -4794,6 +4986,16 @@
+@@ -4794,6 +4982,16 @@
      as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
      as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
     ;; #(
@@ -760,7 +778,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    *) :
       ;;
  esac
-@@ -7163,6 +7365,12 @@
+@@ -7163,6 +7361,12 @@
      MULTIARCH="" ;; #(
    iOS) :
      MULTIARCH="" ;; #(
@@ -773,7 +791,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -7183,7 +7391,7 @@
+@@ -7183,7 +7387,7 @@
  printf "%s\n" "$MULTIARCH" >&6; }
  
  case $ac_sys_system in #(
@@ -782,7 +800,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
      SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f2` ;; #(
    *) :
      SOABI_PLATFORM=$PLATFORM_TRIPLET
-@@ -7234,6 +7442,18 @@
+@@ -7234,6 +7438,18 @@
      PY_SUPPORT_TIER=3 ;; #(
      aarch64-apple-ios*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
@@ -796,12 +814,12 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +    PY_SUPPORT_TIER=3 ;; #(
 +    aarch64-apple-xros*-simulator/clang) :
 +    PY_SUPPORT_TIER=3 ;; #(
-+    arm64_32-apple-xros*/clang) :
++    arm64-apple-xros*/clang) :
 +    PY_SUPPORT_TIER=3 ;; #(
      aarch64-*-linux-android/clang) :
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-linux-android/clang) :
-@@ -7670,7 +7890,7 @@
+@@ -7670,7 +7886,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -810,7 +828,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        as_fn_error $? "Unknown platform for framework build" "$LINENO" 5;;
-@@ -7736,7 +7956,7 @@
+@@ -7736,7 +7952,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -819,7 +837,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -8444,15 +8664,18 @@
+@@ -8444,15 +8660,18 @@
    if test "x$ac_cv_gcc_compat" = xyes
  then :
  
@@ -841,7 +859,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -8582,15 +8805,18 @@
+@@ -8582,15 +8801,18 @@
    case $ac_cv_cc_name in
      clang)
        LDFLAGS_NOLTO="-fno-lto"
@@ -863,7 +881,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -8767,15 +8993,18 @@
+@@ -8767,15 +8989,18 @@
            if test $Py_LTO_POLICY = default
            then
              # Check that ThinLTO is accepted.
@@ -885,7 +903,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -8824,15 +9053,18 @@
+@@ -8824,15 +9049,18 @@
            if test $Py_LTO_POLICY = default
            then
              # Check that ThinLTO is accepted
@@ -907,7 +925,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9109,15 +9341,18 @@
+@@ -9109,15 +9337,18 @@
  
    # -fno-reorder-blocks-and-partition is required for bolt to work.
    # Possibly GCC only.
@@ -929,7 +947,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9765,15 +10000,18 @@
+@@ -9765,15 +9996,18 @@
  
  if test "$enable_safety" = "yes"
  then
@@ -951,7 +969,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9807,15 +10045,18 @@
+@@ -9807,15 +10041,18 @@
  esac
  fi
  
@@ -973,7 +991,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9849,15 +10090,18 @@
+@@ -9849,15 +10086,18 @@
  esac
  fi
  
@@ -995,7 +1013,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9891,15 +10135,18 @@
+@@ -9891,15 +10131,18 @@
  esac
  fi
  
@@ -1017,7 +1035,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9933,15 +10180,18 @@
+@@ -9933,15 +10176,18 @@
  esac
  fi
  
@@ -1039,7 +1057,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -9975,15 +10225,18 @@
+@@ -9975,15 +10221,18 @@
  esac
  fi
  
@@ -1061,7 +1079,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -10041,15 +10294,18 @@
+@@ -10041,15 +10290,18 @@
  
  if test "$enable_slower_safety" = "yes"
  then
@@ -1083,7 +1101,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -10650,15 +10906,18 @@
+@@ -10650,15 +10902,18 @@
  
          # Error on unguarded use of new symbols, which will fail at runtime for
          # users on older versions of macOS
@@ -1105,7 +1123,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -13341,15 +13600,18 @@
+@@ -13341,15 +13596,18 @@
    withval=$with_memory_sanitizer;
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $withval" >&5
  printf "%s\n" "$withval" >&6; }
@@ -1127,7 +1145,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -13544,7 +13806,7 @@
+@@ -13544,7 +13802,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -1136,7 +1154,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -13677,7 +13939,7 @@
+@@ -13677,7 +13935,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -1145,7 +1163,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -13701,7 +13963,7 @@
+@@ -13701,7 +13959,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -1154,7 +1172,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -15286,7 +15548,7 @@
+@@ -15286,7 +15544,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -1163,7 +1181,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -19039,12 +19301,6 @@
+@@ -19039,12 +19297,6 @@
    printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
  
  fi
@@ -1176,7 +1194,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
  then :
-@@ -19105,18 +19361,6 @@
+@@ -19105,18 +19357,6 @@
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
  fi
@@ -1195,7 +1213,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
  then :
-@@ -19543,24 +19787,6 @@
+@@ -19543,24 +19783,6 @@
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
  fi
@@ -1220,7 +1238,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
  then :
-@@ -19867,12 +20093,6 @@
+@@ -19867,12 +20089,6 @@
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
  fi
@@ -1233,7 +1251,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
  then :
-@@ -20140,11 +20360,11 @@
+@@ -20140,11 +20356,11 @@
  
  fi
  
@@ -1247,7 +1265,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
  if test "x$ac_cv_func_getentropy" = xyes
  then :
-@@ -20166,6 +20386,53 @@
+@@ -20166,6 +20382,53 @@
  
  fi
  
@@ -1301,7 +1319,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -23248,8 +23515,9 @@
+@@ -23248,8 +23511,9 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -1312,7 +1330,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    for ac_func in openpty
  do :
    ac_fn_c_check_func "$LINENO" "openpty" "ac_cv_func_openpty"
-@@ -23362,7 +23630,7 @@
+@@ -23362,7 +23626,7 @@
  fi
  
  done
@@ -1321,7 +1339,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -23545,6 +23813,7 @@
+@@ -23545,6 +23809,7 @@
  fi
  
  done
@@ -1329,7 +1347,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -23810,10 +24079,10 @@
+@@ -23810,10 +24075,10 @@
  
  done
  
@@ -1342,7 +1360,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  then
  
    for ac_func in clock_settime
-@@ -25236,10 +25505,10 @@
+@@ -25236,10 +25501,10 @@
  then :
  
  
@@ -1355,7 +1373,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    if test "$ax_cv_c_float_words_bigendian" = unknown; then
      ax_cv_c_float_words_bigendian=no
    else
-@@ -26152,8 +26421,8 @@
+@@ -26152,8 +26417,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1366,7 +1384,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -29023,7 +29292,7 @@
+@@ -29023,7 +29288,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -1375,7 +1393,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -29504,7 +29773,7 @@
+@@ -29504,7 +29769,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -1384,7 +1402,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -30484,7 +30753,7 @@
+@@ -30484,7 +30749,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -1393,7 +1411,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  
  
  
-@@ -32082,15 +32351,18 @@
+@@ -32082,15 +32347,18 @@
  # Android.
  # The *mmintrin.h headers are x86-family-specific, so can't be used on WASI.
  if test "$ac_sys_system" != "Linux-android" -a "$ac_sys_system" != "WASI" || test "$ANDROID_API_LEVEL" -ge 28; then
@@ -1415,7 +1433,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -32157,15 +32429,18 @@
+@@ -32157,15 +32425,18 @@
  # (https://developer.android.com/ndk/guides/abis#86-64), this is safe because we do a
  # runtime CPUID check.
  if test "$ac_sys_system" != "Linux-android" -a "$ac_sys_system" != "WASI" || test "$ANDROID_API_LEVEL" -ge 28; then
@@ -1437,7 +1455,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
  
-@@ -34487,6 +34762,8 @@
+@@ -34487,6 +34758,8 @@
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
      "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
@@ -2001,6 +2019,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
      dnl subprocess and multiprocessing are not supported (no fork syscall).
      dnl curses and tkinter user interface are not available.
      dnl gdbm and nis aren't available
+Only in Python-3.14.0a6: configure~
 diff -ur Python-3.14.0a6-orig/iOS/Resources/Info.plist.in Python-3.14.0a6/iOS/Resources/Info.plist.in
 --- Python-3.14.0a6-orig/iOS/Resources/Info.plist.in	2025-03-14 10:05:02
 +++ Python-3.14.0a6/iOS/Resources/Info.plist.in	2025-04-12 20:43:35
@@ -2020,6 +2039,11 @@ diff -ur Python-3.14.0a6-orig/iOS/Resources/Info.plist.in Python-3.14.0a6/iOS/Re
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
+Only in Python-3.14.0a6: pyconfig.h.in~
+Only in Python-3.14.0a6: tvOS
+Only in Python-3.14.0a6: watchOS
+Only in Python-3.14.0a6: xrOS
+
 diff --git a/tvOS/README.rst b/tvOS/README.rst
 new file mode 100644
 index 0000000..1f79325
