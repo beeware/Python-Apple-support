@@ -5,6 +5,7 @@
 # - iOS             - build everything for iOS
 # - tvOS            - build everything for tvOS
 # - watchOS         - build everything for watchOS
+# - xrOS            - build everything for xrOS (visionOS)
 
 # Current directory
 PROJECT_DIR=$(shell pwd)
@@ -33,7 +34,7 @@ OPENSSL_VERSION=3.0.16-1
 XZ_VERSION=5.6.4-1
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS
+OS_LIST=macOS iOS tvOS watchOS xrOS
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
@@ -52,6 +53,9 @@ VERSION_MIN-tvOS=12.0
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 VERSION_MIN-watchOS=4.0
+
+TARGETS-xrOS=xrsimulator.arm64 xros.arm64
+VERSION_MIN-xrOS=1.0
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
