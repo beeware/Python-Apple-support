@@ -204,7 +204,7 @@ diff -ur Python-3.14.0a6-orig/Misc/platform_triplet.c Python-3.14.0a6/Misc/platf
  PLATFORM_TRIPLET=darwin
 diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
 --- Python-3.14.0a6-orig/aclocal.m4	2025-03-14 10:05:02
-+++ Python-3.14.0a6/aclocal.m4	2025-04-12 20:44:30
++++ Python-3.14.0a6/aclocal.m4	2025-04-12 21:03:14
 @@ -1,6 +1,6 @@
 -# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
 +# generated automatically by aclocal 1.17 -*- Autoconf -*-
@@ -429,7 +429,7 @@ diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
  		# None (no kernel, i.e. freestanding / bare metal),
 diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 --- Python-3.14.0a6-orig/configure	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure	2025-04-12 20:44:31
++++ Python-3.14.0a6/configure	2025-04-12 21:03:15
 @@ -974,6 +974,9 @@
  CFLAGS
  CC
@@ -526,9 +526,9 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
 +		aarch64-apple-watchos*)           CPP=arm64_32-apple-watchos-cpp ;;
 +		x86_64-apple-watchos*-simulator)  CPP=x86_64-apple-watchos-simulator-cpp ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-cpp ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-cpp ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*-simulator) CPP=arm64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*)           CPP=arm64_32-apple-xros-cpp ;;
++		x86_64-apple-xros*-simulator)  CPP=x86_64-apple-xros-simulator-cpp ;;
  		*)
  	esac
  fi
@@ -1468,7 +1468,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 --- Python-3.14.0a6-orig/configure.ac	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure.ac	2025-04-12 20:44:21
++++ Python-3.14.0a6/configure.ac	2025-04-12 21:02:34
 @@ -330,6 +330,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -1545,9 +1545,9 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		aarch64-apple-watchos*)           CPP=arm64_32-apple-watchos-cpp ;;
 +		x86_64-apple-watchos*-simulator)  CPP=x86_64-apple-watchos-simulator-cpp ;;
 +
-+		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-cpp ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-cpp ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*-simulator) CPP=arm64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*)           CPP=arm64_32-apple-xros-cpp ;;
++		x86_64-apple-xros*-simulator)  CPP=x86_64-apple-xros-simulator-cpp ;;
  		*)
  	esac
  fi
