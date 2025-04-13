@@ -378,6 +378,16 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  AC_DEFUN([PKG_PROG_PKG_CONFIG],
  [m4_pattern_forbid([^_?PKG_[A-Z_]+$])
  m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
+@@ -475,6 +489,9 @@
+ 		AC_MSG_RESULT([no])
+ 		PKG_CONFIG=""
+ 	fi
++fi
++if test -z "$PKG_CONFIG"; then
++	m4_default([$2], [AC_MSG_ERROR([pkg-config not found])])
+ fi[]dnl
+ ])dnl PKG_PROG_PKG_CONFIG
+ 
 @@ -744,7 +761,7 @@
  
  # AM_CONDITIONAL                                            -*- Autoconf -*-
@@ -396,7 +406,6 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  #
  # This file is free software; the Free Software Foundation
  # gives unlimited permission to copy and/or distribute it,
-Only in Python-3.14.0a6: autom4te.cache
 diff -ur Python-3.14.0a6-orig/config.sub Python-3.14.0a6/config.sub
 --- Python-3.14.0a6-orig/config.sub	2025-03-14 10:05:02
 +++ Python-3.14.0a6/config.sub	2025-04-12 20:43:35
@@ -431,6 +440,16 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
+@@ -4061,6 +4064,9 @@
+ 		PKG_CONFIG=""
+ 	fi
+ fi
++if test -z "$PKG_CONFIG"; then
++	as_fn_error $? "pkg-config not found" "$LINENO" 5
++fi
+    ;; #(
+   no) :
+ 
 @@ -4100,6 +4106,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -1449,7 +1468,7 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 --- Python-3.14.0a6-orig/configure.ac	2025-03-14 10:05:02
-+++ Python-3.14.0a6/configure.ac	2025-04-12 21:10:44
++++ Python-3.14.0a6/configure.ac	2025-04-12 21:36:22
 @@ -330,6 +330,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
@@ -1475,7 +1494,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -420,6 +429,18 @@
+@@ -420,6 +429,17 @@
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
@@ -1489,12 +1508,11 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		x86_64-apple-watchos*-simulator)  AR=x86_64-apple-watchos-simulator-ar ;;
 +
 +		aarch64-apple-xros*-simulator) AR=arm64-apple-xros-simulator-ar ;;
-+		aarch64-apple-xros*)           AR=arm64_32-apple-xros-ar ;;
-+		x86_64-apple-xros*-simulator)  AR=x86_64-apple-xros-simulator-ar ;;
++		aarch64-apple-xros*)           AR=arm64-apple-xros-ar ;;
  		*)
  	esac
  fi
-@@ -428,6 +449,18 @@
+@@ -428,6 +448,17 @@
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
@@ -1508,12 +1526,11 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		x86_64-apple-watchos*-simulator)  CC=x86_64-apple-watchos-simulator-clang ;;
 +
 +		aarch64-apple-xros*-simulator) CC=arm64-apple-xros-simulator-clang ;;
-+		aarch64-apple-xros*)           CC=arm64_32-apple-xros-clang ;;
-+		x86_64-apple-xros*-simulator)  CC=x86_64-apple-xros-simulator-clang ;;
++		aarch64-apple-xros*)           CC=arm64-apple-xros-clang ;;
  		*)
  	esac
  fi
-@@ -436,6 +469,18 @@
+@@ -436,6 +467,17 @@
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
@@ -1527,12 +1544,11 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		x86_64-apple-watchos*-simulator)  CPP=x86_64-apple-watchos-simulator-cpp ;;
 +
 +		aarch64-apple-xros*-simulator) CPP=arm64-apple-xros-simulator-cpp ;;
-+		aarch64-apple-xros*)           CPP=arm64_32-apple-xros-cpp ;;
-+		x86_64-apple-xros*-simulator)  CPP=x86_64-apple-xros-simulator-cpp ;;
++		aarch64-apple-xros*)           CPP=arm64-apple-xros-cpp ;;
  		*)
  	esac
  fi
-@@ -444,6 +489,18 @@
+@@ -444,6 +486,17 @@
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
@@ -1542,16 +1558,15 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +		x86_64-apple-tvos*-simulator)  CXX=x86_64-apple-tvos-simulator-clang++ ;;
 +
 +		aarch64-apple-watchos*-simulator) CXX=arm64-apple-watchos-simulator-clang++ ;;
-+		aarch64-apple-watchos*)           CXX=arm64_32-apple-watchos-clang++ ;;
++		aarch64-apple-watchos*)           CXX=arm64-apple-watchos-clang++ ;;
 +		x86_64-apple-watchos*-simulator)  CXX=x86_64-apple-watchos-simulator-clang++ ;;
 +
 +		aarch64-apple-xros*-simulator) CXX=arm64-apple-xros-simulator-clang++ ;;
-+		aarch64-apple-xros*)           CXX=arm64_32-apple-xros-clang++ ;;
-+		x86_64-apple-xros*-simulator)  CXX=x86_64-apple-xros-simulator-clang++ ;;
++		aarch64-apple-xros*)           CXX=arm64-apple-xros-clang++ ;;
  		*)
  	esac
  fi
-@@ -558,8 +615,11 @@
+@@ -558,8 +611,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -1565,7 +1580,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  			*) AC_MSG_ERROR([Unknown platform for framework build])
  		esac
  	esac
-@@ -568,6 +628,9 @@
+@@ -568,6 +624,9 @@
  	no)
  		case $ac_sys_system in
  			iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -1575,7 +1590,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -670,6 +733,48 @@
+@@ -670,6 +729,48 @@
  
  				AC_CONFIG_FILES([iOS/Resources/Info.plist])
  				;;
@@ -1624,7 +1639,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  			*)
  				AC_MSG_ERROR([Unknown platform for framework build])
  				;;
-@@ -678,6 +783,9 @@
+@@ -678,6 +779,9 @@
  	],[
  	case $ac_sys_system in
  		iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -1634,7 +1649,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -730,8 +838,8 @@
+@@ -730,8 +834,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -1645,7 +1660,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) AC_MSG_ERROR([no default app store compliance patch available for $ac_sys_system]) ;;
-@@ -745,8 +853,8 @@
+@@ -745,8 +849,8 @@
      esac
    ],[
      case $ac_sys_system in
@@ -1656,7 +1671,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          AC_MSG_RESULT([applying default app store compliance patch])
          ;;
-@@ -794,6 +902,66 @@
+@@ -794,6 +898,66 @@
  				;;
  		esac
  		;;
@@ -1723,7 +1738,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -883,9 +1051,15 @@
+@@ -883,9 +1047,15 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -1740,7 +1755,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -944,8 +1118,12 @@
+@@ -944,8 +1114,12 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -1754,7 +1769,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  
  # checks for alternative programs
  
-@@ -979,11 +1157,18 @@
+@@ -979,11 +1153,18 @@
    ],
  )
  
@@ -1774,7 +1789,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    ],
  )
  
-@@ -1172,6 +1357,9 @@
+@@ -1172,6 +1353,9 @@
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
    [iOS], [MULTIARCH=""],
@@ -1784,7 +1799,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1193,7 +1381,7 @@
+@@ -1193,7 +1377,7 @@
  dnl use a single "fat" binary at runtime. SOABI_PLATFORM is the component of
  dnl the PLATFORM_TRIPLET that will be used in binary module extensions.
  AS_CASE([$ac_sys_system],
@@ -1793,7 +1808,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    [SOABI_PLATFORM=$PLATFORM_TRIPLET]
  )
  
-@@ -1227,6 +1415,12 @@
+@@ -1227,6 +1411,12 @@
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
    [aarch64-apple-ios*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
    [aarch64-apple-ios*/clang],             [PY_SUPPORT_TIER=3], dnl iOS on ARM64
@@ -1802,11 +1817,11 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
 +  [aarch64-apple-watchos*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl watchOS Simulator on arm64
 +  [arm64_32-apple-watchos*/clang],            [PY_SUPPORT_TIER=3], dnl watchOS on ARM64
 +  [aarch64-apple-xros*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl xrOS Simulator on arm64
-+  [arm64_32-apple-xros*/clang],            [PY_SUPPORT_TIER=3], dnl xrOS on ARM64
++  [arm64-apple-xros*/clang],            [PY_SUPPORT_TIER=3], dnl xrOS on ARM64
    [aarch64-*-linux-android/clang],   [PY_SUPPORT_TIER=3], dnl Android on ARM64
    [x86_64-*-linux-android/clang],    [PY_SUPPORT_TIER=3], dnl Android on AMD64
  
-@@ -1536,7 +1730,7 @@
+@@ -1536,7 +1726,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -1815,7 +1830,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        AC_MSG_ERROR([Unknown platform for framework build]);;
-@@ -1601,7 +1795,7 @@
+@@ -1601,7 +1791,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -1824,7 +1839,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -3456,7 +3650,7 @@
+@@ -3456,7 +3646,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -1833,7 +1848,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3580,7 +3774,7 @@
+@@ -3580,7 +3770,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -1842,7 +1857,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3604,7 +3798,7 @@
+@@ -3604,7 +3794,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -1851,7 +1866,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -4024,7 +4218,7 @@
+@@ -4024,7 +4214,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -1860,7 +1875,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5133,9 +5327,9 @@
+@@ -5133,9 +5323,9 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock closefrom close_range confstr \
@@ -1872,7 +1887,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
    getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5143,8 +5337,7 @@
+@@ -5143,8 +5333,7 @@
    getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
    mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
@@ -1882,7 +1897,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill pthread_getname_np pthread_setname_np pthread_getattr_np \
-@@ -5153,7 +5346,7 @@
+@@ -5153,7 +5342,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
    setitimer setlocale setpgid setpgrp setpriority setregid setresgid \
@@ -1891,7 +1906,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5168,14 +5361,22 @@
+@@ -5168,14 +5357,22 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -1917,7 +1932,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  AC_CHECK_DECL([dirfd],
                [AC_DEFINE([HAVE_DIRFD], [1],
                           [Define if you have the 'dirfd' function or macro.])],
-@@ -5427,21 +5628,23 @@
+@@ -5427,21 +5624,23 @@
  ])
  
  # check for openpty, login_tty, and forkpty
@@ -1955,7 +1970,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
  
-@@ -5479,10 +5682,10 @@
+@@ -5479,10 +5678,10 @@
      ])
  ])
  
@@ -1968,7 +1983,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -6233,8 +6436,8 @@
+@@ -6233,8 +6432,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1979,7 +1994,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -6893,7 +7096,7 @@
+@@ -6893,7 +7092,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -1988,7 +2003,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7174,7 +7377,7 @@
+@@ -7174,7 +7373,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -1997,7 +2012,7 @@ diff -ur Python-3.14.0a6-orig/configure.ac Python-3.14.0a6/configure.ac
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7585,7 +7788,7 @@
+@@ -7585,7 +7784,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
@@ -2691,73 +2706,38 @@ index 0000000..2e7be87
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xrsimulator clang -target arm64-apple-xros-simulator -E "$@"
-diff --git a/xrOS/Resources/bin/arm64_32-apple-xros-ar b/xrOS/Resources/bin/arm64_32-apple-xros-ar
+diff --git a/xrOS/Resources/bin/arm64-apple-xros-ar b/xrOS/Resources/bin/arm64-apple-xros-ar
 new file mode 100644
 index 0000000..9fd78a2
 --- /dev/null
-+++ b/xrOS/Resources/bin/arm64_32-apple-xros-ar
++++ b/xrOS/Resources/bin/arm64-apple-xros-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xros${XROS_SDK_VERSION} ar "$@"
-diff --git a/xrOS/Resources/bin/arm64_32-apple-xros-clang b/xrOS/Resources/bin/arm64_32-apple-xros-clang
+diff --git a/xrOS/Resources/bin/arm64-apple-xros-clang b/xrOS/Resources/bin/arm64-apple-xros-clang
 new file mode 100644
 index 0000000..5ac7a31
 --- /dev/null
-+++ b/xrOS/Resources/bin/arm64_32-apple-xros-clang
++++ b/xrOS/Resources/bin/arm64-apple-xros-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64_32-apple-xros "$@"
-diff --git a/xrOS/Resources/bin/arm64_32-apple-xros-clang++ b/xrOS/Resources/bin/arm64_32-apple-xros-clang++
++xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros "$@"
+diff --git a/xrOS/Resources/bin/arm64-apple-xros-clang++ b/xrOS/Resources/bin/arm64-apple-xros-clang++
 new file mode 100644
 index 0000000..35f1820
 --- /dev/null
-+++ b/xrOS/Resources/bin/arm64_32-apple-xros-clang++
++++ b/xrOS/Resources/bin/arm64-apple-xros-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk xros${XROS_SDK_VERSION} clang++ -target arm64_32-apple-xros "$@"
-diff --git a/xrOS/Resources/bin/arm64_32-apple-xros-cpp b/xrOS/Resources/bin/arm64_32-apple-xros-cpp
++xcrun --sdk xros${XROS_SDK_VERSION} clang++ -target arm64-apple-xros "$@"
+diff --git a/xrOS/Resources/bin/arm64-apple-xros-cpp b/xrOS/Resources/bin/arm64-apple-xros-cpp
 new file mode 100644
 index 0000000..e34ba5d
 --- /dev/null
-+++ b/xrOS/Resources/bin/arm64_32-apple-xros-cpp
++++ b/xrOS/Resources/bin/arm64-apple-xros-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64_32-apple-xros -E "$@"
-diff --git a/xrOS/Resources/bin/x86_64-apple-xros-simulator-ar b/xrOS/Resources/bin/x86_64-apple-xros-simulator-ar
-new file mode 100644
-index 0000000..b202330
---- /dev/null
-+++ b/xrOS/Resources/bin/x86_64-apple-xros-simulator-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk xrsimulator${XROS_SDK_VERSION} ar "$@"
-diff --git a/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang b/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang
-new file mode 100644
-index 0000000..e094d17
---- /dev/null
-+++ b/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target x86_64-apple-xros-simulator "$@"
-diff --git a/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang++ b/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang++
-new file mode 100644
-index 0000000..f161ac7
---- /dev/null
-+++ b/xrOS/Resources/bin/x86_64-apple-xros-simulator-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang++ -target x86_64-apple-xros-simulator "$@"
-diff --git a/xrOS/Resources/bin/x86_64-apple-xros-simulator-cpp b/xrOS/Resources/bin/x86_64-apple-xros-simulator-cpp
-new file mode 100644
-index 0000000..38e4e3d
---- /dev/null
-+++ b/xrOS/Resources/bin/x86_64-apple-xros-simulator-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target x86_64-apple-xros-simulator -E "$@"
-diff --git a/xrOS/Resources/dylib-Info-template.plist b/xrOS/Resources/dylib-Info-template.plist
-new file mode 100644
-index 0000000..f630cdb
++xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros -E "$@"
 --- /dev/null
 +++ b/xrOS/Resources/dylib-Info-template.plist
 @@ -0,0 +1,26 @@
