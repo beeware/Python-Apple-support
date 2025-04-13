@@ -379,16 +379,6 @@ diff -ur Python-3.14.0a6-orig/aclocal.m4 Python-3.14.0a6/aclocal.m4
  AC_DEFUN([PKG_PROG_PKG_CONFIG],
  [m4_pattern_forbid([^_?PKG_[A-Z_]+$])
  m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
-@@ -475,6 +489,9 @@
- 		AC_MSG_RESULT([no])
- 		PKG_CONFIG=""
- 	fi
-+fi
-+if test -z "$PKG_CONFIG"; then
-+	m4_default([$2], [AC_MSG_ERROR([pkg-config not found])])
- fi[]dnl
- ])dnl PKG_PROG_PKG_CONFIG
- 
 @@ -744,7 +761,7 @@
  
  # AM_CONDITIONAL                                            -*- Autoconf -*-
@@ -442,16 +432,6 @@ diff -ur Python-3.14.0a6-orig/configure Python-3.14.0a6/configure
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
-@@ -4061,6 +4064,9 @@
- 		PKG_CONFIG=""
- 	fi
- fi
-+if test -z "$PKG_CONFIG"; then
-+	as_fn_error $? "pkg-config not found" "$LINENO" 5
-+fi
-    ;; #(
-   no) :
- 
 @@ -4100,6 +4106,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
