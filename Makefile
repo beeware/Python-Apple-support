@@ -34,28 +34,33 @@ OPENSSL_VERSION=3.0.16-1
 XZ_VERSION=5.6.4-1
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS xrOS
+OS_LIST=macOS iOS tvOS watchOS visionOS
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
+TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
+TRIPLE_OS-tvOS=tvos
 VERSION_MIN-tvOS=12.0
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
+TRIPLE_OS-watchOS=watchos
 VERSION_MIN-watchOS=4.0
 
-TARGETS-xrOS=xrsimulator.arm64 xros.arm64
-VERSION_MIN-xrOS=1.0
+TARGETS-visionOS=xrsimulator.arm64 xros.arm64
+TRIPLE_OS-visionOS=xros
+VERSION_MIN-visionOS=2.0
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -125,6 +130,7 @@ target=$1
 os=$2
 
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
+TRIPLE_OS-$(target)=$$(TRIPLE_OS-$(os))
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
 SDK-$(target)=$$(basename $(target))
@@ -132,10 +138,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(target))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(target))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -403,14 +409,15 @@ sdk=$1
 os=$2
 
 OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
+TRIPLE_OS-$(sdk)=$$(TRIPLE_OS-$(os))
 
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
 # Expand the build-target macro for target on this OS
