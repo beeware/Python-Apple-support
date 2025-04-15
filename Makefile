@@ -492,11 +492,15 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 
+ifeq ($(os), visionOS)
+	echo "Skipping arch-specific header copying for visionOS"
+else
 	# Add the individual headers from each target in an arch-specific name
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
+	$(foreach target,$(SDK_TARGETS-$(sdk)),cp $(PYTHON_INCLUDE-$(target))/pyconfig.h $(PYTHON_INCLUDE-$(sdk))/pyconfig-$(ARCH-$(target)).h;)
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	cp $(PYTHON_SRCDIR-$(firstword $(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+endif
 
 
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
