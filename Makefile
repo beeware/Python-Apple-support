@@ -5,7 +5,7 @@
 # - iOS             - build everything for iOS
 # - tvOS            - build everything for tvOS
 # - watchOS         - build everything for watchOS
-# - xrOS            - build everything for xrOS (visionOS)
+# - visionOS        - build everything for visionOS
 
 # Current directory
 PROJECT_DIR=$(shell pwd)
