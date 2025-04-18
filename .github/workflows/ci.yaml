@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['macOS', 'iOS', 'tvOS', 'watchOS']
+        target: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
         include:
             - briefcase-run-args:
             - run-tests: false
