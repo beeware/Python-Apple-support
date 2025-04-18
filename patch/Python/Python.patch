@@ -1,6 +1,53 @@
-Gitignore removed by john
+diff --git a/Lib/ctypes/__init__.py b/Lib/ctypes/__init__.py
+index 8e2a2926f7a..a0384634a49 100644
+--- a/Lib/ctypes/__init__.py
++++ b/Lib/ctypes/__init__.py
+@@ -359,7 +359,7 @@ def __init__(self, name, mode=DEFAULT_MODE, handle=None,
+         if name:
+             name = _os.fspath(name)
+ 
+-            # If the filename that has been provided is an iOS/tvOS/watchOS
++            # If the filename that has been provided is an iOS/tvOS/watchOS/visionOS
+             # .fwork file, dereference the location to the true origin of the
+             # binary.
+             if name.endswith(".fwork"):
+diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
+index 99504911a3d..6f6d1a4e837 100644
+--- a/Lib/ctypes/util.py
++++ b/Lib/ctypes/util.py
+@@ -425,7 +425,7 @@ def find_library(name):
+ # https://man.openbsd.org/dl_iterate_phdr
+ # https://docs.oracle.com/cd/E88353_01/html/E37843/dl-iterate-phdr-3c.html
+ if (os.name == "posix" and
+-    sys.platform not in {"darwin", "ios", "tvos", "watchos"}):
++    sys.platform not in {"darwin", "ios", "tvos", "watchos", "visionos"}):
+     import ctypes
+     if hasattr((_libc := ctypes.CDLL(None)), "dl_iterate_phdr"):
+ 
+diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
+index 8bcd741c446..d8a6f28edba 100644
+--- a/Lib/importlib/_bootstrap_external.py
++++ b/Lib/importlib/_bootstrap_external.py
+@@ -52,7 +52,7 @@
+ 
+ # Bootstrap-related code ######################################################
+ _CASE_INSENSITIVE_PLATFORMS_STR_KEY = 'win',
+-_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY = 'cygwin', 'darwin', 'ios', 'tvos', 'watchos'
++_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY = 'cygwin', 'darwin', 'ios', 'tvos', 'watchos', 'visionos'
+ _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
+                                 + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
+ 
+@@ -1535,7 +1535,7 @@ def _get_supported_file_loaders():
+     """
+     extension_loaders = []
+     if hasattr(_imp, 'create_dynamic'):
+-        if sys.platform in {"ios", "tvos", "watchos"}:
++        if sys.platform in {"ios", "tvos", "watchos", "visionos"}:
+             extension_loaders = [(AppleFrameworkLoader, [
+                 suffix.replace(".so", ".fwork")
+                 for suffix in _imp.extension_suffixes()
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 1f6baed66d3..9ccac040250 100644
+index 1f6baed66d3..6276d0dbdd3 100644
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -521,6 +521,78 @@ def ios_ver(system="", release="", model="", is_simulator=False):
@@ -82,6 +129,15 @@ index 1f6baed66d3..9ccac040250 100644
  def _java_getprop(name, default):
      """This private helper is deprecated in 3.13 and will be removed in 3.15"""
      from java.lang import System
+@@ -720,7 +792,7 @@ def _syscmd_file(target, default=''):
+         default in case the command should fail.
+ 
+     """
+-    if sys.platform in {'dos', 'win32', 'win16', 'ios', 'tvos', 'watchos'}:
++    if sys.platform in {'dos', 'win32', 'win16', 'ios', 'tvos', 'watchos', 'visionos'}:
+         # XXX Others too ?
+         return default
+ 
 @@ -884,14 +956,30 @@ def get_OpenVMS():
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
@@ -146,11 +202,45 @@ index 1f6baed66d3..9ccac040250 100644
          else:
              macos_release = mac_ver()[0]
              if macos_release:
+diff --git a/Lib/site.py b/Lib/site.py
+index 9da8b6724e1..345f55a5bde 100644
+--- a/Lib/site.py
++++ b/Lib/site.py
+@@ -297,8 +297,8 @@ def _getuserbase():
+     if env_base:
+         return env_base
+ 
+-    # Emscripten, iOS, tvOS, VxWorks, WASI, and watchOS have no home directories
+-    if sys.platform in {"emscripten", "ios", "tvos", "vxworks", "wasi", "watchos"}:
++    # Emscripten, iOS, tvOS, visionOS, VxWorks, WASI, and watchOS have no home directories
++    if sys.platform in {"emscripten", "ios", "tvos", "vxworks", "visionos", "wasi", "watchos"}:
+         return None
+ 
+     def joinuser(*args):
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index 18e6b8d25e5..8a8ec696510 100644
+index 18e6b8d25e5..64603fb1bb1 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
-@@ -719,6 +719,18 @@ def get_platform():
+@@ -23,6 +23,9 @@
+ _ALWAYS_STR = {
+     'IPHONEOS_DEPLOYMENT_TARGET',
+     'MACOSX_DEPLOYMENT_TARGET',
++    'TVOS_DEPLOYMENT_TARGET',
++    'WATCHOS_DEPLOYMENT_TARGET',
++    'XROS_DEPLOYMENT_TARGET',
+ }
+ 
+ _INSTALL_SCHEMES = {
+@@ -119,7 +122,7 @@ def _getuserbase():
+     # Emscripten, iOS, tvOS, VxWorks, WASI, and watchOS have no home directories.
+     # Use _PYTHON_HOST_PLATFORM to get the correct platform when cross-compiling.
+     system_name = os.environ.get('_PYTHON_HOST_PLATFORM', sys.platform).split('-')[0]
+-    if system_name in {"emscripten", "ios", "tvos", "vxworks", "wasi", "watchos"}:
++    if system_name in {"emscripten", "ios", "tvos", "visionos", "vxworks", "wasi", "watchos"}:
+         return None
+ 
+     def joinuser(*args):
+@@ -719,6 +722,18 @@ def get_platform():
              release = get_config_vars().get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
              osname = sys.platform
              machine = sys.implementation._multiarch
@@ -170,7 +260,7 @@ index 18e6b8d25e5..8a8ec696510 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 5fdbfa1053c..3580a386d40 100644
+index 5fdbfa1053c..cc3f9d4cdbe 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -209,6 +209,12 @@ MACOSX_DEPLOYMENT_TARGET=@CONFIGURE_MACOSX_DEPLOYMENT_TARGET@
@@ -186,6 +276,60 @@ index 5fdbfa1053c..3580a386d40 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
+@@ -2149,7 +2155,7 @@ testuniversal: all
+ # a full Xcode install that has an iPhone SE (3rd edition) simulator available.
+ # This must be run *after* a `make install` has completed the build. The
+ # `--with-framework-name` argument *cannot* be used when configuring the build.
+-XCFOLDER:=iOSTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
++XCFOLDER-iOS:=iOSTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
+ .PHONY: testios
+ testios:
+ 	@if test "$(MACHDEP)" != "ios"; then \
+@@ -2169,11 +2175,41 @@ testios:
+ 		exit 1;\
+ 	fi
+ 
+-	# Clone the testbed project into the XCFOLDER
+-	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
++	# Clone the testbed project into the XCFOLDER-iOS
++	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-iOS)"
++
++	# Run the testbed project
++	$(PYTHON_FOR_BUILD) "$(XCFOLDER-iOS)" run --verbose -- test -uall --single-process --rerun -W
++
++# Run the test suite on the visionOS simulator. Must be run on a macOS machine with
++# a full Xcode install that has an Apple Vision Pro simulator available.
++# This must be run *after* a `make install` has completed the build. The
++# `--with-framework-name` argument *cannot* be used when configuring the build.
++XCFOLDER-visionOS:=visionOSTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
++.PHONY: testvisionos
++testvisionos:
++	@if test "$(MACHDEP)" != "visionos"; then \
++		echo "Cannot run the visionOS testbed for a non-visionOS build."; \
++		exit 1;\
++	fi
++	@if test "$(findstring -xrsimulator,$(MULTIARCH))" != "-xrsimulator"; then \
++		echo "Cannot run the visionOS testbed for non-simulator builds."; \
++		exit 1;\
++	fi
++	@if test $(PYTHONFRAMEWORK) != "Python"; then \
++		echo "Cannot run the visionOS testbed with a non-default framework name."; \
++		exit 1;\
++	fi
++	@if ! test -d $(PYTHONFRAMEWORKPREFIX); then \
++		echo "Cannot find a finalized visionOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
++		exit 1;\
++	fi
++
++	# Clone the testbed project into the XCFOLDER-visionOS
++	$(PYTHON_FOR_BUILD) $(srcdir)/visionOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-visionOS)"
+ 
+ 	# Run the testbed project
+-	$(PYTHON_FOR_BUILD) "$(XCFOLDER)" run --verbose -- test -uall --single-process --rerun -W
++	$(PYTHON_FOR_BUILD) "$(XCFOLDER-visionOS)" run --verbose -- test -uall --single-process --rerun -W
+ 
+ # Like test, but using --slow-ci which enables all test resources and use
+ # longer timeout. Run an optional pybuildbot.identify script to include
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
 index ec0857a4a99..e52f486cdb3 100644
 --- a/Misc/platform_triplet.c
@@ -246,7 +390,7 @@ index 1bb6a05dc11..49febd56a37 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index d0ae103014a..47952522387 100755
+index d0ae103014a..bafb0977d1a 100755
 --- a/configure
 +++ b/configure
 @@ -974,6 +974,10 @@ LDFLAGS
@@ -875,6 +1019,15 @@ index d0ae103014a..47952522387 100755
  then
  
    for ac_func in clock_settime
+@@ -24130,7 +24362,7 @@ else case e in #(
+   e) if test "$cross_compiling" = yes
+ then :
+ 
+-if test "$ac_sys_system" = "Linux-android" || test "$ac_sys_system" = "iOS"; then
++if test "$ac_sys_system" = "Linux-android" || test "$ac_sys_system" = "iOS" || test "$ac_sys_system" = "tvOS" || test "$ac_sys_system" = "watchOS" || test "$ac_sys_system" = "visionOS"; then
+   ac_cv_buggy_getaddrinfo="no"
+ elif test "${enable_ipv6+set}" = set; then
+   ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
 @@ -26152,8 +26384,8 @@ if test "$PY_ENABLE_SHARED" = "1" && ( test -n "$ANDROID_API_LEVEL" || test "$MA
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
@@ -924,7 +1077,7 @@ index d0ae103014a..47952522387 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index 8bb0f1c6ef4..0c1c2ca50cc 100644
+index 8bb0f1c6ef4..d548f148c31 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@ then
@@ -1455,6 +1608,15 @@ index 8bb0f1c6ef4..0c1c2ca50cc 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
+@@ -5640,7 +5849,7 @@ int main(void)
+ [ac_cv_buggy_getaddrinfo=no],
+ [ac_cv_buggy_getaddrinfo=yes],
+ [
+-if test "$ac_sys_system" = "Linux-android" || test "$ac_sys_system" = "iOS"; then
++if test "$ac_sys_system" = "Linux-android" || test "$ac_sys_system" = "iOS" || test "$ac_sys_system" = "tvOS" || test "$ac_sys_system" = "watchOS" || test "$ac_sys_system" = "visionOS"; then
+   ac_cv_buggy_getaddrinfo="no"
+ elif test "${enable_ipv6+set}" = set; then
+   ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
 @@ -6233,8 +6442,8 @@ if test "$PY_ENABLE_SHARED" = "1" && ( test -n "$ANDROID_API_LEVEL" || test "$MA
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
@@ -1944,6 +2106,1596 @@ index 00000000000..97431a903c1
 +	<string>1</string>
 +</dict>
 +</plist>
+diff --git a/visionOS/testbed/Python.xcframework/Info.plist b/visionOS/testbed/Python.xcframework/Info.plist
+new file mode 100644
+index 00000000000..e75f76c8d94
+--- /dev/null
++++ b/visionOS/testbed/Python.xcframework/Info.plist
+@@ -0,0 +1,43 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>AvailableLibraries</key>
++	<array>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>xros-arm64-simulator</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>xros</string>
++			<key>SupportedPlatformVariant</key>
++			<string>simulator</string>
++		</dict>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>xros-arm64</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>xros</string>
++		</dict>
++	</array>
++	<key>CFBundlePackageType</key>
++	<string>XFWK</string>
++	<key>XCFrameworkFormatVersion</key>
++	<string>1.0</string>
++</dict>
++</plist>
+diff --git a/visionOS/testbed/__main__.py b/visionOS/testbed/__main__.py
+new file mode 100644
+index 00000000000..8a7bebf368d
+--- /dev/null
++++ b/visionOS/testbed/__main__.py
+@@ -0,0 +1,512 @@
++import argparse
++import asyncio
++import fcntl
++import json
++import os
++import plistlib
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from contextlib import asynccontextmanager
++from datetime import datetime
++from pathlib import Path
++
++
++DECODE_ARGS = ("UTF-8", "backslashreplace")
++
++# The system log prefixes each line:
++#   2025-01-17 16:14:29.090 Df visionOSTestbed[23987:1fd393b4] (Python) ...
++#   2025-01-17 16:14:29.090 E  visionOSTestbed[23987:1fd393b4] (Python) ...
++
++LOG_PREFIX_REGEX = re.compile(
++    r"^\d{4}-\d{2}-\d{2}"  # YYYY-MM-DD
++    r"\s+\d+:\d{2}:\d{2}\.\d+"  # HH:MM:SS.sss
++    r"\s+\w+"  # Df/E
++    r"\s+visionOSTestbed\[\d+:\w+\]"  # Process/thread ID
++    r"\s+\(Python\)\s"  # Logger name
++)
++
++
++# Work around a bug involving sys.exit and TaskGroups
++# (https://github.com/python/cpython/issues/101515).
++def exit(*args):
++    raise MySystemExit(*args)
++
++
++class MySystemExit(Exception):
++    pass
++
++
++class SimulatorLock:
++    # An fcntl-based filesystem lock that can be used to ensure that
++    def __init__(self, timeout):
++        self.filename = Path(tempfile.gettempdir()) / "python-visionos-testbed"
++        self.timeout = timeout
++
++        self.fd = None
++
++    async def acquire(self):
++        # Ensure the lockfile exists
++        self.filename.touch(exist_ok=True)
++
++        # Try `timeout` times to acquire the lock file, with a 1 second pause
++        # between each attempt. Report status every 10 seconds.
++        for i in range(0, self.timeout):
++            try:
++                fd = os.open(self.filename, os.O_RDWR | os.O_TRUNC, 0o644)
++                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++            except OSError:
++                os.close(fd)
++                if i % 10 == 0:
++                    print("... waiting", flush=True)
++                await asyncio.sleep(1)
++            else:
++                self.fd = fd
++                return
++
++        # If we reach the end of the loop, we've exceeded the allowed number of
++        # attempts.
++        raise ValueError("Unable to obtain lock on visionOS simulator creation")
++
++    def release(self):
++        # If a lock is held, release it.
++        if self.fd is not None:
++            # Release the lock.
++            fcntl.flock(self.fd, fcntl.LOCK_UN)
++            os.close(self.fd)
++            self.fd = None
++
++
++# All subprocesses are executed through this context manager so that no matter
++# what happens, they can always be cancelled from another task, and they will
++# always be cleaned up on exit.
++@asynccontextmanager
++async def async_process(*args, **kwargs):
++    process = await asyncio.create_subprocess_exec(*args, **kwargs)
++    try:
++        yield process
++    finally:
++        if process.returncode is None:
++            # Allow a reasonably long time for Xcode to clean itself up,
++            # because we don't want stale emulators left behind.
++            timeout = 10
++            process.terminate()
++            try:
++                await asyncio.wait_for(process.wait(), timeout)
++            except TimeoutError:
++                print(
++                    f"Command {args} did not terminate after {timeout} seconds "
++                    f" - sending SIGKILL"
++                )
++                process.kill()
++
++                # Even after killing the process we must still wait for it,
++                # otherwise we'll get the warning "Exception ignored in __del__".
++                await asyncio.wait_for(process.wait(), timeout=1)
++
++
++async def async_check_output(*args, **kwargs):
++    async with async_process(
++        *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
++    ) as process:
++        stdout, stderr = await process.communicate()
++        if process.returncode == 0:
++            return stdout.decode(*DECODE_ARGS)
++        else:
++            raise subprocess.CalledProcessError(
++                process.returncode,
++                args,
++                stdout.decode(*DECODE_ARGS),
++                stderr.decode(*DECODE_ARGS),
++            )
++
++
++# Return a list of UDIDs associated with booted simulators
++async def list_devices():
++    try:
++        # List the testing simulators, in JSON format
++        raw_json = await async_check_output(
++            "xcrun", "simctl", "--set", "testing", "list", "-j"
++        )
++        json_data = json.loads(raw_json)
++
++        # Filter out the booted visionOS simulators
++        return [
++            simulator["udid"]
++            for runtime, simulators in json_data["devices"].items()
++            for simulator in simulators
++            if runtime.split(".")[-1].startswith("visionOS") and simulator["state"] == "Booted"
++        ]
++    except subprocess.CalledProcessError as e:
++        # If there's no ~/Library/Developer/XCTestDevices folder (which is the
++        # case on fresh installs, and in some CI environments), `simctl list`
++        # returns error code 1, rather than an empty list. Handle that case,
++        # but raise all other errors.
++        if e.returncode == 1:
++            return []
++        else:
++            raise
++
++
++async def find_device(initial_devices, lock):
++    while True:
++        new_devices = set(await list_devices()).difference(initial_devices)
++        if len(new_devices) == 0:
++            await asyncio.sleep(1)
++        elif len(new_devices) == 1:
++            udid = new_devices.pop()
++            print(f"{datetime.now():%Y-%m-%d %H:%M:%S}: New test simulator detected")
++            print(f"UDID: {udid}", flush=True)
++            lock.release()
++            return udid
++        else:
++            exit(f"Found more than one new device: {new_devices}")
++
++
++async def log_stream_task(initial_devices, lock):
++    # Wait up to 5 minutes for the build to complete and the simulator to boot.
++    udid = await asyncio.wait_for(find_device(initial_devices, lock), 5 * 60)
++
++    # Stream the visionOS device's logs, filtering out messages that come from the
++    # XCTest test suite (catching NSLog messages from the test method), or
++    # Python itself (catching stdout/stderr content routed to the system log
++    # with config->use_system_logger).
++    args = [
++        "xcrun",
++        "simctl",
++        "--set",
++        "testing",
++        "spawn",
++        udid,
++        "log",
++        "stream",
++        "--style",
++        "compact",
++        "--predicate",
++        (
++            'senderImagePath ENDSWITH "/visionOSTestbedTests.xctest/visionOSTestbedTests"'
++            ' OR senderImagePath ENDSWITH "/Python.framework/Python"'
++        ),
++    ]
++
++    async with async_process(
++        *args,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.STDOUT,
++    ) as process:
++        suppress_dupes = False
++        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
++            # Strip the prefix from each log line
++            line = LOG_PREFIX_REGEX.sub("", line)
++            # The visionOS log streamer can sometimes lag; when it does, it outputs
++            # a warning about messages being dropped... often multiple times.
++            # Only print the first of these duplicated warnings.
++            if line.startswith("=== Messages dropped "):
++                if not suppress_dupes:
++                    suppress_dupes = True
++                    sys.stdout.write(line)
++            else:
++                suppress_dupes = False
++                sys.stdout.write(line)
++            sys.stdout.flush()
++
++
++async def xcode_test(location, simulator, verbose):
++    # Run the test suite on the named simulator
++    print("Starting xcodebuild...", flush=True)
++    args = [
++        "xcodebuild",
++        "test",
++        "-project",
++        str(location / "visionOSTestbed.xcodeproj"),
++        "-scheme",
++        "visionOSTestbed",
++        "-destination",
++        f"platform=visionOS Simulator,name={simulator}",
++        "-resultBundlePath",
++        str(location / f"{datetime.now():%Y%m%d-%H%M%S}.xcresult"),
++        "-derivedDataPath",
++        str(location / "DerivedData"),
++    ]
++    if not verbose:
++        args += ["-quiet"]
++
++    async with async_process(
++        *args,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.STDOUT,
++    ) as process:
++        while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
++            sys.stdout.write(line)
++            sys.stdout.flush()
++
++        status = await asyncio.wait_for(process.wait(), timeout=1)
++        exit(status)
++
++
++def clone_testbed(
++    source: Path,
++    target: Path,
++    framework: Path,
++    apps: list[Path],
++) -> None:
++    if target.exists():
++        print(f"{target} already exists; aborting without creating project.")
++        sys.exit(10)
++
++    if framework is None:
++        if not (
++            source / "Python.xcframework/xros-arm64-simulator/bin"
++        ).is_dir():
++            print(
++                f"The testbed being cloned ({source}) does not contain "
++                f"a simulator framework. Re-run with --framework"
++            )
++            sys.exit(11)
++    else:
++        if not framework.is_dir():
++            print(f"{framework} does not exist.")
++            sys.exit(12)
++        elif not (
++            framework.suffix == ".xcframework"
++            or (framework / "Python.framework").is_dir()
++        ):
++            print(
++                f"{framework} is not an XCframework, "
++                f"or a simulator slice of a framework build."
++            )
++            sys.exit(13)
++
++    print("Cloning testbed project:")
++    print(f"  Cloning {source}...", end="", flush=True)
++    shutil.copytree(source, target, symlinks=True)
++    print(" done")
++
++    xc_framework_path = target / "Python.xcframework"
++    sim_framework_path = xc_framework_path / "xros-arm64_x86_64-simulator"
++    if framework is not None:
++        if framework.suffix == ".xcframework":
++            print("  Installing XCFramework...", end="", flush=True)
++            if xc_framework_path.is_dir():
++                shutil.rmtree(xc_framework_path)
++            else:
++                xc_framework_path.unlink(missing_ok=True)
++            xc_framework_path.symlink_to(
++                framework.relative_to(xc_framework_path.parent, walk_up=True)
++            )
++            print(" done")
++        else:
++            print("  Installing simulator framework...", end="", flush=True)
++            if sim_framework_path.is_dir():
++                shutil.rmtree(sim_framework_path)
++            else:
++                sim_framework_path.unlink(missing_ok=True)
++            sim_framework_path.symlink_to(
++                framework.relative_to(sim_framework_path.parent, walk_up=True)
++            )
++            print(" done")
++    else:
++        if (
++            xc_framework_path.is_symlink()
++            and not xc_framework_path.readlink().is_absolute()
++        ):
++            # XCFramework is a relative symlink. Rewrite the symlink relative
++            # to the new location.
++            print("  Rewriting symlink to XCframework...", end="", flush=True)
++            orig_xc_framework_path = (
++                source
++                / xc_framework_path.readlink()
++            ).resolve()
++            xc_framework_path.unlink()
++            xc_framework_path.symlink_to(
++                orig_xc_framework_path.relative_to(
++                    xc_framework_path.parent, walk_up=True
++                )
++            )
++            print(" done")
++        elif (
++            sim_framework_path.is_symlink()
++            and not sim_framework_path.readlink().is_absolute()
++        ):
++            print("  Rewriting symlink to simulator framework...", end="", flush=True)
++            # Simulator framework is a relative symlink. Rewrite the symlink
++            # relative to the new location.
++            orig_sim_framework_path = (
++                source
++                / "Python.XCframework"
++                / sim_framework_path.readlink()
++            ).resolve()
++            sim_framework_path.unlink()
++            sim_framework_path.symlink_to(
++                orig_sim_framework_path.relative_to(
++                    sim_framework_path.parent, walk_up=True
++                )
++            )
++            print(" done")
++        else:
++            print("  Using pre-existing visionOS framework.")
++
++    for app_src in apps:
++        print(f"  Installing app {app_src.name!r}...", end="", flush=True)
++        app_target = target / f"visionOSTestbed/app/{app_src.name}"
++        if app_target.is_dir():
++            shutil.rmtree(app_target)
++        shutil.copytree(app_src, app_target)
++        print(" done")
++
++    print(f"Successfully cloned testbed: {target.resolve()}")
++
++
++def update_plist(testbed_path, args):
++    # Add the test runner arguments to the testbed's Info.plist file.
++    info_plist = testbed_path / "visionOSTestbed" / "visionOSTestbed-Info.plist"
++    with info_plist.open("rb") as f:
++        info = plistlib.load(f)
++
++    info["TestArgs"] = args
++
++    with info_plist.open("wb") as f:
++        plistlib.dump(info, f)
++
++
++async def run_testbed(simulator: str, args: list[str], verbose: bool=False):
++    location = Path(__file__).parent
++    print("Updating plist...", end="", flush=True)
++    update_plist(location, args)
++    print(" done.", flush=True)
++
++    # We need to get an exclusive lock on simulator creation, to avoid issues
++    # with multiple simulators starting and being unable to tell which
++    # simulator is due to which testbed instance. See
++    # https://github.com/python/cpython/issues/130294 for details. Wait up to
++    # 10 minutes for a simulator to boot.
++    print("Obtaining lock on simulator creation...", flush=True)
++    simulator_lock = SimulatorLock(timeout=10*60)
++    await simulator_lock.acquire()
++    print("Simulator lock acquired.", flush=True)
++
++    # Get the list of devices that are booted at the start of the test run.
++    # The simulator started by the test suite will be detected as the new
++    # entry that appears on the device list.
++    initial_devices = await list_devices()
++
++    try:
++        async with asyncio.TaskGroup() as tg:
++            tg.create_task(log_stream_task(initial_devices, simulator_lock))
++            tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose))
++    except* MySystemExit as e:
++        raise SystemExit(*e.exceptions[0].args) from None
++    except* subprocess.CalledProcessError as e:
++        # Extract it from the ExceptionGroup so it can be handled by `main`.
++        raise e.exceptions[0]
++    finally:
++        simulator_lock.release()
++
++
++def main():
++    parser = argparse.ArgumentParser(
++        description=(
++            "Manages the process of testing a Python project in the visionOS simulator."
++        ),
++    )
++
++    subcommands = parser.add_subparsers(dest="subcommand")
++
++    clone = subcommands.add_parser(
++        "clone",
++        description=(
++            "Clone the testbed project, copying in an visionOS Python framework and"
++            "any specified application code."
++        ),
++        help="Clone a testbed project to a new location.",
++    )
++    clone.add_argument(
++        "--framework",
++        help=(
++            "The location of the XCFramework (or simulator-only slice of an "
++            "XCFramework) to use when running the testbed"
++        ),
++    )
++    clone.add_argument(
++        "--app",
++        dest="apps",
++        action="append",
++        default=[],
++        help="The location of any code to include in the testbed project",
++    )
++    clone.add_argument(
++        "location",
++        help="The path where the testbed will be cloned.",
++    )
++
++    run = subcommands.add_parser(
++        "run",
++        usage="%(prog)s [-h] [--simulator SIMULATOR] -- <test arg> [<test arg> ...]",
++        description=(
++            "Run a testbed project. The arguments provided after `--` will be "
++            "passed to the running visionOS process as if they were arguments to "
++            "`python -m`."
++        ),
++        help="Run a testbed project",
++    )
++    run.add_argument(
++        "--simulator",
++        default="Apple Vision Pro",
++        help="The name of the simulator to use (default: 'Apple Vision Pro')",
++    )
++    run.add_argument(
++        "-v", "--verbose",
++        action="store_true",
++        help="Enable verbose output",
++    )
++
++    try:
++        pos = sys.argv.index("--")
++        testbed_args = sys.argv[1:pos]
++        test_args = sys.argv[pos + 1 :]
++    except ValueError:
++        testbed_args = sys.argv[1:]
++        test_args = []
++
++    context = parser.parse_args(testbed_args)
++
++    if context.subcommand == "clone":
++        clone_testbed(
++            source=Path(__file__).parent.resolve(),
++            target=Path(context.location).resolve(),
++            framework=Path(context.framework).resolve() if context.framework else None,
++            apps=[Path(app) for app in context.apps],
++        )
++    elif context.subcommand == "run":
++        if test_args:
++            if not (
++                Path(__file__).parent / "Python.xcframework/xros-arm64-simulator/bin"
++            ).is_dir():
++                print(
++                    f"Testbed does not contain a compiled visionOS framework. Use "
++                    f"`python {sys.argv[0]} clone ...` to create a runnable "
++                    f"clone of this testbed."
++                )
++                sys.exit(20)
++
++            asyncio.run(
++                run_testbed(
++                    simulator=context.simulator,
++                    verbose=context.verbose,
++                    args=test_args,
++                )
++            )
++        else:
++            print(f"Must specify test arguments (e.g., {sys.argv[0]} run -- test)")
++            print()
++            parser.print_help(sys.stderr)
++            sys.exit(21)
++    else:
++        parser.print_help(sys.stderr)
++        sys.exit(1)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/visionOS/testbed/visionOSTestbed.xcodeproj/project.pbxproj b/visionOS/testbed/visionOSTestbed.xcodeproj/project.pbxproj
+new file mode 100644
+index 00000000000..1723a699d49
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed.xcodeproj/project.pbxproj
+@@ -0,0 +1,596 @@
++// !$*UTF8*$!
++{
++	archiveVersion = 1;
++	classes = {
++	};
++	objectVersion = 56;
++	objects = {
++
++/* Begin PBXBuildFile section */
++		607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66162B0EFA380010BFC8 /* AppDelegate.m */; };
++		607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607A66212B0EFA390010BFC8 /* Assets.xcassets */; };
++		607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */; };
++		607A66282B0EFA390010BFC8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66272B0EFA390010BFC8 /* main.m */; };
++		607A66322B0EFA3A0010BFC8 /* visionOSTestbedTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66312B0EFA3A0010BFC8 /* visionOSTestbedTests.m */; };
++		607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */ = {isa = PBXBuildFile; fileRef = 607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */; };
++		608619542CB77BA900F46182 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 608619532CB77BA900F46182 /* app_packages */; };
++		608619562CB7819B00F46182 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 608619552CB7819B00F46182 /* app */; };
++		EEB367CE2DADF5C900B9A1D7 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++		EEB367CF2DADF5D300B9A1D7 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++		EEE9C80D2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; };
++		EEE9C80E2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; };
++/* End PBXBuildFile section */
++
++/* Begin PBXContainerItemProxy section */
++		607A662E2B0EFA3A0010BFC8 /* PBXContainerItemProxy */ = {
++			isa = PBXContainerItemProxy;
++			containerPortal = 607A660A2B0EFA380010BFC8 /* Project object */;
++			proxyType = 1;
++			remoteGlobalIDString = 607A66112B0EFA380010BFC8;
++			remoteInfo = iOSTestbed;
++		};
++/* End PBXContainerItemProxy section */
++
++/* Begin PBXCopyFilesBuildPhase section */
++		607A664E2B0EFC080010BFC8 /* Embed Frameworks */ = {
++			isa = PBXCopyFilesBuildPhase;
++			buildActionMask = 2147483647;
++			dstPath = "";
++			dstSubfolderSpec = 10;
++			files = (
++				EEB367CF2DADF5D300B9A1D7 /* Python.xcframework in Embed Frameworks */,
++			);
++			name = "Embed Frameworks";
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		607A66522B0EFFE00010BFC8 /* Embed Frameworks */ = {
++			isa = PBXCopyFilesBuildPhase;
++			buildActionMask = 2147483647;
++			dstPath = "";
++			dstSubfolderSpec = 10;
++			files = (
++				EEB367CE2DADF5C900B9A1D7 /* Python.xcframework in Embed Frameworks */,
++			);
++			name = "Embed Frameworks";
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXCopyFilesBuildPhase section */
++
++/* Begin PBXFileReference section */
++		607A66122B0EFA380010BFC8 /* visionOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = visionOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
++		607A66152B0EFA380010BFC8 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
++		607A66162B0EFA380010BFC8 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
++		607A66212B0EFA390010BFC8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
++		607A66242B0EFA390010BFC8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
++		607A66272B0EFA390010BFC8 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
++		607A662D2B0EFA3A0010BFC8 /* visionOSTestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = visionOSTestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
++		607A66312B0EFA3A0010BFC8 /* visionOSTestbedTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = visionOSTestbedTests.m; sourceTree = "<group>"; };
++		607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "dylib-Info-template.plist"; sourceTree = "<group>"; };
++		607A66592B0F08600010BFC8 /* visionOStestbed-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "visionOStestbed-Info.plist"; sourceTree = "<group>"; };
++		608619532CB77BA900F46182 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = "<group>"; };
++		608619552CB7819B00F46182 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = "<group>"; };
++		EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
++/* End PBXFileReference section */
++
++/* Begin PBXFrameworksBuildPhase section */
++		607A660F2B0EFA380010BFC8 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				EEE9C80D2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		607A662A2B0EFA3A0010BFC8 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				EEE9C80E2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXFrameworksBuildPhase section */
++
++/* Begin PBXGroup section */
++		607A66092B0EFA380010BFC8 = {
++			isa = PBXGroup;
++			children = (
++				EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */,
++				607A66142B0EFA380010BFC8 /* visionOSTestbed */,
++				607A66302B0EFA3A0010BFC8 /* visionOSTestbedTests */,
++				607A66132B0EFA380010BFC8 /* Products */,
++				607A664F2B0EFFE00010BFC8 /* Frameworks */,
++			);
++			sourceTree = "<group>";
++		};
++		607A66132B0EFA380010BFC8 /* Products */ = {
++			isa = PBXGroup;
++			children = (
++				607A66122B0EFA380010BFC8 /* visionOSTestbed.app */,
++				607A662D2B0EFA3A0010BFC8 /* visionOSTestbedTests.xctest */,
++			);
++			name = Products;
++			sourceTree = "<group>";
++		};
++		607A66142B0EFA380010BFC8 /* visionOSTestbed */ = {
++			isa = PBXGroup;
++			children = (
++				608619552CB7819B00F46182 /* app */,
++				608619532CB77BA900F46182 /* app_packages */,
++				607A66592B0F08600010BFC8 /* visionOStestbed-Info.plist */,
++				607A66572B0F079F0010BFC8 /* dylib-Info-template.plist */,
++				607A66152B0EFA380010BFC8 /* AppDelegate.h */,
++				607A66162B0EFA380010BFC8 /* AppDelegate.m */,
++				607A66212B0EFA390010BFC8 /* Assets.xcassets */,
++				607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */,
++				607A66272B0EFA390010BFC8 /* main.m */,
++			);
++			path = visionOSTestbed;
++			sourceTree = "<group>";
++		};
++		607A66302B0EFA3A0010BFC8 /* visionOSTestbedTests */ = {
++			isa = PBXGroup;
++			children = (
++				607A66312B0EFA3A0010BFC8 /* visionOSTestbedTests.m */,
++			);
++			path = visionOSTestbedTests;
++			sourceTree = "<group>";
++		};
++		607A664F2B0EFFE00010BFC8 /* Frameworks */ = {
++			isa = PBXGroup;
++			children = (
++			);
++			name = Frameworks;
++			sourceTree = "<group>";
++		};
++/* End PBXGroup section */
++
++/* Begin PBXNativeTarget section */
++		607A66112B0EFA380010BFC8 /* visionOSTestbed */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = 607A66412B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "visionOSTestbed" */;
++			buildPhases = (
++				607A660E2B0EFA380010BFC8 /* Sources */,
++				607A660F2B0EFA380010BFC8 /* Frameworks */,
++				607A66102B0EFA380010BFC8 /* Resources */,
++				607A66552B0F061D0010BFC8 /* Install Target Specific Python Standard Library */,
++				607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */,
++				607A664E2B0EFC080010BFC8 /* Embed Frameworks */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++			);
++			name = visionOSTestbed;
++			productName = iOSTestbed;
++			productReference = 607A66122B0EFA380010BFC8 /* visionOSTestbed.app */;
++			productType = "com.apple.product-type.application";
++		};
++		607A662C2B0EFA3A0010BFC8 /* visionOSTestbedTests */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = 607A66442B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "visionOSTestbedTests" */;
++			buildPhases = (
++				607A66292B0EFA3A0010BFC8 /* Sources */,
++				607A662A2B0EFA3A0010BFC8 /* Frameworks */,
++				607A662B2B0EFA3A0010BFC8 /* Resources */,
++				607A66522B0EFFE00010BFC8 /* Embed Frameworks */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++				607A662F2B0EFA3A0010BFC8 /* PBXTargetDependency */,
++			);
++			name = visionOSTestbedTests;
++			productName = iOSTestbedTests;
++			productReference = 607A662D2B0EFA3A0010BFC8 /* visionOSTestbedTests.xctest */;
++			productType = "com.apple.product-type.bundle.unit-test";
++		};
++/* End PBXNativeTarget section */
++
++/* Begin PBXProject section */
++		607A660A2B0EFA380010BFC8 /* Project object */ = {
++			isa = PBXProject;
++			attributes = {
++				BuildIndependentTargetsInParallel = 1;
++				LastUpgradeCheck = 1500;
++				TargetAttributes = {
++					607A66112B0EFA380010BFC8 = {
++						CreatedOnToolsVersion = 15.0.1;
++					};
++					607A662C2B0EFA3A0010BFC8 = {
++						CreatedOnToolsVersion = 15.0.1;
++						TestTargetID = 607A66112B0EFA380010BFC8;
++					};
++				};
++			};
++			buildConfigurationList = 607A660D2B0EFA380010BFC8 /* Build configuration list for PBXProject "visionOSTestbed" */;
++			compatibilityVersion = "Xcode 14.0";
++			developmentRegion = en;
++			hasScannedForEncodings = 0;
++			knownRegions = (
++				en,
++				Base,
++			);
++			mainGroup = 607A66092B0EFA380010BFC8;
++			productRefGroup = 607A66132B0EFA380010BFC8 /* Products */;
++			projectDirPath = "";
++			projectRoot = "";
++			targets = (
++				607A66112B0EFA380010BFC8 /* visionOSTestbed */,
++				607A662C2B0EFA3A0010BFC8 /* visionOSTestbedTests */,
++			);
++		};
++/* End PBXProject section */
++
++/* Begin PBXResourcesBuildPhase section */
++		607A66102B0EFA380010BFC8 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */,
++				607A66582B0F079F0010BFC8 /* dylib-Info-template.plist in Resources */,
++				608619562CB7819B00F46182 /* app in Resources */,
++				607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */,
++				608619542CB77BA900F46182 /* app_packages in Resources */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		607A662B2B0EFA3A0010BFC8 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXResourcesBuildPhase section */
++
++/* Begin PBXShellScriptBuildPhase section */
++		607A66552B0F061D0010BFC8 /* Install Target Specific Python Standard Library */ = {
++			isa = PBXShellScriptBuildPhase;
++			alwaysOutOfDate = 1;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++			);
++			name = "Install Target Specific Python Standard Library";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "set -e\n\nmkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-xrsimulator\" ]; then\n    echo \"Installing Python modules for xrOS Simulator\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/xros-arm64-simulator/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nelse\n    echo \"Installing Python modules for xrOS Device\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/xros-arm64/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nfi\n";
++			showEnvVarsInLog = 0;
++		};
++		607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */ = {
++			isa = PBXShellScriptBuildPhase;
++			alwaysOutOfDate = 1;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++			);
++			name = "Prepare Python Binary Modules";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nPYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\necho \"Install Python $PYTHON_VER standard library extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\ndone\necho \"Install app package extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app_packages\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app_packages/ \"$FULL_EXT\"\ndone\necho \"Install app extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app/ \"$FULL_EXT\"\ndone\n\n# Clean up dylib template \nrm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\necho \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\nfind \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \n";
++			showEnvVarsInLog = 0;
++		};
++/* End PBXShellScriptBuildPhase section */
++
++/* Begin PBXSourcesBuildPhase section */
++		607A660E2B0EFA380010BFC8 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */,
++				607A66282B0EFA390010BFC8 /* main.m in Sources */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		607A66292B0EFA3A0010BFC8 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				607A66322B0EFA3A0010BFC8 /* visionOSTestbedTests.m in Sources */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXSourcesBuildPhase section */
++
++/* Begin PBXTargetDependency section */
++		607A662F2B0EFA3A0010BFC8 /* PBXTargetDependency */ = {
++			isa = PBXTargetDependency;
++			target = 607A66112B0EFA380010BFC8 /* visionOSTestbed */;
++			targetProxy = 607A662E2B0EFA3A0010BFC8 /* PBXContainerItemProxy */;
++		};
++/* End PBXTargetDependency section */
++
++/* Begin PBXVariantGroup section */
++		607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */ = {
++			isa = PBXVariantGroup;
++			children = (
++				607A66242B0EFA390010BFC8 /* Base */,
++			);
++			name = LaunchScreen.storyboard;
++			sourceTree = "<group>";
++		};
++/* End PBXVariantGroup section */
++
++/* Begin XCBuildConfiguration section */
++		607A663F2B0EFA3A0010BFC8 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = YES;
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
++				MTL_FAST_MATH = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = xros;
++			};
++			name = Debug;
++		};
++		607A66402B0EFA3A0010BFC8 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = YES;
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				MTL_FAST_MATH = YES;
++				SDKROOT = xros;
++				VALIDATE_PRODUCT = YES;
++			};
++			name = Release;
++		};
++		607A66422B0EFA3A0010BFC8 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				DEVELOPMENT_TEAM = "";
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				INFOPLIST_FILE = "visionOSTestbed/visionOStestbed-Info.plist";
++				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
++				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
++				INFOPLIST_KEY_UIMainStoryboardFile = Main;
++				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
++				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 3.13.0a1;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.visionOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "xros xrsimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SWIFT_EMIT_LOC_STRINGS = YES;
++				TARGETED_DEVICE_FAMILY = 7;
++				XROS_DEPLOYMENT_TARGET = 2.0;
++			};
++			name = Debug;
++		};
++		607A66432B0EFA3A0010BFC8 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				DEVELOPMENT_TEAM = "";
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				INFOPLIST_FILE = "visionOSTestbed/visionOStestbed-Info.plist";
++				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
++				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
++				INFOPLIST_KEY_UIMainStoryboardFile = Main;
++				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
++				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 3.13.0a1;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.visionOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "xros xrsimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SWIFT_EMIT_LOC_STRINGS = YES;
++				TARGETED_DEVICE_FAMILY = 7;
++				XROS_DEPLOYMENT_TARGET = 2.0;
++			};
++			name = Release;
++		};
++		607A66452B0EFA3A0010BFC8 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				DEVELOPMENT_TEAM = 3HEZE76D99;
++				GENERATE_INFOPLIST_FILE = YES;
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.visionOSTestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "xros xrsimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SWIFT_EMIT_LOC_STRINGS = NO;
++				TARGETED_DEVICE_FAMILY = 7;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/visionOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/visionOSTestbed";
++			};
++			name = Debug;
++		};
++		607A66462B0EFA3A0010BFC8 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				DEVELOPMENT_TEAM = 3HEZE76D99;
++				GENERATE_INFOPLIST_FILE = YES;
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.visionOSTestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "xros xrsimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
++				SWIFT_EMIT_LOC_STRINGS = NO;
++				TARGETED_DEVICE_FAMILY = 7;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/visionOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/visionOSTestbed";
++			};
++			name = Release;
++		};
++/* End XCBuildConfiguration section */
++
++/* Begin XCConfigurationList section */
++		607A660D2B0EFA380010BFC8 /* Build configuration list for PBXProject "visionOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				607A663F2B0EFA3A0010BFC8 /* Debug */,
++				607A66402B0EFA3A0010BFC8 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		607A66412B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "visionOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				607A66422B0EFA3A0010BFC8 /* Debug */,
++				607A66432B0EFA3A0010BFC8 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		607A66442B0EFA3A0010BFC8 /* Build configuration list for PBXNativeTarget "visionOSTestbedTests" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				607A66452B0EFA3A0010BFC8 /* Debug */,
++				607A66462B0EFA3A0010BFC8 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++/* End XCConfigurationList section */
++	};
++	rootObject = 607A660A2B0EFA380010BFC8 /* Project object */;
++}
+diff --git a/visionOS/testbed/visionOSTestbed/AppDelegate.h b/visionOS/testbed/visionOSTestbed/AppDelegate.h
+new file mode 100644
+index 00000000000..8fe7ec8e64e
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/AppDelegate.h
+@@ -0,0 +1,11 @@
++//
++//  AppDelegate.h
++//  visionOSTestbed
++//
++
++#import <UIKit/UIKit.h>
++
++@interface AppDelegate : UIResponder <UIApplicationDelegate>
++
++
++@end
+diff --git a/visionOS/testbed/visionOSTestbed/AppDelegate.m b/visionOS/testbed/visionOSTestbed/AppDelegate.m
+new file mode 100644
+index 00000000000..b3ff14f7255
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/AppDelegate.m
+@@ -0,0 +1,19 @@
++//
++//  AppDelegate.m
++//  visionOSTestbed
++//
++
++#import "AppDelegate.h"
++
++@interface AppDelegate ()
++
++@end
++
++@implementation AppDelegate
++
++
++- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
++    return YES;
++}
++
++@end
+diff --git a/visionOS/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json b/visionOS/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
+new file mode 100644
+index 00000000000..eb878970081
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
+@@ -0,0 +1,11 @@
++{
++  "colors" : [
++    {
++      "idiom" : "universal"
++    }
++  ],
++  "info" : {
++    "author" : "xcode",
++    "version" : 1
++  }
++}
+diff --git a/visionOS/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json b/visionOS/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
+new file mode 100644
+index 00000000000..13613e3ee1a
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
+@@ -0,0 +1,13 @@
++{
++  "images" : [
++    {
++      "idiom" : "universal",
++      "platform" : "ios",
++      "size" : "1024x1024"
++    }
++  ],
++  "info" : {
++    "author" : "xcode",
++    "version" : 1
++  }
++}
+diff --git a/visionOS/testbed/visionOSTestbed/Assets.xcassets/Contents.json b/visionOS/testbed/visionOSTestbed/Assets.xcassets/Contents.json
+new file mode 100644
+index 00000000000..73c00596a7f
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/Assets.xcassets/Contents.json
+@@ -0,0 +1,6 @@
++{
++  "info" : {
++    "author" : "xcode",
++    "version" : 1
++  }
++}
+diff --git a/visionOS/testbed/visionOSTestbed/Base.lproj/LaunchScreen.storyboard b/visionOS/testbed/visionOSTestbed/Base.lproj/LaunchScreen.storyboard
+new file mode 100644
+index 00000000000..5daafe73a86
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/Base.lproj/LaunchScreen.storyboard
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22155" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
++    <device id="retina6_12" orientation="portrait" appearance="light"/>
++    <dependencies>
++        <deployment identifier="iOS"/>
++        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22131"/>
++    </dependencies>
++    <scenes/>
++</document>
+diff --git a/visionOS/testbed/visionOSTestbed/app/README b/visionOS/testbed/visionOSTestbed/app/README
+new file mode 100644
+index 00000000000..af22c685f87
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/app/README
+@@ -0,0 +1,7 @@
++This folder can contain any Python application code.
++
++During the build, any binary modules found in this folder will be processed into
++iOS Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH, and will be the
++working directory for the test suite.
+diff --git a/visionOS/testbed/visionOSTestbed/app_packages/README b/visionOS/testbed/visionOSTestbed/app_packages/README
+new file mode 100644
+index 00000000000..42d7fdeb813
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/app_packages/README
+@@ -0,0 +1,7 @@
++This folder can be a target for installing any Python dependencies needed by the
++test suite.
++
++During the build, any binary modules found in this folder will be processed into
++iOS Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH.
+diff --git a/visionOS/testbed/visionOSTestbed/dylib-Info-template.plist b/visionOS/testbed/visionOSTestbed/dylib-Info-template.plist
+new file mode 100644
+index 00000000000..f652e272f71
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/dylib-Info-template.plist
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string></string>
++	<key>CFBundleIdentifier</key>
++	<string></string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>iPhoneOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>12.0</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++</dict>
++</plist>
+diff --git a/visionOS/testbed/visionOSTestbed/main.m b/visionOS/testbed/visionOSTestbed/main.m
+new file mode 100644
+index 00000000000..2bb491f25c8
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/main.m
+@@ -0,0 +1,16 @@
++//
++//  main.m
++//  visionOSTestbed
++//
++
++#import <UIKit/UIKit.h>
++#import "AppDelegate.h"
++
++int main(int argc, char * argv[]) {
++    NSString * appDelegateClassName;
++    @autoreleasepool {
++        appDelegateClassName = NSStringFromClass([AppDelegate class]);
++
++        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
++    }
++}
+diff --git a/visionOS/testbed/visionOSTestbed/visionOStestbed-Info.plist b/visionOS/testbed/visionOSTestbed/visionOStestbed-Info.plist
+new file mode 100644
+index 00000000000..47d59effe4e
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbed/visionOStestbed-Info.plist
+@@ -0,0 +1,60 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleDisplayName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundleExecutable</key>
++	<string>${EXECUTABLE_NAME}</string>
++	<key>CFBundleIdentifier</key>
++	<string>org.python.visionOSTestbed</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++	<key>LSRequiresIPhoneOS</key>
++	<true/>
++	<key>TestArgs</key>
++	<array>
++		<string>test</string>
++		<string>-uall</string>
++		<string>--single-process</string>
++		<string>--rerun</string>
++		<string>-W</string>
++	</array>
++	<key>UIApplicationSceneManifest</key>
++	<dict>
++		<key>UIApplicationSupportsMultipleScenes</key>
++		<false/>
++		<key>UISceneConfigurations</key>
++		<dict/>
++	</dict>
++	<key>UILaunchStoryboardName</key>
++	<string>Launch Screen</string>
++	<key>UIRequiresFullScreen</key>
++	<true/>
++	<key>UISupportedInterfaceOrientations</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++	<key>UISupportedInterfaceOrientations~ipad</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationPortraitUpsideDown</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++</dict>
++</plist>
+diff --git a/visionOS/testbed/visionOSTestbedTests/visionOSTestbedTests.m b/visionOS/testbed/visionOSTestbedTests/visionOSTestbedTests.m
+new file mode 100644
+index 00000000000..197b709aa10
+--- /dev/null
++++ b/visionOS/testbed/visionOSTestbedTests/visionOSTestbedTests.m
+@@ -0,0 +1,164 @@
++#import <XCTest/XCTest.h>
++#import <Python/Python.h>
++
++@interface visionOSTestbedTests : XCTestCase
++
++@end
++
++@implementation visionOSTestbedTests
++
++
++- (void)testPython {
++    const char **argv;
++    int exit_code;
++    int failed;
++    PyStatus status;
++    PyPreConfig preconfig;
++    PyConfig config;
++    PyObject *sys_module;
++    PyObject *sys_path_attr;
++    NSArray *test_args;
++    NSString *python_home;
++    NSString *path;
++    wchar_t *wtmp_str;
++
++    NSString *resourcePath = [[NSBundle mainBundle] resourcePath];
++
++    // Set some other common environment indicators to disable color, as the
++    // Xcode log can't display color. Stdout will report that it is *not* a
++    // TTY.
++    setenv("NO_COLOR", "1", true);
++    setenv("PYTHON_COLORS", "0", true);
++    setenv("PYTHONVERBOSE", "1", true);
++
++    // Arguments to pass into the test suite runner.
++    // argv[0] must identify the process; any subsequent arg
++    // will be handled as if it were an argument to `python -m test`
++    test_args = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"TestArgs"];
++    if (test_args == NULL) {
++        NSLog(@"Unable to identify test arguments.");
++    }
++    argv = malloc(sizeof(char *) * ([test_args count] + 1));
++    argv[0] = "visionOSTestbed";
++    for (int i = 1; i < [test_args count]; i++) {
++        argv[i] = [[test_args objectAtIndex:i] UTF8String];
++    }
++    NSLog(@"Test command: %@", test_args);
++
++    // Generate an isolated Python configuration.
++    NSLog(@"Configuring isolated Python...");
++    PyPreConfig_InitIsolatedConfig(&preconfig);
++    PyConfig_InitIsolatedConfig(&config);
++
++    // Configure the Python interpreter:
++    // Enforce UTF-8 encoding for stderr, stdout, file-system encoding and locale.
++    // See https://docs.python.org/3/library/os.html#python-utf-8-mode.
++    preconfig.utf8_mode = 1;
++    // Use the system logger for stdout/err
++    config.use_system_logger = 1;
++    // Don't buffer stdio. We want output to appears in the log immediately
++    config.buffered_stdio = 0;
++    // Don't write bytecode; we can't modify the app bundle
++    // after it has been signed.
++    config.write_bytecode = 0;
++    // Ensure that signal handlers are installed
++    config.install_signal_handlers = 1;
++    // Run the test module.
++    config.run_module = Py_DecodeLocale([[test_args objectAtIndex:0] UTF8String], NULL);
++    // For debugging - enable verbose mode.
++    // config.verbose = 1;
++
++    NSLog(@"Pre-initializing Python runtime...");
++    status = Py_PreInitialize(&preconfig);
++    if (PyStatus_Exception(status)) {
++        XCTFail(@"Unable to pre-initialize Python interpreter: %s", status.err_msg);
++        PyConfig_Clear(&config);
++        return;
++    }
++
++    // Set the home for the Python interpreter
++    python_home = [NSString stringWithFormat:@"%@/python", resourcePath, nil];
++    NSLog(@"PythonHome: %@", python_home);
++    wtmp_str = Py_DecodeLocale([python_home UTF8String], NULL);
++    status = PyConfig_SetString(&config, &config.home, wtmp_str);
++    if (PyStatus_Exception(status)) {
++        XCTFail(@"Unable to set PYTHONHOME: %s", status.err_msg);
++        PyConfig_Clear(&config);
++        return;
++    }
++    PyMem_RawFree(wtmp_str);
++
++    // Read the site config
++    status = PyConfig_Read(&config);
++    if (PyStatus_Exception(status)) {
++        XCTFail(@"Unable to read site config: %s", status.err_msg);
++        PyConfig_Clear(&config);
++        return;
++    }
++
++    NSLog(@"Configure argc/argv...");
++    status = PyConfig_SetBytesArgv(&config, [test_args count], (char**) argv);
++    if (PyStatus_Exception(status)) {
++        XCTFail(@"Unable to configure argc/argv: %s", status.err_msg);
++        PyConfig_Clear(&config);
++        return;
++    }
++
++    NSLog(@"Initializing Python runtime...");
++    status = Py_InitializeFromConfig(&config);
++    PyErr_Print();
++    if (PyStatus_Exception(status)) {
++        XCTFail(@"Unable to initialize Python interpreter: %s", status.err_msg);
++        PyConfig_Clear(&config);
++        return;
++    }
++
++    sys_module = PyImport_ImportModule("sys");
++    if (sys_module == NULL) {
++        XCTFail(@"Could not import sys module");
++        return;
++    }
++
++    sys_path_attr = PyObject_GetAttrString(sys_module, "path");
++    if (sys_path_attr == NULL) {
++        XCTFail(@"Could not access sys.path");
++        return;
++    }
++
++    // Add the app packages path
++    path = [NSString stringWithFormat:@"%@/app_packages", resourcePath, nil];
++    NSLog(@"App packages path: %@", path);
++    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
++    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
++    if (failed) {
++        XCTFail(@"Unable to add app packages to sys.path");
++        return;
++    }
++    PyMem_RawFree(wtmp_str);
++
++    path = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
++    NSLog(@"App path: %@", path);
++    wtmp_str = Py_DecodeLocale([path UTF8String], NULL);
++    failed = PyList_Insert(sys_path_attr, 0, PyUnicode_FromString([path UTF8String]));
++    if (failed) {
++        XCTFail(@"Unable to add app to sys.path");
++        return;
++    }
++    PyMem_RawFree(wtmp_str);
++
++    // Ensure the working directory is the app folder.
++    chdir([path UTF8String]);
++
++    // Start the test suite. Print a separator to differentiate Python startup logs from app logs
++    NSLog(@"---------------------------------------------------------------------------");
++
++    exit_code = Py_RunMain();
++    XCTAssertEqual(exit_code, 0, @"Test suite did not pass");
++
++    NSLog(@"---------------------------------------------------------------------------");
++
++    Py_Finalize();
++}
++
++
++@end
 diff --git a/watchOS/README.rst b/watchOS/README.rst
 new file mode 100644
 index 00000000000..35221478452
