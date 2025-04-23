@@ -19,7 +19,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.14.0a6
+PYTHON_VERSION=3.14.0a7
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -27,11 +27,11 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
-BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.7-1
-MPDECIMAL_VERSION=4.0.0-1
-OPENSSL_VERSION=3.0.16-1
-XZ_VERSION=5.6.4-1
+BZIP2_VERSION=1.0.8-2
+LIBFFI_VERSION=3.4.7-2
+MPDECIMAL_VERSION=4.0.0-2
+OPENSSL_VERSION=3.0.16-2
+XZ_VERSION=5.6.4-2
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS visionOS
