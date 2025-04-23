@@ -5,6 +5,7 @@
 # - iOS             - build everything for iOS
 # - tvOS            - build everything for tvOS
 # - watchOS         - build everything for watchOS
+# - visionOS        - build everything for visionOS
 
 # Current directory
 PROJECT_DIR=$(shell pwd)
@@ -18,7 +19,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.14.0a6
+PYTHON_VERSION=3.14.0a7
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -26,32 +27,40 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
-BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.7-1
-MPDECIMAL_VERSION=4.0.0-1
-OPENSSL_VERSION=3.0.16-1
-XZ_VERSION=5.6.4-1
+BZIP2_VERSION=1.0.8-2
+LIBFFI_VERSION=3.4.7-2
+MPDECIMAL_VERSION=4.0.0-2
+OPENSSL_VERSION=3.0.16-2
+XZ_VERSION=5.6.4-2
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS
+OS_LIST=macOS iOS tvOS watchOS visionOS
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
+TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
+TRIPLE_OS-tvOS=tvos
 VERSION_MIN-tvOS=12.0
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
+TRIPLE_OS-watchOS=watchos
 VERSION_MIN-watchOS=4.0
+
+TARGETS-visionOS=xrsimulator.arm64 xros.arm64
+TRIPLE_OS-visionOS=xros
+VERSION_MIN-visionOS=2.0
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -128,10 +137,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -398,15 +407,13 @@ define build-sdk
 sdk=$1
 os=$2
 
-OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
 # Expand the build-target macro for target on this OS
@@ -481,11 +488,15 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 
+ifeq ($(os), visionOS)
+	echo "Skipping arch-specific header copying for visionOS"
+else
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
 	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+endif
 
 
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
@@ -650,7 +661,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(os),iOS)
+ifeq ($(filter $(os),iOS visionOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
 	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/iOS/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
