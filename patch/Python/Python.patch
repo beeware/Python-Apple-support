@@ -2126,7 +2126,7 @@ index c3e261ecd9e..26ef7a95de4 100644
 +	<string>%VERSION%</string>
 +	<key>CFBundleSupportedPlatforms</key>
 +	<array>
-+		<string>xrOS</string>
++		<string>XROS</string>
 +	</array>
 +	<key>MinimumOSVersion</key>
 +	<string>@XROS_DEPLOYMENT_TARGET@</string>
@@ -2174,31 +2174,35 @@ index c3e261ecd9e..26ef7a95de4 100644
 +xcrun --sdk xrsimulator clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator -E "$@"
 --- /dev/null
 +++ b/visionOS/Resources/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,30 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
 +<dict>
 +	<key>CFBundleDevelopmentRegion</key>
 +	<string>en</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
 +	<key>CFBundleExecutable</key>
 +	<string></string>
 +	<key>CFBundleIdentifier</key>
 +	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
 +	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
++	<string>FMWK</string>
 +	<key>CFBundleShortVersionString</key>
 +	<string>1.0</string>
 +	<key>CFBundleSupportedPlatforms</key>
 +	<array>
-+		<string>xrOS</string>
++		<string>XROS</string>
 +	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>2.0</string>
 +	<key>CFBundleVersion</key>
 +	<string>1</string>
++	<key>MinimumOSVersion</key>
++	<string>2.0</string>
++	<key>UIDeviceFamily</key>
++	<array>
++		<integer>7</integer>
++	</array>
 +</dict>
 +</plist>
 --- /dev/null
@@ -3443,31 +3447,35 @@ index c3e261ecd9e..26ef7a95de4 100644
 +When the test suite runs, this folder will be on the PYTHONPATH.
 --- /dev/null
 +++ b/visionOS/testbed/visionOSTestbed/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,30 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
 +<dict>
 +	<key>CFBundleDevelopmentRegion</key>
 +	<string>en</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
 +	<key>CFBundleExecutable</key>
 +	<string></string>
 +	<key>CFBundleIdentifier</key>
 +	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
 +	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
++	<string>FMWK</string>
 +	<key>CFBundleShortVersionString</key>
 +	<string>1.0</string>
 +	<key>CFBundleSupportedPlatforms</key>
 +	<array>
-+		<string>VisionOS</string>
++		<string>XROS</string>
 +	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>12.0</string>
 +	<key>CFBundleVersion</key>
 +	<string>1</string>
++	<key>MinimumOSVersion</key>
++	<string>2.0</string>
++	<key>UIDeviceFamily</key>
++	<array>
++		<integer>7</integer>
++	</array>
 +</dict>
 +</plist>
 --- /dev/null
