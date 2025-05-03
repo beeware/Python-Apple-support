@@ -44,9 +44,11 @@ TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64 macabi.x86_64 macabi.arm64
 TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
+VERSION_MIN_OVERRIDE-macabi=14.2
+CONFIGFLAGS-macabi=--with-catalyst-macos-version=11.2
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
@@ -132,15 +134,34 @@ os=$2
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
-SDK-$(target)=$$(basename $(target))
+BASE-$(target)=$$(basename $(target))
+SDK-$(target)=$$(subst macabi,macosx,$$(BASE-$(target)))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
+# Compute version minimum for the target
+VERSION_MIN-$(target)=$$(VERSION_MIN-$(os))
+ifdef VERSION_MIN_OVERRIDE-$$(BASE-$(target))
+VERSION_MIN-$(target)=$$(VERSION_MIN_OVERRIDE-$$(BASE-$(target)))
+endif
+
+# Inherit the basename for the configure flags.
+ifdef CONFIGFLAGS-$$(BASE-$(target))
+CONFIGFLAGS-$(target)=$$(CONFIGFLAGS-$$(BASE-$(target))
+else
+CONFIGFLAGS-$(target)=
+endif
+
 ifneq ($(os),macOS)
-	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
+	ifeq ($$(findstring simulator,$$(BASE-$(target))),)
+		ifeq ($$(findstring macabi,$$(BASE-$(target))),)
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))
 IS_SIMULATOR-$(target)=False
+		else
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))-macabi
+IS_SIMULATOR-$(target)=False
+		endif
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -274,6 +295,13 @@ PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$
 PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
 
 
+
+ifneq ($$(BASE-$(target)),macabi)
+RESCDIR-$(target)=$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources
+else
+RESCDIR-$(target)=$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/MacCatalyst/Resources
+endif
+
 $$(PYTHON_SRCDIR-$(target))/configure: \
 		downloads/Python-$(PYTHON_VERSION).tar.gz \
 		$$(BZIP2_LIB-$(target)) \
@@ -287,7 +315,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Make sure the binary scripts are executable
-	chmod 755 $$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin/*
+	chmod 755 $$(RESCDIR-$(target))/bin/*
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
@@ -295,7 +323,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$$(RESCDIR-$(target))/bin:$(PATH)" \
 		./configure \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
@@ -312,19 +340,21 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			--with-openssl="$$(OPENSSL_INSTALL-$(target))" \
 			--enable-framework="$$(PYTHON_INSTALL-$(target))" \
 			--with-system-libmpdec \
+			$$(CONFIGFLAGS-$(target)) \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
 
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
+	
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$$(RESCDIR-$(target))/bin:$(PATH)" \
 			make -j8 all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$$(RESCDIR-$(target))/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -349,7 +379,7 @@ $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
 		| sed -e "s/{{platform}}/$$(OS_LOWER-$(target))/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
 		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
-		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
+		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(target))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
 		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_$$(ARCH-$(target))_$$(SDK-$(target)).py
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py.tmpl \
@@ -495,7 +525,7 @@ else
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	cp $$(RESCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 endif
 
 
