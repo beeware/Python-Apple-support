@@ -146,7 +146,7 @@ endif
 
 # Inherit the basename for the configure flags.
 ifdef CONFIGFLAGS-$$(BASE-$(target))
-CONFIGFLAGS-$(target)=$$(CONFIGFLAGS-$$(BASE-$(target))
+CONFIGFLAGS-$(target)=$$(CONFIGFLAGS-$$(BASE-$(target)))
 else
 CONFIGFLAGS-$(target)=
 endif
@@ -397,8 +397,11 @@ $(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
 
 vars-$(target):
 	@echo ">>> Environment variables for $(target)"
+	@echo "BASE-$(target): $$(BASE-$(target))"
 	@echo "SDK-$(target): $$(SDK-$(target))"
 	@echo "ARCH-$(target): $$(ARCH-$(target))"
+	@echo "CONFIGFLAGS-$(target): $$(CONFIGFLAGS-$(target))"
+	@echo "VERSION_MIN-$(target): $$(VERSION_MIN-$(target))"
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
 	@echo "BZIP2_INSTALL-$(target): $$(BZIP2_INSTALL-$(target))"
