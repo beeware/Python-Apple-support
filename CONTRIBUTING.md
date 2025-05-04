@@ -31,14 +31,15 @@ any contributed changes can be easily reproduced in future patches as more
 changes are made.
 
 Note that the `MAJOR.MINOR-patched` branch of that fork is maintained in the format
-of a *patch tree*, which is a branch that has an entirely linear sequence of
+of a *patch tree*, which is a branch that consists of an entirely linear sequence of
 commits applied on top of another branch (in the case of the fork, `MAJOR.MINOR`),
-each of which adding a new feature. Therefore, bug fixes to the patches applied
-*will* be merged, but their changes gets squashed into the commit applying the
-feature. Feature additions to the patch will be squashed into a single commit,
-and then merged.
+each of which adds a significant new feature. Therefore, a bug fix for an existing commit
+in the patch tree *will* be merged when appropriate, but its changes will get combined
+with that existing commit that adds the feature. A feature addition PR will be squashed
+into a single, new commit, and then put on top of the patch tree.
 
-This also means that if another contributor on the fork gets a pull request merged
-into the fork, you must *rebase*, not merge, your changes on top of the newly pulled
-`MAJOR.MINOR-patched` branch, since the "history" of a patch tree branch might
-change in a way that is incompatible with merge commits.
+This also means that if another contributor gets a pull request merged into
+`MAJOR.MINOR-patched`, you must *rebase* your changes on top of the updated
+`MAJOR.MINOR-patched` branch, as opposed to *merging* `MAJOR.MINOR-patched` into your
+branch, since the "history" of a patch tree is likely to change in a way that is
+incompatible with merge commits.
