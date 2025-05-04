@@ -33,7 +33,7 @@ changes are made.
 Note that the `MAJOR.MINOR-patched` branch of that fork is maintained in the format
 of a *patch tree*, which is a branch that consists of an entirely linear sequence of
 commits applied on top of another branch (in the case of the fork, `MAJOR.MINOR`),
-each of which adding a new feature. Therefore, a bug fix for an existing commit
+each of which adds a significant new feature. Therefore, a bug fix for an existing commit
 in the patch tree *will* be merged when appropriate, but its changes will get combined
 with that existing commit that adds the feature. A feature addition PR will be squashed
 into a single, new commit, and then put on top of the patch tree.
