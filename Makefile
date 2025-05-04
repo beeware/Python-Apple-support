@@ -444,7 +444,7 @@ else
 # The non-macOS frameworks don't use the versioning structure.
 
 PYTHON_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/python-$(PYTHON_VERSION)
-PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INCLUDE-$(sdk))/module.modulemap
+PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)/module.modulemap
 PYTHON_FRAMEWORK-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
 PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
@@ -475,18 +475,18 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
 
+	# Link the PYTHONHOME version of the headers
+	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
+	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
+	
 	# Create the modulemap file
-	cp -r patch/Python/module.modulemap.prefix $$(PYTHON_MODULEMAP-$(sdk))
+	cp -r patch/Python/module.modulemap.prefix $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 	echo "" >> $$(PYTHON_MODULEMAP-$(sdk))
 	cd $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Include && \
 		find cpython -name "*.h"  | sort | sed -e 's/^/    exclude header "/' | sed 's/$$$$/"/' >> $$(PYTHON_MODULEMAP-$(sdk)) && \
 		echo "" >> $$(PYTHON_MODULEMAP-$(sdk)) && \
 		find internal -name "*.h"  | sort | sed -e 's/^/    exclude header "/' | sed 's/$$$$/"/' >> $$(PYTHON_MODULEMAP-$(sdk))
 	echo "\n}" >> $$(PYTHON_MODULEMAP-$(sdk))
-
-	# Link the PYTHONHOME version of the headers
-	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
-	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 
 ifeq ($(os), visionOS)
 	echo "Skipping arch-specific header copying for visionOS"
