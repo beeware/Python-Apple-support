@@ -287,8 +287,13 @@ ifneq ($(os),macOS)
 PYTHON_SRCDIR-$(target)=build/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_FRAMEWORK-$(target)=$$(PYTHON_INSTALL-$(target))/Python.framework
+ifneq ($$(BASE-$(target)),macabi)
 PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Python
 PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/bin
+else
+PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Python
+PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/Python.framework/Versions/$(PYTHON_VER)/bin
+endif
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
 PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
