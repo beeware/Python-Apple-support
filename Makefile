@@ -480,7 +480,7 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 	
 	# Create the modulemap file
-	cp -r patch/Python/module.modulemap.prefix $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
+	cp -f patch/Python/module.modulemap.prefix $$(PYTHON_MODULEMAP-$(sdk))
 	echo "" >> $$(PYTHON_MODULEMAP-$(sdk))
 	cd $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Include && \
 		find cpython -name "*.h"  | sort | sed -e 's/^/    exclude header "/' | sed 's/$$$$/"/' >> $$(PYTHON_MODULEMAP-$(sdk)) && \
