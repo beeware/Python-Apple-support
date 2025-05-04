@@ -2,10 +2,10 @@
 
 ## The easy way
 
-The easist way to use these packages is by creating a project with `Briefcase
-<https://github.com/beeware/briefcase>`__. Briefcase will download pre-compiled
-versions of these support packages, and add them to an Xcode project (or
-pre-build stub application, in the case of macOS).
+The easist way to use these packages is by creating a project with
+(Briefcase)[https://github.com/beeware/briefcase]. Briefcase will download
+pre-compiled versions of these support packages, and add them to an Xcode project
+(or pre-build stub application, in the case of macOS).
 
 ## The manual way
 
@@ -22,8 +22,9 @@ guides:
 * [macOS](https://docs.python.org/3/using/mac.html)
 * [iOS](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project)
 
-For tvOS and watchOS, you should be able to broadly follow the instructions in
-the iOS guide.
+For tvOS, watchOS, and visionOS, you should be able to broadly follow the instructions
+in the iOS guide. The testbed projects generated on iOS and visionOS may be used as
+rough references as well.
 
 ### Using Objective C
 

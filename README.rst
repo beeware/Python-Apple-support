@@ -2,7 +2,7 @@ Python Apple Support
 ====================
 
 This is a meta-package for building a version of Python that can be embedded
-into a macOS, iOS, tvOS or watchOS project.
+into a macOS, iOS, tvOS, watchOS, or visionOS project.
 
 **This branch builds a packaged version of Python 3.14**.
 Other Python versions are available by cloning other branches of the main
@@ -16,21 +16,24 @@ repository:
 
 It works by downloading, patching, and building a fat binary of Python and
 selected pre-requisites, and packaging them as frameworks that can be
-incorporated into an XCode project. The binary modules in the Python standard
+incorporated into an Xcode project. The binary modules in the Python standard
 library are distributed as binaries that can be dynamically loaded at runtime.
 
 The macOS package is a re-bundling of the official macOS binary, modified so that
 it is relocatable, with the IDLE, Tkinter and turtle packages removed, and the
 App Store compliance patch applied.
 
-The iOS, tvOS and watchOS packages compiled by this project use the official
-`PEP 730 <https://peps.python.org/pep-0730/>`__ code that is part of Python 3.13
-to provide iOS support; the relevant patches have been backported to 3.9-3.12.
-Additional patches have been applied to add tvOS and watchOS support.
+The iOS, tvOS, watchOS, and visionOS packages compiled by this project use the
+official `PEP 730 <https://peps.python.org/pep-0730/>`__ code that is part of
+Python 3.13 to provide iOS support; the relevant patches have been backported
+to 3.9-3.12. Additional patches have been applied to add tvOS, watchOS, and
+visionOS support.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
-devices; and arm64_32 for watchOS devices. It also supports device simulators on
-both x86_64 and M1 hardware. This should enable the code to run on:
+devices; arm64_32 for watchOS devices; and arm64 for visionOS devices. It also
+supports device simulators on both x86_64 and M1 hardware, except for visionOS,
+for which x86_64 simulators are officially unsupported. This should enable the
+code to run on:
 
 * macOS 11 (Big Sur) or later, on:
     * MacBook (including MacBooks using Apple Silicon)
@@ -49,6 +52,8 @@ both x86_64 and M1 hardware. This should enable the code to run on:
     * Apple TV (4th gen or later)
 * watchOS 4.0 or later, on:
     * Apple Watch (4th gen or later)
+* visionOS 2.0 or later, on:
+    * Apple Vision Pro
 
 Quickstart
 ----------
@@ -69,6 +74,7 @@ repository, and then in the root directory, and run:
 * ``make iOS`` to build everything for iOS.
 * ``make tvOS`` to build everything for tvOS.
 * ``make watchOS`` to build everything for watchOS.
+* ``make visionOS`` to build everything for visionOS.
 
 This should:
 
@@ -76,16 +82,16 @@ This should:
 2. Patch them as required for compatibility with the selected OS
 3. Build the packages as Xcode-compatible XCFrameworks.
 
-The resulting support packages will be packaged as a ``.tar.gz`` file
+The resulting support packages will be packaged as ``.tar.gz`` files
 in the ``dist`` folder.
 
 Each support package contains:
 
 * ``VERSIONS``, a text file describing the specific versions of code used to build the
   support package;
-* ``Python.xcframework``, a multi-architecture build of the Python runtime library
+* ``Python.xcframework``, a multi-architecture build of the Python runtime library.
 
-On iOS/tvOS/watchOS, the ``Python.xcframework`` contains a
+On iOS/tvOS/watchOS/visionOS, the ``Python.xcframework`` contains a
 slice for each supported ABI (device and simulator). The folder containing the
 slice can also be used as a ``PYTHONHOME``, as it contains a ``bin``, ``include``
 and ``lib`` directory.
@@ -96,11 +102,11 @@ needed to build packages. This is required because Xcode uses the ``xcrun``
 alias to dynamically generate the name of binaries, but a lot of C tooling
 expects that ``CC`` will not contain spaces.
 
-Each slice of an iOS/tvOS/watchOS XCframework also contains a
+Each slice of an iOS/tvOS/watchOS/visionOS XCframework also contains a
 ``platform-config`` folder with a subfolder for each supported architecture in
 that slice. These subfolders can be used to make a macOS Python environment
-behave as if it were on an iOS/tvOS/watchOS device. This works in one of two
-ways:
+behave as if it were on an iOS/tvOS/watchOS/visionOS device. This works in one
+of two ways:
 
 1. **A sitecustomize.py script**. If the ``platform-config`` subfolder is on
    your ``PYTHONPATH`` when a Python interpreter is started, a site
@@ -116,9 +122,9 @@ ways:
    environment to build a wheel, these patches will also be applied to the
    isolated build environment that is created.
 
-iOS distributions also contain a copy of the iOS ``testbed`` project - an Xcode
-project that can be used to run test suites of Python code. See the `CPython
-documentation on testing packages
+iOS and visionOS distributions also contain a copy of the iOS or visionOS
+``testbed`` project - an Xcode project that can be used to run test suites of
+Python code. See the `CPython documentation on testing packages
 <https://docs.python.org/3/using/ios.html#testing-a-python-package>`__ for
 details on how to use this testbed.
 
@@ -131,8 +137,8 @@ Building binary wheels
 This project packages the Python standard library, but does not address building
 binary wheels. Binary wheels for macOS can be obtained from PyPI. `Mobile Forge
 <https://github.com/beeware/mobile-forge>`__ is a project that provides the
-tooling to build build binary wheels for iOS (and potentially for tvOS and
-watchOS, although that hasn't been tested).
+tooling to build build binary wheels for iOS (and potentially for tvOS, watchOS,
+and visionOS, although that hasn't been tested).
 
 Historical support
 ------------------
