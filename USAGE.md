@@ -47,8 +47,8 @@ As a *bare minimum*, you can do the following:
    NSString *pythonHome = [NSString stringWithFormat:@"%@/python", resourcePath, nil];
    NSString *appPath = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
 
-   setenv("PYTHONHOME", pythonHome, 1);
-   setenv("PYTHONPATH", appPath, 1);
+   setenv("PYTHONHOME", [pythonHome UTF8String], 1);
+   setenv("PYTHONPATH", [appPath UTF8String], 1);
 
    Py_Initialize();
 
