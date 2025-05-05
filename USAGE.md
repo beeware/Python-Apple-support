@@ -23,8 +23,8 @@ guides:
 * [iOS](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project)
 
 For tvOS, watchOS, and visionOS, you should be able to broadly follow the instructions
-in the iOS guide. The testbed projects generated on iOS and visionOS may be used as
-rough references as well.
+in the iOS guide, changing some platform names in the first script. The testbed projects
+generated on iOS and visionOS may be used as rough references as well.
 
 ### Using Objective C
 
@@ -45,19 +45,15 @@ As a *bare minimum*, you can do the following:
    ```objc
    NSString *resourcePath = [[NSBundle mainBundle] resourcePath];
    NSString *pythonHome = [NSString stringWithFormat:@"%@/python", resourcePath, nil];
-   NSString *pythonPath = [NSString stringWithFormat:@"%@/lib/python3.13", python_home, nil];
-   NSString *libDynloadPath = [NSString stringWithFormat:@"%@/lib/python3.13/lib-dynload", python_home, nil];
    NSString *appPath = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
 
    setenv("PYTHONHOME", pythonHome, 1);
-   setenv("PYTHONPATH", [NSString stringWithFormat:@"%@:%@:%@", pythonpath, libDynloadPath, appPath, nil]);
+   setenv("PYTHONPATH", [NSString stringWithFormat:@"%@:%@:%@", appPath, nil]);
 
    Py_Initialize();
 
    // we now have a Python interpreter ready to be used
    ```
-   References to a specific Python version should reflect the version of
-   Python you are using.
 
 Again - this is the *bare minimum* initialization. In practice, you will likely
 need to configure other aspects of the Python interpreter using the
@@ -81,12 +77,10 @@ code will look something like this:
 2. Initialize the Python interpreter:
    ```swift
    guard let pythonHome = Bundle.main.path(forResource: "python", ofType: nil) else { return }
-   guard let pythonPath = Bundle.main.path(forResource: "python/lib/python3.13", ofType: nil) else { return }
-   guard let libDynloadPath = Bundle.main.path(forResource: "python/lib/python3.13/lib-dynload", ofType: nil) else { return }
    let appPath = Bundle.main.path(forResource: "app", ofType: nil)
 
    setenv("PYTHONHOME", pythonHome, 1)
-   setenv("PYTHONPATH", [pythonPath, libDynloadPath, appPath].compactMap { $0 }.joined(separator: ":"), 1)
+   setenv("PYTHONPATH", [appPath].compactMap { $0 }.joined(separator: ":"), 1)
    Py_Initialize()
    // we now have a Python interpreter ready to be used
    ```
