@@ -48,7 +48,7 @@ As a *bare minimum*, you can do the following:
    NSString *appPath = [NSString stringWithFormat:@"%@/app", resourcePath, nil];
 
    setenv("PYTHONHOME", pythonHome, 1);
-   setenv("PYTHONPATH", [NSString stringWithFormat:@"%@:%@:%@", appPath, nil]);
+   setenv("PYTHONPATH", appPath, 1);
 
    Py_Initialize();
 
@@ -80,7 +80,7 @@ code will look something like this:
    let appPath = Bundle.main.path(forResource: "app", ofType: nil)
 
    setenv("PYTHONHOME", pythonHome, 1)
-   setenv("PYTHONPATH", [appPath].compactMap { $0 }.joined(separator: ":"), 1)
+   setenv("PYTHONPATH", appPath, 1)
    Py_Initialize()
    // we now have a Python interpreter ready to be used
    ```
