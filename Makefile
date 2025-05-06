@@ -290,12 +290,14 @@ PYTHON_FRAMEWORK-$(target)=$$(PYTHON_INSTALL-$(target))/Python.framework
 ifneq ($$(BASE-$(target)),macabi)
 PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Python
 PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/bin
-else
-PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Python
-PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/Python.framework/Versions/$(PYTHON_VER)/bin
-endif
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
+else
+PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Python
+PYTHON_BIN-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/bin
+PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Headers
+PYTHON_STDLIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
+endif
 PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
 PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
 
@@ -484,22 +486,43 @@ else
 PYTHON_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INCLUDE-$(sdk))/module.modulemap
 PYTHON_FRAMEWORK-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
+ifneq ($(sdk),macabi)
 PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
+else
+PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Python
+PYTHON_BIN-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/bin
+PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Headers
+PYTHON_STDLIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
+endif
 PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
 $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for the $(sdk) SDK"
 	mkdir -p $$(dir $$(PYTHON_LIB-$(sdk)))
+ifeq ($(sdk),macabi)
+	ln -si $(PYTHON_VER) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/Current
+	ln -si Versions/Current/Headers $$(PYTHON_FRAMEWORK-$(sdk))/Headers
+	ln -si Versions/Current/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Resources
+	ln -si Versions/Current/Python $$(PYTHON_FRAMEWORK-$(sdk))/Python
+endif
 	lipo -create -output $$@ $$^ \
 		2>&1 | tee -a install/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
 
+ifneq ($(sdk),macabi)
 $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist: $$(PYTHON_LIB-$(sdk))
+else
+$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/Info.plist: $$(PYTHON_LIB-$(sdk))
+endif
 	@echo ">>> Install Info.plist for the $(sdk) SDK"
 	# Copy Info.plist as-is from the first target in the $(sdk) SDK
+ifneq ($(sdk),macabi)
 	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Info.plist $$(PYTHON_FRAMEWORK-$(sdk))
+else
+	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources/Info.plist $$(PYTHON_FRAMEWORK-$(sdk))
+endif
 
 $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Build Python fat headers for the $(sdk) SDK"
@@ -523,11 +546,19 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	echo "\n}" >> $$(PYTHON_MODULEMAP-$(sdk))
 
 	# Link the PYTHONHOME version of the headers
+ifneq ($(sdk),macabi)
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
+else
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include
+	ln -si ../Headers $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include/python$(PYTHON_VER)
+endif
 
 ifeq ($(os), visionOS)
 	echo "Skipping arch-specific header copying for visionOS"
+	
+	# Add the headers from each target -- there's should only be one target, so we copy it to the same name.
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h; )
 else
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
@@ -536,8 +567,11 @@ else
 	cp $$(RESCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 endif
 
-
+ifneq ($(sdk),macabi)
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+else
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+endif
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
@@ -694,9 +728,10 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		2>&1 | tee -a support/$(PYTHON_VER)/python-$(os).xcframework.log
 
 	@echo ">>> Install PYTHONHOME for $(os)"
-	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	# Do not install stuff for macabi becuase it's already built into the framework.
+	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
 ifeq ($(filter $(os),iOS visionOS),$(os))

@@ -757,8 +757,18 @@ index 232d3c3a9c5..e042c20ea54 100644
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target x86_64-apple-ios-macabi -E "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/pyconfig.h
+@@ -0,0 +1,7 @@
++#ifdef __arm64__
++#include "pyconfig-arm64.h"
++#endif
++
++#ifdef __x86_64__
++#include "pyconfig-x86_64.h"
++#endif
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index e10c78d6403..21b707bd017 100644
+index e10c78d6403..c77fb73513d 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -209,6 +209,12 @@
@@ -846,6 +856,21 @@ index e10c78d6403..21b707bd017 100644
  
  # Like test, but using --slow-ci which enables all test resources and use
  # longer timeout. Run an optional pybuildbot.identify script to include
+@@ -2980,6 +3019,14 @@
+ 		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
+ 	done
+ 
++# Stub compilation assistance binaries are installed separately on Mac Catalyst.
++.PHONY: frameworkinstallcatalyststubs
++frameworkinstallcatalyststubs:	$(LDLIBRARY)
++	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
++	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
++		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
++	done
++
+ # This installs Mac/Lib into the framework
+ # Install a number of symlinks to keep software that expects a normal unix
+ # install (which includes python-config) happy.
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
 index ec0857a4a99..de56264da3b 100644
 --- a/Misc/platform_triplet.c
@@ -926,7 +951,7 @@ index 1bb6a05dc11..6efa3fbf821 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index 1b75ddfa26d..9feb830657a 100755
+index 1b75ddfa26d..4c2defa706e 100755
 --- a/configure
 +++ b/configure
 @@ -978,6 +978,11 @@
@@ -1109,8 +1134,8 @@ index 1b75ddfa26d..9feb830657a 100755
 +				_flag_ios_catalyst=`echo $host | cut -d '-' -f4`
 +				case $_flag_ios_catalyst in
 +					macabi)
-+						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure"
-+						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure "
++						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs "
 +						FRAMEWORKINSTALLLAST=""
 +						FRAMEWORKALTINSTALLLAST=""
 +						FRAMEWORKPYTHONW=
@@ -1782,7 +1807,7 @@ index 1b75ddfa26d..9feb830657a 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index c449bb5ebb3..4b5ba577882 100644
+index c449bb5ebb3..aaf40d540f7 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@
@@ -1935,8 +1960,8 @@ index c449bb5ebb3..4b5ba577882 100644
 +				_flag_ios_catalyst=`echo $host | cut -d '-' -f4`
 +				case $_flag_ios_catalyst in
 +					macabi)
-+						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure"
-+						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure "
++						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs "
 +						FRAMEWORKINSTALLLAST=""
 +						FRAMEWORKALTINSTALLLAST=""
 +						FRAMEWORKPYTHONW=
