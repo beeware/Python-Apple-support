@@ -451,7 +451,11 @@ SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
+ifeq ($$(findstring catalyst,$(sdk)),)
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+else
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-maccatalyst
+endif
 else
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
@@ -567,8 +571,15 @@ else
 	cp $$(RESCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 endif
 
+ifeq ($(sdk),macabi)
+$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources:
+	echo ">>> Copying Resources Folder for Versioned Framework"
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
+	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
+endif
+
 ifneq ($(sdk),macabi)
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 else
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 endif
