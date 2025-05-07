@@ -517,15 +517,15 @@ endif
 
 ifneq ($(sdk),macabi)
 $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist: $$(PYTHON_LIB-$(sdk))
-else
-$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/Info.plist: $$(PYTHON_LIB-$(sdk))
-endif
 	@echo ">>> Install Info.plist for the $(sdk) SDK"
 	# Copy Info.plist as-is from the first target in the $(sdk) SDK
-ifneq ($(sdk),macabi)
 	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Info.plist $$(PYTHON_FRAMEWORK-$(sdk))
 else
-	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources/Info.plist $$(PYTHON_FRAMEWORK-$(sdk))
+$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources:
+	echo ">>> Copying Resources Folder for Versioned Framework from the first target in the SDK"
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
+	# Copy Resources as-is from the first target in the $(sdk) SDK
+	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
 endif
 
 $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
@@ -571,17 +571,10 @@ else
 	cp $$(RESCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 endif
 
-ifeq ($(sdk),macabi)
-$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources:
-	echo ">>> Copying Resources Folder for Versioned Framework"
-	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
-	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
-endif
-
 ifneq ($(sdk),macabi)
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 else
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 endif
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
