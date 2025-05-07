@@ -523,6 +523,11 @@ $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
 	$$(foreach module,$$(wildcard $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib-dynload/*),lipo -create -output $$(PYTHON_STDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_STDLIB-$$(target))/lib-dynload/$$(notdir $$(module))); )
 
+	# Copy in known-required xcprivacy files.
+	# Libraries linking OpenSSL must provide a privacy manifest. The one in this repository
+	# has been sourced from https://github.com/openssl/openssl/blob/openssl-3.0/os-dep/Apple/PrivacyInfo.xcprivacy
+	cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$(sdk))/lib-dynload/_hashlib.xcprivacy
+	cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$(sdk))/lib-dynload/_ssl.xcprivacy
 endif
 
 $(sdk): $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT
