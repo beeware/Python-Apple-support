@@ -34,7 +34,7 @@ OPENSSL_VERSION=3.0.16-2
 XZ_VERSION=5.6.4-2
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS visionOS
+OS_LIST=macOS iOS tvOS watchOS visionOS MacCatalyst
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
@@ -42,27 +42,37 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
+CONFIGFLAGS-macOS=
 
 # iOS targets
-TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64 macabi.x86_64 macabi.arm64
+TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
 TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
-VERSION_MIN_OVERRIDE-macabi=14.2
-CONFIGFLAGS-macabi=--with-catalyst-macos-version=11.2
+CONFIGFLAGS-iOS=
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
 TRIPLE_OS-tvOS=tvos
 VERSION_MIN-tvOS=12.0
+CONFIGFLAGS-tvOS=
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 TRIPLE_OS-watchOS=watchos
 VERSION_MIN-watchOS=4.0
+CONFIGFLAGS-watchOS=
 
+# visionOS targets
 TARGETS-visionOS=xrsimulator.arm64 xros.arm64
 TRIPLE_OS-visionOS=xros
 VERSION_MIN-visionOS=2.0
+CONFIGFLAGS-visionOS=
+
+# Mac Catalyst Targets
+TARGETS-MacCatalyst=macabi.x86_64 macabi.arm64
+TRIPLE_OS-MacCatalyst=ios
+VERSION_MIN-MacCatalyst=14.2
+CONFIGFLAGS-MacCatalyst=--with-catalyst-macos-version=11.2
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -138,30 +148,17 @@ BASE-$(target)=$$(basename $(target))
 SDK-$(target)=$$(subst macabi,macosx,$$(BASE-$(target)))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
-# Compute version minimum for the target
-VERSION_MIN-$(target)=$$(VERSION_MIN-$(os))
-ifdef VERSION_MIN_OVERRIDE-$$(BASE-$(target))
-VERSION_MIN-$(target)=$$(VERSION_MIN_OVERRIDE-$$(BASE-$(target)))
-endif
-
-# Inherit the basename for the configure flags.
-ifdef CONFIGFLAGS-$$(BASE-$(target))
-CONFIGFLAGS-$(target)=$$(CONFIGFLAGS-$$(BASE-$(target)))
-else
-CONFIGFLAGS-$(target)=
-endif
-
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(BASE-$(target))),)
 		ifeq ($$(findstring macabi,$$(BASE-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 		else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))-macabi
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-macabi
 IS_SIMULATOR-$(target)=False
 		endif
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(target))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -347,7 +344,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			--with-openssl="$$(OPENSSL_INSTALL-$(target))" \
 			--enable-framework="$$(PYTHON_INSTALL-$(target))" \
 			--with-system-libmpdec \
-			$$(CONFIGFLAGS-$(target)) \
+			$$(CONFIGFLAGS-$(os)) \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
 
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
@@ -386,7 +383,7 @@ $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
 		| sed -e "s/{{platform}}/$$(OS_LOWER-$(target))/g" \
 		| sed -e "s/{{arch}}/$$(ARCH-$(target))/g" \
 		| sed -e "s/{{sdk}}/$$(SDK-$(target))/g" \
-		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(target))/g" \
+		| sed -e "s/{{version_min}}/$$(VERSION_MIN-$(os))/g" \
 		| sed -e "s/{{is_simulator}}/$$(IS_SIMULATOR-$(target))/g" \
 		> $$(PYTHON_PLATFORM_CONFIG-$(target))/_cross_$$(ARCH-$(target))_$$(SDK-$(target)).py
 	cat $(PROJECT_DIR)/patch/Python/sitecustomize.py.tmpl \
@@ -407,8 +404,6 @@ vars-$(target):
 	@echo "BASE-$(target): $$(BASE-$(target))"
 	@echo "SDK-$(target): $$(SDK-$(target))"
 	@echo "ARCH-$(target): $$(ARCH-$(target))"
-	@echo "CONFIGFLAGS-$(target): $$(CONFIGFLAGS-$(target))"
-	@echo "VERSION_MIN-$(target): $$(VERSION_MIN-$(target))"
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
 	@echo "SDK_ROOT-$(target): $$(SDK_ROOT-$(target))"
 	@echo "BZIP2_INSTALL-$(target): $$(BZIP2_INSTALL-$(target))"
