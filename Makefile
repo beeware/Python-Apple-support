@@ -291,9 +291,9 @@ PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
 else
 PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Python
-PYTHON_BIN-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Resources/bin
+PYTHON_BIN-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/bin
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Headers
-PYTHON_STDLIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Resources/lib/python$(PYTHON_VER)
+PYTHON_STDLIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
 endif
 PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
 PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
@@ -485,9 +485,9 @@ PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
 else
 PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Python
-PYTHON_BIN-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/bin
+PYTHON_BIN-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Headers
-PYTHON_STDLIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/lib/python$(PYTHON_VER)
+PYTHON_STDLIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
 endif
 PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
@@ -518,11 +518,8 @@ endif
 
 $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Build Python fat headers for the $(sdk) SDK"
-	# Copying for Mac Catalyst is done already with the Resources folder
-ifneq ($(sdk),macabi)
 	# Copy binary helpers from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_BIN-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_BIN-$(sdk))
-endif
 
 	# Create a non-executable stub binary python3
 	echo "#!/bin/bash\necho Can\\'t run $(sdk) binary\nexit 1" > $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
@@ -545,9 +542,9 @@ ifneq ($(sdk),macabi)
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 else
-	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/include
-	rm -rf $(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/include/*
-	ln -si ../../Headers $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources/include/python$(PYTHON_VER)
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include
+	rm -rf $(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include/*
+	ln -si ../Headers $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include/python$(PYTHON_VER)
 endif
 
 ifeq ($(os), visionOS)
@@ -569,11 +566,9 @@ else
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 endif
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
-ifneq ($(sdk),macabi)
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
 	cp -r $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/ $$(PYTHON_STDLIB-$(sdk))
-endif
 
 	# Delete the single-SDK parts of the standard library
 	rm -rf \
