@@ -439,7 +439,7 @@ SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-ifeq ($$(findstring catalyst,$(sdk)),)
+ifeq ($$(findstring macabi,$(sdk)),)
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-maccatalyst
@@ -722,9 +722,11 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	@echo ">>> Install PYTHONHOME for $(os)"
 	# Do not install stuff for macabi becuase it's already built into the framework.
-	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-	$$(foreach sdk,$$(filter-out macabi,$$(SDKS-$(os))),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+ifeq ($(os),MacCatalyst)
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+endif
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
 ifeq ($(filter $(os),iOS visionOS MacCatalyst),$(os))
