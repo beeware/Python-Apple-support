@@ -722,7 +722,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	@echo ">>> Install PYTHONHOME for $(os)"
 	# Do not install stuff for macabi becuase it's already built into the framework.
-ifeq ($(os),MacCatalyst)
+ifneq ($(os),MacCatalyst)
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
