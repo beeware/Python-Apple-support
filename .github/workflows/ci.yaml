@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
+        target: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS', 'MacCatalyst']
         include:
             - briefcase-run-args:
             - run-tests: false
@@ -109,7 +109,7 @@ jobs:
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
-        python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
+        python-version: ${{ needs.config.outputs.PYTHON_VER }}.0-alpha.7
         # Ensure that we *always* use the latest build, not a cached version.
         # It's an edge case, but when a new alpha is released, we need to use it ASAP.
         check-latest: true
