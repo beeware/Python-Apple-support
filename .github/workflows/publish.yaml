@@ -48,6 +48,3 @@ jobs:
         # watchOS build
         curl -o watchOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
         aws s3 cp watchOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/watchOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-watchOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        # visionOS build
-        curl -o visionOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-visionOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
-        aws s3 cp visionOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/visionOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-visionOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz

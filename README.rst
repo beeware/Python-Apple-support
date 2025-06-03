@@ -2,7 +2,7 @@ Python Apple Support
 ====================
 
 This is a meta-package for building a version of Python that can be embedded
-into a macOS, iOS, tvOS, watchOS, or visionOS project.
+into a macOS, iOS, tvOS, watchOS project.
 
 **This branch builds a packaged version of Python 3.13**.
 Other Python versions are available by cloning other branches of the main
@@ -23,16 +23,15 @@ The macOS package is a re-bundling of the official macOS binary, modified so tha
 it is relocatable, with the IDLE, Tkinter and turtle packages removed, and the
 App Store compliance patch applied.
 
-The iOS, tvOS, watchOS, and visionOS packages compiled by this project use the
+The iOS, tvOS, and watchOS packages compiled by this project use the
 official `PEP 730 <https://peps.python.org/pep-0730/>`__ code that is part of
 Python 3.13 to provide iOS support; the relevant patches have been backported
-to 3.9-3.12. Additional patches have been applied to add tvOS, watchOS, and
-visionOS support.
+to 3.9-3.12. Additional patches have been applied to add tvOS, and watchOS
+support.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV
-devices; arm64_32 for watchOS devices; and arm64 for visionOS devices. It also
-supports device simulators on both x86_64 and M1 hardware, except for visionOS,
-for which x86_64 simulators are officially unsupported. This should enable the
+devices; and arm64_32 for watchOS devices. It also
+supports device simulators on both x86_64 and M1 hardware. This should enable the
 code to run on:
 
 * macOS 11 (Big Sur) or later, on:
@@ -52,8 +51,6 @@ code to run on:
     * Apple TV (4th gen or later)
 * watchOS 4.0 or later, on:
     * Apple Watch (4th gen or later)
-* visionOS 2.0 or later, on:
-    * Apple Vision Pro
 
 Quickstart
 ----------
@@ -74,7 +71,6 @@ repository, and then in the root directory, and run:
 * ``make iOS`` to build everything for iOS.
 * ``make tvOS`` to build everything for tvOS.
 * ``make watchOS`` to build everything for watchOS.
-* ``make visionOS`` to build everything for visionOS.
 
 This should:
 
@@ -91,7 +87,7 @@ Each support package contains:
   support package;
 * ``Python.xcframework``, a multi-architecture build of the Python runtime library.
 
-On iOS/tvOS/watchOS/visionOS, the ``Python.xcframework`` contains a
+On iOS/tvOS/watchOS, the ``Python.xcframework`` contains a
 slice for each supported ABI (device and simulator). The folder containing the
 slice can also be used as a ``PYTHONHOME``, as it contains a ``bin``, ``include``
 and ``lib`` directory.
@@ -137,8 +133,8 @@ Building binary wheels
 This project packages the Python standard library, but does not address building
 binary wheels. Binary wheels for macOS can be obtained from PyPI. `Mobile Forge
 <https://github.com/beeware/mobile-forge>`__ is a project that provides the
-tooling to build build binary wheels for iOS (and potentially for tvOS, watchOS,
-and visionOS, although that hasn't been tested).
+tooling to build build binary wheels for iOS (and potentially for tvOS and watchOS
+although that hasn't been tested).
 
 Historical support
 ------------------

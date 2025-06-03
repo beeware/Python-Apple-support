@@ -22,9 +22,9 @@ guides:
 * [macOS](https://docs.python.org/3/using/mac.html)
 * [iOS](https://docs.python.org/3/using/ios.html#adding-python-to-an-ios-project)
 
-For tvOS, watchOS, and visionOS, you should be able to broadly follow the instructions
+For tvOS, and watchOS, you should be able to broadly follow the instructions
 in the iOS guide, changing some platform names in the first script. The testbed projects
-generated on iOS and visionOS may be used as rough references as well.
+generated on iOS may be used as rough references as well.
 
 ### Using Objective C
 
