@@ -51,3 +51,6 @@ jobs:
         # visionOS build
         curl -o visionOS-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-visionOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
         aws s3 cp visionOS-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/visionOS/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-visionOS-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        # MacCatalyst build
+        curl -o MacCatalyst-artefact.tar.gz -L https://github.com/beeware/Python-Apple-support/releases/download/${{ steps.build-vars.outputs.TAG }}/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-MacCatalyst-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz
+        aws s3 cp MacCatalyst-artefact.tar.gz s3://briefcase-support/python/${{ steps.build-vars.outputs.PYTHON_VER }}/MacCatalyst/Python-${{ steps.build-vars.outputs.PYTHON_VER }}-MacCatalyst-support.${{ steps.build-vars.outputs.BUILD_NUMBER }}.tar.gz

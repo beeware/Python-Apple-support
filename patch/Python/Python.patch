@@ -1,3 +1,21 @@
+diff --git a/Lib/_ios_support.py b/Lib/_ios_support.py
+index 20467a7c2bc..deefacaf8c5 100644
+--- a/Lib/_ios_support.py
++++ b/Lib/_ios_support.py
+@@ -25,6 +25,7 @@
+ def get_platform_ios():
+     # Determine if this is a simulator using the multiarch value
+     is_simulator = sys.implementation._multiarch.endswith("simulator")
++    is_catalyst = sys.implementation._multiarch.endswith("macabi")
+ 
+     # We can't use ctypes; abort
+     if not objc:
+@@ -68,4 +69,4 @@
+     release = objc.objc_msgSend(device_systemVersion, SEL_UTF8String).decode()
+     model = objc.objc_msgSend(device_model, SEL_UTF8String).decode()
+ 
+-    return system, release, model, is_simulator
++    return system, release, model, is_simulator, is_catalyst
 diff --git a/Lib/ctypes/__init__.py b/Lib/ctypes/__init__.py
 index 823a3692fd1..00639dd8488 100644
 --- a/Lib/ctypes/__init__.py
@@ -34,7 +52,7 @@ index 99504911a3d..527c2f36dd0 100644
      if hasattr((_libc := ctypes.CDLL(None)), "dl_iterate_phdr"):
  
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 8bcd741c446..d8a6f28edba 100644
+index 8bcd741c446..58642d961d6 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -46,23 +64,42 @@ index 8bcd741c446..d8a6f28edba 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1535,7 +1535,7 @@
+@@ -1535,7 +1535,8 @@
      """
      extension_loaders = []
      if hasattr(_imp, 'create_dynamic'):
 -        if sys.platform in {"ios", "tvos", "watchos"}:
-+        if sys.platform in {"ios", "tvos", "watchos", "visionos"}:
++        # Mac Catalyst does NOT use the AppleFrameworkLoader.
++        if sys.platform in {"ios", "tvos", "watchos", "visionos"} and not sys.implementation._multiarch.endswith("macabi"):
              extension_loaders = [(AppleFrameworkLoader, [
                  suffix.replace(".so", ".fwork")
                  for suffix in _imp.extension_suffixes()
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 55e211212d4..cad919bc0c4 100644
+index 55e211212d4..c81849e870d 100644
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -528,6 +528,78 @@
-     return IOSVersionInfo(system, release, model, is_simulator)
+@@ -508,11 +508,11 @@
+ # A namedtuple for iOS version information.
+ IOSVersionInfo = collections.namedtuple(
+     "IOSVersionInfo",
+-    ["system", "release", "model", "is_simulator"]
++    ["system", "release", "model", "is_simulator", "is_catalyst"]
+ )
  
  
+-def ios_ver(system="", release="", model="", is_simulator=False):
++def ios_ver(system="", release="", model="", is_simulator=False, is_catalyst=False):
+     """Get iOS version information, and return it as a namedtuple:
+         (system, release, model, is_simulator).
+ 
+@@ -525,7 +525,82 @@
+         if result is not None:
+             return IOSVersionInfo(*result)
+ 
+-    return IOSVersionInfo(system, release, model, is_simulator)
++    return IOSVersionInfo(system, release, model, is_simulator, is_catalyst)
++
++
 +# A namedtuple for tvOS version information.
 +TVOSVersionInfo = collections.namedtuple(
 +    "TVOSVersionInfo",
@@ -82,6 +119,7 @@ index 55e211212d4..cad919bc0c4 100644
 +        import _ios_support
 +        result = _ios_support.get_platform_ios()
 +        if result is not None:
++            result = result[:-1]  # ignore the Catalyst flag
 +            return TVOSVersionInfo(*result)
 +
 +    return TVOSVersionInfo(system, release, model, is_simulator)
@@ -106,6 +144,7 @@ index 55e211212d4..cad919bc0c4 100644
 +        import _ios_support
 +        result = _ios_support.get_platform_ios()
 +        if result is not None:
++            result = result[:-1]  # ignore the Catalyst flag
 +            return WatchOSVersionInfo(*result)
 +
 +    return WatchOSVersionInfo(system, release, model, is_simulator)
@@ -130,15 +169,14 @@ index 55e211212d4..cad919bc0c4 100644
 +        import _ios_support
 +        result = _ios_support.get_platform_ios()
 +        if result is not None:
++            result = result[:-1]  # ignore the Catalyst flag
 +            return VisionOSVersionInfo(*result)
 +
 +    return VisionOSVersionInfo(system, release, model, is_simulator)
-+
-+
+ 
+ 
  def _java_getprop(name, default):
-     """This private helper is deprecated in 3.13 and will be removed in 3.15"""
-     from java.lang import System
-@@ -727,7 +799,7 @@
+@@ -727,7 +802,7 @@
          default in case the command should fail.
  
      """
@@ -147,7 +185,7 @@ index 55e211212d4..cad919bc0c4 100644
          # XXX Others too ?
          return default
  
-@@ -891,14 +963,30 @@
+@@ -891,10 +966,26 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -159,10 +197,10 @@ index 55e211212d4..cad919bc0c4 100644
 +    # there's only one CPU architecture for devices, so we know the right
 +    # answer.
      def get_ios():
-         if sys.implementation._multiarch.endswith("simulator"):
-             return os.uname().machine
-         return 'arm64'
- 
++        if sys.implementation._multiarch.endswith("simulator") or sys.implementation._multiarch.endswith("macabi"):
++            return os.uname().machine
++        return 'arm64'
++
 +    def get_tvos():
 +        if sys.implementation._multiarch.endswith("simulator"):
 +            return os.uname().machine
@@ -174,21 +212,18 @@ index 55e211212d4..cad919bc0c4 100644
 +        return 'arm64_32'
 +
 +    def get_visionos():
-+        if sys.implementation._multiarch.endswith("simulator"):
-+            return os.uname().machine
-+        return 'arm64'
-+
-     def from_subprocess():
-         """
-         Fall back to `uname -p`
-@@ -1058,9 +1146,15 @@
+         if sys.implementation._multiarch.endswith("simulator"):
+             return os.uname().machine
+         return 'arm64'
+@@ -1058,9 +1149,15 @@
          system = 'Android'
          release = android_ver().release
  
 -    # Normalize responses on iOS
 +    # Normalize responses on Apple mobile platforms
      if sys.platform == 'ios':
-         system, release, _, _ = ios_ver()
+-        system, release, _, _ = ios_ver()
++        system, release, _, _, _ = ios_ver()
 +    if sys.platform == 'tvos':
 +        system, release, _, _ = tvos_ver()
 +    if sys.platform == 'watchos':
@@ -198,10 +233,12 @@ index 55e211212d4..cad919bc0c4 100644
  
      vals = system, node, release, version, machine
      # Replace 'unknown' values with the more portable ''
-@@ -1350,6 +1444,12 @@
+@@ -1349,7 +1446,13 @@
+     if system == 'Darwin':
          # macOS and iOS both report as a "Darwin" kernel
          if sys.platform == "ios":
-             system, release, _, _ = ios_ver()
+-            system, release, _, _ = ios_ver()
++            system, release, _, _, _ = ios_ver()
 +        elif sys.platform == "tvos":
 +            system, release, _, _ = tvos_ver()
 +        elif sys.platform == "watchos":
@@ -227,15 +264,18 @@ index f9327197159..74899abecb0 100644
  
      def joinuser(*args):
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 54c2eb515b6..03896a234bf 100644
+index 54c2eb515b6..24dd754db06 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
-@@ -75,7 +75,7 @@
+@@ -75,7 +75,10 @@
      _mswindows = True
  
  # some platforms do not support subprocesses
 -_can_fork_exec = sys.platform not in {"emscripten", "wasi", "ios", "tvos", "watchos"}
-+_can_fork_exec = sys.platform not in {"emscripten", "wasi", "ios", "tvos", "watchos", "visionos"}
++_can_fork_exec = (
++    sys.platform not in {"emscripten", "wasi", "ios", "tvos", "watchos", "visionos"}
++    or sys.implementation._multiarch.endswith("macabi")
++)
  
  if _mswindows:
      import _winapi
@@ -282,7 +322,7 @@ index f93b98dd681..0db3dbdce05 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Lib/test/datetimetester.py b/Lib/test/datetimetester.py
-index 1b551254f86..8594f92c097 100644
+index 1b551254f86..3ae2728e2cf 100644
 --- a/Lib/test/datetimetester.py
 +++ b/Lib/test/datetimetester.py
 @@ -7159,9 +7159,9 @@
@@ -290,18 +330,27 @@ index 1b551254f86..8594f92c097 100644
  
      def test_type_check_in_subinterp(self):
 -        # iOS requires the use of the custom framework loader,
-+        # Apple mobile platforms require the use of the custom framework loader,
-         # not the ExtensionFileLoader.
+-        # not the ExtensionFileLoader.
 -        if sys.platform == "ios":
-+        if support.is_apple_mobile:
++        # Apple mobile platforms EXCEPT Mac Catalyst require the use of the
++        # custom framework loader, not the ExtensionFileLoader.
++        if support.needs_apple_fworks:
              extension_loader = "AppleFrameworkLoader"
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index b7cd7940eb1..32243a49e7a 100644
+index b7cd7940eb1..4f027912b0a 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -558,7 +558,7 @@
+@@ -46,6 +46,7 @@
+     # sys
+     "MS_WINDOWS", "is_jython", "is_android", "is_emscripten", "is_wasi",
+     "is_apple_mobile", "check_impl_detail", "unix_shell", "setswitchinterval",
++    "is_mac_catalyst", "needs_apple_fworks",
+     # os
+     "get_pagesize",
+     # network
+@@ -558,7 +559,7 @@
          sys.platform == "android", f"Android blocks {name} with SELinux"
      )
  
@@ -310,15 +359,60 @@ index b7cd7940eb1..32243a49e7a 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -574,7 +574,7 @@
+@@ -574,8 +575,10 @@
  def skip_wasi_stack_overflow():
      return unittest.skipIf(is_wasi, "Exhausts stack on WASI")
  
 -is_apple_mobile = sys.platform in {"ios", "tvos", "watchos"}
 +is_apple_mobile = sys.platform in {"ios", "tvos", "watchos", "visionos"}
  is_apple = is_apple_mobile or sys.platform == "darwin"
++is_mac_catalyst = sys.implementation._multiarch.endswith("macabi")
++needs_apple_fworks = is_apple_mobile and not is_mac_catalyst
  
  has_fork_support = hasattr(os, "fork") and not (
+     # WASM and Apple mobile platforms do not support subprocesses.
+@@ -586,6 +589,9 @@
+     # Although Android supports fork, it's unsafe to call it from Python because
+     # all Android apps are multi-threaded.
+     or is_android
++
++    # Mac Catalyst supports subprocesses.
++    and not is_mac_catalyst
+ )
+ 
+ def requires_fork():
+@@ -601,6 +607,9 @@
+     # practice (see PEP 738). And most of the tests that use them are calling
+     # sys.executable, which won't work when Python is embedded in an Android app.
+     or is_android
++
++    # Mac Catalyst supports subprocesses.
++    and not is_mac_catalyst
+ )
+ 
+ def requires_subprocess():
+diff --git a/Lib/test/test_capi/test_misc.py b/Lib/test/test_capi/test_misc.py
+index f74694a7a74..5ad6f4d4ff1 100644
+--- a/Lib/test/test_capi/test_misc.py
++++ b/Lib/test/test_capi/test_misc.py
+@@ -1920,7 +1920,7 @@
+ 
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if support.is_apple_mobile:
++        if support.needs_apple_fworks:
+             loader = "AppleFrameworkLoader"
+         else:
+             loader = "ExtensionFileLoader"
+@@ -2604,7 +2604,7 @@
+         origin = importlib.util.find_spec('_testmultiphase').origin
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if support.is_apple_mobile:
++        if support.needs_apple_fworks:
+             loader = importlib.machinery.AppleFrameworkLoader(fullname, origin)
+         else:
+             loader = importlib.machinery.ExtensionFileLoader(fullname, origin)
 diff --git a/Lib/test/test_ctypes/test_dllist.py b/Lib/test/test_ctypes/test_dllist.py
 index 15603dc3d77..bff6c0fb95f 100644
 --- a/Lib/test/test_ctypes/test_dllist.py
@@ -332,8 +426,217 @@ index 15603dc3d77..bff6c0fb95f 100644
  
  if WINDOWS:
      KNOWN_LIBRARIES = ["KERNEL32.DLL"]
+diff --git a/Lib/test/test_import/__init__.py b/Lib/test/test_import/__init__.py
+index 6e34094c5aa..87a81fdecfd 100644
+--- a/Lib/test/test_import/__init__.py
++++ b/Lib/test/test_import/__init__.py
+@@ -33,7 +33,7 @@
+     swap_attr,
+     swap_item,
+     cpython_only,
+-    is_apple_mobile,
++    needs_apple_fworks,
+     is_emscripten,
+     is_wasi,
+     run_in_subinterp,
+@@ -111,7 +111,7 @@
+ def require_extension(module, *, skip=False):
+     # Apple extensions must be distributed as frameworks. This requires
+     # a specialist loader.
+-    if is_apple_mobile:
++    if needs_apple_fworks:
+         _require_loader(module, AppleFrameworkLoader, skip)
+     else:
+         _require_loader(module, ExtensionFileLoader, skip)
+@@ -126,7 +126,7 @@
+ def create_extension_loader(modname, filename):
+     # Apple extensions must be distributed as frameworks. This requires
+     # a specialist loader.
+-    if is_apple_mobile:
++    if needs_apple_fworks:
+         return AppleFrameworkLoader(modname, filename)
+     else:
+         return ExtensionFileLoader(modname, filename)
+@@ -2217,7 +2217,7 @@
+         if filename:
+             # Apple extensions must be distributed as frameworks. This requires
+             # a specialist loader.
+-            if is_apple_mobile:
++            if needs_apple_fworks:
+                 loader = "AppleFrameworkLoader"
+             else:
+                 loader = "ExtensionFileLoader"
+@@ -2692,7 +2692,7 @@
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader, and we need to differentiate between the
+         # spec.origin and the original file location.
+-        if is_apple_mobile:
++        if needs_apple_fworks:
+             assert cls.LOADER is AppleFrameworkLoader
+ 
+             cls.ORIGIN = spec.origin
+diff --git a/Lib/test/test_importlib/extension/test_finder.py b/Lib/test/test_importlib/extension/test_finder.py
+index cdc8884d668..d1b525f6419 100644
+--- a/Lib/test/test_importlib/extension/test_finder.py
++++ b/Lib/test/test_importlib/extension/test_finder.py
+@@ -1,4 +1,4 @@
+-from test.support import is_apple_mobile
++from test.support import needs_apple_fworks
+ from test.test_importlib import abc, util
+ 
+ machinery = util.import_importlib('importlib.machinery')
+@@ -20,7 +20,7 @@
+             )
+ 
+     def find_spec(self, fullname):
+-        if is_apple_mobile:
++        if needs_apple_fworks:
+             # Apple mobile platforms require a specialist loader that uses
+             # .fwork files as placeholders for the true `.so` files.
+             loaders = [
+diff --git a/Lib/test/test_importlib/extension/test_loader.py b/Lib/test/test_importlib/extension/test_loader.py
+index 0dd21e079eb..efae18d4bbd 100644
+--- a/Lib/test/test_importlib/extension/test_loader.py
++++ b/Lib/test/test_importlib/extension/test_loader.py
+@@ -1,4 +1,4 @@
+-from test.support import is_apple_mobile
++from test.support import needs_apple_fworks
+ from test.test_importlib import abc, util
+ 
+ machinery = util.import_importlib('importlib.machinery')
+@@ -28,7 +28,7 @@
+ 
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if is_apple_mobile:
++        if needs_apple_fworks:
+             self.LoaderClass = self.machinery.AppleFrameworkLoader
+         else:
+             self.LoaderClass = self.machinery.ExtensionFileLoader
+@@ -110,7 +110,7 @@
+ 
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if is_apple_mobile:
++        if needs_apple_fworks:
+             self.LoaderClass = self.machinery.AppleFrameworkLoader
+         else:
+             self.LoaderClass = self.machinery.ExtensionFileLoader
+@@ -198,7 +198,7 @@
+ 
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if is_apple_mobile:
++        if needs_apple_fworks:
+             self.LoaderClass = self.machinery.AppleFrameworkLoader
+         else:
+             self.LoaderClass = self.machinery.ExtensionFileLoader
+diff --git a/Lib/test/test_importlib/test_util.py b/Lib/test/test_importlib/test_util.py
+index 5de89714eb5..0c6661791ca 100644
+--- a/Lib/test/test_importlib/test_util.py
++++ b/Lib/test/test_importlib/test_util.py
+@@ -714,7 +714,7 @@
+     def test_incomplete_multi_phase_init_module(self):
+         # Apple extensions must be distributed as frameworks. This requires
+         # a specialist loader.
+-        if support.is_apple_mobile:
++        if support.needs_apple_fworks:
+             loader = "AppleFrameworkLoader"
+         else:
+             loader = "ExtensionFileLoader"
+diff --git a/Lib/test/test_importlib/util.py b/Lib/test/test_importlib/util.py
+index edbe78545a2..d1f6965196f 100644
+--- a/Lib/test/test_importlib/util.py
++++ b/Lib/test/test_importlib/util.py
+@@ -8,7 +8,7 @@
+ import os.path
+ from test import support
+ from test.support import import_helper
+-from test.support import is_apple_mobile
++from test.support import needs_apple_fworks
+ from test.support import os_helper
+ import unittest
+ import sys
+@@ -48,7 +48,7 @@
+             for ext in machinery.EXTENSION_SUFFIXES:
+                 # Apple mobile platforms mechanically load .so files,
+                 # but the findable files are labelled .fwork
+-                if is_apple_mobile:
++                if needs_apple_fworks:
+                     ext = ext.replace(".so", ".fwork")
+ 
+                 filename = EXTENSIONS.name + ext
+diff --git a/Lib/test/test_os.py b/Lib/test/test_os.py
+index 88b5b0e6e35..c0dfb3ae6d6 100644
+--- a/Lib/test/test_os.py
++++ b/Lib/test/test_os.py
+@@ -2510,19 +2510,51 @@
+ 
+     @unittest.skipUnless(hasattr(os, 'closerange'), 'test needs os.closerange()')
+     def test_closerange(self):
+-        fd = os_helper.make_bad_fd()
+-        # Make sure none of the descriptors we are about to close are
+-        # currently valid (issue 6542).
+-        for i in range(10):
+-            try: os.fstat(fd+i)
+-            except OSError:
+-                pass
+-            else:
+-                break
+-        if i < 2:
+-            raise unittest.SkipTest(
+-                "Unable to acquire a range of invalid file descriptors")
+-        self.assertEqual(os.closerange(fd, fd + i-1), None)
++        if support.is_mac_catalyst:
++            # On Mac Catalyst, somehow there's a guarded FD in the way,
++            # undected using fstat. We make some random fds first, stop
++            # once not consecutive, close all of them one by one using
++            # the result of open(), then assert that closerange is failing.
++            # This ensures that none of those things we're closing is
++            # guarded, if we're careful to not use code that makes guarded
++            # file descriptors.
++
++            copies = []
++            # Open a file for testing and get its FD
++            file = open(os_helper.TESTFN, "wb")
++            fd = file.fileno()
++            copies.append(file)
++            for i in range(1, 10):
++                file_dup = open(os_helper.TESTFN, "wb")
++                if file_dup.fileno() != fd + i:
++                    file_dup.close()
++                    break
++                else:
++                    copies.append(file_dup)
++            # Close everything
++            for copy in copies:
++                copy.close()
++            os.unlink(os_helper.TESTFN)
++            if i < 2:
++                raise unittest.SkipTest(
++                    "Unable to acquire a range of invalid file descriptors")
++
++            # Now we're left with invalid FDs. Let's go close them!
++            self.assertEqual(os.closerange(fd, fd + i-1), None)
++        else:
++            fd = os_helper.make_bad_fd()
++            # Make sure none of the descriptors we are about to close are
++            # currently valid (issue 6542).
++            for i in range(10):
++                try: os.fstat(fd+i)
++                except OSError:
++                    pass
++                else:
++                    break
++            if i < 2:
++                raise unittest.SkipTest(
++                    "Unable to acquire a range of invalid file descriptors")
++            self.assertEqual(os.closerange(fd, fd + i-1), None)
+ 
+     @unittest.skipUnless(hasattr(os, 'dup2'), 'test needs os.dup2()')
+     def test_dup2(self):
 diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
-index 719c4feace6..92a831a9148 100644
+index 719c4feace6..e32d0bd8c16 100644
 --- a/Lib/test/test_platform.py
 +++ b/Lib/test/test_platform.py
 @@ -271,13 +271,21 @@
@@ -361,6 +664,58 @@ index 719c4feace6..92a831a9148 100644
                  else:
                      self.assertEqual(res.system, "")
                      self.assertEqual(res.release, "")
+@@ -480,7 +488,7 @@
+ 
+         # ios_ver is only fully available on iOS where ctypes is available.
+         if sys.platform == "ios" and _ctypes:
+-            system, release, model, is_simulator = result
++            system, release, model, is_simulator, is_catalyst = result
+             # Result is a namedtuple
+             self.assertEqual(result.system, system)
+             self.assertEqual(result.release, release)
+@@ -491,6 +499,7 @@
+             # ios_ver(), so we check that the values are broadly what we expect.
+ 
+             # System is either iOS or iPadOS, depending on the test device
++            # Mac Catalyst returns iPadOS for whatever reason.
+             self.assertIn(system, {"iOS", "iPadOS"})
+ 
+             # Release is a numeric version specifier with at least 2 parts
+@@ -503,6 +512,9 @@
+             # we get a model descriptor like "iPhone13,1"
+             if is_simulator:
+                 self.assertIn(model, {"iPhone", "iPad"})
++            # Mac Catalyst identifies as iPad with no version.
++            elif is_catalyst:
++                self.assertEqual(model, "iPad")
+             else:
+                 self.assertTrue(
+                     (model.startswith("iPhone") or model.startswith("iPad"))
+@@ -510,6 +522,10 @@
+                 )
+ 
+             self.assertEqual(type(is_simulator), bool)
++
++            # Mac Catalyst platform will return iPadOS.
++            if is_catalyst:
++                self.assertEqual(system, "iPadOS")
+         else:
+             # On non-iOS platforms, calling ios_ver doesn't fail; you get
+             # default values
+@@ -519,11 +535,12 @@
+             self.assertFalse(result.is_simulator)
+ 
+             # Check the fallback values can be overridden by arguments
+-            override = platform.ios_ver("Foo", "Bar", "Whiz", True)
++            override = platform.ios_ver("Foo", "Bar", "Whiz", True, True)
+             self.assertEqual(override.system, "Foo")
+             self.assertEqual(override.release, "Bar")
+             self.assertEqual(override.model, "Whiz")
+             self.assertTrue(override.is_simulator)
++            self.assertTrue(override.is_catalyst)
+ 
+     @unittest.skipIf(support.is_emscripten, "Does not apply to Emscripten")
+     def test_libc_ver(self):
 diff --git a/Lib/test/test_webbrowser.py b/Lib/test/test_webbrowser.py
 index 4c3ea1cd8df..04a210e5c86 100644
 --- a/Lib/test/test_webbrowser.py
@@ -402,8 +757,99 @@ index f2e2394089d..2efbbfb0014 100644
      from _ios_support import objc
      if objc:
          # If objc exists, we know ctypes is also importable.
+--- /dev/null
++++ b/MacCatalyst/Resources/Info.plist.in
+@@ -0,0 +1,38 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2024 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>%VERSION%</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>MacOSX</string>
++	</array>
++	<key>LSMinimumSystemVersion</key>
++	<string>@CATALYST_MACOS_VERSION@</string>
++	<key>UIDeviceFamily</key>
++	<array>
++		<integer>2</integer>
++	</array>
++</dict>
++</plist>
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/arm64-apple-ios-macabi-ar
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/arm64-apple-ios-macabi-clang
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target arm64-apple-ios-macabi "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/arm64-apple-ios-macabi-clang++
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang++ -target arm64-apple-ios-macabi "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/arm64-apple-ios-macabi-cpp
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target arm64-apple-ios-macabi -E "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-ar
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-clang
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target x86_64-apple-ios-macabi "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-clang++
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang++ -target x86_64-apple-ios-macabi "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/bin/x86_64-apple-ios-macabi-cpp
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk macosx${MACOSX_SDK_VERSION} clang -target x86_64-apple-ios-macabi -E "$@"
+--- /dev/null
++++ b/MacCatalyst/Resources/pyconfig.h
+@@ -0,0 +1,7 @@
++#ifdef __arm64__
++#include "pyconfig-arm64.h"
++#endif
++
++#ifdef __x86_64__
++#include "pyconfig-x86_64.h"
++#endif
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index b5703fbe6ae..e436b2efb8e 100644
+index b5703fbe6ae..d8df7de3102 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -209,6 +209,12 @@
@@ -419,7 +865,7 @@ index b5703fbe6ae..e436b2efb8e 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -2264,7 +2270,7 @@
+@@ -2264,31 +2270,64 @@
  # a full Xcode install that has an iPhone SE (3rd edition) simulator available.
  # This must be run *after* a `make install` has completed the build. The
  # `--with-framework-name` argument *cannot* be used when configuring the build.
@@ -428,17 +874,31 @@ index b5703fbe6ae..e436b2efb8e 100644
  .PHONY: testios
  testios:
  	@if test "$(MACHDEP)" != "ios"; then \
-@@ -2284,11 +2290,41 @@
+ 		echo "Cannot run the iOS testbed for a non-iOS build."; \
  		exit 1;\
  	fi
- 
--	# Clone the testbed project into the XCFOLDER
--	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
-+	# Clone the testbed project into the XCFOLDER-iOS
-+	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-iOS)"
++	@if test $(PYTHONFRAMEWORK) != "Python"; then \
++		echo "Cannot run the iOS testbed with a non-default framework name."; \
++		exit 1;\
++	fi
++	@if ! test -d $(PYTHONFRAMEWORKPREFIX); then \
++		echo "Cannot find a finalized iOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
++		exit 1;\
++	fi
 +
-+	# Run the testbed project
-+	$(PYTHON_FOR_BUILD) "$(XCFOLDER-iOS)" run --verbose -- test -uall --single-process --rerun -W
+ 	@if test "$(findstring -iphonesimulator,$(MULTIARCH))" != "-iphonesimulator"; then \
+-		echo "Cannot run the iOS testbed for non-simulator builds."; \
++		if test "$(findstring -macabi,$(MULTIARCH))" != "-macabi"; then \
++			echo "Cannot run the iOS testbed for device builds."; \
++			exit 1;\
++		else \
++			$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed --catalyst clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-iOS)"; \
++			$(PYTHON_FOR_BUILD) "$(XCFOLDER-iOS)" --catalyst run --verbose -- test -uall --single-process --rerun -W; \
++		fi \
++	else \
++		$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-iOS)"; \
++		$(PYTHON_FOR_BUILD) "$(XCFOLDER-iOS)" run --verbose -- test -uall --single-process --rerun -W; \
++	fi
 +
 +# Run the test suite on the visionOS simulator. Must be run on a macOS machine with
 +# a full Xcode install that has an Apple Vision Pro simulator available.
@@ -453,17 +913,21 @@ index b5703fbe6ae..e436b2efb8e 100644
 +	fi
 +	@if test "$(findstring -xrsimulator,$(MULTIARCH))" != "-xrsimulator"; then \
 +		echo "Cannot run the visionOS testbed for non-simulator builds."; \
-+		exit 1;\
-+	fi
-+	@if test $(PYTHONFRAMEWORK) != "Python"; then \
+ 		exit 1;\
+ 	fi
+ 	@if test $(PYTHONFRAMEWORK) != "Python"; then \
+-		echo "Cannot run the iOS testbed with a non-default framework name."; \
 +		echo "Cannot run the visionOS testbed with a non-default framework name."; \
-+		exit 1;\
-+	fi
-+	@if ! test -d $(PYTHONFRAMEWORKPREFIX); then \
+ 		exit 1;\
+ 	fi
+ 	@if ! test -d $(PYTHONFRAMEWORKPREFIX); then \
+-		echo "Cannot find a finalized iOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
 +		echo "Cannot find a finalized visionOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
-+		exit 1;\
-+	fi
-+
+ 		exit 1;\
+ 	fi
+ 
+-	# Clone the testbed project into the XCFOLDER
+-	$(PYTHON_FOR_BUILD) $(srcdir)/iOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
 +	# Clone the testbed project into the XCFOLDER-visionOS
 +	$(PYTHON_FOR_BUILD) $(srcdir)/visionOS/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER-visionOS)"
  
@@ -473,11 +937,44 @@ index b5703fbe6ae..e436b2efb8e 100644
  
  # Like test, but using --slow-ci which enables all test resources and use
  # longer timeout. Run an optional pybuildbot.identify script to include
+@@ -2977,7 +3016,7 @@
+ 		fi; \
+ 	done
+ 	$(LN) -fsn include/python$(LDVERSION) $(DESTDIR)$(prefix)/Headers
+-	sed 's/%VERSION%/'"`$(RUNSHARED) ./$(BUILDPYTHON) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(prefix)/Resources/Info.plist
++	sed 's/%VERSION%/'"`$(RUNSHARED) ./$(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(prefix)/Resources/Info.plist
+ 	$(LN) -fsn $(VERSION) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Versions/Current
+ 	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/$(PYTHONFRAMEWORK)
+ 	$(LN) -fsn Versions/Current/Headers $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Headers
+@@ -3005,6 +3044,14 @@
+ 		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
+ 	done
+ 
++# Stub compilation assistance binaries are installed separately on Mac Catalyst.
++.PHONY: frameworkinstallcatalyststubs
++frameworkinstallcatalyststubs:	$(LDLIBRARY)
++	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
++	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
++		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
++	done
++
+ # This installs Mac/Lib into the framework
+ # Install a number of symlinks to keep software that expects a normal unix
+ # install (which includes python-config) happy.
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
-index f5cd73bdea8..6c1863c943b 100644
+index f5cd73bdea8..ba634ae1699 100644
 --- a/Misc/platform_triplet.c
 +++ b/Misc/platform_triplet.c
-@@ -257,6 +257,32 @@
+@@ -254,9 +254,41 @@
+ #      else
+ PLATFORM_TRIPLET=arm64-iphonesimulator
+ #      endif
++#    elif defined(TARGET_OS_MACCATALYST) && TARGET_OS_MACCATALYST
++#      if __x86_64__
++PLATFORM_TRIPLET=x86_64-iphoneos-macabi
++#      else
++PLATFORM_TRIPLET=arm64-iphoneos-macabi
++#      endif
  #    else
  PLATFORM_TRIPLET=arm64-iphoneos
  #    endif
@@ -511,7 +1008,7 @@ index f5cd73bdea8..6c1863c943b 100644
  #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
  PLATFORM_TRIPLET=darwin
 diff --git a/config.sub b/config.sub
-index 1bb6a05dc11..49febd56a37 100755
+index 1bb6a05dc11..6efa3fbf821 100755
 --- a/config.sub
 +++ b/config.sub
 @@ -1743,7 +1743,7 @@
@@ -523,23 +1020,35 @@ index 1bb6a05dc11..49febd56a37 100755
  	     | mpw* | magic* | mmixware* | mon960* | lnews* \
  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
-@@ -1867,7 +1867,7 @@
+@@ -1769,7 +1769,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* | mlibc* | cos* | mbr* | ironclad* )
++	     | fiwix* | mlibc* | cos* | mbr* | ironclad* | macabi)
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+@@ -1867,7 +1867,9 @@
  		;;
  	*-eabi*- | *-gnueabi*-)
  		;;
 -	ios*-simulator- | tvos*-simulator- | watchos*-simulator- )
 +	ios*-simulator- | tvos*-simulator- | watchos*-simulator- | xros*-simulator-)
++		;;
++	ios*-macabi- )
  		;;
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index 884f8a4b068..7c93d36e717 100755
+index 884f8a4b068..64b6e3ce2b3 100755
 --- a/configure
 +++ b/configure
-@@ -982,6 +982,10 @@
+@@ -982,6 +982,11 @@
  CFLAGS
  CC
  HAS_XCRUN
++CATALYST_MACOS_VERSION
 +EXPORT_XROS_DEPLOYMENT_TARGET
 +XROS_DEPLOYMENT_TARGET
 +WATCHOS_DEPLOYMENT_TARGET
@@ -547,7 +1056,25 @@ index 884f8a4b068..7c93d36e717 100755
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
-@@ -4116,6 +4120,15 @@
+@@ -1085,6 +1090,7 @@
+ with_framework_name
+ enable_framework
+ with_app_store_compliance
++with_catalyst_macos_version
+ enable_wasm_dynamic_linking
+ enable_wasm_pthreads
+ with_suffix
+@@ -1874,6 +1880,9 @@
+                           Enable any patches required for compiliance with app
+                           stores. Optional PATCH-FILE specifies the custom
+                           patch to apply.
++  --with-catalyst-macos-version=VER
++                          The minimum macOS version a Catalyst build can run
++                          on (only valid for *-apple-ios*-macabi targets)
+   --with-suffix=SUFFIX    set executable suffix to SUFFIX (default is empty,
+                           yes is mapped to '.exe')
+   --without-static-libpython
+@@ -4116,6 +4125,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
  		;;
@@ -563,7 +1090,7 @@ index 884f8a4b068..7c93d36e717 100755
  	*-*-darwin*)
  		ac_sys_system=Darwin
  		;;
-@@ -4197,7 +4210,7 @@
+@@ -4197,7 +4215,7 @@
  # On cross-compile builds, configure will look for a host-specific compiler by
  # prepending the user-provided host triple to the required binary name.
  #
@@ -572,10 +1099,17 @@ index 884f8a4b068..7c93d36e717 100755
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -4212,6 +4225,17 @@
+@@ -4209,33 +4227,89 @@
+ # configure will fail.
+ if test -z "$AR"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  AR=x86_64-apple-ios-macabi-ar ;;
++		aarch64-apple-ios*-macabi) AR=arm64-apple-ios-macabi-ar ;;
++
++		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
- 		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
+-		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
 +
 +		aarch64-apple-tvos*-simulator) AR=arm64-apple-tvos-simulator-ar ;;
 +		aarch64-apple-tvos*)           AR=arm64-apple-tvos-ar ;;
@@ -590,10 +1124,15 @@ index 884f8a4b068..7c93d36e717 100755
  		*)
  	esac
  fi
-@@ -4220,6 +4244,17 @@
+ if test -z "$CC"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CC=x86_64-apple-ios-macabi-clang ;;
++		aarch64-apple-ios*-macabi) CC=arm64-apple-ios-macabi-clang ;;
++
++		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
- 		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
+-		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
 +
 +		aarch64-apple-tvos*-simulator) CC=arm64-apple-tvos-simulator-clang ;;
 +		aarch64-apple-tvos*)           CC=arm64-apple-tvos-clang ;;
@@ -608,10 +1147,15 @@ index 884f8a4b068..7c93d36e717 100755
  		*)
  	esac
  fi
-@@ -4228,6 +4263,17 @@
+ if test -z "$CPP"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CPP=x86_64-apple-ios-macabi-cpp ;;
++		aarch64-apple-ios*-macabi) CPP=arm64-apple-ios-macabi-cpp ;;
++
++		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
- 		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
+-		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
 +
 +		aarch64-apple-tvos*-simulator) CPP=arm64-apple-tvos-simulator-cpp ;;
 +		aarch64-apple-tvos*)           CPP=arm64-apple-tvos-cpp ;;
@@ -626,10 +1170,15 @@ index 884f8a4b068..7c93d36e717 100755
  		*)
  	esac
  fi
-@@ -4236,6 +4282,17 @@
+ if test -z "$CXX"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CXX=x86_64-apple-ios-macabi-clang++ ;;
++		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
++
++		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
- 		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
+-		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CXX=arm64-apple-tvos-simulator-clang++ ;;
 +		aarch64-apple-tvos*)           CXX=arm64-apple-tvos-clang++ ;;
@@ -644,7 +1193,7 @@ index 884f8a4b068..7c93d36e717 100755
  		*)
  	esac
  fi
-@@ -4358,8 +4415,11 @@
+@@ -4358,8 +4432,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -658,7 +1207,7 @@ index 884f8a4b068..7c93d36e717 100755
  			*) as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
  		esac
  	esac
-@@ -4368,6 +4428,9 @@
+@@ -4368,6 +4445,9 @@
  	no)
  		case $ac_sys_system in
  			iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -668,10 +1217,39 @@ index 884f8a4b068..7c93d36e717 100755
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -4474,6 +4537,51 @@
+@@ -4461,6 +4541,67 @@
  
- 				ac_config_files="$ac_config_files iOS/Resources/Info.plist"
- 
+ 				;;
+ 			iOS) :
++				_flag_ios_catalyst=`echo $host | cut -d '-' -f4`
++				case $_flag_ios_catalyst in
++					macabi)
++						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs "
++						FRAMEWORKINSTALLLAST=""
++						FRAMEWORKALTINSTALLLAST=""
++						FRAMEWORKPYTHONW=
++						INSTALLTARGETS="libinstall inclinstall sharedinstall"
++						prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++						PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR/Versions/$VERSION"
++						RESSRCDIR=MacCatalyst/Resources
++						ac_config_files="$ac_config_files MacCatalyst/Resources/Info.plist"
++
++						;;
++					*)
++						FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
++						FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++						FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++						FRAMEWORKPYTHONW=
++						INSTALLTARGETS="libinstall inclinstall sharedinstall"
++						prefix=$PYTHONFRAMEWORKPREFIX
++						PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++						RESSRCDIR=iOS/Resources
++						ac_config_files="$ac_config_files iOS/Resources/Info.plist"
++
++					;;
++				esac
 +				;;
 +			tvOS) :
 +				FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
@@ -704,23 +1282,22 @@ index 884f8a4b068..7c93d36e717 100755
 +
 +				;;
 +			visionOS) :
-+				FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
-+				FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
-+				FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
-+				FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
-+				FRAMEWORKPYTHONW=
-+				INSTALLTARGETS="libinstall inclinstall sharedinstall"
-+
-+				prefix=$PYTHONFRAMEWORKPREFIX
-+				PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
+ 				FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
+ 				FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
+ 				FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
+@@ -4470,9 +4611,9 @@
+ 
+ 				prefix=$PYTHONFRAMEWORKPREFIX
+ 				PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
+-				RESSRCDIR=iOS/Resources
 +				RESSRCDIR=visionOS/Resources
-+
+ 
+-				ac_config_files="$ac_config_files iOS/Resources/Info.plist"
 +				ac_config_files="$ac_config_files visionOS/Resources/Info.plist"
-+
+ 
  				;;
  			*)
- 				as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
-@@ -4485,6 +4593,9 @@
+@@ -4485,6 +4626,9 @@
    e)
  	case $ac_sys_system in
  		iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
@@ -730,7 +1307,7 @@ index 884f8a4b068..7c93d36e717 100755
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -4539,8 +4650,8 @@
+@@ -4539,8 +4683,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -741,7 +1318,7 @@ index 884f8a4b068..7c93d36e717 100755
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) as_fn_error $? "no default app store compliance patch available for $ac_sys_system" "$LINENO" 5 ;;
-@@ -4558,8 +4669,8 @@
+@@ -4558,8 +4702,8 @@
  else case e in #(
    e)
      case $ac_sys_system in
@@ -752,16 +1329,77 @@ index 884f8a4b068..7c93d36e717 100755
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: applying default app store compliance patch" >&5
  printf "%s\n" "applying default app store compliance patch" >&6; }
-@@ -4577,6 +4688,8 @@
+@@ -4578,6 +4722,40 @@
  
  
  
++
++# Check whether --with-catalyst-macos-version was given.
++if test ${with_catalyst_macos_version+y}
++then :
++  withval=$with_catalyst_macos_version; case "$host" in
++    *-apple-ios*-macabi)
++      CATALYST_MACOS_VERSION="$withval"
++      ;;
++    *)
++      as_fn_error $? "--with-catalyst-macos-version is only valid when targeting Mac Catalyst (*-apple-ios*-macabi)." "$LINENO" 5
++      ;;
++   esac
++
++else case e in #(
++  e) case "$host" in
++    *-apple-ios*-macabi)
++      CATALYST_MACOS_VERSION=11.2
++      ;;
++    *)
++      CATALYST_MACOS_VERSION=
++      ;;
++    esac
++
++ ;;
++esac
++fi
++
++
++
++
++
 +EXPORT_XROS_DEPLOYMENT_TARGET='#'
 +
- 
++
  if test "$cross_compiling" = yes; then
  	case "$host" in
-@@ -4614,6 +4727,78 @@
+ 	*-*-linux*)
+@@ -4592,6 +4770,28 @@
+ 	*-*-cygwin*)
+ 		_host_ident=
+ 		;;
++	*-apple-ios*-macabi)
++		_host_os=`echo $host | cut -d '-' -f3`
++		_host_device=`echo $host | cut -d '-' -f4`   # should be macabi
++		_host_device=${_host_device:=os}
++
++		# IPHONEOS_DEPLOYMENT_TARGET is the minimum supported iOS version
++		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking iOS deployment target" >&5
++printf %s "checking iOS deployment target... " >&6; }
++		IPHONEOS_DEPLOYMENT_TARGET=$(echo ${_host_os} | cut -c4-)
++		IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:=14.2}  # else it returns invalid version number
++		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $IPHONEOS_DEPLOYMENT_TARGET" >&5
++printf "%s\n" "$IPHONEOS_DEPLOYMENT_TARGET" >&6; }
++
++		case "$host_cpu" in
++			aarch64)
++				_host_ident=${IPHONEOS_DEPLOYMENT_TARGET}-arm64-iphoneos-${_host_device}   # platform_triplet.c uses iphoneos-macabi
++				;;
++			*)
++				_host_ident=${IPHONEOS_DEPLOYMENT_TARGET}-$host_cpu-iphoneos-${_host_device}
++				;;
++		esac
++		;;
+ 	*-apple-ios*)
+ 		_host_os=`echo $host | cut -d '-' -f3`
+ 		_host_device=`echo $host | cut -d '-' -f4`
+@@ -4614,6 +4814,78 @@
  				;;
  		esac
  		;;
@@ -840,7 +1478,7 @@ index 884f8a4b068..7c93d36e717 100755
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -4704,9 +4889,15 @@
+@@ -4704,9 +4976,15 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -857,7 +1495,7 @@ index 884f8a4b068..7c93d36e717 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -4769,7 +4960,13 @@
+@@ -4769,7 +5047,17 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -869,10 +1507,14 @@ index 884f8a4b068..7c93d36e717 100755
 +
 +
 +# XROS_DEPLOYMENT_TARGET should get exported
++
++
++# The minimum macOS version that a Mac Catalyst build can run on.
++
  
  
  # checks for alternative programs
-@@ -4810,6 +5007,16 @@
+@@ -4810,6 +5098,16 @@
      as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
      as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
     ;; #(
@@ -889,7 +1531,7 @@ index 884f8a4b068..7c93d36e717 100755
    *) :
       ;;
  esac
-@@ -7179,6 +7386,12 @@
+@@ -7179,6 +7477,12 @@
      MULTIARCH="" ;; #(
    iOS) :
      MULTIARCH="" ;; #(
@@ -902,7 +1544,7 @@ index 884f8a4b068..7c93d36e717 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -7199,7 +7412,7 @@
+@@ -7199,7 +7503,7 @@
  printf "%s\n" "$MULTIARCH" >&6; }
  
  case $ac_sys_system in #(
@@ -911,7 +1553,15 @@ index 884f8a4b068..7c93d36e717 100755
      SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f2` ;; #(
    *) :
      SOABI_PLATFORM=$PLATFORM_TRIPLET
-@@ -7250,6 +7463,18 @@
+@@ -7246,10 +7550,26 @@
+     PY_SUPPORT_TIER=3 ;; #(
+     x86_64-*-freebsd*/clang) :
+     PY_SUPPORT_TIER=3 ;; #(
++    aarch64-apple-ios*-macabi/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
++    x86_64-apple-ios*-macabi/clang) :
++    PY_SUPPORT_TIER=3 ;; #(
+     aarch64-apple-ios*-simulator/clang) :
      PY_SUPPORT_TIER=3 ;; #(
      aarch64-apple-ios*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
@@ -930,7 +1580,7 @@ index 884f8a4b068..7c93d36e717 100755
      aarch64-*-linux-android/clang) :
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-linux-android/clang) :
-@@ -7686,7 +7911,7 @@
+@@ -7686,7 +8006,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -939,7 +1589,7 @@ index 884f8a4b068..7c93d36e717 100755
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        as_fn_error $? "Unknown platform for framework build" "$LINENO" 5;;
-@@ -7752,7 +7977,7 @@
+@@ -7752,7 +8072,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -948,7 +1598,7 @@ index 884f8a4b068..7c93d36e717 100755
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -13574,7 +13799,7 @@
+@@ -13574,7 +13894,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -957,7 +1607,7 @@ index 884f8a4b068..7c93d36e717 100755
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -13707,7 +13932,7 @@
+@@ -13707,7 +14027,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -966,7 +1616,7 @@ index 884f8a4b068..7c93d36e717 100755
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -13731,7 +13956,7 @@
+@@ -13731,7 +14051,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -975,7 +1625,7 @@ index 884f8a4b068..7c93d36e717 100755
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -15508,7 +15733,7 @@
+@@ -15508,7 +15828,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -984,7 +1634,7 @@ index 884f8a4b068..7c93d36e717 100755
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -19260,12 +19485,6 @@
+@@ -19260,12 +19580,6 @@
  then :
    printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
  
@@ -997,7 +1647,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -19326,18 +19545,6 @@
+@@ -19326,18 +19640,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -1016,7 +1666,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -19764,24 +19971,6 @@
+@@ -19764,24 +20066,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
@@ -1041,7 +1691,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -20100,12 +20289,6 @@
+@@ -20100,12 +20384,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -1054,7 +1704,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -20374,11 +20557,11 @@
+@@ -20374,11 +20652,11 @@
  
  fi
  
@@ -1068,7 +1718,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
  if test "x$ac_cv_func_getentropy" = xyes
  then :
-@@ -20400,6 +20583,53 @@
+@@ -20400,6 +20678,53 @@
  
  fi
  
@@ -1122,7 +1772,7 @@ index 884f8a4b068..7c93d36e717 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -23844,7 +24074,8 @@
+@@ -23844,7 +24169,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -1132,7 +1782,7 @@ index 884f8a4b068..7c93d36e717 100755
  
    for ac_func in openpty
  do :
-@@ -23958,7 +24189,7 @@
+@@ -23958,7 +24284,7 @@
  fi
  
  done
@@ -1141,7 +1791,7 @@ index 884f8a4b068..7c93d36e717 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -24141,6 +24372,7 @@
+@@ -24141,6 +24467,7 @@
  fi
  
  done
@@ -1149,7 +1799,7 @@ index 884f8a4b068..7c93d36e717 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -24406,10 +24638,10 @@
+@@ -24406,10 +24733,10 @@
  
  done
  
@@ -1162,7 +1812,7 @@ index 884f8a4b068..7c93d36e717 100755
  then
  
    for ac_func in clock_settime
-@@ -24726,7 +24958,7 @@
+@@ -24726,7 +25053,7 @@
    e) if test "$cross_compiling" = yes
  then :
  
@@ -1171,7 +1821,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -26748,8 +26980,8 @@
+@@ -26748,8 +27075,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1182,7 +1832,7 @@ index 884f8a4b068..7c93d36e717 100755
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -29619,7 +29851,7 @@
+@@ -29619,7 +29946,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -1191,7 +1841,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -30129,7 +30361,7 @@
+@@ -30129,7 +30456,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -1200,7 +1850,7 @@ index 884f8a4b068..7c93d36e717 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -31078,7 +31310,7 @@
+@@ -31078,7 +31405,7 @@
    SunOS*) _PYTHREAD_NAME_MAXLEN=31;;
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
@@ -1209,18 +1859,36 @@ index 884f8a4b068..7c93d36e717 100755
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
    *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -31110,7 +31342,7 @@
+@@ -31110,8 +31437,15 @@
   ;; #(
      Darwin) :
       ;; #(
 -  iOS) :
 +  iOS|tvOS|watchOS|visionOS) :
  
++                        case "$_host_device" in
++      macabi) ;;
++      *)
++
++    py_cv_module__posixsubprocess=n/a
++ ;;
++    esac
  
  
-@@ -35272,6 +35504,9 @@
+     py_cv_module__curses=n/a
+@@ -31119,7 +31453,6 @@
+     py_cv_module__gdbm=n/a
+     py_cv_module__multiprocessing=n/a
+     py_cv_module__posixshmem=n/a
+-    py_cv_module__posixsubprocess=n/a
+     py_cv_module__scproxy=n/a
+     py_cv_module__tkinter=n/a
+     py_cv_module_grp=n/a
+@@ -35271,7 +35604,11 @@
+     "Mac/PythonLauncher/Makefile") CONFIG_FILES="$CONFIG_FILES Mac/PythonLauncher/Makefile" ;;
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
++    "MacCatalyst/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES MacCatalyst/Resources/Info.plist" ;;
      "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
 +    "tvOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES tvOS/Resources/Info.plist" ;;
 +    "watchOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES watchOS/Resources/Info.plist" ;;
@@ -1229,7 +1897,7 @@ index 884f8a4b068..7c93d36e717 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index cf25148bad2..7ab0609bf8a 100644
+index cf25148bad2..71957cbbaae 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@
@@ -1257,10 +1925,17 @@ index cf25148bad2..7ab0609bf8a 100644
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -420,6 +429,17 @@
+@@ -417,33 +426,89 @@
+ # configure will fail.
+ if test -z "$AR"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  AR=x86_64-apple-ios-macabi-ar ;;
++		aarch64-apple-ios*-macabi) AR=arm64-apple-ios-macabi-ar ;;
++
++		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
- 		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
+-		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
 +
 +		aarch64-apple-tvos*-simulator) AR=arm64-apple-tvos-simulator-ar ;;
 +		aarch64-apple-tvos*)           AR=arm64-apple-tvos-ar ;;
@@ -1275,10 +1950,15 @@ index cf25148bad2..7ab0609bf8a 100644
  		*)
  	esac
  fi
-@@ -428,6 +448,17 @@
+ if test -z "$CC"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CC=x86_64-apple-ios-macabi-clang ;;
++		aarch64-apple-ios*-macabi) CC=arm64-apple-ios-macabi-clang ;;
++
++		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
- 		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
+-		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
 +
 +		aarch64-apple-tvos*-simulator) CC=arm64-apple-tvos-simulator-clang ;;
 +		aarch64-apple-tvos*)           CC=arm64-apple-tvos-clang ;;
@@ -1293,10 +1973,15 @@ index cf25148bad2..7ab0609bf8a 100644
  		*)
  	esac
  fi
-@@ -436,6 +467,17 @@
+ if test -z "$CPP"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CPP=x86_64-apple-ios-macabi-cpp ;;
++		aarch64-apple-ios*-macabi) CPP=arm64-apple-ios-macabi-cpp ;;
++
++		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
- 		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
+-		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
 +
 +		aarch64-apple-tvos*-simulator) CPP=arm64-apple-tvos-simulator-cpp ;;
 +		aarch64-apple-tvos*)           CPP=arm64-apple-tvos-cpp ;;
@@ -1311,10 +1996,15 @@ index cf25148bad2..7ab0609bf8a 100644
  		*)
  	esac
  fi
-@@ -444,6 +486,17 @@
+ if test -z "$CXX"; then
+ 	case "$host" in
++		x86_64-apple-ios*-macabi)  CXX=x86_64-apple-ios-macabi-clang++ ;;
++		aarch64-apple-ios*-macabi) CXX=arm64-apple-ios-macabi-clang++ ;;
++
++		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
- 		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
+-		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
 +
 +		aarch64-apple-tvos*-simulator) CXX=arm64-apple-tvos-simulator-clang++ ;;
 +		aarch64-apple-tvos*)           CXX=arm64-apple-tvos-clang++ ;;
@@ -1329,7 +2019,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		*)
  	esac
  fi
-@@ -558,8 +611,11 @@
+@@ -558,8 +623,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -1343,7 +2033,7 @@ index cf25148bad2..7ab0609bf8a 100644
  			*) AC_MSG_ERROR([Unknown platform for framework build])
  		esac
  	esac
-@@ -568,6 +624,9 @@
+@@ -568,6 +636,9 @@
  	no)
  		case $ac_sys_system in
  			iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -1353,22 +2043,50 @@ index cf25148bad2..7ab0609bf8a 100644
  			*)
  				PYTHONFRAMEWORK=
  				PYTHONFRAMEWORKDIR=no-framework
-@@ -670,6 +729,48 @@
- 
- 				AC_CONFIG_FILES([iOS/Resources/Info.plist])
+@@ -657,6 +728,35 @@
+ 				AC_CONFIG_FILES([Mac/Resources/app/Info.plist])
  				;;
+ 			iOS) :
++				_flag_ios_catalyst=`echo $host | cut -d '-' -f4`
++				case $_flag_ios_catalyst in
++					macabi)
++						FRAMEWORKINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallversionedstructure frameworkinstallcatalyststubs "
++						FRAMEWORKINSTALLLAST=""
++						FRAMEWORKALTINSTALLLAST=""
++						FRAMEWORKPYTHONW=
++						INSTALLTARGETS="libinstall inclinstall sharedinstall"
++						prefix=$PYTHONFRAMEWORKINSTALLDIR/Versions/$VERSION
++						PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR/Versions/$VERSION"
++						RESSRCDIR=MacCatalyst/Resources
++						AC_CONFIG_FILES([MacCatalyst/Resources/Info.plist])
++						;;
++					*)
++						FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
++						FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
++						FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
++						FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
++						FRAMEWORKPYTHONW=
++						INSTALLTARGETS="libinstall inclinstall sharedinstall"
++						prefix=$PYTHONFRAMEWORKPREFIX
++						PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
++						RESSRCDIR=iOS/Resources
++						AC_CONFIG_FILES([iOS/Resources/Info.plist])
++					;;
++				esac
++				;;
 +			tvOS) :
-+				FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
-+				FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
-+				FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
-+				FRAMEWORKALTINSTALLLAST="frameworkinstallmobileheaders"
-+				FRAMEWORKPYTHONW=
-+				INSTALLTARGETS="libinstall inclinstall sharedinstall"
-+
-+				prefix=$PYTHONFRAMEWORKPREFIX
-+				PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
+ 				FRAMEWORKINSTALLFIRST="frameworkinstallunversionedstructure"
+ 				FRAMEWORKALTINSTALLFIRST="frameworkinstallunversionedstructure "
+ 				FRAMEWORKINSTALLLAST="frameworkinstallmobileheaders"
+@@ -666,9 +766,37 @@
+ 
+ 				prefix=$PYTHONFRAMEWORKPREFIX
+ 				PYTHONFRAMEWORKINSTALLNAMEPREFIX="@rpath/$PYTHONFRAMEWORKDIR"
+-				RESSRCDIR=iOS/Resources
 +				RESSRCDIR=tvOS/Resources
-+
+ 
+-				AC_CONFIG_FILES([iOS/Resources/Info.plist])
 +				AC_CONFIG_FILES([tvOS/Resources/Info.plist])
 +				;;
 +			watchOS) :
@@ -1398,11 +2116,10 @@ index cf25148bad2..7ab0609bf8a 100644
 +				RESSRCDIR=visionOS/Resources
 +
 +				AC_CONFIG_FILES([visionOS/Resources/Info.plist])
-+				;;
+ 				;;
  			*)
  				AC_MSG_ERROR([Unknown platform for framework build])
- 				;;
-@@ -678,6 +779,9 @@
+@@ -678,6 +806,9 @@
  	],[
  	case $ac_sys_system in
  		iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
@@ -1412,7 +2129,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		*)
  			PYTHONFRAMEWORK=
  			PYTHONFRAMEWORKDIR=no-framework
-@@ -730,8 +834,8 @@
+@@ -730,8 +861,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -1423,7 +2140,7 @@ index cf25148bad2..7ab0609bf8a 100644
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) AC_MSG_ERROR([no default app store compliance patch available for $ac_sys_system]) ;;
-@@ -745,8 +849,8 @@
+@@ -745,8 +876,8 @@
      esac
    ],[
      case $ac_sys_system in
@@ -1434,16 +2151,70 @@ index cf25148bad2..7ab0609bf8a 100644
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          AC_MSG_RESULT([applying default app store compliance patch])
          ;;
-@@ -759,6 +863,8 @@
+@@ -759,6 +890,35 @@
  ])
  AC_SUBST([APP_STORE_COMPLIANCE_PATCH])
  
++
++AC_ARG_WITH([catalyst-macos-version],
++  [AS_HELP_STRING([--with-catalyst-macos-version=VER],
++  [The minimum macOS version a Catalyst build can run on (only valid for *-apple-ios*-macabi targets)])],
++  [case "$host" in
++    *-apple-ios*-macabi)
++      CATALYST_MACOS_VERSION="$withval"
++      ;;
++    *)
++      AC_MSG_ERROR([--with-catalyst-macos-version is only valid when targeting Mac Catalyst (*-apple-ios*-macabi).])
++      ;;
++   esac
++  ],
++  [case "$host" in
++    *-apple-ios*-macabi)
++      CATALYST_MACOS_VERSION=11.2
++      ;;
++    *)
++      CATALYST_MACOS_VERSION=
++      ;;
++    esac
++  ]
++)
++
++
++
++
 +EXPORT_XROS_DEPLOYMENT_TARGET='#'
 +
  AC_SUBST([_PYTHON_HOST_PLATFORM])
  if test "$cross_compiling" = yes; then
  	case "$host" in
-@@ -794,6 +900,70 @@
+@@ -774,6 +934,26 @@
+ 	*-*-cygwin*)
+ 		_host_ident=
+ 		;;
++	*-apple-ios*-macabi)
++		_host_os=`echo $host | cut -d '-' -f3`
++		_host_device=`echo $host | cut -d '-' -f4`   # should be macabi
++		_host_device=${_host_device:=os}
++
++		# IPHONEOS_DEPLOYMENT_TARGET is the minimum supported iOS version
++		AC_MSG_CHECKING([iOS deployment target])
++		IPHONEOS_DEPLOYMENT_TARGET=$(echo ${_host_os} | cut -c4-)
++		IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:=14.2}  # else it returns invalid version number
++		AC_MSG_RESULT([$IPHONEOS_DEPLOYMENT_TARGET])
++
++		case "$host_cpu" in
++			aarch64)
++				_host_ident=${IPHONEOS_DEPLOYMENT_TARGET}-arm64-iphoneos-${_host_device}   # platform_triplet.c uses iphoneos-macabi
++				;;
++			*)
++				_host_ident=${IPHONEOS_DEPLOYMENT_TARGET}-$host_cpu-iphoneos-${_host_device}
++				;;
++		esac
++		;;
+ 	*-apple-ios*)
+ 		_host_os=`echo $host | cut -d '-' -f3`
+ 		_host_device=`echo $host | cut -d '-' -f4`
+@@ -794,6 +974,70 @@
  				;;
  		esac
  		;;
@@ -1514,7 +2285,7 @@ index cf25148bad2..7ab0609bf8a 100644
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -883,9 +1053,15 @@
+@@ -883,9 +1127,15 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -1531,7 +2302,7 @@ index cf25148bad2..7ab0609bf8a 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -944,8 +1120,14 @@
+@@ -944,8 +1194,18 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -1544,10 +2315,14 @@ index cf25148bad2..7ab0609bf8a 100644
 +AC_SUBST([XROS_DEPLOYMENT_TARGET])
 +# XROS_DEPLOYMENT_TARGET should get exported
 +AC_SUBST([EXPORT_XROS_DEPLOYMENT_TARGET])
++
++# The minimum macOS version that a Mac Catalyst build can run on.
++AC_SUBST([CATALYST_MACOS_VERSION])
++
  
  # checks for alternative programs
  
-@@ -979,11 +1161,19 @@
+@@ -979,11 +1239,19 @@
    ],
  )
  
@@ -1568,7 +2343,7 @@ index cf25148bad2..7ab0609bf8a 100644
    ],
  )
  
-@@ -1172,6 +1362,9 @@
+@@ -1172,6 +1440,9 @@
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
    [iOS], [MULTIARCH=""],
@@ -1578,7 +2353,7 @@ index cf25148bad2..7ab0609bf8a 100644
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
-@@ -1193,7 +1386,7 @@
+@@ -1193,7 +1464,7 @@
  dnl use a single "fat" binary at runtime. SOABI_PLATFORM is the component of
  dnl the PLATFORM_TRIPLET that will be used in binary module extensions.
  AS_CASE([$ac_sys_system],
@@ -1587,8 +2362,12 @@ index cf25148bad2..7ab0609bf8a 100644
    [SOABI_PLATFORM=$PLATFORM_TRIPLET]
  )
  
-@@ -1227,6 +1420,12 @@
+@@ -1225,8 +1496,16 @@
+   [powerpc64le-*-linux-gnu/clang],   [PY_SUPPORT_TIER=3], dnl Linux on PPC64 little endian, glibc, clang
+   [s390x-*-linux-gnu/gcc],           [PY_SUPPORT_TIER=3], dnl Linux on 64bit s390x (big endian), glibc, gcc
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
++  [aarch64-apple-ios*-macabi/clang],      [PY_SUPPORT_TIER=3], dnl MacCatalyst on arm64
++  [x86_64-apple-ios*-macabi/clang],       [PY_SUPPORT_TIER=3], dnl MacCatalyst on x86_64
    [aarch64-apple-ios*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
    [aarch64-apple-ios*/clang],             [PY_SUPPORT_TIER=3], dnl iOS on ARM64
 +  [aarch64-apple-tvos*-simulator/clang],  [PY_SUPPORT_TIER=3], dnl tvOS Simulator on arm64
@@ -1600,7 +2379,7 @@ index cf25148bad2..7ab0609bf8a 100644
    [aarch64-*-linux-android/clang],   [PY_SUPPORT_TIER=3], dnl Android on ARM64
    [x86_64-*-linux-android/clang],    [PY_SUPPORT_TIER=3], dnl Android on AMD64
  
-@@ -1536,7 +1735,7 @@
+@@ -1536,7 +1815,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -1609,7 +2388,7 @@ index cf25148bad2..7ab0609bf8a 100644
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        AC_MSG_ERROR([Unknown platform for framework build]);;
-@@ -1601,7 +1800,7 @@
+@@ -1601,7 +1880,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -1618,7 +2397,7 @@ index cf25148bad2..7ab0609bf8a 100644
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -3470,7 +3669,7 @@
+@@ -3470,7 +3749,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -1627,7 +2406,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3594,7 +3793,7 @@
+@@ -3594,7 +3873,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -1636,7 +2415,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3618,7 +3817,7 @@
+@@ -3618,7 +3897,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -1645,7 +2424,7 @@ index cf25148bad2..7ab0609bf8a 100644
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -4106,7 +4305,7 @@
+@@ -4106,7 +4385,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -1654,7 +2433,7 @@ index cf25148bad2..7ab0609bf8a 100644
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5215,9 +5414,9 @@
+@@ -5215,9 +5494,9 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock closefrom close_range confstr \
@@ -1666,7 +2445,7 @@ index cf25148bad2..7ab0609bf8a 100644
    gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
    getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5225,8 +5424,7 @@
+@@ -5225,8 +5504,7 @@
    getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
    mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
@@ -1676,7 +2455,7 @@ index cf25148bad2..7ab0609bf8a 100644
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill pthread_get_name_np pthread_getname_np pthread_set_name_np
-@@ -5236,7 +5434,7 @@
+@@ -5236,7 +5514,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
    setitimer setlocale setpgid setpgrp setpriority setregid setresgid \
@@ -1685,7 +2464,7 @@ index cf25148bad2..7ab0609bf8a 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5251,12 +5449,20 @@
+@@ -5251,12 +5529,20 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -1709,7 +2488,7 @@ index cf25148bad2..7ab0609bf8a 100644
  fi
  
  AC_CHECK_DECL([dirfd],
-@@ -5539,20 +5745,22 @@
+@@ -5539,20 +5825,22 @@
  ])
  
  # check for openpty, login_tty, and forkpty
@@ -1746,7 +2525,7 @@ index cf25148bad2..7ab0609bf8a 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5591,10 +5799,10 @@
+@@ -5591,10 +5879,10 @@
      ])
  ])
  
@@ -1759,7 +2538,7 @@ index cf25148bad2..7ab0609bf8a 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -5752,7 +5960,7 @@
+@@ -5752,7 +6040,7 @@
  [ac_cv_buggy_getaddrinfo=no],
  [ac_cv_buggy_getaddrinfo=yes],
  [
@@ -1768,7 +2547,7 @@ index cf25148bad2..7ab0609bf8a 100644
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -6345,8 +6553,8 @@
+@@ -6345,8 +6633,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1779,7 +2558,7 @@ index cf25148bad2..7ab0609bf8a 100644
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -7005,7 +7213,7 @@
+@@ -7005,7 +7293,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -1788,7 +2567,7 @@ index cf25148bad2..7ab0609bf8a 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7307,7 +7515,7 @@
+@@ -7307,7 +7595,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -1797,7 +2576,7 @@ index cf25148bad2..7ab0609bf8a 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7694,7 +7902,7 @@
+@@ -7694,7 +7982,7 @@
    SunOS*) _PYTHREAD_NAME_MAXLEN=31;;
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
@@ -1806,7 +2585,7 @@ index cf25148bad2..7ab0609bf8a 100644
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
    *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -7719,7 +7927,7 @@
+@@ -7719,18 +8007,22 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
@@ -1815,6 +2594,22 @@ index cf25148bad2..7ab0609bf8a 100644
      dnl subprocess and multiprocessing are not supported (no fork syscall).
      dnl curses and tkinter user interface are not available.
      dnl gdbm and nis aren't available
+     dnl Stub implementations are provided for pwd, grp etc APIs
++    dnl subprocess is however supported for Mac Catalyst
++    case "$_host_device" in
++      macabi) ;;
++      *) PY_STDLIB_MOD_SET_NA([_posixsubprocess]) ;;
++    esac
+     PY_STDLIB_MOD_SET_NA(
+       [_curses],
+       [_curses_panel],
+       [_gdbm],
+       [_multiprocessing],
+       [_posixshmem],
+-      [_posixsubprocess],
+       [_scproxy],
+       [_tkinter],
+       [grp],
 diff --git a/iOS/Resources/Info.plist.in b/iOS/Resources/Info.plist.in
 index c3e261ecd9e..26ef7a95de4 100644
 --- a/iOS/Resources/Info.plist.in
@@ -1835,6 +2630,467 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
+diff --git a/iOS/testbed/Python.xcframework/Info.plist b/iOS/testbed/Python.xcframework/Info.plist
+index c6418de6e74..7b32df19ab4 100644
+--- a/iOS/testbed/Python.xcframework/Info.plist
++++ b/iOS/testbed/Python.xcframework/Info.plist
+@@ -4,6 +4,23 @@
+ <dict>
+ 	<key>AvailableLibraries</key>
+ 	<array>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Versions/Latest/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>ios-arm64_x86_64-maccatalyst</string>
++			<key>LibraryPath</key>
++			<string>python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>x86_64</string>
++				<string>arm64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>ios</string>
++			<key>SupportedPlatformVariant</key>
++			<string>maccatalyst</string>
++		</dict>
+ 		<dict>
+ 			<key>BinaryPath</key>
+ 			<string>Python.framework/Python</string>
+--- /dev/null
++++ b/iOS/testbed/Python.xcframework/ios-arm64_x86_64-maccatalyst/README
+@@ -0,0 +1,4 @@
++This directory is intentionally empty.
++
++It is a placeholder slice for the XCFramework on Mac Catalyst,
++to install or copy your built framework to.
+diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
+index c05497ede3a..d693d62873e 100644
+--- a/iOS/testbed/__main__.py
++++ b/iOS/testbed/__main__.py
+@@ -28,6 +28,15 @@
+     r"\s+\(Python\)\s"  # Logger name
+ )
+ 
++# Prefix: 2025-04-27 21:43:38.530606-0500 iOSTestbed[96892:48053672]
++CATALYST_LOG_PREFIX_REGEX = re.compile(
++    r"^\d{4}-\d{2}-\d{2}"        # YYYY-MM-DD
++    r"\s+\d{2}:\d{2}:\d{2}\.\d{6}" # HH:MM:SS.ssssss (microseconds, 6 digits)
++    r"[-+]\d{4}"                  # Timezone offset like -0500
++    r"\s+iOSTestbed\[\d+:\d+\] "    # iOSTestbed[ProcessID:ThreadID] (both numbers), then a space
++)
++
++
+ 
+ # Work around a bug involving sys.exit and TaskGroups
+ # (https://github.com/python/cpython/issues/101515).
+@@ -243,9 +252,13 @@
+             sys.stdout.flush()
+ 
+ 
+-async def xcode_test(location, simulator, verbose):
++async def xcode_test(location, simulator, verbose, catalyst):
+     # Run the test suite on the named simulator
+     print("Starting xcodebuild...", flush=True)
++    if catalyst:
++        destination_arg = "platform=macOS,variant=Mac Catalyst"
++    else:
++        destination_arg = f"platform=iOS Simulator,name={simulator}";
+     args = [
+         "xcodebuild",
+         "test",
+@@ -254,13 +267,13 @@
+         "-scheme",
+         "iOSTestbed",
+         "-destination",
+-        f"platform=iOS Simulator,name={simulator}",
++        destination_arg,
+         "-resultBundlePath",
+         str(location / f"{datetime.now():%Y%m%d-%H%M%S}.xcresult"),
+         "-derivedDataPath",
+         str(location / "DerivedData"),
+     ]
+-    if not verbose:
++    if not verbose and not catalyst:
+         args += ["-quiet"]
+ 
+     async with async_process(
+@@ -269,8 +282,16 @@
+         stderr=subprocess.STDOUT,
+     ) as process:
+         while line := (await process.stdout.readline()).decode(*DECODE_ARGS):
+-            sys.stdout.write(line)
+-            sys.stdout.flush()
++            # For Mac Catalyst, the *actual* logs are streamed here. Only stream
++            # things that does NOT come from the process when verbose.
++            if catalyst:
++                if CATALYST_LOG_PREFIX_REGEX.match(line) or verbose:
++                    line = CATALYST_LOG_PREFIX_REGEX.sub("", line)
++                    sys.stdout.write(line)
++                    sys.stdout.flush()
++            else:
++                sys.stdout.write(line)
++                sys.stdout.flush()
+ 
+         status = await asyncio.wait_for(process.wait(), timeout=1)
+         exit(status)
+@@ -281,20 +302,31 @@
+     target: Path,
+     framework: Path,
+     apps: list[Path],
++    catalyst: bool,
+ ) -> None:
+     if target.exists():
+         print(f"{target} already exists; aborting without creating project.")
+         sys.exit(10)
+ 
+     if framework is None:
+-        if not (
+-            source / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
+-        ).is_dir():
+-            print(
+-                f"The testbed being cloned ({source}) does not contain "
+-                f"a simulator framework. Re-run with --framework"
+-            )
+-            sys.exit(11)
++        if catalyst:
++            if not (
++                source / "Python.xcframework/ios-arm64_x86_64-maccatalyst/Python.framework/Versions"
++            ).is_dir():
++                print(
++                    f"The testbed being cloned ({source}) does not contain "
++                    f"a Mac Catalyst framework. Re-run with --framework"
++                )
++                sys.exit(11)
++        else:
++            if not (
++                source / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
++            ).is_dir():
++                print(
++                    f"The testbed being cloned ({source}) does not contain "
++                    f"a simulator framework. Re-run with --framework"
++                )
++                sys.exit(11)
+     else:
+         if not framework.is_dir():
+             print(f"{framework} does not exist.")
+@@ -305,7 +337,7 @@
+         ):
+             print(
+                 f"{framework} is not an XCframework, "
+-                f"or a simulator slice of a framework build."
++                f"or a simulator / Catalyst slice of a framework build."
+             )
+             sys.exit(13)
+ 
+@@ -315,7 +347,10 @@
+     print(" done")
+ 
+     xc_framework_path = target / "Python.xcframework"
+-    sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
++    if catalyst:
++        sim_framework_path = xc_framework_path / "ios-arm64_x86_64-maccatalyst"
++    else:
++        sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
+     if framework is not None:
+         if framework.suffix == ".xcframework":
+             print("  Installing XCFramework...", end="", flush=True)
+@@ -328,7 +363,7 @@
+             )
+             print(" done")
+         else:
+-            print("  Installing simulator framework...", end="", flush=True)
++            print("  Installing simulator/catalyst framework...", end="", flush=True)
+             if sim_framework_path.is_dir():
+                 shutil.rmtree(sim_framework_path)
+             else:
+@@ -360,7 +395,7 @@
+             sim_framework_path.is_symlink()
+             and not sim_framework_path.readlink().is_absolute()
+         ):
+-            print("  Rewriting symlink to simulator framework...", end="", flush=True)
++            print("  Rewriting symlink to simulator/catalyst framework...", end="", flush=True)
+             # Simulator framework is a relative symlink. Rewrite the symlink
+             # relative to the new location.
+             orig_sim_framework_path = (
+@@ -401,42 +436,52 @@
+         plistlib.dump(info, f)
+ 
+ 
+-async def run_testbed(simulator: str | None, args: list[str], verbose: bool=False):
++async def run_testbed(simulator: str | None, args: list[str], catalyst: bool, verbose: bool=False):
+     location = Path(__file__).parent
+     print("Updating plist...", end="", flush=True)
+     update_plist(location, args)
+     print(" done.", flush=True)
+ 
+-    if simulator is None:
+-        simulator = await select_simulator_device()
+-    print(f"Running test on {simulator}", flush=True)
+-
+-    # We need to get an exclusive lock on simulator creation, to avoid issues
+-    # with multiple simulators starting and being unable to tell which
+-    # simulator is due to which testbed instance. See
+-    # https://github.com/python/cpython/issues/130294 for details. Wait up to
+-    # 10 minutes for a simulator to boot.
+-    print("Obtaining lock on simulator creation...", flush=True)
+-    simulator_lock = SimulatorLock(timeout=10*60)
+-    await simulator_lock.acquire()
+-    print("Simulator lock acquired.", flush=True)
+-
+-    # Get the list of devices that are booted at the start of the test run.
+-    # The simulator started by the test suite will be detected as the new
+-    # entry that appears on the device list.
+-    initial_devices = await list_devices()
+-
+-    try:
+-        async with asyncio.TaskGroup() as tg:
+-            tg.create_task(log_stream_task(initial_devices, simulator_lock))
+-            tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose))
+-    except* MySystemExit as e:
+-        raise SystemExit(*e.exceptions[0].args) from None
+-    except* subprocess.CalledProcessError as e:
+-        # Extract it from the ExceptionGroup so it can be handled by `main`.
+-        raise e.exceptions[0]
+-    finally:
+-        simulator_lock.release()
++    if not catalyst:
++        if simulator is None:
++            simulator = await select_simulator_device()
++        print(f"Running test on {simulator}", flush=True)
++
++        # We need to get an exclusive lock on simulator creation, to avoid issues
++        # with multiple simulators starting and being unable to tell which
++        # simulator is due to which testbed instance. See
++        # https://github.com/python/cpython/issues/130294 for details. Wait up to
++        # 10 minutes for a simulator to boot.
++        print("Obtaining lock on simulator creation...", flush=True)
++        simulator_lock = SimulatorLock(timeout=10*60)
++        await simulator_lock.acquire()
++        print("Simulator lock acquired.", flush=True)
++
++        # Get the list of devices that are booted at the start of the test run.
++        # The simulator started by the test suite will be detected as the new
++        # entry that appears on the device list.
++        initial_devices = await list_devices()
++
++        try:
++            async with asyncio.TaskGroup() as tg:
++                tg.create_task(log_stream_task(initial_devices, simulator_lock))
++                tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose, catalyst=False))
++        except* MySystemExit as e:
++            raise SystemExit(*e.exceptions[0].args) from None
++        except* subprocess.CalledProcessError as e:
++            # Extract it from the ExceptionGroup so it can be handled by `main`.
++            raise e.exceptions[0]
++        finally:
++            simulator_lock.release()
++    else:
++        try:
++            async with asyncio.TaskGroup() as tg:
++                tg.create_task(xcode_test(location, simulator="", verbose=verbose, catalyst=True))
++        except* MySystemExit as e:
++            raise SystemExit(*e.exceptions[0].args) from None
++        except* subprocess.CalledProcessError as e:
++            # Extract it from the ExceptionGroup so it can be handled by `main`.
++            raise e.exceptions[0]
+ 
+ 
+ def main():
+@@ -448,6 +493,12 @@
+ 
+     subcommands = parser.add_subparsers(dest="subcommand")
+ 
++    parser.add_argument(
++        "--catalyst",
++        action="store_true",
++        help="Use Mac Catalyst.",
++    )
++
+     clone = subcommands.add_parser(
+         "clone",
+         description=(
+@@ -514,11 +565,16 @@
+             target=Path(context.location).resolve(),
+             framework=Path(context.framework).resolve() if context.framework else None,
+             apps=[Path(app) for app in context.apps],
++            catalyst = context.catalyst
+         )
+     elif context.subcommand == "run":
+         if test_args:
++            if context.catalyst:
++                expected_location = "Python.xcframework/ios-arm64_x86_64-maccatalyst/Python.framework"
++            else:
++                expected_location = "Python.xcframework/ios-arm64_x86_64-simulator/bin"
+             if not (
+-                Path(__file__).parent / "Python.xcframework/ios-arm64_x86_64-simulator/bin"
++                Path(__file__).parent / expected_location
+             ).is_dir():
+                 print(
+                     f"Testbed does not contain a compiled iOS framework. Use "
+@@ -530,8 +586,10 @@
+             asyncio.run(
+                 run_testbed(
+                     simulator=context.simulator,
++                    # Mac catalyst requires verbose, or no logs will print.
+                     verbose=context.verbose,
+                     args=test_args,
++                    catalyst=context.catalyst
+                 )
+             )
+         else:
+diff --git a/iOS/testbed/iOSTestbed.xcodeproj/project.pbxproj b/iOS/testbed/iOSTestbed.xcodeproj/project.pbxproj
+index c7d63909ee2..ace08f7efd9 100644
+--- a/iOS/testbed/iOSTestbed.xcodeproj/project.pbxproj
++++ b/iOS/testbed/iOSTestbed.xcodeproj/project.pbxproj
+@@ -70,6 +70,7 @@
+ 		607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOSTestbed-Info.plist"; sourceTree = "<group>"; };
+ 		608619532CB77BA900F46182 /* app_packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app_packages; sourceTree = "<group>"; };
+ 		608619552CB7819B00F46182 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; path = app; sourceTree = "<group>"; };
++		EE325B2A2DBE97CD000142D0 /* iOSTestbed.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iOSTestbed.entitlements; sourceTree = "<group>"; };
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFrameworksBuildPhase section */
+@@ -115,6 +116,7 @@
+ 		607A66142B0EFA380010BFC8 /* iOSTestbed */ = {
+ 			isa = PBXGroup;
+ 			children = (
++				EE325B2A2DBE97CD000142D0 /* iOSTestbed.entitlements */,
+ 				608619552CB7819B00F46182 /* app */,
+ 				608619532CB77BA900F46182 /* app_packages */,
+ 				607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */,
+@@ -262,7 +264,7 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 			shellPath = /bin/sh;
+-			shellScript = "set -e\n\nmkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-iphonesimulator\" ]; then\n    echo \"Installing Python modules for iOS Simulator\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64_x86_64-simulator/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nelse\n    echo \"Installing Python modules for iOS Device\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nfi\n";
++			shellScript = "set -e\n\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-iphonesimulator\" ]; then\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\n    echo \"Installing Python modules for iOS Simulator\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64_x86_64-simulator/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\" \nelif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-maccatalyst\" ]; then\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/Contents/Resources/python/lib\"\n    echo \"Installing Python modules for Mac Catalyst\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64_x86_64-maccatalyst/Python.framework/Versions/3.14/lib/\" \"$CODESIGNING_FOLDER_PATH/Contents/Resources/python/lib/\"\nelse\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/python/lib\"\n    echo \"Installing Python modules for iOS Device\"\n    rsync -au --delete \"$PROJECT_DIR/Python.xcframework/ios-arm64/lib/\" \"$CODESIGNING_FOLDER_PATH/python/lib/\"\nfi\n";
+ 			showEnvVarsInLog = 0;
+ 		};
+ 		607A66562B0F06200010BFC8 /* Prepare Python Binary Modules */ = {
+@@ -282,7 +284,7 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 			shellPath = /bin/sh;
+-			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nPYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\necho \"Install Python $PYTHON_VER standard library extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\ndone\necho \"Install app package extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app_packages\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app_packages/ \"$FULL_EXT\"\ndone\necho \"Install app extension modules...\"\nfind \"$CODESIGNING_FOLDER_PATH/app\" -name \"*.so\" | while read FULL_EXT; do\n    install_dylib app/ \"$FULL_EXT\"\ndone\n\n# Clean up dylib template \nrm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\necho \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\nfind \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \n";
++			shellScript = "set -e\n\ninstall_dylib () {\n    INSTALL_BASE=$1\n    FULL_EXT=$2\n\n    # The name of the extension file\n    EXT=$(basename \"$FULL_EXT\")\n    # The location of the extension file, relative to the bundle\n    RELATIVE_EXT=${FULL_EXT#$CODESIGNING_FOLDER_PATH/} \n    # The path to the extension file, relative to the install base\n    PYTHON_EXT=${RELATIVE_EXT/$INSTALL_BASE/}\n    # The full dotted name of the extension module, constructed from the file path.\n    FULL_MODULE_NAME=$(echo $PYTHON_EXT | cut -d \".\" -f 1 | tr \"/\" \".\"); \n    # A bundle identifier; not actually used, but required by Xcode framework packaging\n    FRAMEWORK_BUNDLE_ID=$(echo $PRODUCT_BUNDLE_IDENTIFIER.$FULL_MODULE_NAME | tr \"_\" \"-\")\n    # The name of the framework folder.\n    FRAMEWORK_FOLDER=\"Frameworks/$FULL_MODULE_NAME.framework\"\n\n    # If the framework folder doesn't exist, create it.\n    if [ ! -d \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\" ]; then\n        echo \"Creating framework for $RELATIVE_EXT\" \n        mkdir -p \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER\"\n        cp \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleExecutable -string \"$FULL_MODULE_NAME\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n        plutil -replace CFBundleIdentifier -string \"$FRAMEWORK_BUNDLE_ID\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/Info.plist\"\n    fi\n    \n    echo \"Installing binary for $FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" \n    mv \"$FULL_EXT\" \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\"\n    # Create a placeholder .fwork file where the .so was\n    echo \"$FRAMEWORK_FOLDER/$FULL_MODULE_NAME\" > ${FULL_EXT%.so}.fwork\n    # Create a back reference to the .so file location in the framework\n    echo \"${RELATIVE_EXT%.so}.fwork\" > \"$CODESIGNING_FOLDER_PATH/$FRAMEWORK_FOLDER/$FULL_MODULE_NAME.origin\"             \n}\n\nif [ \"$EFFECTIVE_PLATFORM_NAME\" = \"-maccatalyst\" ]; then\n    PYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/Contents/Resources/python/lib\")\n    find \"$CODESIGNING_FOLDER_PATH/Contents/Resources/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der {} \\;\n    find \"$CODESIGNING_FOLDER_PATH/Contents/Resources/app_packages\" -name \"*.so\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der {} \\;\n    find \"$CODESIGNING_FOLDER_PATH/Contents/Resources/app\" -name \"*.so\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der {} \\;\n    \nelse\n    PYTHON_VER=$(ls -1 \"$CODESIGNING_FOLDER_PATH/python/lib\")\n    echo \"Install Python $PYTHON_VER standard library extension modules...\"\n    find \"$CODESIGNING_FOLDER_PATH/python/lib/$PYTHON_VER/lib-dynload\" -name \"*.so\" | while read FULL_EXT; do\n        install_dylib python/lib/$PYTHON_VER/lib-dynload/ \"$FULL_EXT\"\n    done\n    echo \"Install app package extension modules...\"\n    find \"$CODESIGNING_FOLDER_PATH/app_packages\" -name \"*.so\" | while read FULL_EXT; do\n        install_dylib app_packages/ \"$FULL_EXT\"\n    done\n    echo \"Install app extension modules...\"\n    find \"$CODESIGNING_FOLDER_PATH/app\" -name \"*.so\" | while read FULL_EXT; do\n        install_dylib app/ \"$FULL_EXT\"\n    done\n\n    # Clean up dylib template \n    rm -f \"$CODESIGNING_FOLDER_PATH/dylib-Info-template.plist\"\n    echo \"Signing frameworks as $EXPANDED_CODE_SIGN_IDENTITY_NAME ($EXPANDED_CODE_SIGN_IDENTITY)...\"\n    find \"$CODESIGNING_FOLDER_PATH/Frameworks\" -name \"*.framework\" -exec /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} -o runtime --timestamp=none --preserve-metadata=identifier,entitlements,flags --generate-entitlement-der \"{}\" \\; \nfi\n";
+ 			showEnvVarsInLog = 0;
+ 		};
+ /* End PBXShellScriptBuildPhase section */
+@@ -362,6 +364,7 @@
+ 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+ 				COPY_PHASE_STRIP = NO;
+ 				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_HARDENED_RUNTIME = YES;
+ 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+ 				ENABLE_TESTABILITY = YES;
+ 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+@@ -381,6 +384,7 @@
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+ 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MACOSX_DEPLOYMENT_TARGET = 10.14;
+ 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+ 				MTL_FAST_MATH = YES;
+ 				ONLY_ACTIVE_ARCH = YES;
+@@ -423,6 +427,7 @@
+ 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+ 				COPY_PHASE_STRIP = NO;
+ 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_HARDENED_RUNTIME = YES;
+ 				ENABLE_NS_ASSERTIONS = NO;
+ 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+ 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+@@ -436,6 +441,7 @@
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+ 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MACOSX_DEPLOYMENT_TARGET = 10.14;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				MTL_FAST_MATH = YES;
+ 				SDKROOT = iphoneos;
+@@ -449,9 +455,12 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_ENTITLEMENTS = iOSTestbed/iOSTestbed.entitlements;
++				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+ 				DEVELOPMENT_TEAM = "";
++				ENABLE_HARDENED_RUNTIME = YES;
+ 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+ 				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
+ 				INFOPLIST_FILE = "iOSTestbed/iOSTestbed-Info.plist";
+@@ -468,6 +477,9 @@
+ 				MARKETING_VERSION = 3.13.0a1;
+ 				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbed;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
++				PROVISIONING_PROFILE_SPECIFIER = "";
++				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
++				SUPPORTS_MACCATALYST = YES;
+ 				SWIFT_EMIT_LOC_STRINGS = YES;
+ 				TARGETED_DEVICE_FAMILY = "1,2";
+ 			};
+@@ -479,9 +491,12 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CODE_SIGN_ENTITLEMENTS = iOSTestbed/iOSTestbed.entitlements;
++				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+ 				DEVELOPMENT_TEAM = "";
++				ENABLE_HARDENED_RUNTIME = YES;
+ 				ENABLE_TESTABILITY = YES;
+ 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+ 				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
+@@ -499,6 +514,9 @@
+ 				MARKETING_VERSION = 3.13.0a1;
+ 				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbed;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
++				PROVISIONING_PROFILE_SPECIFIER = "";
++				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
++				SUPPORTS_MACCATALYST = YES;
+ 				SWIFT_EMIT_LOC_STRINGS = YES;
+ 				TARGETED_DEVICE_FAMILY = "1,2";
+ 			};
+@@ -509,9 +527,10 @@
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+-				DEVELOPMENT_TEAM = 3HEZE76D99;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
+ 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+@@ -529,9 +548,10 @@
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+-				DEVELOPMENT_TEAM = 3HEZE76D99;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
+ 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+--- /dev/null
++++ b/iOS/testbed/iOSTestbed/iOSTestbed.entitlements
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>com.apple.security.cs.disable-library-validation</key>
++	<true/>
++</dict>
++</plist>
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
