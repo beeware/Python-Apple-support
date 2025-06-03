@@ -2,7 +2,7 @@ Python Apple Support
 ====================
 
 This is a meta-package for building a version of Python that can be embedded
-into a macOS, iOS, tvOS, watchOS, or visionOS project.
+into a macOS, iOS, tvOS, watchOS project.
 
 **This branch builds a packaged version of Python 3.13**.
 Other Python versions are available by cloning other branches of the main
