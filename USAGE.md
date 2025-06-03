@@ -24,7 +24,7 @@ guides:
 
 For tvOS, and watchOS, you should be able to broadly follow the instructions
 in the iOS guide, changing some platform names in the first script. The testbed projects
-generated on iOS and visionOS may be used as rough references as well.
+generated on iOS may be used as rough references as well.
 
 ### Using Objective C
 
