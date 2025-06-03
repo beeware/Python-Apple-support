@@ -1,52 +1,3 @@
-diff --git a/Doc/c-api/init_config.rst b/Doc/c-api/init_config.rst
-index cd78fe18e35..612aa2aa711 100644
---- a/Doc/c-api/init_config.rst
-+++ b/Doc/c-api/init_config.rst
-@@ -1271,17 +1271,6 @@
- 
-       Default: ``1`` in Python config and ``0`` in isolated config.
- 
--   .. c:member:: int use_system_logger
--
--      If non-zero, ``stdout`` and ``stderr`` will be redirected to the system
--      log.
--
--      Only available on macOS 10.12 and later, and on iOS.
--
--      Default: ``0`` (don't use system log).
--
--      .. versionadded:: 3.13.2
--
-    .. c:member:: int user_site_directory
- 
-       If non-zero, add the user site directory to :data:`sys.path`.
-diff --git a/Doc/using/ios.rst b/Doc/using/ios.rst
-index aa43f75ec35..dff694941d0 100644
---- a/Doc/using/ios.rst
-+++ b/Doc/using/ios.rst
-@@ -296,8 +296,6 @@
-    * Buffered stdio (:c:member:`PyConfig.buffered_stdio`) is *disabled*;
-    * Writing bytecode (:c:member:`PyConfig.write_bytecode`) is *disabled*;
-    * Signal handlers (:c:member:`PyConfig.install_signal_handlers`) are *enabled*;
--   * System logging (:c:member:`PyConfig.use_system_logger`) is *enabled*
--     (optional, but strongly recommended);
-    * ``PYTHONHOME`` for the interpreter is configured to point at the
-      ``python`` subfolder of your app's bundle; and
-    * The ``PYTHONPATH`` for the interpreter includes:
-diff --git a/Include/cpython/initconfig.h b/Include/cpython/initconfig.h
-index 20f5c9ad9bb..5da5ef9e543 100644
---- a/Include/cpython/initconfig.h
-+++ b/Include/cpython/initconfig.h
-@@ -179,9 +179,6 @@
-     int use_frozen_modules;
-     int safe_path;
-     int int_max_str_digits;
--#ifdef __APPLE__
--    int use_system_logger;
--#endif
- 
-     int cpu_count;
- #ifdef Py_GIL_DISABLED
 diff --git a/Lib/platform.py b/Lib/platform.py
 index 8895177e326..eab586011ed 100755
 --- a/Lib/platform.py
@@ -162,10 +113,10 @@ index 8895177e326..eab586011ed 100755
              macos_release = mac_ver()[0]
              if macos_release:
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index 7bcb737ff2c..9cac5d7d807 100644
+index 510c7b9568a..810b08879f6 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
-@@ -669,6 +669,14 @@
+@@ -676,6 +676,14 @@
              release = get_config_vars().get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
              osname = sys.platform
              machine = sys.implementation._multiarch
@@ -180,63 +131,6 @@ index 7bcb737ff2c..9cac5d7d807 100644
          else:
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
-diff --git a/Lib/test/test__colorize.py b/Lib/test/test__colorize.py
-index 056a5306ced..42ee7b50a2a 100644
---- a/Lib/test/test__colorize.py
-+++ b/Lib/test/test__colorize.py
-@@ -10,7 +10,7 @@
- @contextlib.contextmanager
- def clear_env():
-     with EnvironmentVarGuard() as mock_env:
--        for var in "FORCE_COLOR", "NO_COLOR", "PYTHON_COLORS":
-+        for var in "FORCE_COLOR", "NO_COLOR", "PYTHON_COLORS", "TERM":
-             mock_env.unset(var)
-         yield mock_env
- 
-diff --git a/Lib/test/test_apple.py b/Lib/test/test_apple.py
-index ab5296afad1..f14db75e2f2 100644
---- a/Lib/test/test_apple.py
-+++ b/Lib/test/test_apple.py
-@@ -1,10 +1,10 @@
- import unittest
- from _apple_support import SystemLog
--from test.support import is_apple
-+from test.support import is_apple_mobile
- from unittest.mock import Mock, call
- 
--if not is_apple:
--    raise unittest.SkipTest("Apple-specific")
-+if not is_apple_mobile:
-+    raise unittest.SkipTest("iOS-specific")
- 
- 
- # Test redirection of stdout and stderr to the Apple system log.
-diff --git a/Lib/test/test_embed.py b/Lib/test/test_embed.py
-index ed459794952..a354f856c80 100644
---- a/Lib/test/test_embed.py
-+++ b/Lib/test/test_embed.py
-@@ -627,8 +627,6 @@
-         CONFIG_COMPAT.update({
-             'legacy_windows_stdio': 0,
-         })
--    if support.is_apple:
--        CONFIG_COMPAT['use_system_logger'] = False
- 
-     CONFIG_PYTHON = dict(CONFIG_COMPAT,
-         _config_init=API_PYTHON,
-diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 46a37ded970..7636c6d9823 100644
---- a/Makefile.pre.in
-+++ b/Makefile.pre.in
-@@ -2060,7 +2060,7 @@
- # a full Xcode install that has an iPhone SE (3rd edition) simulator available.
- # This must be run *after* a `make install` has completed the build. The
- # `--with-framework-name` argument *cannot* be used when configuring the build.
--XCFOLDER:=iOSTestbed.$(MULTIARCH).$(shell date +%s)
-+XCFOLDER:=iOSTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
- .PHONY: testios
- testios:
- 	@if test "$(MACHDEP)" != "ios"; then \
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
 index ec0857a4a99..2350e9dc821 100644
 --- a/Misc/platform_triplet.c
@@ -268,134 +162,6 @@ index ec0857a4a99..2350e9dc821 100644
  // Older macOS SDKs do not define TARGET_OS_OSX
  #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
  PLATFORM_TRIPLET=darwin
-diff --git a/Python/initconfig.c b/Python/initconfig.c
-index 5746416c826..201f457bb09 100644
---- a/Python/initconfig.c
-+++ b/Python/initconfig.c
-@@ -129,9 +129,6 @@
- #ifdef Py_DEBUG
-     SPEC(run_presite, WSTR_OPT),
- #endif
--#ifdef __APPLE__
--    SPEC(use_system_logger, BOOL),
--#endif
- 
-     {NULL, 0, 0},
- };
-@@ -748,9 +745,6 @@
-     assert(config->cpu_count != 0);
-     // config->use_frozen_modules is initialized later
-     // by _PyConfig_InitImportConfig().
--#ifdef __APPLE__
--    assert(config->use_system_logger >= 0);
--#endif
- #ifdef Py_STATS
-     assert(config->_pystats >= 0);
- #endif
-@@ -853,9 +847,6 @@
-     config->_is_python_build = 0;
-     config->code_debug_ranges = 1;
-     config->cpu_count = -1;
--#ifdef __APPLE__
--    config->use_system_logger = 0;
--#endif
- #ifdef Py_GIL_DISABLED
-     config->enable_gil = _PyConfig_GIL_DEFAULT;
- #endif
-@@ -884,9 +875,6 @@
- #ifdef MS_WINDOWS
-     config->legacy_windows_stdio = 0;
- #endif
--#ifdef __APPLE__
--    config->use_system_logger = 0;
--#endif
- }
- 
- 
-@@ -922,9 +910,6 @@
- #ifdef MS_WINDOWS
-     config->legacy_windows_stdio = 0;
- #endif
--#ifdef __APPLE__
--    config->use_system_logger = 0;
--#endif
- }
- 
- 
-diff --git a/Python/pylifecycle.c b/Python/pylifecycle.c
-index ba835ef4c84..f31e3267f52 100644
---- a/Python/pylifecycle.c
-+++ b/Python/pylifecycle.c
-@@ -47,20 +47,15 @@
- #  include <TargetConditionals.h>
- #  include <mach-o/loader.h>
- // The os_log unified logging APIs were introduced in macOS 10.12, iOS 10.0,
--// tvOS 10.0, and watchOS 3.0;
-+// tvOS 10.0, and watchOS 3.0; we enable the use of the system logger
-+// automatically on non-macOS platforms.
- #  if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
--#    define HAS_APPLE_SYSTEM_LOG 1
--#  elif defined(TARGET_OS_OSX) && TARGET_OS_OSX
--#    if defined(MAC_OS_X_VERSION_10_12) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
--#      define HAS_APPLE_SYSTEM_LOG 1
--#    else
--#      define HAS_APPLE_SYSTEM_LOG 0
--#    endif
-+#    define USE_APPLE_SYSTEM_LOG 1
- #  else
--#    define HAS_APPLE_SYSTEM_LOG 0
-+#    define USE_APPLE_SYSTEM_LOG 0
- #  endif
- 
--#  if HAS_APPLE_SYSTEM_LOG
-+#  if USE_APPLE_SYSTEM_LOG
- #    include <os/log.h>
- #  endif
- #endif
-@@ -92,7 +87,7 @@
- #ifdef __ANDROID__
- static PyStatus init_android_streams(PyThreadState *tstate);
- #endif
--#if defined(__APPLE__) && HAS_APPLE_SYSTEM_LOG
-+#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
- static PyStatus init_apple_streams(PyThreadState *tstate);
- #endif
- static void wait_for_thread_shutdown(PyThreadState *tstate);
-@@ -1280,12 +1275,10 @@
-         return status;
-     }
- #endif
--#if defined(__APPLE__) && HAS_APPLE_SYSTEM_LOG
--    if (config->use_system_logger) {
--        status = init_apple_streams(tstate);
--        if (_PyStatus_EXCEPTION(status)) {
--            return status;
--        }
-+#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
-+    status = init_apple_streams(tstate);
-+    if (_PyStatus_EXCEPTION(status)) {
-+        return status;
-     }
- #endif
- 
-@@ -2957,7 +2950,7 @@
- 
- #endif  // __ANDROID__
- 
--#if defined(__APPLE__) && HAS_APPLE_SYSTEM_LOG
-+#if defined(__APPLE__) && USE_APPLE_SYSTEM_LOG
- 
- static PyObject *
- apple_log_write_impl(PyObject *self, PyObject *args)
-@@ -3018,7 +3011,7 @@
-     return status;
- }
- 
--#endif  // __APPLE__ && HAS_APPLE_SYSTEM_LOG
-+#endif  // __APPLE__ && USE_APPLE_SYSTEM_LOG
- 
- 
- static void
 diff --git a/configure b/configure
 index 1cd1f690f7b..34922ae651e 100755
 --- a/configure
@@ -1503,294 +1269,150 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
+diff --git a/iOS/Resources/bin/arm64-apple-ios-clang b/iOS/Resources/bin/arm64-apple-ios-clang
+index c39519cd1f8..f50d5b5142f 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-clang
++++ b/iOS/Resources/bin/arm64-apple-ios-clang
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios "$@"
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/iOS/Resources/bin/arm64-apple-ios-clang++ b/iOS/Resources/bin/arm64-apple-ios-clang++
+index d9b12925f38..0794731d7dc 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-clang++
++++ b/iOS/Resources/bin/arm64-apple-ios-clang++
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios "$@"
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/iOS/Resources/bin/arm64-apple-ios-cpp b/iOS/Resources/bin/arm64-apple-ios-cpp
+index 24da23d3448..24fa1506bab 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-cpp
++++ b/iOS/Resources/bin/arm64-apple-ios-cpp
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E "$@"
++xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} -E "$@"
+diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-clang b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
+index 92e8d853d6e..4891a00876e 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-simulator-clang
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-clang++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
+index 076469cc70c..58b2a5f6f18 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-cpp b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
+index c57f28cee5b..c9df94e8b7c 100755
+--- a/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
++++ b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
+index 17cbe0c8a1e..f4739a7b945 100755
+--- a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
+index 565d47b24c2..c348ae4c103 100755
+--- a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
+index 63fc8e8de2d..6d7f8084c9f 100755
+--- a/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
++++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E "$@"
++xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
-index b4499f5ac17..b436c9af99d 100644
+index b436c9af99d..c05497ede3a 100644
 --- a/iOS/testbed/__main__.py
 +++ b/iOS/testbed/__main__.py
-@@ -1,11 +1,14 @@
- import argparse
- import asyncio
-+import fcntl
- import json
-+import os
- import plistlib
- import re
- import shutil
- import subprocess
- import sys
-+import tempfile
- from contextlib import asynccontextmanager
- from datetime import datetime
- from pathlib import Path
-@@ -36,6 +39,46 @@
-     pass
+@@ -123,6 +123,36 @@
+             )
  
  
-+class SimulatorLock:
-+    # An fcntl-based filesystem lock that can be used to ensure that
-+    def __init__(self, timeout):
-+        self.filename = Path(tempfile.gettempdir()) / "python-ios-testbed"
-+        self.timeout = timeout
++# Select a simulator device to use.
++async def select_simulator_device():
++    # List the testing simulators, in JSON format
++    raw_json = await async_check_output(
++        "xcrun", "simctl", "--set", "testing", "list", "-j"
++    )
++    json_data = json.loads(raw_json)
 +
-+        self.fd = None
++    # Any device will do; we'll look for "SE" devices - but the name isn't
++    # consistent over time. Older Xcode versions will use "iPhone SE (Nth
++    # generation)"; As of 2025, they've started using "iPhone 16e".
++    #
++    # When Xcode is updated after a new release, new devices will be available
++    # and old ones will be dropped from the set available on the latest iOS
++    # version. Select the one with the highest minimum runtime version - this
++    # is an indicator of the "newest" released device, which should always be
++    # supported on the "most recent" iOS version.
++    se_simulators = sorted(
++        (devicetype["minRuntimeVersion"], devicetype["name"])
++        for devicetype in json_data["devicetypes"]
++        if devicetype["productFamily"] == "iPhone"
++        and (
++            ("iPhone " in devicetype["name"] and devicetype["name"].endswith("e"))
++            or "iPhone SE " in devicetype["name"]
++        )
++    )
 +
-+    async def acquire(self):
-+        # Ensure the lockfile exists
-+        self.filename.touch(exist_ok=True)
-+
-+        # Try `timeout` times to acquire the lock file, with a 1 second pause
-+        # between each attempt. Report status every 10 seconds.
-+        for i in range(0, self.timeout):
-+            try:
-+                fd = os.open(self.filename, os.O_RDWR | os.O_TRUNC, 0o644)
-+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-+            except OSError:
-+                os.close(fd)
-+                if i % 10 == 0:
-+                    print("... waiting", flush=True)
-+                await asyncio.sleep(1)
-+            else:
-+                self.fd = fd
-+                return
-+
-+        # If we reach the end of the loop, we've exceeded the allowed number of
-+        # attempts.
-+        raise ValueError("Unable to obtain lock on iOS simulator creation")
-+
-+    def release(self):
-+        # If a lock is held, release it.
-+        if self.fd is not None:
-+            # Release the lock.
-+            fcntl.flock(self.fd, fcntl.LOCK_UN)
-+            os.close(self.fd)
-+            self.fd = None
++    return se_simulators[-1][1]
 +
 +
- # All subprocesses are executed through this context manager so that no matter
- # what happens, they can always be cancelled from another task, and they will
- # always be cleaned up on exit.
-@@ -82,22 +125,32 @@
- 
  # Return a list of UDIDs associated with booted simulators
  async def list_devices():
--    # List the testing simulators, in JSON format
--    raw_json = await async_check_output(
--        "xcrun", "simctl", "--set", "testing", "list", "-j"
--    )
--    json_data = json.loads(raw_json)
--
--    # Filter out the booted iOS simulators
--    return [
--        simulator["udid"]
--        for runtime, simulators in json_data["devices"].items()
--        for simulator in simulators
--        if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
--    ]
-+    try:
-+        # List the testing simulators, in JSON format
-+        raw_json = await async_check_output(
-+            "xcrun", "simctl", "--set", "testing", "list", "-j"
-+        )
-+        json_data = json.loads(raw_json)
-+
-+        # Filter out the booted iOS simulators
-+        return [
-+            simulator["udid"]
-+            for runtime, simulators in json_data["devices"].items()
-+            for simulator in simulators
-+            if runtime.split(".")[-1].startswith("iOS") and simulator["state"] == "Booted"
-+        ]
-+    except subprocess.CalledProcessError as e:
-+        # If there's no ~/Library/Developer/XCTestDevices folder (which is the
-+        # case on fresh installs, and in some CI environments), `simctl list`
-+        # returns error code 1, rather than an empty list. Handle that case,
-+        # but raise all other errors.
-+        if e.returncode == 1:
-+            return []
-+        else:
-+            raise
+     try:
+@@ -371,12 +401,16 @@
+         plistlib.dump(info, f)
  
  
--async def find_device(initial_devices):
-+async def find_device(initial_devices, lock):
-     while True:
-         new_devices = set(await list_devices()).difference(initial_devices)
-         if len(new_devices) == 0:
-@@ -105,15 +158,16 @@
-         elif len(new_devices) == 1:
-             udid = new_devices.pop()
-             print(f"{datetime.now():%Y-%m-%d %H:%M:%S}: New test simulator detected")
--            print(f"UDID: {udid}")
-+            print(f"UDID: {udid}", flush=True)
-+            lock.release()
-             return udid
-         else:
-             exit(f"Found more than one new device: {new_devices}")
- 
- 
--async def log_stream_task(initial_devices):
-+async def log_stream_task(initial_devices, lock):
-     # Wait up to 5 minutes for the build to complete and the simulator to boot.
--    udid = await asyncio.wait_for(find_device(initial_devices), 5 * 60)
-+    udid = await asyncio.wait_for(find_device(initial_devices, lock), 5 * 60)
- 
-     # Stream the iOS device's logs, filtering out messages that come from the
-     # XCTest test suite (catching NSLog messages from the test method), or
-@@ -161,7 +215,7 @@
- 
- async def xcode_test(location, simulator, verbose):
-     # Run the test suite on the named simulator
--    print("Starting xcodebuild...")
-+    print("Starting xcodebuild...", flush=True)
-     args = [
-         "xcodebuild",
-         "test",
-@@ -230,33 +284,69 @@
-     shutil.copytree(source, target, symlinks=True)
-     print(" done")
- 
-+    xc_framework_path = target / "Python.xcframework"
-+    sim_framework_path = xc_framework_path / "ios-arm64_x86_64-simulator"
-     if framework is not None:
-         if framework.suffix == ".xcframework":
-             print("  Installing XCFramework...", end="", flush=True)
--            xc_framework_path = (target / "Python.xcframework").resolve()
-             if xc_framework_path.is_dir():
-                 shutil.rmtree(xc_framework_path)
-             else:
--                xc_framework_path.unlink()
-+                xc_framework_path.unlink(missing_ok=True)
-             xc_framework_path.symlink_to(
-                 framework.relative_to(xc_framework_path.parent, walk_up=True)
-             )
-             print(" done")
-         else:
-             print("  Installing simulator framework...", end="", flush=True)
--            sim_framework_path = (
--                target / "Python.xcframework" / "ios-arm64_x86_64-simulator"
--            ).resolve()
-             if sim_framework_path.is_dir():
-                 shutil.rmtree(sim_framework_path)
-             else:
--                sim_framework_path.unlink()
-+                sim_framework_path.unlink(missing_ok=True)
-             sim_framework_path.symlink_to(
-                 framework.relative_to(sim_framework_path.parent, walk_up=True)
-             )
-             print(" done")
-     else:
--        print("  Using pre-existing iOS framework.")
-+        if (
-+            xc_framework_path.is_symlink()
-+            and not xc_framework_path.readlink().is_absolute()
-+        ):
-+            # XCFramework is a relative symlink. Rewrite the symlink relative
-+            # to the new location.
-+            print("  Rewriting symlink to XCframework...", end="", flush=True)
-+            orig_xc_framework_path = (
-+                source
-+                / xc_framework_path.readlink()
-+            ).resolve()
-+            xc_framework_path.unlink()
-+            xc_framework_path.symlink_to(
-+                orig_xc_framework_path.relative_to(
-+                    xc_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        elif (
-+            sim_framework_path.is_symlink()
-+            and not sim_framework_path.readlink().is_absolute()
-+        ):
-+            print("  Rewriting symlink to simulator framework...", end="", flush=True)
-+            # Simulator framework is a relative symlink. Rewrite the symlink
-+            # relative to the new location.
-+            orig_sim_framework_path = (
-+                source
-+                / "Python.XCframework"
-+                / sim_framework_path.readlink()
-+            ).resolve()
-+            sim_framework_path.unlink()
-+            sim_framework_path.symlink_to(
-+                orig_sim_framework_path.relative_to(
-+                    sim_framework_path.parent, walk_up=True
-+                )
-+            )
-+            print(" done")
-+        else:
-+            print("  Using pre-existing iOS framework.")
- 
-     for app_src in apps:
-         print(f"  Installing app {app_src.name!r}...", end="", flush=True)
-@@ -285,7 +375,17 @@
+-async def run_testbed(simulator: str, args: list[str], verbose: bool=False):
++async def run_testbed(simulator: str | None, args: list[str], verbose: bool=False):
      location = Path(__file__).parent
      print("Updating plist...", end="", flush=True)
      update_plist(location, args)
--    print(" done.")
-+    print(" done.", flush=True)
+     print(" done.", flush=True)
+ 
++    if simulator is None:
++        simulator = await select_simulator_device()
++    print(f"Running test on {simulator}", flush=True)
 +
-+    # We need to get an exclusive lock on simulator creation, to avoid issues
-+    # with multiple simulators starting and being unable to tell which
-+    # simulator is due to which testbed instance. See
-+    # https://github.com/python/cpython/issues/130294 for details. Wait up to
-+    # 10 minutes for a simulator to boot.
-+    print("Obtaining lock on simulator creation...", flush=True)
-+    simulator_lock = SimulatorLock(timeout=10*60)
-+    await simulator_lock.acquire()
-+    print("Simulator lock acquired.", flush=True)
- 
-     # Get the list of devices that are booted at the start of the test run.
-     # The simulator started by the test suite will be detected as the new
-@@ -294,13 +394,15 @@
- 
-     try:
-         async with asyncio.TaskGroup() as tg:
--            tg.create_task(log_stream_task(initial_devices))
-+            tg.create_task(log_stream_task(initial_devices, simulator_lock))
-             tg.create_task(xcode_test(location, simulator=simulator, verbose=verbose))
-     except* MySystemExit as e:
-         raise SystemExit(*e.exceptions[0].args) from None
-     except* subprocess.CalledProcessError as e:
-         # Extract it from the ExceptionGroup so it can be handled by `main`.
-         raise e.exceptions[0]
-+    finally:
-+        simulator_lock.release()
- 
- 
- def main():
-@@ -372,8 +474,8 @@
- 
-     if context.subcommand == "clone":
-         clone_testbed(
--            source=Path(__file__).parent,
--            target=Path(context.location),
-+            source=Path(__file__).parent.resolve(),
-+            target=Path(context.location).resolve(),
-             framework=Path(context.framework).resolve() if context.framework else None,
-             apps=[Path(app) for app in context.apps],
-         )
-diff --git a/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m b/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m
-index 6db38253396..d417b4cd63e 100644
---- a/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m
-+++ b/iOS/testbed/iOSTestbedTests/iOSTestbedTests.m
-@@ -28,7 +28,7 @@
-     // Xcode log can't display color. Stdout will report that it is *not* a
-     // TTY.
-     setenv("NO_COLOR", "1", true);
--    setenv("PY_COLORS", "0", true);
-+    setenv("PYTHON_COLORS", "0", true);
- 
-     // Arguments to pass into the test suite runner.
-     // argv[0] must identify the process; any subsequent arg
-@@ -53,8 +53,6 @@
-     // Enforce UTF-8 encoding for stderr, stdout, file-system encoding and locale.
-     // See https://docs.python.org/3/library/os.html#python-utf-8-mode.
-     preconfig.utf8_mode = 1;
--    // Use the system logger for stdout/err
--    config.use_system_logger = 1;
-     // Don't buffer stdio. We want output to appears in the log immediately
-     config.buffered_stdio = 0;
-     // Don't write bytecode; we can't modify the app bundle
+     # We need to get an exclusive lock on simulator creation, to avoid issues
+     # with multiple simulators starting and being unable to tell which
+     # simulator is due to which testbed instance. See
+@@ -453,8 +487,10 @@
+     )
+     run.add_argument(
+         "--simulator",
+-        default="iPhone SE (3rd Generation)",
+-        help="The name of the simulator to use (default: 'iPhone SE (3rd Generation)')",
++        help=(
++            "The name of the simulator to use (eg: 'iPhone 16e'). Defaults to ",
++            "the most recently released 'entry level' iPhone device."
++        )
+     )
+     run.add_argument(
+         "-v", "--verbose",
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
