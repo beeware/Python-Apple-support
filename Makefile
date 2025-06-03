@@ -33,24 +33,28 @@ OPENSSL_VERSION=3.0.16-2
 XZ_VERSION=5.6.4-2
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS
+OS_LIST=macOS iOS tvOS watchOS visionOS
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
+TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
+TRIPLE_OS-tvOS=tvos
 VERSION_MIN-tvOS=12.0
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
+TRIPLE_OS-watchOS=watchos
 VERSION_MIN-watchOS=4.0
 
 # The architecture of the machine doing the build
@@ -128,10 +132,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -398,15 +402,13 @@ define build-sdk
 sdk=$1
 os=$2
 
-OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
 # Expand the build-target macro for target on this OS
@@ -450,6 +452,7 @@ $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$
 	mkdir -p $$(dir $$(PYTHON_LIB-$(sdk)))
 	lipo -create -output $$@ $$^ \
 		2>&1 | tee -a install/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
+	dsymutil $$@ -o $$(PYTHON_INSTALL-$(sdk))/Python.dSYM
 
 $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Install Info.plist for the $(sdk) SDK"
@@ -481,11 +484,15 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
 
+ifeq ($(os), visionOS)
+	echo "Skipping arch-specific header copying for visionOS"
+else
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
 	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+endif
 
 
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
@@ -510,6 +517,14 @@ $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-
 	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
 	$$(foreach module,$$(wildcard $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib-dynload/*),lipo -create -output $$(PYTHON_STDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_STDLIB-$$(target))/lib-dynload/$$(notdir $$(module))); )
 
+	# Create dSYM files for each module
+	$$(foreach module,$$(wildcard $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib-dynload/*),dsymutil $$(PYTHON_STDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)); )
+
+	# Copy in known-required xcprivacy files.
+	# Libraries linking OpenSSL must provide a privacy manifest. The one in this repository
+	# has been sourced from https://github.com/openssl/openssl/blob/openssl-3.0/os-dep/Apple/PrivacyInfo.xcprivacy
+	cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$(sdk))/lib-dynload/_hashlib.xcprivacy
+	cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$(sdk))/lib-dynload/_ssl.xcprivacy
 endif
 
 $(sdk): $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT
@@ -647,10 +662,11 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/Python.dSYM $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(os),iOS)
+ifeq ($(filter $(os),iOS visionOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/iOS/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/$(os)/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
