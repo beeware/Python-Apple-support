@@ -1835,6 +1835,19 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
+diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
+index c05497ede3a..1146bf3b988 100644
+--- a/iOS/testbed/__main__.py
++++ b/iOS/testbed/__main__.py
+@@ -127,7 +127,7 @@
+ async def select_simulator_device():
+     # List the testing simulators, in JSON format
+     raw_json = await async_check_output(
+-        "xcrun", "simctl", "--set", "testing", "list", "-j"
++        "xcrun", "simctl", "list", "-j"
+     )
+     json_data = json.loads(raw_json)
+ 
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
