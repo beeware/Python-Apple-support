@@ -204,8 +204,9 @@ jobs:
       working-directory: support
       run: |
         # Run a representative subset of CPython core tests:
-        # - test_builtins as a test of core language pieces
+        # - test_builtin as a test of core language tools
+        # - test_grammar as a test of core language features
         # - test_os as a test of system library calls
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
-        python -m testbed run -- test --single-process --rerun -W test_builtins test_os test_bz2 test_ctypes
+        python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
