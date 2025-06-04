@@ -132,7 +132,7 @@ index 510c7b9568a..810b08879f6 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
-index ec0857a4a99..2350e9dc821 100644
+index f5cd73bdea8..50f2f8988b7 100644
 --- a/Misc/platform_triplet.c
 +++ b/Misc/platform_triplet.c
 @@ -257,6 +257,26 @@
@@ -1269,150 +1269,19 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
-diff --git a/iOS/Resources/bin/arm64-apple-ios-clang b/iOS/Resources/bin/arm64-apple-ios-clang
-index c39519cd1f8..f50d5b5142f 100755
---- a/iOS/Resources/bin/arm64-apple-ios-clang
-+++ b/iOS/Resources/bin/arm64-apple-ios-clang
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios "$@"
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
-diff --git a/iOS/Resources/bin/arm64-apple-ios-clang++ b/iOS/Resources/bin/arm64-apple-ios-clang++
-index d9b12925f38..0794731d7dc 100755
---- a/iOS/Resources/bin/arm64-apple-ios-clang++
-+++ b/iOS/Resources/bin/arm64-apple-ios-clang++
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios "$@"
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
-diff --git a/iOS/Resources/bin/arm64-apple-ios-cpp b/iOS/Resources/bin/arm64-apple-ios-cpp
-index 24da23d3448..24fa1506bab 100755
---- a/iOS/Resources/bin/arm64-apple-ios-cpp
-+++ b/iOS/Resources/bin/arm64-apple-ios-cpp
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios -E "$@"
-+xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} -E "$@"
-diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-clang b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
-index 92e8d853d6e..4891a00876e 100755
---- a/iOS/Resources/bin/arm64-apple-ios-simulator-clang
-+++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
-diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-clang++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
-index 076469cc70c..58b2a5f6f18 100755
---- a/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
-+++ b/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios-simulator "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
-diff --git a/iOS/Resources/bin/arm64-apple-ios-simulator-cpp b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
-index c57f28cee5b..c9df94e8b7c 100755
---- a/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
-+++ b/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios-simulator -E "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
-diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
-index 17cbe0c8a1e..f4739a7b945 100755
---- a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
-+++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
-diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
-index 565d47b24c2..c348ae4c103 100755
---- a/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
-+++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios-simulator "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
-diff --git a/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
-index 63fc8e8de2d..6d7f8084c9f 100755
---- a/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
-+++ b/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
-@@ -1,2 +1,2 @@
- #!/bin/sh
--xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios-simulator -E "$@"
-+xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
-index b436c9af99d..c05497ede3a 100644
+index c05497ede3a..1146bf3b988 100644
 --- a/iOS/testbed/__main__.py
 +++ b/iOS/testbed/__main__.py
-@@ -123,6 +123,36 @@
-             )
- 
- 
-+# Select a simulator device to use.
-+async def select_simulator_device():
-+    # List the testing simulators, in JSON format
-+    raw_json = await async_check_output(
-+        "xcrun", "simctl", "--set", "testing", "list", "-j"
-+    )
-+    json_data = json.loads(raw_json)
-+
-+    # Any device will do; we'll look for "SE" devices - but the name isn't
-+    # consistent over time. Older Xcode versions will use "iPhone SE (Nth
-+    # generation)"; As of 2025, they've started using "iPhone 16e".
-+    #
-+    # When Xcode is updated after a new release, new devices will be available
-+    # and old ones will be dropped from the set available on the latest iOS
-+    # version. Select the one with the highest minimum runtime version - this
-+    # is an indicator of the "newest" released device, which should always be
-+    # supported on the "most recent" iOS version.
-+    se_simulators = sorted(
-+        (devicetype["minRuntimeVersion"], devicetype["name"])
-+        for devicetype in json_data["devicetypes"]
-+        if devicetype["productFamily"] == "iPhone"
-+        and (
-+            ("iPhone " in devicetype["name"] and devicetype["name"].endswith("e"))
-+            or "iPhone SE " in devicetype["name"]
-+        )
-+    )
-+
-+    return se_simulators[-1][1]
-+
-+
- # Return a list of UDIDs associated with booted simulators
- async def list_devices():
-     try:
-@@ -371,12 +401,16 @@
-         plistlib.dump(info, f)
- 
- 
--async def run_testbed(simulator: str, args: list[str], verbose: bool=False):
-+async def run_testbed(simulator: str | None, args: list[str], verbose: bool=False):
-     location = Path(__file__).parent
-     print("Updating plist...", end="", flush=True)
-     update_plist(location, args)
-     print(" done.", flush=True)
- 
-+    if simulator is None:
-+        simulator = await select_simulator_device()
-+    print(f"Running test on {simulator}", flush=True)
-+
-     # We need to get an exclusive lock on simulator creation, to avoid issues
-     # with multiple simulators starting and being unable to tell which
-     # simulator is due to which testbed instance. See
-@@ -453,8 +487,10 @@
+@@ -127,7 +127,7 @@
+ async def select_simulator_device():
+     # List the testing simulators, in JSON format
+     raw_json = await async_check_output(
+-        "xcrun", "simctl", "--set", "testing", "list", "-j"
++        "xcrun", "simctl", "list", "-j"
      )
-     run.add_argument(
-         "--simulator",
--        default="iPhone SE (3rd Generation)",
--        help="The name of the simulator to use (default: 'iPhone SE (3rd Generation)')",
-+        help=(
-+            "The name of the simulator to use (eg: 'iPhone 16e'). Defaults to ",
-+            "the most recently released 'entry level' iPhone device."
-+        )
-     )
-     run.add_argument(
-         "-v", "--verbose",
+     json_data = json.loads(raw_json)
+ 
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
