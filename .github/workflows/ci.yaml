@@ -172,6 +172,11 @@ jobs:
       fail-fast: false
       matrix:
         target: ["iOS", "visionOS", "MacCatalyst"]
+        include:
+            - testbed-pre-args:
+
+            - target: MacCatalyst
+              testbed-pre-args: '--catalyst'
 
     steps:
     - uses: actions/checkout@v4.1.7
@@ -209,4 +214,4 @@ jobs:
         # - test_os as a test of system library calls
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
-        python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
+        python -m testbed ${{ matrix.testbed-pre-args }} run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
