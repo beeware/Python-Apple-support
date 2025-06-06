@@ -70,7 +70,7 @@ sysconfig.get_platform = cross_get_platform
 sysconfig._get_sysconfigdata_name = cross_get_sysconfigdata_name
 
 # Ensure module-level values cached at time of import are updated.
-sysconfig._BASE_PREFIX = sys.prefix
+sysconfig._BASE_PREFIX = sys.base_prefix
 sysconfig._BASE_EXEC_PREFIX = sys.base_exec_prefix
 
 # Force sysconfig data to be loaded (and cached).

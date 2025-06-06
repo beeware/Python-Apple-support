@@ -90,16 +90,6 @@ jobs:
       fail-fast: false
       matrix:
         target: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS', 'MacCatalyst']
-        include:
-            - briefcase-run-args:
-            - run-tests: false
-
-            - target: macOS
-              run-tests: true
-
-            - target: iOS
-              briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
-              run-tests: true
 
     steps:
     - uses: actions/checkout@v4.1.7
@@ -125,20 +115,98 @@ jobs:
         name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
+  briefcase-testbed:
+    name: Briefcase testbed (${{ matrix.target }})
+    runs-on: macOS-latest
+    needs: [ config, build ]
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["macOS", "iOS"]
+        include:
+            - briefcase-run-args:
+
+            - target: iOS
+              briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
+
+    steps:
     - uses: actions/checkout@v4.1.7
-      if: matrix.run-tests
+
+    - name: Get build artifact
+      uses: actions/download-artifact@v4.3.0
+      with:
+        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        path: dist
+        merge-multiple: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        # Appending -dev ensures that we can always build the dev release.
+        # It's a no-op for versions that have been published.
+        python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
+        # Ensure that we *always* use the latest build, not a cached version.
+        # It's an edge case, but when a new alpha is released, we need to use it ASAP.
+        check-latest: true
+
+    - uses: actions/checkout@v4.1.7
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
 
     - name: Install dependencies
-      if: matrix.run-tests
       run: |
         # Use the development version of Briefcase
         python -m pip install git+https://github.com/beeware/briefcase.git
 
     - name: Run support testbed check
-      if: matrix.run-tests
       timeout-minutes: 10
       working-directory: Python-support-testbed
       run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\'
+
+  cpython-testbed:
+    name: CPython testbed (${{ matrix.target }})
+    runs-on: macOS-latest
+    needs: [ config, build ]
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["iOS", "visionOS", "MacCatalyst"]
+
+    steps:
+    - uses: actions/checkout@v4.1.7
+
+    - name: Get build artifact
+      uses: actions/download-artifact@v4.3.0
+      with:
+        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        path: dist
+        merge-multiple: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        # Appending -dev ensures that we can always build the dev release.
+        # It's a no-op for versions that have been published.
+        python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
+        # Ensure that we *always* use the latest build, not a cached version.
+        # It's an edge case, but when a new alpha is released, we need to use it ASAP.
+        check-latest: true
+
+    - name: Unpack support package
+      run: |
+        mkdir support
+        cd support
+        tar zxvf ../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+
+    - name: Run CPython testbed
+      timeout-minutes: 10
+      working-directory: support
+      run: |
+        # Run a representative subset of CPython core tests:
+        # - test_builtin as a test of core language tools
+        # - test_grammar as a test of core language features
+        # - test_os as a test of system library calls
+        # - test_bz2 as a simple test of third party libraries
+        # - test_ctypes as a test of FFI
+        python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
