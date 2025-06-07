@@ -2666,7 +2666,7 @@ index c6418de6e74..7b32df19ab4 100644
 +It is a placeholder slice for the XCFramework on Mac Catalyst,
 +to install or copy your built framework to.
 diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
-index c05497ede3a..d693d62873e 100644
+index c05497ede3a..2bee1f54206 100644
 --- a/iOS/testbed/__main__.py
 +++ b/iOS/testbed/__main__.py
 @@ -28,6 +28,15 @@
@@ -2685,6 +2685,15 @@ index c05497ede3a..d693d62873e 100644
  
  # Work around a bug involving sys.exit and TaskGroups
  # (https://github.com/python/cpython/issues/101515).
+@@ -127,7 +136,7 @@
+ async def select_simulator_device():
+     # List the testing simulators, in JSON format
+     raw_json = await async_check_output(
+-        "xcrun", "simctl", "--set", "testing", "list", "-j"
++        "xcrun", "simctl", "list", "-j"
+     )
+     json_data = json.loads(raw_json)
+ 
 @@ -243,9 +252,13 @@
              sys.stdout.flush()
  
