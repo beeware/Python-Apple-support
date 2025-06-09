@@ -34,7 +34,7 @@ OPENSSL_VERSION=3.0.16-2
 XZ_VERSION=5.6.4-2
 
 # Supported OS
-OS_LIST=macOS iOS tvOS watchOS visionOS
+OS_LIST=macOS iOS tvOS watchOS visionOS MacCatalyst
 
 CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
@@ -42,25 +42,37 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 TARGETS-macOS=macosx.x86_64 macosx.arm64
 TRIPLE_OS-macOS=macos
 VERSION_MIN-macOS=11.0
+CONFIGFLAGS-macOS=
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
 TRIPLE_OS-iOS=ios
 VERSION_MIN-iOS=13.0
+CONFIGFLAGS-iOS=
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
 TRIPLE_OS-tvOS=tvos
 VERSION_MIN-tvOS=12.0
+CONFIGFLAGS-tvOS=
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
 TRIPLE_OS-watchOS=watchos
 VERSION_MIN-watchOS=4.0
+CONFIGFLAGS-watchOS=
 
+# visionOS targets
 TARGETS-visionOS=xrsimulator.arm64 xros.arm64
 TRIPLE_OS-visionOS=xros
 VERSION_MIN-visionOS=2.0
+CONFIGFLAGS-visionOS=
+
+# Mac Catalyst Targets
+TARGETS-MacCatalyst=macabi.x86_64 macabi.arm64
+TRIPLE_OS-MacCatalyst=ios
+VERSION_MIN-MacCatalyst=14.2
+CONFIGFLAGS-MacCatalyst=--with-catalyst-macos-version=11.2
 
 # The architecture of the machine doing the build
 HOST_ARCH=$(shell uname -m)
@@ -132,13 +144,19 @@ os=$2
 OS_LOWER-$(target)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
 
 # $(target) can be broken up into is composed of $(SDK).$(ARCH)
-SDK-$(target)=$$(basename $(target))
+BASE-$(target)=$$(basename $(target))
+SDK-$(target)=$$(subst macabi,macosx,$$(BASE-$(target)))
 ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
-	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
+	ifeq ($$(findstring simulator,$$(BASE-$(target))),)
+		ifeq ($$(findstring macabi,$$(BASE-$(target))),)
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
+		else
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-macabi
+IS_SIMULATOR-$(target)=False
+		endif
 	else
 TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
@@ -266,10 +284,17 @@ ifneq ($(os),macOS)
 PYTHON_SRCDIR-$(target)=build/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_INSTALL-$(target)=$(PROJECT_DIR)/install/$(os)/$(target)/python-$(PYTHON_VERSION)
 PYTHON_FRAMEWORK-$(target)=$$(PYTHON_INSTALL-$(target))/Python.framework
+ifneq ($$(BASE-$(target)),macabi)
 PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Python
 PYTHON_BIN-$(target)=$$(PYTHON_INSTALL-$(target))/bin
 PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Headers
 PYTHON_STDLIB-$(target)=$$(PYTHON_INSTALL-$(target))/lib/python$(PYTHON_VER)
+else
+PYTHON_LIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Python
+PYTHON_BIN-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/bin
+PYTHON_INCLUDE-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/Headers
+PYTHON_STDLIB-$(target)=$$(PYTHON_FRAMEWORK-$(target))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
+endif
 PYTHON_PLATFORM_CONFIG-$(target)=$$(PYTHON_INSTALL-$(target))/platform-config/$$(ARCH-$(target))-$$(SDK-$(target))
 PYTHON_PLATFORM_SITECUSTOMIZE-$(target)=$$(PYTHON_PLATFORM_CONFIG-$(target))/sitecustomize.py
 
@@ -312,10 +337,12 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 			--with-openssl="$$(OPENSSL_INSTALL-$(target))" \
 			--enable-framework="$$(PYTHON_INSTALL-$(target))" \
 			--with-system-libmpdec \
+			$$(CONFIGFLAGS-$(os)) \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).config.log
 
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
+	
 	cd $$(PYTHON_SRCDIR-$(target)) && \
 		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
 			make -j8 all \
@@ -367,6 +394,7 @@ $(target): $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)) $$(PYTHON_LIB-$(target))
 
 vars-$(target):
 	@echo ">>> Environment variables for $(target)"
+	@echo "BASE-$(target): $$(BASE-$(target))"
 	@echo "SDK-$(target): $$(SDK-$(target))"
 	@echo "ARCH-$(target): $$(ARCH-$(target))"
 	@echo "TARGET_TRIPLE-$(target): $$(TARGET_TRIPLE-$(target))"
@@ -411,7 +439,11 @@ SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
+ifeq ($$(findstring macabi,$(sdk)),)
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+else
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-maccatalyst
+endif
 else
 SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
@@ -446,24 +478,45 @@ else
 PYTHON_INSTALL-$(sdk)=$(PROJECT_DIR)/install/$(os)/$(sdk)/python-$(PYTHON_VERSION)
 PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INCLUDE-$(sdk))/module.modulemap
 PYTHON_FRAMEWORK-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
+ifneq ($(sdk),macabi)
 PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
 PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
+else
+PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Python
+PYTHON_BIN-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/bin
+PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Headers
+PYTHON_STDLIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/lib/python$(PYTHON_VER)
+endif
 PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
 $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
 	@echo ">>> Build Python fat library for the $(sdk) SDK"
 	mkdir -p $$(dir $$(PYTHON_LIB-$(sdk)))
+ifeq ($(sdk),macabi)
+	ln -si $(PYTHON_VER) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/Current
+	ln -si Versions/Current/Headers $$(PYTHON_FRAMEWORK-$(sdk))/Headers
+	ln -si Versions/Current/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Resources
+	ln -si Versions/Current/Python $$(PYTHON_FRAMEWORK-$(sdk))/Python
+endif
 	lipo -create -output $$@ $$^ \
 		2>&1 | tee -a install/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
 	# Disable dSYM production (for now)
 	# dsymutil $$@ -o $$(PYTHON_INSTALL-$(sdk))/Python.dSYM
 
+ifneq ($(sdk),macabi)
 $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Install Info.plist for the $(sdk) SDK"
 	# Copy Info.plist as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Info.plist $$(PYTHON_FRAMEWORK-$(sdk))
+else
+$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources:
+	echo ">>> Copying Resources Folder for Versioned Framework from the first target in the SDK"
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
+	# Copy Resources as-is from the first target in the $(sdk) SDK
+	cp -r $$(PYTHON_FRAMEWORK-$$(firstword $$(SDK_TARGETS-$(sdk))))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
+endif
 
 $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	@echo ">>> Build Python fat headers for the $(sdk) SDK"
@@ -487,11 +540,20 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	echo "\n}" >> $$(PYTHON_MODULEMAP-$(sdk))
 
 	# Link the PYTHONHOME version of the headers
+ifneq ($(sdk),macabi)
 	mkdir -p $$(PYTHON_INSTALL-$(sdk))/include
 	ln -si ../Python.framework/Headers $$(PYTHON_INSTALL-$(sdk))/include/python$(PYTHON_VER)
+else
+	mkdir -p $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include
+	rm -rf $(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include/*
+	ln -si ../Headers $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/include/python$(PYTHON_VER)
+endif
 
 ifeq ($(os), visionOS)
 	echo "Skipping arch-specific header copying for visionOS"
+	
+	# Add the headers from each target -- there's should only be one target, so we copy it to the same name.
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h; )
 else
 	# Add the individual headers from each target in an arch-specific name
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
@@ -500,8 +562,11 @@ else
 	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 endif
 
-
+ifneq ($(sdk),macabi)
 $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+else
+$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)/Resources $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+endif
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
 	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
 	# Copy stdlib from the first target associated with the $(sdk) SDK
@@ -667,16 +732,19 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		2>&1 | tee -a support/$(PYTHON_VER)/python-$(os).xcframework.log
 
 	@echo ">>> Install PYTHONHOME for $(os)"
+	# Do not install stuff for macabi becuase it's already built into the framework.
+ifneq ($(os),MacCatalyst)
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+endif
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	# Disable dSYM production (for now)
 	# $$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/Python.dSYM $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(filter $(os),iOS visionOS),$(os))
+ifeq ($(filter $(os),iOS visionOS MacCatalyst),$(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/$(os)/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/$$(subst MacCatalyst,iOS,$(os))/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
