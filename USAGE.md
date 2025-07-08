@@ -3,7 +3,7 @@
 ## The easy way
 
 The easist way to use these packages is by creating a project with
-(Briefcase)[https://github.com/beeware/briefcase]. Briefcase will download
+[Briefcase](https://github.com/beeware/briefcase). Briefcase will download
 pre-compiled versions of these support packages, and add them to an Xcode project
 (or pre-build stub application, in the case of macOS).
 
