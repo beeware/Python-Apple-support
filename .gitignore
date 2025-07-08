@@ -15,3 +15,5 @@ tests/testbed/iOS
 *.log
 *.gz
 *.DS_Store
+
+_build
