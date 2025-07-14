@@ -89,7 +89,7 @@ update-patch:
 	# comparing between the current state of the 3.X branch against the v3.X.Y
 	# tag associated with the release being built. This allows you to
 	# maintain a branch that contains custom patches against the default Python.
-	# The patch archived in this respository is based on github.com/freakboy3742/cpython
+	# The patch archived in this repository is based on github.com/freakboy3742/cpython
 	# Requires patchutils (installable via `brew install patchutils`); this
 	# also means we need to re-introduce homebrew to the path for the filterdiff
 	# call
@@ -333,7 +333,7 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 
 
 $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
-	@echo ">>> Create cross-plaform config for $(target)"
+	@echo ">>> Create cross-platform config for $(target)"
 	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(target))
 	# Create the cross-platform site definition
 	echo "import _cross_$$(ARCH-$(target))_$$(SDK-$(target)); import _cross_venv;" \
