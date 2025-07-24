@@ -56,7 +56,7 @@ index 8bcd741c446..d8a6f28edba 100644
                  suffix.replace(".so", ".fwork")
                  for suffix in _imp.extension_suffixes()
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 55e211212d4..cad919bc0c4 100644
+index 7dd64de6025..a7e3c77f803 100644
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
 @@ -528,6 +528,78 @@
@@ -282,7 +282,7 @@ index f93b98dd681..0db3dbdce05 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Lib/test/datetimetester.py b/Lib/test/datetimetester.py
-index 1b551254f86..8594f92c097 100644
+index 1c1cbd03d02..1378985de4a 100644
 --- a/Lib/test/datetimetester.py
 +++ b/Lib/test/datetimetester.py
 @@ -7159,9 +7159,9 @@
@@ -298,10 +298,10 @@ index 1b551254f86..8594f92c097 100644
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index b7cd7940eb1..32243a49e7a 100644
+index 001ecec4dcd..e46a5661fe8 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -558,7 +558,7 @@
+@@ -559,7 +559,7 @@
          sys.platform == "android", f"Android blocks {name} with SELinux"
      )
  
@@ -310,7 +310,7 @@ index b7cd7940eb1..32243a49e7a 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -574,7 +574,7 @@
+@@ -575,7 +575,7 @@
  def skip_wasi_stack_overflow():
      return unittest.skipIf(is_wasi, "Exhausts stack on WASI")
  
@@ -403,7 +403,7 @@ index f2e2394089d..2efbbfb0014 100644
      if objc:
          # If objc exists, we know ctypes is also importable.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index b5703fbe6ae..e436b2efb8e 100644
+index 01e10d1ab20..ddc430beb80 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -209,6 +209,12 @@
@@ -419,7 +419,7 @@ index b5703fbe6ae..e436b2efb8e 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -2264,7 +2270,7 @@
+@@ -2294,7 +2300,7 @@
  # a full Xcode install that has an iPhone SE (3rd edition) simulator available.
  # This must be run *after* a `make install` has completed the build. The
  # `--with-framework-name` argument *cannot* be used when configuring the build.
@@ -428,7 +428,7 @@ index b5703fbe6ae..e436b2efb8e 100644
  .PHONY: testios
  testios:
  	@if test "$(MACHDEP)" != "ios"; then \
-@@ -2284,11 +2290,41 @@
+@@ -2314,11 +2320,41 @@
  		exit 1;\
  	fi
  
@@ -533,7 +533,7 @@ index 1bb6a05dc11..49febd56a37 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index 884f8a4b068..7c93d36e717 100755
+index 345822a6c6d..11acfe0ac9f 100755
 --- a/configure
 +++ b/configure
 @@ -982,6 +982,10 @@
@@ -930,7 +930,7 @@ index 884f8a4b068..7c93d36e717 100755
      aarch64-*-linux-android/clang) :
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-linux-android/clang) :
-@@ -7686,7 +7911,7 @@
+@@ -7688,7 +7913,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -939,7 +939,7 @@ index 884f8a4b068..7c93d36e717 100755
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        as_fn_error $? "Unknown platform for framework build" "$LINENO" 5;;
-@@ -7752,7 +7977,7 @@
+@@ -7754,7 +7979,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -948,7 +948,7 @@ index 884f8a4b068..7c93d36e717 100755
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -13574,7 +13799,7 @@
+@@ -13570,7 +13795,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -957,7 +957,7 @@ index 884f8a4b068..7c93d36e717 100755
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -13707,7 +13932,7 @@
+@@ -13703,7 +13928,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -966,7 +966,7 @@ index 884f8a4b068..7c93d36e717 100755
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -13731,7 +13956,7 @@
+@@ -13727,7 +13952,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -975,7 +975,7 @@ index 884f8a4b068..7c93d36e717 100755
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -15508,7 +15733,7 @@
+@@ -15504,7 +15729,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -984,7 +984,7 @@ index 884f8a4b068..7c93d36e717 100755
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -19260,12 +19485,6 @@
+@@ -19256,12 +19481,6 @@
  then :
    printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
  
@@ -997,7 +997,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -19326,18 +19545,6 @@
+@@ -19322,18 +19541,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -1016,7 +1016,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -19764,24 +19971,6 @@
+@@ -19766,24 +19973,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
@@ -1041,7 +1041,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -20100,12 +20289,6 @@
+@@ -20102,12 +20291,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -1054,7 +1054,7 @@ index 884f8a4b068..7c93d36e717 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -20374,11 +20557,11 @@
+@@ -20376,11 +20559,11 @@
  
  fi
  
@@ -1068,7 +1068,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
  if test "x$ac_cv_func_getentropy" = xyes
  then :
-@@ -20400,6 +20583,53 @@
+@@ -20402,6 +20585,53 @@
  
  fi
  
@@ -1122,7 +1122,7 @@ index 884f8a4b068..7c93d36e717 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -23844,7 +24074,8 @@
+@@ -23873,7 +24103,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -1132,7 +1132,7 @@ index 884f8a4b068..7c93d36e717 100755
  
    for ac_func in openpty
  do :
-@@ -23958,7 +24189,7 @@
+@@ -23987,7 +24218,7 @@
  fi
  
  done
@@ -1141,7 +1141,7 @@ index 884f8a4b068..7c93d36e717 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -24141,6 +24372,7 @@
+@@ -24170,6 +24401,7 @@
  fi
  
  done
@@ -1149,7 +1149,7 @@ index 884f8a4b068..7c93d36e717 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -24406,10 +24638,10 @@
+@@ -24435,10 +24667,10 @@
  
  done
  
@@ -1162,7 +1162,7 @@ index 884f8a4b068..7c93d36e717 100755
  then
  
    for ac_func in clock_settime
-@@ -24726,7 +24958,7 @@
+@@ -24755,7 +24987,7 @@
    e) if test "$cross_compiling" = yes
  then :
  
@@ -1171,7 +1171,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -26748,8 +26980,8 @@
+@@ -26777,8 +27009,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1182,7 +1182,7 @@ index 884f8a4b068..7c93d36e717 100755
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -29619,7 +29851,7 @@
+@@ -29648,7 +29880,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -1191,7 +1191,7 @@ index 884f8a4b068..7c93d36e717 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -30129,7 +30361,7 @@
+@@ -30155,7 +30387,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -1200,7 +1200,7 @@ index 884f8a4b068..7c93d36e717 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -31078,7 +31310,7 @@
+@@ -31104,7 +31336,7 @@
    SunOS*) _PYTHREAD_NAME_MAXLEN=31;;
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
@@ -1209,7 +1209,7 @@ index 884f8a4b068..7c93d36e717 100755
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
    *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -31110,7 +31342,7 @@
+@@ -31136,7 +31368,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -1218,7 +1218,7 @@ index 884f8a4b068..7c93d36e717 100755
  
  
  
-@@ -35272,6 +35504,9 @@
+@@ -35304,6 +35536,9 @@
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
      "iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES iOS/Resources/Info.plist" ;;
@@ -1229,7 +1229,7 @@ index 884f8a4b068..7c93d36e717 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index cf25148bad2..7ab0609bf8a 100644
+index d6059471771..7e1a5ffe604 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@
@@ -1587,20 +1587,40 @@ index cf25148bad2..7ab0609bf8a 100644
    [SOABI_PLATFORM=$PLATFORM_TRIPLET]
  )
  
-@@ -1227,6 +1420,12 @@
-   [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
-   [aarch64-apple-ios*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
-   [aarch64-apple-ios*/clang],             [PY_SUPPORT_TIER=3], dnl iOS on ARM64
-+  [aarch64-apple-tvos*-simulator/clang],  [PY_SUPPORT_TIER=3], dnl tvOS Simulator on arm64
-+  [aarch64-apple-tvos*/clang],            [PY_SUPPORT_TIER=3], dnl tvOS on ARM64
-+  [aarch64-apple-watchos*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl watchOS Simulator on arm64
-+  [arm64_32-apple-watchos*/clang],            [PY_SUPPORT_TIER=3], dnl watchOS on ARM64
-+  [aarch64-apple-xros*-simulator/clang],   [PY_SUPPORT_TIER=3], dnl visionOS Simulator on arm64
-+  [aarch64-apple-xros*/clang],            [PY_SUPPORT_TIER=3],    dnl visionOS on ARM64
-   [aarch64-*-linux-android/clang],   [PY_SUPPORT_TIER=3], dnl Android on ARM64
-   [x86_64-*-linux-android/clang],    [PY_SUPPORT_TIER=3], dnl Android on AMD64
+@@ -1220,16 +1413,22 @@
+   [wasm32-unknown-wasip1/clang],         [PY_SUPPORT_TIER=2], dnl WebAssembly System Interface preview1, clang
+   [x86_64-*-linux-gnu/clang],            [PY_SUPPORT_TIER=2], dnl Linux on AMD64, any vendor, glibc, clang
  
-@@ -1536,7 +1735,7 @@
+-  [aarch64-pc-windows-msvc/msvc],        [PY_SUPPORT_TIER=3], dnl Windows ARM64, MSVC
+-  [armv7l-*-linux-gnueabihf/gcc],        [PY_SUPPORT_TIER=3], dnl ARMv7 LE with hardware floats, any vendor, glibc, gcc
+-  [powerpc64le-*-linux-gnu/clang],       [PY_SUPPORT_TIER=3], dnl Linux on PPC64 little endian, glibc, clang
+-  [s390x-*-linux-gnu/gcc],               [PY_SUPPORT_TIER=3], dnl Linux on 64bit s390x (big endian), glibc, gcc
+-  [x86_64-*-freebsd*/clang],             [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
+-  [aarch64-apple-ios*-simulator/clang],  [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
+-  [aarch64-apple-ios*/clang],            [PY_SUPPORT_TIER=3], dnl iOS on ARM64
+-  [aarch64-*-linux-android/clang],       [PY_SUPPORT_TIER=3], dnl Android on ARM64
+-  [x86_64-*-linux-android/clang],        [PY_SUPPORT_TIER=3], dnl Android on AMD64
+-  [wasm32-*-emscripten/emcc],            [PY_SUPPORT_TIER=3], dnl Emscripten
++  [aarch64-pc-windows-msvc/msvc],           [PY_SUPPORT_TIER=3], dnl Windows ARM64, MSVC
++  [armv7l-*-linux-gnueabihf/gcc],           [PY_SUPPORT_TIER=3], dnl ARMv7 LE with hardware floats, any vendor, glibc, gcc
++  [powerpc64le-*-linux-gnu/clang],          [PY_SUPPORT_TIER=3], dnl Linux on PPC64 little endian, glibc, clang
++  [s390x-*-linux-gnu/gcc],                  [PY_SUPPORT_TIER=3], dnl Linux on 64bit s390x (big endian), glibc, gcc
++  [x86_64-*-freebsd*/clang],                [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
++  [aarch64-apple-ios*-simulator/clang],     [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
++  [aarch64-apple-ios*/clang],               [PY_SUPPORT_TIER=3], dnl iOS on ARM64
++  [aarch64-apple-tvos*-simulator/clang],    [PY_SUPPORT_TIER=3], dnl tvOS Simulator on arm64
++  [aarch64-apple-tvos*/clang],              [PY_SUPPORT_TIER=3], dnl tvOS on ARM64
++  [aarch64-apple-watchos*-simulator/clang], [PY_SUPPORT_TIER=3], dnl watchOS Simulator on arm64
++  [arm64_32-apple-watchos*/clang],          [PY_SUPPORT_TIER=3], dnl watchOS on ARM64
++  [aarch64-apple-xros*-simulator/clang],    [PY_SUPPORT_TIER=3], dnl visionOS Simulator on arm64
++  [aarch64-apple-xros*/clang],              [PY_SUPPORT_TIER=3],    dnl visionOS on ARM64
++  [aarch64-*-linux-android/clang],          [PY_SUPPORT_TIER=3], dnl Android on ARM64
++  [x86_64-*-linux-android/clang],           [PY_SUPPORT_TIER=3], dnl Android on AMD64
++  [wasm32-*-emscripten/emcc],               [PY_SUPPORT_TIER=3], dnl Emscripten
+ 
+   [PY_SUPPORT_TIER=0]
+ )
+@@ -1537,7 +1736,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -1609,7 +1629,7 @@ index cf25148bad2..7ab0609bf8a 100644
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        AC_MSG_ERROR([Unknown platform for framework build]);;
-@@ -1601,7 +1800,7 @@
+@@ -1602,7 +1801,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
@@ -1618,7 +1638,7 @@ index cf25148bad2..7ab0609bf8a 100644
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -3470,7 +3669,7 @@
+@@ -3469,7 +3668,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -1627,7 +1647,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3594,7 +3793,7 @@
+@@ -3593,7 +3792,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -1636,7 +1656,7 @@ index cf25148bad2..7ab0609bf8a 100644
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3618,7 +3817,7 @@
+@@ -3617,7 +3816,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -1645,7 +1665,7 @@ index cf25148bad2..7ab0609bf8a 100644
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -4106,7 +4305,7 @@
+@@ -4105,7 +4304,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -1654,7 +1674,7 @@ index cf25148bad2..7ab0609bf8a 100644
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5215,9 +5414,9 @@
+@@ -5214,9 +5413,9 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock closefrom close_range confstr \
@@ -1664,9 +1684,9 @@ index cf25148bad2..7ab0609bf8a 100644
 -  fork fork1 fpathconf fstatat ftime ftruncate futimens futimes futimesat \
 +  fpathconf fstatat ftime ftruncate futimens futimes futimesat \
    gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
-   getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin \
+   getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin getlogin_r \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5225,8 +5424,7 @@
+@@ -5224,8 +5423,7 @@
    getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
    mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
@@ -1676,7 +1696,7 @@ index cf25148bad2..7ab0609bf8a 100644
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill pthread_get_name_np pthread_getname_np pthread_set_name_np
-@@ -5236,7 +5434,7 @@
+@@ -5235,7 +5433,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
    setitimer setlocale setpgid setpgrp setpriority setregid setresgid \
@@ -1685,7 +1705,7 @@ index cf25148bad2..7ab0609bf8a 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5251,12 +5449,20 @@
+@@ -5250,12 +5448,20 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -1709,8 +1729,8 @@ index cf25148bad2..7ab0609bf8a 100644
  fi
  
  AC_CHECK_DECL([dirfd],
-@@ -5539,20 +5745,22 @@
- ])
+@@ -5550,20 +5756,22 @@
+               [@%:@include <utmp.h>])
  
  # check for openpty, login_tty, and forkpty
 -
@@ -1746,7 +1766,7 @@ index cf25148bad2..7ab0609bf8a 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5591,10 +5799,10 @@
+@@ -5602,10 +5810,10 @@
      ])
  ])
  
@@ -1759,7 +1779,7 @@ index cf25148bad2..7ab0609bf8a 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -5752,7 +5960,7 @@
+@@ -5763,7 +5971,7 @@
  [ac_cv_buggy_getaddrinfo=no],
  [ac_cv_buggy_getaddrinfo=yes],
  [
@@ -1768,7 +1788,7 @@ index cf25148bad2..7ab0609bf8a 100644
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -6345,8 +6553,8 @@
+@@ -6356,8 +6564,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -1779,7 +1799,7 @@ index cf25148bad2..7ab0609bf8a 100644
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -7005,7 +7213,7 @@
+@@ -7016,7 +7224,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -1788,7 +1808,7 @@ index cf25148bad2..7ab0609bf8a 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7307,7 +7515,7 @@
+@@ -7316,7 +7524,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -1797,7 +1817,7 @@ index cf25148bad2..7ab0609bf8a 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7694,7 +7902,7 @@
+@@ -7703,7 +7911,7 @@
    SunOS*) _PYTHREAD_NAME_MAXLEN=31;;
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
@@ -1806,7 +1826,7 @@ index cf25148bad2..7ab0609bf8a 100644
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
    *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -7719,7 +7927,7 @@
+@@ -7728,7 +7936,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
@@ -1835,19 +1855,6 @@ index c3e261ecd9e..26ef7a95de4 100644
  	<key>CFBundleSupportedPlatforms</key>
  	<array>
  		<string>iPhoneOS</string>
-diff --git a/iOS/testbed/__main__.py b/iOS/testbed/__main__.py
-index c05497ede3a..1146bf3b988 100644
---- a/iOS/testbed/__main__.py
-+++ b/iOS/testbed/__main__.py
-@@ -127,7 +127,7 @@
- async def select_simulator_device():
-     # List the testing simulators, in JSON format
-     raw_json = await async_check_output(
--        "xcrun", "simctl", "--set", "testing", "list", "-j"
-+        "xcrun", "simctl", "list", "-j"
-     )
-     json_data = json.loads(raw_json)
- 
 --- /dev/null
 +++ b/tvOS/README.rst
 @@ -0,0 +1,108 @@
