@@ -11,8 +11,8 @@ import sysconfig
 sys.cross_compiling = True
 sys.platform = "{{platform}}"
 sys.implementation._multiarch = "{{arch}}-{{sdk}}"
-sys.base_prefix = sysconfig.get_config_var("prefix")
-sys.base_exec_prefix = sysconfig.get_config_var("prefix")
+sys.base_prefix = sysconfig._get_sysconfigdata()["prefix"]
+sys.base_exec_prefix = sysconfig._get_sysconfigdata()["prefix"]
 
 ###########################################################################
 # subprocess module patches
