@@ -140,7 +140,7 @@ jobs:
         merge-multiple: true
 
     - name: Set up Python
-      uses: actions/setup-python@v5.6.2
+      uses: actions/setup-python@v5.6.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -212,7 +212,7 @@ jobs:
         python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
 
   crossenv-test:
-    name: Cross-platform env test (${{ matrix.platform }})
+    name: Cross-platform env test (${{ matrix.multiarch }})
     runs-on: macOS-latest
     needs: [ config, build ]
     strategy:
