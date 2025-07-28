@@ -12,13 +12,14 @@ PYTHON_CROSS_PLATFORM = os.getenv("PYTHON_CROSS_PLATFORM", "unknown")
 PYTHON_CROSS_SLICE = os.getenv("PYTHON_CROSS_SLICE", "unknown")
 PYTHON_CROSS_MULTIARCH = os.getenv("PYTHON_CROSS_MULTIARCH", "unknown")
 
-# Determine some file system anchor points.
+# Determine some file system anchor points for the tests
+# Assumes that the tests are run in a virtual environment named
+# `cross-venv`,
 VENV_PREFIX = Path(__file__).parent.parent / "cross-venv"
+default_support_base = f"support/{sys.version_info.major}.{sys.version_info.minor}/{PYTHON_CROSS_PLATFORM}"
 SUPPORT_PREFIX = (
     Path(__file__).parent.parent
-    / "support"
-    / f"{sys.version_info.major}.{sys.version_info.minor}"
-    / PYTHON_CROSS_PLATFORM
+    / os.getenv("PYTHON_SUPPORT_BASE", default_support_base)
     / "Python.xcframework"
     / PYTHON_CROSS_SLICE
 )

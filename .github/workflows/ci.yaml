@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
+        platform: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
 
     steps:
     - uses: actions/checkout@v4.1.7
@@ -104,29 +104,29 @@ jobs:
         # It's an edge case, but when a new alpha is released, we need to use it ASAP.
         check-latest: true
 
-    - name: Build ${{ matrix.target }}
+    - name: Build ${{ matrix.platform }}
       run: |
-        # Do the build for the requested target.
-        make ${{ matrix.target }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
+        # Do the build for the requested platform.
+        make ${{ matrix.platform }} BUILD_NUMBER=${{ needs.config.outputs.BUILD_NUMBER }}
 
     - name: Upload build artefacts
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
-        path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        name: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        path: dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
   briefcase-testbed:
-    name: Briefcase testbed (${{ matrix.target }})
+    name: Briefcase testbed (${{ matrix.platform }})
     runs-on: macOS-latest
     needs: [ config, build ]
     strategy:
       fail-fast: false
       matrix:
-        target: ["macOS", "iOS"]
+        platform: ["macOS", "iOS"]
         include:
             - briefcase-run-args:
 
-            - target: iOS
+            - platform: iOS
               briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
 
     steps:
@@ -135,7 +135,7 @@ jobs:
     - name: Get build artifact
       uses: actions/download-artifact@v4.3.0
       with:
-        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist
         merge-multiple: true
 
@@ -162,16 +162,16 @@ jobs:
     - name: Run support testbed check
       timeout-minutes: 10
       working-directory: Python-support-testbed
-      run: briefcase run ${{ matrix.target }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\'
+      run: briefcase run ${{ matrix.platform }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\'
 
   cpython-testbed:
-    name: CPython testbed (${{ matrix.target }})
+    name: CPython testbed (${{ matrix.platform }})
     runs-on: macOS-latest
     needs: [ config, build ]
     strategy:
       fail-fast: false
       matrix:
-        target: ["iOS", "visionOS"]
+        platform: ["iOS", "visionOS"]
 
     steps:
     - uses: actions/checkout@v4.1.7
@@ -179,7 +179,7 @@ jobs:
     - name: Get build artifact
       uses: actions/download-artifact@v4.3.0
       with:
-        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist
         merge-multiple: true
 
@@ -195,13 +195,13 @@ jobs:
 
     - name: Unpack support package
       run: |
-        mkdir support
-        cd support
-        tar zxvf ../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.target }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        mkdir -p support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
+        cd support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
+        tar zxvf ../../../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
     - name: Run CPython testbed
       timeout-minutes: 10
-      working-directory: support
+      working-directory: support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
       run: |
         # Run a representative subset of CPython core tests:
         # - test_builtin as a test of core language tools
@@ -251,9 +251,9 @@ jobs:
 
     - name: Unpack support package
       run: |
-        mkdir support
-        cd support
-        tar zxvf ../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        mkdir -p support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
+        cd support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
+        tar zxvf ../../../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
     - name: Run cross-platform environment test
       env:
@@ -261,9 +261,15 @@ jobs:
         PYTHON_CROSS_SLICE: ${{ matrix.slice }}
         PYTHON_CROSS_MULTIARCH: ${{ matrix.multiarch }}
       run: |
+        # Create and activate a native virtual environment
         python${{ needs.config.outputs.PYTHON_VER }} -m venv cross-venv
         source cross-venv/bin/activate
+
+        # Install pytest
         python -m pip install pytest
+
         # Convert venv into cross-venv
-        python support/Python.xcframework/${{ matrix.slice }}/platform-config/${{ matrix.multiarch }}/make_cross_venv.py cross-venv
+        python support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}/Python.xcframework/${{ matrix.slice }}/platform-config/${{ matrix.multiarch }}/make_cross_venv.py cross-venv
+
+        # Run the test suite
         python -m pytest tests
