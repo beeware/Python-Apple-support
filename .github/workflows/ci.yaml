@@ -210,3 +210,60 @@ jobs:
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
         python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
+
+  crossenv-test:
+    name: Cross-platform env test (${{ matrix.platform }})
+    runs-on: macOS-latest
+    needs: [ config, build ]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            slice: ios-arm64_x86_64-simulator
+            multiarch: arm64-iphonesimulator
+          - platform: iOS
+            slice: ios-arm64_x86_64-simulator
+            multiarch: x86_64-iphonesimulator
+          - platform: iOS
+            slice: ios-arm64
+            multiarch: arm64-iphoneos
+
+    steps:
+    - uses: actions/checkout@v4.1.7
+
+    - name: Get build artifact
+      uses: actions/download-artifact@v4.3.0
+      with:
+        pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+        path: dist
+        merge-multiple: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        # Appending -dev ensures that we can always build the dev release.
+        # It's a no-op for versions that have been published.
+        python-version: ${{ needs.config.outputs.PYTHON_VER }}-dev
+        # Ensure that we *always* use the latest build, not a cached version.
+        # It's an edge case, but when a new alpha is released, we need to use it ASAP.
+        check-latest: true
+
+    - name: Unpack support package
+      run: |
+        mkdir support
+        cd support
+        tar zxvf ../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
+
+    - name: Run cross-platform environment test
+      env:
+        PYTHON_CROSS_PLATFORM: ${{ matrix.platform }}
+        PYTHON_CROSS_SLICE: ${{ matrix.slice }}
+        PYTHON_CROSS_MULTIARCH: ${{ matrix.multiarch }}
+      run: |
+        python${{ needs.config.outputs.PYTHON_VER }} -m venv cross-venv
+        source cross-venv/bin/activate
+        python -m pip install pytest
+        # Convert venv into cross-venv
+        python support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}/Python.xcframework/${{ matrix.slice }}/platform-config/${{ matrix.multiarch }}/make_cross_venv.py cross-venv
+        python -m pytest tests
