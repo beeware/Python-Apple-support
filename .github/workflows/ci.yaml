@@ -265,5 +265,5 @@ jobs:
         source cross-venv/bin/activate
         python -m pip install pytest
         # Convert venv into cross-venv
-        python support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}/Python.xcframework/${{ matrix.slice }}/platform-config/${{ matrix.multiarch }}/make_cross_venv.py cross-venv
+        python support/Python.xcframework/${{ matrix.slice }}/platform-config/${{ matrix.multiarch }}/make_cross_venv.py cross-venv
         python -m pytest tests
