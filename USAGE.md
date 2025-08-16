@@ -2,7 +2,7 @@
 
 ## The easy way
 
-The easist way to use these packages is by creating a project with
+The easiest way to use these packages is by creating a project with
 [Briefcase](https://github.com/beeware/briefcase). Briefcase will download
 pre-compiled versions of these support packages, and add them to an Xcode project
 (or pre-build stub application, in the case of macOS).
@@ -10,7 +10,7 @@ pre-compiled versions of these support packages, and add them to an Xcode projec
 ## The manual way
 
 **NOTE** Briefcase usage is the officially supported approach for using this
-support package. If you are experiencing diffculties, one approach for debugging
+support package. If you are experiencing difficulties, one approach for debugging
 is to generate a "Hello World" project with Briefcase, and compare the project that
 Briefcase has generated with your own project.
 
@@ -28,7 +28,7 @@ generated on iOS and visionOS may be used as rough references as well.
 
 ### Using Objective C
 
-Once you've added the Python XCframework to your project, you'll need to
+Once you've added the Python XCFramework to your project, you'll need to
 initialize the Python runtime in your Objective C code (This is step 10 of the
 iOS guide linked above). This initialization should generally be done as early
 as possible in the application's lifecycle, but definitely needs to be done
@@ -97,7 +97,7 @@ There are 2 ways to access the Python runtime in your project code.
 
 You can use the [Python Embedded C
 API](https://docs.python.org/3/extending/embedding.html) to invoke Python code
-and interact with Python objects. This is a raw C API that is accesible to both
+and interact with Python objects. This is a raw C API that is accessible to both
 Objective C and Swift.
 
 ### PythonKit
