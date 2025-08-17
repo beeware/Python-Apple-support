@@ -56,7 +56,7 @@ jobs:
       XZ_VERSION: ${{ steps.extract.outputs.XZ_VERSION }}
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Extract config variables
       id: extract
@@ -92,7 +92,7 @@ jobs:
         platform: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Set up Python
       uses: actions/setup-python@v5.6.0
@@ -130,7 +130,7 @@ jobs:
               briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Get build artifact
       uses: actions/download-artifact@v5.0.0
@@ -149,7 +149,7 @@ jobs:
         # It's an edge case, but when a new alpha is released, we need to use it ASAP.
         check-latest: true
 
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
@@ -174,7 +174,7 @@ jobs:
         platform: ["iOS", "visionOS"]
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Get build artifact
       uses: actions/download-artifact@v5.0.0
@@ -230,7 +230,7 @@ jobs:
             multiarch: arm64-iphoneos
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Get build artifact
       uses: actions/download-artifact@v5.0.0
