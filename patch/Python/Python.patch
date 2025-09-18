@@ -12,7 +12,7 @@ index 823a3692fd1..00639dd8488 100644
              # binary.
              if name.endswith(".fwork"):
 diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
-index 99504911a3d..527c2f36dd0 100644
+index 378f12167c6..9f6d1dfa8cd 100644
 --- a/Lib/ctypes/util.py
 +++ b/Lib/ctypes/util.py
 @@ -126,7 +126,7 @@
@@ -24,7 +24,7 @@ index 99504911a3d..527c2f36dd0 100644
      from ctypes.macholib.dyld import dyld_find as _dyld_find
      def find_library(name):
          possible = ['lib%s.dylib' % name,
-@@ -425,7 +425,7 @@
+@@ -444,7 +444,7 @@
  # https://man.openbsd.org/dl_iterate_phdr
  # https://docs.oracle.com/cd/E88353_01/html/E37843/dl-iterate-phdr-3c.html
  if (os.name == "posix" and
@@ -56,10 +56,10 @@ index 8bcd741c446..d8a6f28edba 100644
                  suffix.replace(".so", ".fwork")
                  for suffix in _imp.extension_suffixes()
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 7dd64de6025..a7e3c77f803 100644
+index 86141f072d2..04ce94fe577 100644
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -528,6 +528,78 @@
+@@ -534,6 +534,78 @@
      return IOSVersionInfo(system, release, model, is_simulator)
  
  
@@ -138,7 +138,7 @@ index 7dd64de6025..a7e3c77f803 100644
  def _java_getprop(name, default):
      """This private helper is deprecated in 3.13 and will be removed in 3.15"""
      from java.lang import System
-@@ -727,7 +799,7 @@
+@@ -733,7 +805,7 @@
          default in case the command should fail.
  
      """
@@ -147,7 +147,7 @@ index 7dd64de6025..a7e3c77f803 100644
          # XXX Others too ?
          return default
  
-@@ -891,14 +963,30 @@
+@@ -897,14 +969,30 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -181,7 +181,7 @@ index 7dd64de6025..a7e3c77f803 100644
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -1058,9 +1146,15 @@
+@@ -1064,9 +1152,15 @@
          system = 'Android'
          release = android_ver().release
  
@@ -198,7 +198,7 @@ index 7dd64de6025..a7e3c77f803 100644
  
      vals = system, node, release, version, machine
      # Replace 'unknown' values with the more portable ''
-@@ -1350,6 +1444,12 @@
+@@ -1356,6 +1450,12 @@
          # macOS and iOS both report as a "Darwin" kernel
          if sys.platform == "ios":
              system, release, _, _ = ios_ver()
@@ -298,10 +298,10 @@ index 1c1cbd03d02..1378985de4a 100644
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 001ecec4dcd..e46a5661fe8 100644
+index a719e49ef37..368c1ebc9ad 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -559,7 +559,7 @@
+@@ -563,7 +563,7 @@
          sys.platform == "android", f"Android blocks {name} with SELinux"
      )
  
@@ -310,7 +310,7 @@ index 001ecec4dcd..e46a5661fe8 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -575,7 +575,7 @@
+@@ -582,7 +582,7 @@
  def skip_wasi_stack_overflow():
      return unittest.skipIf(is_wasi, "Exhausts stack on WASI")
  
@@ -333,7 +333,7 @@ index 15603dc3d77..bff6c0fb95f 100644
  if WINDOWS:
      KNOWN_LIBRARIES = ["KERNEL32.DLL"]
 diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
-index 719c4feace6..92a831a9148 100644
+index 6224c989e65..c5ccf225662 100644
 --- a/Lib/test/test_platform.py
 +++ b/Lib/test/test_platform.py
 @@ -271,13 +271,21 @@
@@ -403,7 +403,7 @@ index f2e2394089d..2efbbfb0014 100644
      if objc:
          # If objc exists, we know ctypes is also importable.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 01e10d1ab20..ddc430beb80 100644
+index 764eef5be3e..235e829a891 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -209,6 +209,12 @@
@@ -533,7 +533,7 @@ index 1bb6a05dc11..49febd56a37 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index 345822a6c6d..11acfe0ac9f 100755
+index 6383271b477..d5f4603f2fb 100755
 --- a/configure
 +++ b/configure
 @@ -982,6 +982,10 @@
@@ -1229,7 +1229,7 @@ index 345822a6c6d..11acfe0ac9f 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index d6059471771..7e1a5ffe604 100644
+index 42d94776cc7..e86578c9660 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@
