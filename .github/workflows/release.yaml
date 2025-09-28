@@ -40,14 +40,14 @@ jobs:
     needs: [ config, ci ]
     steps:
     - name: Get build artifacts
-      uses: actions/download-artifact@v4.3.0
+      uses: actions/download-artifact@v5.0.0
       with:
         pattern: Python-*
         path: dist
         merge-multiple: true
 
     - name: Create Release
-      uses: ncipollo/release-action@v1.18.0
+      uses: ncipollo/release-action@v1.20.0
       with:
         name: ${{ needs.ci.outputs.PYTHON_VER }}-${{ needs.config.outputs.BUILD_NUMBER }}
         tag: ${{ needs.ci.outputs.PYTHON_VER }}-${{ needs.config.outputs.BUILD_NUMBER }}
