@@ -29,6 +29,9 @@ on:
       XZ_VERSION:
         description: "The XZ version used for the build."
         value: ${{ jobs.config.outputs.XZ_VERSION }}
+      ZSTD_VERSION:
+        description: "The Zstandard version used for the build."
+        value: ${{ jobs.config.outputs.ZSTD_VERSION }}
 
 env:
   FORCE_COLOR: "1"
@@ -54,6 +57,7 @@ jobs:
       MPDECIMAL_VERSION: ${{ steps.extract.outputs.MPDECIMAL_VERSION }}
       OPENSSL_VERSION: ${{ steps.extract.outputs.OPENSSL_VERSION }}
       XZ_VERSION: ${{ steps.extract.outputs.XZ_VERSION }}
+      ZSTD_VERSION: ${{ steps.extract.outputs.ZSTD_VERSION }}
 
     steps:
     - uses: actions/checkout@v5
@@ -68,6 +72,7 @@ jobs:
         MPDECIMAL_VERSION=$(make config | grep "MPDECIMAL_VERSION=" | cut -d "=" -f 2)
         OPENSSL_VERSION=$(make config | grep "OPENSSL_VERSION=" | cut -d "=" -f 2)
         XZ_VERSION=$(make config | grep "XZ_VERSION=" | cut -d "=" -f 2)
+        ZSTD_VERSION=$(make config | grep "ZSTD_VERSION=" | cut -d "=" -f 2)
         if [ -z "${{ inputs.build-number }}" ]; then
           BUILD_NUMBER=custom
         else
@@ -82,6 +87,7 @@ jobs:
         echo "MPDECIMAL_VERSION=${MPDECIMAL_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "OPENSSL_VERSION=${OPENSSL_VERSION}" | tee -a ${GITHUB_OUTPUT}
         echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
+        echo "ZSTD_VERSION=${ZSTD_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
   build:
     runs-on: macOS-15
@@ -184,16 +190,16 @@ jobs:
 
   cpython-testbed:
     name: CPython testbed (${{ matrix.platform }})
-    # For now, CPython testbed can't run on macos-15: https://github.com/actions/runner-images/issues/12777
-    runs-on: macOS-14
+    runs-on: macOS-15
     needs: [ config, build ]
     strategy:
       fail-fast: false
       matrix:
-        platform: ["iOS", "visionOS"]
+        platform: ["iOS", "tvOS", "visionOS"]
         include:
-          - platform: "iOS"
-            testbed-args: '--simulator "iPhone 16e,arch=arm64,OS=18.5"'
+          # Needed to disambiguate simulator options.
+          - platform: "visionOS"
+            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
 
     steps:
     - uses: actions/checkout@v5
@@ -231,7 +237,7 @@ jobs:
         # - test_os as a test of system library calls
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
-        python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
+        python -m testbed run --verbose ${{ matrix.testbed-args }} -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
 
   crossenv-test:
     name: Cross-platform env test (${{ matrix.multiarch }})
