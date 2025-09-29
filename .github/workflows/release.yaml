@@ -62,4 +62,5 @@ jobs:
           * mpdecimal ${{ needs.ci.outputs.MPDECIMAL_VERSION }}
           * OpenSSL  ${{ needs.ci.outputs.OPENSSL_VERSION }}
           * XZ ${{ needs.ci.outputs.XZ_VERSION }}
+          * Zstandard ${{ needs.ci.outputs.ZSTD_VERSION }}
         artifacts: "dist/*"
