@@ -6,7 +6,6 @@ embedded into a macOS, iOS, tvOS, watchOS, or visionOS project.
 **This branch builds a packaged version of Python 3.14**. Other Python
 versions are available by cloning other branches of the main repository:
 
-- [Python 3.9](https://github.com/beeware/Python-Apple-support/tree/3.9)
 - [Python
   3.10](https://github.com/beeware/Python-Apple-support/tree/3.10)
 - [Python
@@ -29,7 +28,7 @@ packages removed, and the App Store compliance patch applied.
 The iOS, tvOS, watchOS, and visionOS packages compiled by this project
 use the official [PEP 730](https://peps.python.org/pep-0730/) code that
 is part of Python 3.13 to provide iOS support; the relevant patches have
-been backported to 3.9-3.12. Additional patches have been applied to add
+been backported to 3.10-3.12. Additional patches have been applied to add
 tvOS, watchOS, and visionOS support.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and
@@ -38,14 +37,14 @@ devices. It also supports device simulators on both x86_64 and M1
 hardware, except for visionOS, for which x86_64 simulators are
 officially unsupported. This should enable the code to run on:
 
-- macOS 11 (Big Sur) or later, on:  
+- macOS 11 (Big Sur) or later, on:
   - MacBook (including MacBooks using Apple Silicon)
   - iMac (including iMacs using Apple Silicon)
   - Mac Mini (including Apple Silicon Mac minis)
   - Mac Studio (all models)
   - Mac Pro (all models)
 
-- iOS 13.0 or later, on:  
+- iOS 13.0 or later, on:
   - iPhone (6s or later)
   - iPad (5th gen or later)
   - iPad Air (all models)
@@ -53,13 +52,13 @@ officially unsupported. This should enable the code to run on:
   - iPad Pro (all models)
   - iPod Touch (7th gen or later)
 
-- tvOS 12.0 or later, on:  
+- tvOS 12.0 or later, on:
   - Apple TV (4th gen or later)
 
-- watchOS 4.0 or later, on:  
+- watchOS 4.0 or later, on:
   - Apple Watch (4th gen or later)
 
-- visionOS 2.0 or later, on:  
+- visionOS 2.0 or later, on:
   - Apple Vision Pro
 
 ## Quickstart
@@ -166,3 +165,5 @@ maintained:
   (EOL September 2022)
 - [Python 3.8](https://github.com/beeware/Python-Apple-support/tree/3.8)
   (EOL October 2024)
+- [Python 3.9](https://github.com/beeware/Python-Apple-support/tree/3.9)
+  (EOL October 2025)
