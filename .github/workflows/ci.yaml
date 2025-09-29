@@ -56,7 +56,7 @@ jobs:
       XZ_VERSION: ${{ steps.extract.outputs.XZ_VERSION }}
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Extract config variables
       id: extract
@@ -84,18 +84,27 @@ jobs:
         echo "XZ_VERSION=${XZ_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
   build:
-    runs-on: macOS-latest
+    runs-on: macOS-15
     needs: [ config ]
     strategy:
       fail-fast: false
       matrix:
-        platform: ['macOS', 'iOS', 'tvOS', 'watchOS']
+        platform: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
+
+    - name: Set up Xcode
+      # GitHub recommends explicitly selecting the desired Xcode version:
+      # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
+      # This became a necessity as a result of
+      # https://github.com/actions/runner-images/issues/12541 and
+      # https://github.com/actions/runner-images/issues/12751.
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_16.4.app
 
     - name: Set up Python
-      uses: actions/setup-python@v5.6.0
+      uses: actions/setup-python@v6.0.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -117,7 +126,7 @@ jobs:
 
   briefcase-testbed:
     name: Briefcase testbed (${{ matrix.platform }})
-    runs-on: macOS-latest
+    runs-on: macOS-15
     needs: [ config, build ]
     strategy:
       fail-fast: false
@@ -127,20 +136,29 @@ jobs:
             - briefcase-run-args:
 
             - platform: iOS
-              briefcase-run-args: ' -d "iPhone SE (3rd generation)"'
+              briefcase-run-args: ' -d "iPhone 16e::iOS 18.5"'
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
+
+    - name: Set up Xcode
+      # GitHub recommends explicitly selecting the desired Xcode version:
+      # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
+      # This became a necessity as a result of
+      # https://github.com/actions/runner-images/issues/12541 and
+      # https://github.com/actions/runner-images/issues/12751.
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_16.4.app
 
     - name: Get build artifact
-      uses: actions/download-artifact@v4.3.0
+      uses: actions/download-artifact@v5.0.0
       with:
         pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist
         merge-multiple: true
 
     - name: Set up Python
-      uses: actions/setup-python@v5.6.0
+      uses: actions/setup-python@v6.0.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -149,7 +167,7 @@ jobs:
         # It's an edge case, but when a new alpha is released, we need to use it ASAP.
         check-latest: true
 
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
@@ -160,31 +178,44 @@ jobs:
         python -m pip install git+https://github.com/beeware/briefcase.git
 
     - name: Run support testbed check
-      timeout-minutes: 10
+      timeout-minutes: 15
       working-directory: Python-support-testbed
       run: briefcase run ${{ matrix.platform }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz\'
 
   cpython-testbed:
     name: CPython testbed (${{ matrix.platform }})
-    runs-on: macOS-latest
+    runs-on: macOS-15
     needs: [ config, build ]
     strategy:
       fail-fast: false
       matrix:
-        platform: ["iOS"]
+        platform: ["iOS", "tvOS", "visionOS"]
+        include:
+          # Needed to disambiguate simulator options.
+          - platform: "visionOS"
+            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Get build artifact
-      uses: actions/download-artifact@v4.3.0
+      uses: actions/download-artifact@v5.0.0
       with:
         pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist
         merge-multiple: true
 
+    - name: Set up Xcode
+      # GitHub recommends explicitly selecting the desired Xcode version:
+      # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
+      # This became a necessity as a result of
+      # https://github.com/actions/runner-images/issues/12541 and
+      # https://github.com/actions/runner-images/issues/12751.
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_16.4.app
+
     - name: Set up Python
-      uses: actions/setup-python@v5.6.0
+      uses: actions/setup-python@v6.0.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -200,7 +231,7 @@ jobs:
         tar zxvf ../../../dist/Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
 
     - name: Run CPython testbed
-      timeout-minutes: 10
+      timeout-minutes: 15
       working-directory: support/${{ needs.config.outputs.PYTHON_VER }}/${{ matrix.platform }}
       run: |
         # Run a representative subset of CPython core tests:
@@ -209,7 +240,7 @@ jobs:
         # - test_os as a test of system library calls
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
-        python -m testbed run -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
+        python -m testbed run --verbose ${{ matrix.testbed-args }} -- test --single-process --rerun -W test_builtin test_grammar test_os test_bz2 test_ctypes
 
   crossenv-test:
     name: Cross-platform env test (${{ matrix.multiarch }})
@@ -230,17 +261,17 @@ jobs:
             multiarch: arm64-iphoneos
 
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v5
 
     - name: Get build artifact
-      uses: actions/download-artifact@v4.3.0
+      uses: actions/download-artifact@v5.0.0
       with:
         pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
         path: dist
         merge-multiple: true
 
     - name: Set up Python
-      uses: actions/setup-python@v5.6.0
+      uses: actions/setup-python@v6.0.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
