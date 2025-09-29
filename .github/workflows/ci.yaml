@@ -205,6 +205,15 @@ jobs:
         path: dist
         merge-multiple: true
 
+    - name: Set up Xcode
+      # GitHub recommends explicitly selecting the desired Xcode version:
+      # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
+      # This became a necessity as a result of
+      # https://github.com/actions/runner-images/issues/12541 and
+      # https://github.com/actions/runner-images/issues/12751.
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_16.4.app
+
     - name: Set up Python
       uses: actions/setup-python@v6.0.0
       with:

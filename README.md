@@ -6,7 +6,6 @@ embedded into a macOS, iOS, tvOS, watchOS, or visionOS project.
 **This branch builds a packaged version of Python 3.13**. Other Python
 versions are available by cloning other branches of the main repository:
 
-- [Python 3.9](https://github.com/beeware/Python-Apple-support/tree/3.9)
 - [Python
   3.10](https://github.com/beeware/Python-Apple-support/tree/3.10)
 - [Python
@@ -29,7 +28,7 @@ packages removed, and the App Store compliance patch applied.
 The iOS, tvOS, watchOS, and visionOS packages compiled by this project
 use the official [PEP 730](https://peps.python.org/pep-0730/) code that
 is part of Python 3.13 to provide iOS support; the relevant patches have
-been backported to 3.9-3.12. Additional patches have been applied to add
+been backported to 3.10-3.12. Additional patches have been applied to add
 tvOS, watchOS, and visionOS support.
 
 The binaries support x86_64 and arm64 for macOS; arm64 for iOS and
@@ -166,3 +165,5 @@ maintained:
   (EOL September 2022)
 - [Python 3.8](https://github.com/beeware/Python-Apple-support/tree/3.8)
   (EOL October 2024)
+- [Python 3.9](https://github.com/beeware/Python-Apple-support/tree/3.9)
+  (EOL October 2025)
