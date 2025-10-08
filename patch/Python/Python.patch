@@ -5783,7 +5783,7 @@
 +#include "pyconfig-x86_64.h"
 +#endif
 diff --git a/Doc/using/ios.rst b/Doc/using/ios.rst
-index 685d8e81add..4ed18f4938c 100644
+index 9921fd6114b..4ed18f4938c 100644
 --- a/Doc/using/ios.rst
 +++ b/Doc/using/ios.rst
 @@ -170,7 +170,7 @@
@@ -5850,23 +5850,23 @@ index 685d8e81add..4ed18f4938c 100644
 -           echo "Installing Python modules for iOS Device"
 -           rsync -au --delete "$PROJECT_DIR/Python.xcframework/ios-arm64/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/"
 -       fi
--
++      set -e
++      source $PROJECT_DIR/Python.xcframework/build/build_utils.sh
++      install_python Python.xcframework app
+ 
 -   Note that the name of the simulator "slice" in the XCframework may be
 -   different, depending the CPU architectures your ``XCFramework`` supports.
--
++   If you have placed your XCframework somewhere other than the root of your
++   project, modify the path to the first argument.
+ 
 -9. Add a second build step that processes the binary extension modules in the
 -   standard library into "Framework" format. Add a "Run Script" build step
 -   *directly after* the one you added in step 8, named "Prepare Python Binary
 -   Modules". It should also have "Based on dependency analysis" unchecked, with
 -   the following script content:
-+      set -e
-+      source $PROJECT_DIR/Python.xcframework/build/build_utils.sh
-+      install_python Python.xcframework app
- 
+-
 -   .. code-block:: bash
-+   If you have placed your XCframework somewhere other than the root of your
-+   project, modify the path to the first argument.
- 
+-
 -       set -e
 -
 -       install_dylib () {
@@ -5996,24 +5996,16 @@ index 685d8e81add..4ed18f4938c 100644
  
  You can then use the ``app-testbed`` folder to run the test suite for your app,
  For example, if ``module1.tests`` was the entry point to your test suite, you
-@@ -372,13 +309,29 @@
+@@ -379,7 +316,7 @@
+ arguments.
  
- This will allow you to use the full Xcode suite of tools for debugging.
- 
-+The arguments used to run the test suite are defined as part of the test plan.
-+To modify the test plan, select the test plan node of the project tree (it
-+should be the first child of the root node), and select the "Configurations"
-+tab. Modify the "Arguments Passed On Launch" value to change the testing
-+arguments.
-+
-+The test plan also disables parallel testing, and specifies the use of the
+ The test plan also disables parallel testing, and specifies the use of the
+-``iOSTestbed.lldbinit`` file for providing configuration of the debugger. The
 +``Testbed.lldbinit`` file for providing configuration of the debugger. The
-+default debugger configuration disables automatic breakpoints on the
-+``SIGINT``, ``SIGUSR1``, ``SIGUSR2``, and ``SIGXFSZ`` signals.
-+
- App Store Compliance
- ====================
+ default debugger configuration disables automatic breakpoints on the
+ ``SIGINT``, ``SIGUSR1``, ``SIGUSR2``, and ``SIGXFSZ`` signals.
  
+@@ -389,7 +326,12 @@
  The only mechanism for distributing apps to third-party iOS devices is to
  submit the app to the iOS App Store; apps submitted for distribution must pass
  Apple's app review process. This process includes a set of automated validation
@@ -6027,7 +6019,7 @@ index 685d8e81add..4ed18f4938c 100644
  
  The Python standard library contains some code that is known to violate these
  automated rules. While these violations appear to be false positives, Apple's
-@@ -389,3 +342,18 @@
+@@ -400,3 +342,18 @@
  :source:`a patch file <Mac/Resources/app-store-compliance.patch>` that will remove
  all code that is known to cause issues with the App Store review process. This
  patch is applied automatically when building for iOS.
@@ -6077,7 +6069,7 @@ index 117bf06cb01..87611a6d03f 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index eb8fea1aad0..9e1d8bf2995 100644
+index c5e641773e6..4260ab6a74a 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -6089,7 +6081,7 @@ index eb8fea1aad0..9e1d8bf2995 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1799,7 +1799,7 @@
+@@ -1800,7 +1800,7 @@
      """
      extension_loaders = []
      if hasattr(_imp, 'create_dynamic'):
@@ -6283,7 +6275,7 @@ index ffc3fdf6afb..7df38b4f3d8 100644
  if _mswindows:
      import _winapi
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index 510c7b9568a..91ecd8a28d8 100644
+index f7bd675bb3b..98ee0cf234c 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
 @@ -23,6 +23,9 @@
@@ -6305,7 +6297,7 @@ index 510c7b9568a..91ecd8a28d8 100644
          return None
  
      def joinuser(*args):
-@@ -676,6 +679,18 @@
+@@ -680,6 +683,18 @@
              release = get_config_vars().get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
              osname = sys.platform
              machine = sys.implementation._multiarch
@@ -6341,10 +6333,10 @@ index 44c5b28f455..0b4f874ec15 100644
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index c60fc03064f..0b71e6d9511 100644
+index 4605938b875..5f1223e57d6 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -554,7 +554,7 @@
+@@ -582,7 +582,7 @@
  
  is_android = sys.platform == "android"
  
@@ -6353,7 +6345,7 @@ index c60fc03064f..0b71e6d9511 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -564,7 +564,7 @@
+@@ -592,7 +592,7 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
