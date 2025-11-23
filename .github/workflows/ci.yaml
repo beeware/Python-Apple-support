@@ -60,7 +60,7 @@ jobs:
       ZSTD_VERSION: ${{ steps.extract.outputs.ZSTD_VERSION }}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Extract config variables
       id: extract
@@ -98,7 +98,7 @@ jobs:
         platform: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Set up Xcode
       # GitHub recommends explicitly selecting the desired Xcode version:
@@ -145,7 +145,7 @@ jobs:
               briefcase-run-args: ' -d "iPhone 16e::iOS 18.5"'
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Set up Xcode
       # GitHub recommends explicitly selecting the desired Xcode version:
@@ -173,7 +173,7 @@ jobs:
         # It's an edge case, but when a new alpha is released, we need to use it ASAP.
         check-latest: true
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         repository: beeware/Python-support-testbed
         path: Python-support-testbed
@@ -202,7 +202,7 @@ jobs:
             testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Get build artifact
       uses: actions/download-artifact@v6.0.0
@@ -267,7 +267,7 @@ jobs:
             multiarch: arm64-iphoneos
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Get build artifact
       uses: actions/download-artifact@v6.0.0
