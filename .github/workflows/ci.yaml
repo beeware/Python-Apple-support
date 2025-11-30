@@ -110,7 +110,7 @@ jobs:
         sudo xcode-select --switch /Applications/Xcode_16.4.app
 
     - name: Set up Python
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@v6.1.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -164,7 +164,7 @@ jobs:
         merge-multiple: true
 
     - name: Set up Python
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@v6.1.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -221,7 +221,7 @@ jobs:
         sudo xcode-select --switch /Applications/Xcode_16.4.app
 
     - name: Set up Python
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@v6.1.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
@@ -277,7 +277,7 @@ jobs:
         merge-multiple: true
 
     - name: Set up Python
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@v6.1.0
       with:
         # Appending -dev ensures that we can always build the dev release.
         # It's a no-op for versions that have been published.
