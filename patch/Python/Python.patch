@@ -1,6 +1,57 @@
+diff --git a/.pre-commit-config.yaml b/.pre-commit-config.yaml
+index 6347ffb3e11..19259c069d7 100644
+--- a/.pre-commit-config.yaml
++++ b/.pre-commit-config.yaml
+@@ -2,6 +2,10 @@
+   - repo: https://github.com/astral-sh/ruff-pre-commit
+     rev: v0.13.2
+     hooks:
++      - id: ruff-check
++        name: Run Ruff (lint) on Apple/
++        args: [--exit-non-zero-on-fix, --config=Apple/.ruff.toml]
++        files: ^Apple/
+       - id: ruff-check
+         name: Run Ruff (lint) on Doc/
+         args: [--exit-non-zero-on-fix]
+@@ -26,6 +30,10 @@
+         name: Run Ruff (lint) on Tools/wasm/
+         args: [--exit-non-zero-on-fix, --config=Tools/wasm/.ruff.toml]
+         files: ^Tools/wasm/
++      - id: ruff-format
++        name: Run Ruff (format) on Apple/
++        args: [--exit-non-zero-on-fix, --config=Apple/.ruff.toml]
++        files: ^Apple
+       - id: ruff-format
+         name: Run Ruff (format) on Doc/
+         args: [--check]
+--- /dev/null
++++ b/Apple/.ruff.toml
+@@ -0,0 +1,22 @@
++extend = "../.ruff.toml"  # Inherit the project-wide settings
++
++[format]
++preview = true
++docstring-code-format = true
++
++[lint]
++select = [
++    "C4",      # flake8-comprehensions
++    "E",       # pycodestyle
++    "F",       # pyflakes
++    "I",       # isort
++    "ISC",     # flake8-implicit-str-concat
++    "LOG",     # flake8-logging
++    "PGH",     # pygrep-hooks
++    "PT",      # flake8-pytest-style
++    "PYI",     # flake8-pyi
++    "RUF100",  # Ban unused `# noqa` comments
++    "UP",      # pyupgrade
++    "W",       # pycodestyle
++    "YTT",     # flake8-2020
++]
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1034 @@
+@@ -0,0 +1,1111 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -20,23 +71,25 @@
 +# which will:
 +# * Clean any pre-existing build artefacts
 +# * Configure and make a Python that can be used for the build
-+# * Configure and make a Python for each supported iOS/tvOS architecture and ABI
++# * Configure and make a Python for each supported iOS/tvOS/watchOS/visionOS
++#   architecture and ABI
 +# * Combine the outputs of the builds from the previous step into a single
 +#   XCframework, merging binaries into a "fat" binary if necessary
 +# * Clone a copy of the testbed, configured to use the XCframework
 +# * Construct a tarball containing the release artefacts
 +# * Run the test suite using the generated XCframework.
 +#
-+# This is the complete sequence that would be needed in CI to build and test a
-+# candidate release artefact.
++# This is the complete sequence that would be needed in CI to build and test
++# a candidate release artefact.
 +#
 +# Each individual step can be invoked individually - there are commands to
 +# clean, configure-build, make-build, configure-host, make-host, package, and
 +# test.
 +#
 +# There is also a build command that can be used to combine the configure and
-+# make steps for the build Python, an individual host, all hosts, or all builds.
-+# #########################################################################
++# make steps for the build Python, an individual host, all hosts, or all
++# builds.
++##########################################################################
 +from __future__ import annotations
 +
 +import argparse
@@ -50,13 +103,12 @@
 +import sys
 +import sysconfig
 +import time
-+from collections.abc import Sequence
++from collections.abc import Callable, Sequence
 +from contextlib import contextmanager
 +from datetime import datetime, timezone
 +from os.path import basename, relpath
 +from pathlib import Path
 +from subprocess import CalledProcessError
-+from typing import Callable
 +
 +EnvironmentT = dict[str, str]
 +ArgsT = Sequence[str | Path]
@@ -180,17 +232,15 @@
 +def apple_env(host: str) -> EnvironmentT:
 +    """Construct an Apple development environment for the given host."""
 +    env = {
-+        "PATH": ":".join(
-+            [
-+                str(PYTHON_DIR / f"Apple/{platform_for_host(host)}/Resources/bin"),
-+                str(subdir(host) / "prefix"),
-+                "/usr/bin",
-+                "/bin",
-+                "/usr/sbin",
-+                "/sbin",
-+                "/Library/Apple/usr/bin",
-+            ]
-+        ),
++        "PATH": ":".join([
++            str(PYTHON_DIR / f"Apple/{platform_for_host(host)}/Resources/bin"),
++            str(subdir(host) / "prefix"),
++            "/usr/bin",
++            "/bin",
++            "/usr/sbin",
++            "/sbin",
++            "/Library/Apple/usr/bin",
++        ]),
 +    }
 +
 +    return env
@@ -236,12 +286,10 @@
 +        paths.append(target)
 +
 +    if target in {"all", "hosts", "test"}:
-+        paths.extend(
-+            [
-+                path.name
-+                for path in CROSS_BUILD_DIR.glob(f"{context.platform}-testbed.*")
-+            ]
-+        )
++        paths.extend([
++            path.name
++            for path in CROSS_BUILD_DIR.glob(f"{context.platform}-testbed.*")
++        ])
 +
 +    for path in paths:
 +        delete_path(path)
@@ -254,7 +302,9 @@
 +    if not binary.is_file():
 +        binary = binary.with_suffix(".exe")
 +        if not binary.is_file():
-+            raise FileNotFoundError(f"Unable to find `python(.exe)` in {build_dir}")
++            raise FileNotFoundError(
++                f"Unable to find `python(.exe)` in {build_dir}"
++            )
 +
 +    return binary
 +
@@ -345,14 +395,21 @@
 +    Downloads binaries if they aren't already present. Downloads will be stored
 +    in provided cache directory.
 +
-+    On non-macOS platforms, as a safety mechanism, any dynamic libraries will be
-+    purged from the unpacked dependencies.
++    On non-macOS platforms, as a safety mechanism, any dynamic libraries will
++    be purged from the unpacked dependencies.
 +    """
++    # To create new builds of these dependencies, usually all that's necessary
++    # is to push a tag to the cpython-apple-source-deps repository, and GitHub
++    # Actions will do the rest.
++    #
++    # If you're a member of the Python core team, and you'd like to be able to
++    # push these tags yourself, please contact Malcolm Smith or Russell
++    # Keith-Magee.
 +    deps_url = "https://github.com/beeware/cpython-apple-source-deps/releases/download"
 +    for name_ver in [
 +        "BZip2-1.0.8-2",
 +        "libFFI-3.4.7-2",
-+        "OpenSSL-3.0.17-1",
++        "OpenSSL-3.0.18-1",
 +        "XZ-5.6.4-2",
 +        "mpdecimal-4.0.0-2",
 +        "zstd-1.5.7-1",
@@ -381,18 +438,16 @@
 +
 +    out_path = target_path / basename(url)
 +    if not Path(out_path).is_file():
-+        run(
-+            [
-+                "curl",
-+                "-Lf",
-+                "--retry",
-+                "5",
-+                "--retry-all-errors",
-+                "-o",
-+                out_path,
-+                url,
-+            ]
-+        )
++        run([
++            "curl",
++            "-Lf",
++            "--retry",
++            "5",
++            "--retry-all-errors",
++            "-o",
++            out_path,
++            url,
++        ])
 +    else:
 +        print(f"Using cached version of {basename(url)}")
 +    return out_path
@@ -473,7 +528,8 @@
 +    """
 +    return (
 +        CROSS_BUILD_DIR
-+        / f"{host_triple}/Apple/{platform_for_host(host_triple)}/Frameworks/{multiarch}"
++        / f"{host_triple}/Apple/{platform_for_host(host_triple)}"
++        / f"Frameworks/{multiarch}"
 +    )
 +
 +
@@ -481,7 +537,9 @@
 +    """Extract the Python version being built from patchlevel.h."""
 +    for path in prefix_path.glob("**/patchlevel.h"):
 +        text = path.read_text(encoding="utf-8")
-+        if match := re.search(r'\n\s*#define\s+PY_VERSION\s+"(.+)"\s*\n', text):
++        if match := re.search(
++            r'\n\s*#define\s+PY_VERSION\s+"(.+)"\s*\n', text
++        ):
 +            version = match[1]
 +            # If not building against a tagged commit, add a timestamp to the
 +            # version. Follow the PyPA version number rules, as this will make
@@ -499,7 +557,7 @@
 +
 +
 +def lib_platform_files(dirname, names):
-+    """A file filter that ignores platform-specific files in the lib directory."""
++    """A file filter that ignores platform-specific files in lib."""
 +    path = Path(dirname)
 +    if (
 +        path.parts[-3] == "lib"
@@ -508,7 +566,7 @@
 +    ):
 +        return names
 +    elif path.parts[-2] == "lib" and path.parts[-1].startswith("python"):
-+        ignored_names = set(
++        ignored_names = {
 +            name
 +            for name in names
 +            if (
@@ -516,7 +574,13 @@
 +                or name.startswith("_sysconfig_vars_")
 +                or name == "build-details.json"
 +            )
-+        )
++        }
++    elif path.parts[-1] == "lib":
++        ignored_names = {
++            name
++            for name in names
++            if name.startswith("libpython") and name.endswith(".dylib")
++        }
 +    else:
 +        ignored_names = set()
 +
@@ -529,7 +593,9 @@
 +    """
 +    path = Path(dirname)
 +    if path.parts[-2] == "lib" and path.parts[-1].startswith("python"):
-+        return set(names) - lib_platform_files(dirname, names) - {"lib-dynload"}
++        return (
++            set(names) - lib_platform_files(dirname, names) - {"lib-dynload"}
++        )
 +    else:
 +        return set()
 +
@@ -537,14 +603,15 @@
 +def create_xcframework(platform: str) -> str:
 +    """Build an XCframework from the component parts for the platform.
 +
-+    :return: The version number of the Python verion that was packaged.
++    :return: The version number of the Python version that was packaged.
 +    """
 +    package_path = CROSS_BUILD_DIR / platform
 +    try:
 +        package_path.mkdir()
 +    except FileExistsError:
 +        raise RuntimeError(
-+            f"{platform} XCframework already exists; do you need to run with --clean?"
++            f"{platform} XCframework already exists; do you need to run "
++            "with --clean?"
 +        ) from None
 +
 +    frameworks = []
@@ -558,7 +625,8 @@
 +        # one on the list, as it's as representative as any other.
 +        first_host_triple, first_multiarch = next(iter(slice_parts.items()))
 +        first_framework = (
-+            framework_path(first_host_triple, first_multiarch) / "Python.framework"
++            framework_path(first_host_triple, first_multiarch)
++            / "Python.framework"
 +        )
 +
 +        if len(slice_parts) == 1:
@@ -587,7 +655,10 @@
 +            run(
 +                ["lipo", "-create", "-output", slice_framework / "Python"]
 +                + [
-+                    (framework_path(host_triple, multiarch) / "Python.framework/Python")
++                    (
++                        framework_path(host_triple, multiarch)
++                        / "Python.framework/Python"
++                    )
 +                    for host_triple, multiarch in slice_parts.items()
 +                ]
 +            )
@@ -633,7 +704,7 @@
 +        print(f" - {slice_name} binaries")
 +        shutil.copytree(first_path / "bin", slice_path / "bin")
 +
-+        # Copy the include path (this will be a symlink to the framework headers)
++        # Copy the include path (a symlink to the framework headers)
 +        print(f" - {slice_name} include files")
 +        shutil.copytree(
 +            first_path / "include",
@@ -647,6 +718,12 @@
 +            slice_framework / "Headers/pyconfig.h",
 +        )
 +
++        print(f" - {slice_name} shared library")
++        # Create a simlink for the fat library
++        shared_lib = slice_path / f"lib/libpython{version_tag}.dylib"
++        shared_lib.parent.mkdir()
++        shared_lib.symlink_to("../Python.framework/Python")
++
 +        print(f" - {slice_name} architecture-specific files")
 +        for host_triple, multiarch in slice_parts.items():
 +            print(f"   - {multiarch} standard library")
@@ -658,6 +735,7 @@
 +                    framework_path(host_triple, multiarch) / "lib",
 +                    package_path / "Python.xcframework/lib",
 +                    ignore=lib_platform_files,
++                    symlinks=True,
 +                )
 +                has_common_stdlib = True
 +
@@ -665,6 +743,7 @@
 +                framework_path(host_triple, multiarch) / "lib",
 +                slice_path / f"lib-{arch}",
 +                ignore=lib_non_platform_files,
++                symlinks=True,
 +            )
 +
 +            # Copy the host's pyconfig.h to an architecture-specific name.
@@ -685,7 +764,8 @@
 +            # statically link those libraries into a Framework, you become
 +            # responsible for providing a privacy manifest for that framework.
 +            xcprivacy_file = {
-+                "OpenSSL": subdir(host_triple) / "prefix/share/OpenSSL.xcprivacy"
++                "OpenSSL": subdir(host_triple)
++                / "prefix/share/OpenSSL.xcprivacy"
 +            }
 +            print(f"   - {multiarch} xcprivacy files")
 +            for module, lib in [
@@ -695,7 +775,8 @@
 +                shutil.copy(
 +                    xcprivacy_file[lib],
 +                    slice_path
-+                    / f"lib-{arch}/python{version_tag}/lib-dynload/{module}.xcprivacy",
++                    / f"lib-{arch}/python{version_tag}"
++                    / f"lib-dynload/{module}.xcprivacy",
 +                )
 +
 +    print(" - build tools")
@@ -720,18 +801,16 @@
 +        if context.platform != "watchOS":
 +            # Clone testbed
 +            print()
-+            run(
-+                [
-+                    sys.executable,
-+                    "Apple/testbed",
-+                    "clone",
-+                    "--platform",
-+                    context.platform,
-+                    "--framework",
-+                    CROSS_BUILD_DIR / context.platform / "Python.xcframework",
-+                    CROSS_BUILD_DIR / context.platform / "testbed",
-+                ]
-+            )
++            run([
++                sys.executable,
++                "Apple/testbed",
++                "clone",
++                "--platform",
++                context.platform,
++                "--framework",
++                CROSS_BUILD_DIR / context.platform / "Python.xcframework",
++                CROSS_BUILD_DIR / context.platform / "testbed",
++            ])
 +
 +        # Build the final archive
 +        archive_name = (
@@ -785,7 +864,7 @@
 +        package(context)
 +
 +
-+def test(context: argparse.Namespace, host: str | None = None) -> None:
++def test(context: argparse.Namespace, host: str | None = None) -> None:  # noqa: PT028
 +    """The implementation of the "test" command."""
 +    if host is None:
 +        host = context.host
@@ -795,9 +874,13 @@
 +
 +    with group(f"Test {'XCframework' if host in {'all', 'hosts'} else host}"):
 +        timestamp = str(time.time_ns())[:-6]
-+        testbed_dir = CROSS_BUILD_DIR / f"{context.platform}-testbed.{timestamp}"
++        testbed_dir = (
++            CROSS_BUILD_DIR / f"{context.platform}-testbed.{timestamp}"
++        )
 +        if host in {"all", "hosts"}:
-+            framework_path = CROSS_BUILD_DIR / context.platform / "Python.xcframework"
++            framework_path = (
++                CROSS_BUILD_DIR / context.platform / "Python.xcframework"
++            )
 +        else:
 +            build_arch = platform.machine()
 +            host_arch = host.split("-")[0]
@@ -819,18 +902,16 @@
 +                    / f"Frameworks/{apple_multiarch(host)}"
 +                )
 +
-+        run(
-+            [
-+                sys.executable,
-+                "Apple/testbed",
-+                "clone",
-+                "--platform",
-+                context.platform,
-+                "--framework",
-+                framework_path,
-+                testbed_dir,
-+            ]
-+        )
++        run([
++            sys.executable,
++            "Apple/testbed",
++            "clone",
++            "--platform",
++            context.platform,
++            "--framework",
++            framework_path,
++            testbed_dir,
++        ])
 +
 +        run(
 +            [
@@ -839,16 +920,17 @@
 +                "run",
 +                "--verbose",
 +            ]
-+            + (["--simulator", str(context.simulator)] if context.simulator else [])
++            + (
++                ["--simulator", str(context.simulator)]
++                if context.simulator
++                else []
++            )
 +            + [
 +                "--",
 +                "test",
-+                # "--slow-ci" if context.slow else "--fast-ci",
-+                # "--no-randomize",
-+                "-uall",
-+                "--rerun",
-+                "-W",
++                f"--{context.ci_mode}-ci",
 +                "--single-process",
++                "--no-randomize",
 +                # Timeout handling requires subprocesses; explicitly setting
 +                # the timeout to -1 disables the faulthandler.
 +                "--timeout=-1",
@@ -859,11 +941,39 @@
 +        )
 +
 +
++def apple_sim_host(platform_name: str) -> str:
++    """Determine the native simulator target for this platform."""
++    for _, slice_parts in HOSTS[platform_name].items():
++        for host_triple in slice_parts:
++            parts = host_triple.split("-")
++            if parts[0] == platform.machine() and parts[-1] == "simulator":
++                return host_triple
++
++    raise KeyError(platform_name)
++
++
 +def ci(context: argparse.Namespace) -> None:
-+    """The implementation of the "ci" command."""
++    """The implementation of the "ci" command.
++
++    In "Fast" mode, this compiles the build python, and the simulator for the
++    build machine's architecture; and runs the test suite with `--fast-ci`
++    configuration.
++
++    In "Slow" mode, it compiles the build python, plus all candidate
++    architectures (both device and simulator); then runs the test suite with
++    `--slow-ci` configuration.
++    """
 +    clean(context, "all")
-+    build(context, host="all")
-+    test(context, host="all")
++    if context.ci_mode == "slow":
++        # In slow mode, build and test the full XCframework
++        build(context, host="all")
++        test(context, host="all")
++    else:
++        # In fast mode, just build the simulator platform.
++        sim_host = apple_sim_host(context.platform)
++        build(context, host="build")
++        build(context, host=sim_host)
++        test(context, host=sim_host)
 +
 +
 +def parse_args() -> argparse.Namespace:
@@ -885,8 +995,7 @@
 +        "configure-build", help="Run `configure` for the build Python"
 +    )
 +    subcommands.add_parser(
-+        "make-build",
-+        help="Run `make` for the build Python",
++        "make-build", help="Run `make` for the build Python"
 +    )
 +    configure_host = subcommands.add_parser(
 +        "configure-host",
@@ -964,17 +1073,28 @@
 +        cmd.add_argument(
 +            "--simulator",
 +            help=(
-+                "The name of the simulator to use (eg: 'iPhone 16e'). Defaults to "
-+                "the most recently released 'entry level' iPhone device. Device "
-+                "architecture and OS version can also be specified; e.g., "
-+                "`--simulator 'iPhone 16 Pro,arch=arm64,OS=26.0'` would run on "
-+                "an ARM64 iPhone 16 Pro simulator running iOS 26.0."
++                "The name of the simulator to use (eg: 'iPhone 16e'). "
++                "Defaults to the most recently released 'entry level' "
++                "iPhone device. Device architecture and OS version can also "
++                "be specified; e.g., "
++                "`--simulator 'iPhone 16 Pro,arch=arm64,OS=26.0'` would "
++                "run on an ARM64 iPhone 16 Pro simulator running iOS 26.0."
 +            ),
 +        )
-+        cmd.add_argument(
-+            "--slow",
-+            action="store_true",
-+            help="Run tests with --slow-ci options.",
++        group = cmd.add_mutually_exclusive_group()
++        group.add_argument(
++            "--fast-ci",
++            action="store_const",
++            dest="ci_mode",
++            const="fast",
++            help="Add test arguments for GitHub Actions",
++        )
++        group.add_argument(
++            "--slow-ci",
++            action="store_const",
++            dest="ci_mode",
++            const="slow",
++            help="Add test arguments for buildbots",
 +        )
 +
 +    for subcommand in [configure_build, configure_host, build, ci]:
@@ -995,7 +1115,9 @@
 +                stream.write("\n")
 +
 +    # shlex uses single quotes, so we surround the command with double quotes.
-+    print(f'Command "{join_command(e.cmd)}" returned exit status {e.returncode}')
++    print(
++        f'Command "{join_command(e.cmd)}" returned exit status {e.returncode}'
++    )
 +
 +
 +def main() -> None:
@@ -1034,10 +1156,16 @@
 +
 +
 +if __name__ == "__main__":
++    # Under the buildbot, stdout is not a TTY, but we must still flush after
++    # every line to make sure our output appears in the correct order relative
++    # to the output of our subprocesses.
++    for stream in [sys.stdout, sys.stderr]:
++        stream.reconfigure(line_buffering=True)
++
 +    main()
 --- /dev/null
 +++ b/Apple/iOS/README.md
-@@ -0,0 +1,328 @@
+@@ -0,0 +1,339 @@
 +# Python on iOS README
 +
 +**iOS support is [tier 3](https://peps.python.org/pep-0011/#tier-3).**
@@ -1263,6 +1391,17 @@
 +Once you have a built an XCframework, you can test that framework by running:
 +
 +  $ python Apple test iOS
++
++This test will attempt to find an "SE-class" simulator (i.e., an iPhone SE, or
++iPhone 16e, or similar), and run the test suite on the most recent version of
++iOS that is available. You can specify a simulator using the `--simulator`
++command line argument, providing the name of the simulator (e.g., `--simulator
++'iPhone 16 Pro'`). You can also use this argument to control the OS version used
++for testing; `--simulator 'iPhone 16 Pro,OS=18.2'` would attempt to run the
++tests on an iPhone 16 Pro running iOS 18.2.
++
++If the test runner is executed on GitHub Actions, the `GITHUB_ACTIONS`
++environment variable will be exposed to the iOS process at runtime.
 +
 +### Testing a single-architecture framework
 +
@@ -1687,7 +1826,7 @@
 +</plist>
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/utils.sh
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,180 @@
 +# Utility methods for use in an Xcode project.
 +#
 +# An iOS XCframework cannot include any content other than the library binary
@@ -1765,7 +1904,8 @@
 +        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/"
 +        rsync -au "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib-$ARCHS/" "$CODESIGNING_FOLDER_PATH/python/lib/"
 +    else
-+        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/"
++        # A single-arch framework will have a libpython symlink; that can't be included at runtime
++        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/" --exclude 'libpython*.dylib'
 +    fi
 +}
 +
@@ -1994,7 +2134,7 @@
 +process handle SIGXFSZ -n true -p true -s false
 --- /dev/null
 +++ b/Apple/testbed/TestbedTests/TestbedTests.m
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,198 @@
 +#import <XCTest/XCTest.h>
 +#import <Python/Python.h>
 +
@@ -2032,6 +2172,9 @@
 +    setenv("NO_COLOR", "1", true);
 +    setenv("PYTHON_COLORS", "0", true);
 +
++    if (getenv("GITHUB_ACTIONS")) {
++        NSLog(@"Running in a GitHub Actions environment");
++    }
 +    // Arguments to pass into the test suite runner.
 +    // argv[0] must identify the process; any subsequent arg
 +    // will be handled as if it were an argument to `python -m test`
@@ -2192,10 +2335,12 @@
 +@end
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
-@@ -0,0 +1,436 @@
+@@ -0,0 +1,456 @@
 +import argparse
 +import json
++import os
 +import re
++import shlex
 +import shutil
 +import subprocess
 +import sys
@@ -2228,15 +2373,15 @@
 +    json_data = json.loads(raw_json)
 +
 +    if platform == "iOS":
-+        # Any iOS device will do; we'll look for "SE" devices - but the name isn't
-+        # consistent over time. Older Xcode versions will use "iPhone SE (Nth
-+        # generation)"; As of 2025, they've started using "iPhone 16e".
++        # Any iOS device will do; we'll look for "SE" devices - but the name
++        # isn't consistent over time. Older Xcode versions will use "iPhone SE
++        # (Nth generation)"; As of 2025, they've started using "iPhone 16e".
 +        #
-+        # When Xcode is updated after a new release, new devices will be available
-+        # and old ones will be dropped from the set available on the latest iOS
-+        # version. Select the one with the highest minimum runtime version - this
-+        # is an indicator of the "newest" released device, which should always be
-+        # supported on the "most recent" iOS version.
++        # When Xcode is updated after a new release, new devices will be
++        # available and old ones will be dropped from the set available on the
++        # latest iOS version. Select the one with the highest minimum runtime
++        # version - this is an indicator of the "newest" released device, which
++        # should always be supported on the "most recent" iOS version.
 +        se_simulators = sorted(
 +            (devicetype["minRuntimeVersion"], devicetype["name"])
 +            for devicetype in json_data["devicetypes"]
@@ -2267,7 +2412,7 @@
 +        )
 +        simulator = simulators[-1][1]
 +    elif platform == "watchOS":
-+        raise NotImplementedError(f"Don't know how to launch watchOS (yet)")
++        raise NotImplementedError("Don't know how to launch watchOS (yet)")
 +    else:
 +        raise ValueError(f"Unknown platform {platform}")
 +
@@ -2294,6 +2439,13 @@
 +        check=True,
 +    )
 +
++    # Any environment variable prefixed with TEST_RUNNER_ is exposed into the
++    # test runner environment. There are some variables (like those identifying
++    # CI platforms) that can be useful to have access to.
++    test_env = os.environ.copy()
++    if "GITHUB_ACTIONS" in os.environ:
++        test_env["TEST_RUNNER_GITHUB_ACTIONS"] = os.environ["GITHUB_ACTIONS"]
++
 +    print("Running test project...")
 +    # Test execution *can't* be run -quiet; verbose mode
 +    # is how we see the output of the test output.
@@ -2301,6 +2453,7 @@
 +        ["xcodebuild", "test-without-building"] + args,
 +        stdout=subprocess.PIPE,
 +        stderr=subprocess.STDOUT,
++        env=test_env,
 +    )
 +    while line := (process.stdout.readline()).decode(*DECODE_ARGS):
 +        # Strip the timestamp/process prefix from each log line
@@ -2459,7 +2612,7 @@
 +        test_plan = json.load(f)
 +
 +    test_plan["defaultOptions"]["commandLineArgumentEntries"] = [
-+        {"argument": arg} for arg in args
++        {"argument": shlex.quote(arg)} for arg in args
 +    ]
 +
 +    with test_plan_path.open("w", encoding="utf-8") as f:
@@ -2501,7 +2654,8 @@
 +
 +    parser = argparse.ArgumentParser(
 +        description=(
-+            "Manages the process of testing an Apple Python project through Xcode."
++            "Manages the process of testing an Apple Python project "
++            "through Xcode."
 +        ),
 +    )
 +
@@ -2542,7 +2696,10 @@
 +
 +    run = subcommands.add_parser(
 +        "run",
-+        usage="%(prog)s [-h] [--simulator SIMULATOR] -- <test arg> [<test arg> ...]",
++        usage=(
++            "%(prog)s [-h] [--simulator SIMULATOR] -- "
++            "<test arg> [<test arg> ...]"
++        ),
 +        description=(
 +            "Run a testbed project. The arguments provided after `--` will be "
 +            "passed to the running test process as if they were arguments to "
@@ -2603,9 +2760,9 @@
 +                / "bin"
 +            ).is_dir():
 +                print(
-+                    f"Testbed does not contain a compiled Python framework. Use "
-+                    f"`python {sys.argv[0]} clone ...` to create a runnable "
-+                    f"clone of this testbed."
++                    "Testbed does not contain a compiled Python framework. "
++                    f"Use `python {sys.argv[0]} clone ...` to create a "
++                    "runnable clone of this testbed."
 +                )
 +                sys.exit(20)
 +
@@ -2617,7 +2774,8 @@
 +            )
 +        else:
 +            print(
-+                f"Must specify test arguments (e.g., {sys.argv[0]} run -- test)"
++                "Must specify test arguments "
++                f"(e.g., {sys.argv[0]} run -- test)"
 +            )
 +            print()
 +            parser.print_help(sys.stderr)
@@ -2628,6 +2786,11 @@
 +
 +
 +if __name__ == "__main__":
++    # Under the buildbot, stdout is not a TTY, but we must still flush after
++    # every line to make sure our output appears in the correct order relative
++    # to the output of our subprocesses.
++    for stream in [sys.stdout, sys.stderr]:
++        stream.reconfigure(line_buffering=True)
 +    main()
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj
@@ -6039,20 +6202,20 @@ index 9921fd6114b..4ed18f4938c 100644
 +file next to ``mymodule.so``, and the privacy manifest will be installed into
 +the required location when the binary module is converted into a framework.
 diff --git a/Lib/ctypes/__init__.py b/Lib/ctypes/__init__.py
-index 8261773cef9..6612230265f 100644
+index 80651dc64ce..8a8f3e95505 100644
 --- a/Lib/ctypes/__init__.py
 +++ b/Lib/ctypes/__init__.py
-@@ -347,9 +347,9 @@
-         if name:
-             name = _os.fspath(name)
+@@ -380,9 +380,9 @@
  
+     else:
+         def _load_library(self, name, mode, handle, winmode):
 -            # If the filename that has been provided is an iOS/tvOS/watchOS
 -            # .fwork file, dereference the location to the true origin of the
 -            # binary.
 +            # If the filename that has been provided is an iOS, tvOS, visionOS
 +            # or watchOS .fwork file, dereference the location to the true
 +            # origin of the binary.
-             if name.endswith(".fwork"):
+             if name and name.endswith(".fwork"):
                  with open(name) as f:
                      name = _os.path.join(
 diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
@@ -6069,7 +6232,7 @@ index 117bf06cb01..87611a6d03f 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index c5e641773e6..4260ab6a74a 100644
+index 41f538acb03..02fc9b9daf3 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -6081,7 +6244,7 @@ index c5e641773e6..4260ab6a74a 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1800,7 +1800,7 @@
+@@ -1802,7 +1802,7 @@
      """
      extension_loaders = []
      if hasattr(_imp, 'create_dynamic'):
@@ -6247,7 +6410,7 @@ index 8895177e326..9e1e0628671 100755
              macos_release = mac_ver()[0]
              if macos_release:
 diff --git a/Lib/site.py b/Lib/site.py
-index aedf36399c3..72383a0957c 100644
+index 041dca113a5..3dedc828524 100644
 --- a/Lib/site.py
 +++ b/Lib/site.py
 @@ -292,8 +292,8 @@
@@ -6262,7 +6425,7 @@ index aedf36399c3..72383a0957c 100644
  
      def joinuser(*args):
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index ffc3fdf6afb..7df38b4f3d8 100644
+index 885f0092b53..0e04efb25ce 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -75,7 +75,7 @@
@@ -6317,7 +6480,7 @@ index f7bd675bb3b..98ee0cf234c 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Lib/test/datetimetester.py b/Lib/test/datetimetester.py
-index 44c5b28f455..0b4f874ec15 100644
+index 22ab655507a..368100eeb29 100644
 --- a/Lib/test/datetimetester.py
 +++ b/Lib/test/datetimetester.py
 @@ -6840,9 +6840,9 @@
@@ -6333,10 +6496,18 @@ index 44c5b28f455..0b4f874ec15 100644
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 4605938b875..5f1223e57d6 100644
+index 4605938b875..cc65b3d63dc 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -582,7 +582,7 @@
+@@ -64,6 +64,7 @@
+     "force_not_colorized_test_class",
+     "make_clean_env",
+     "BrokenIter",
++    "reset_code", "on_github_actions"
+     ]
+ 
+ 
+@@ -582,7 +583,7 @@
  
  is_android = sys.platform == "android"
  
@@ -6345,7 +6516,7 @@ index 4605938b875..5f1223e57d6 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -592,7 +592,7 @@
+@@ -592,7 +593,7 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
@@ -6354,6 +6525,15 @@ index 4605938b875..5f1223e57d6 100644
  is_apple = is_apple_mobile or sys.platform == "darwin"
  
  has_fork_support = hasattr(os, "fork") and not (
+@@ -1330,6 +1331,8 @@
+         _opcode.ENABLE_SPECIALIZATION, "requires specialization")(test)
+ 
+ 
++on_github_actions = "GITHUB_ACTIONS" in os.environ
++
+ #=======================================================================
+ # Check for the presence of docstrings.
+ 
 diff --git a/Lib/test/test__interpreters.py b/Lib/test/test__interpreters.py
 index 6fb2bc24fa3..88cb6691cd8 100644
 --- a/Lib/test/test__interpreters.py
@@ -6395,6 +6575,27 @@ index ed277276b51..c846a9bc5d7 100644
                  else:
                      self.assertEqual(res.system, "")
                      self.assertEqual(res.release, "")
+diff --git a/Lib/test/test_socketserver.py b/Lib/test/test_socketserver.py
+index 0f62f9eb200..2ca356606b2 100644
+--- a/Lib/test/test_socketserver.py
++++ b/Lib/test/test_socketserver.py
+@@ -218,12 +218,16 @@
+                             self.dgram_examine)
+ 
+     @requires_unix_sockets
++    @unittest.skipIf(test.support.is_apple_mobile and test.support.on_github_actions,
++                     "gh-140702: Test fails regularly on iOS simulator on GitHub Actions")
+     def test_UnixDatagramServer(self):
+         self.run_server(socketserver.UnixDatagramServer,
+                         socketserver.DatagramRequestHandler,
+                         self.dgram_examine)
+ 
+     @requires_unix_sockets
++    @unittest.skipIf(test.support.is_apple_mobile and test.support.on_github_actions,
++                     "gh-140702: Test fails regularly on iOS simulator on GitHub Actions")
+     def test_ThreadingUnixDatagramServer(self):
+         self.run_server(socketserver.ThreadingUnixDatagramServer,
+                         socketserver.DatagramRequestHandler,
 diff --git a/Lib/test/test_webbrowser.py b/Lib/test/test_webbrowser.py
 index 4fcbc5c2e59..851bd6e8f3c 100644
 --- a/Lib/test/test_webbrowser.py
@@ -6437,7 +6638,7 @@ index 2f9555ad60d..249756ba4de 100755
      if objc:
          # If objc exists, we know ctypes is also importable.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index a7dc9709d62..a1c3b6f625a 100644
+index a7dc9709d62..304a9f6fc3a 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -202,6 +202,12 @@
@@ -6462,7 +6663,17 @@ index a7dc9709d62..a1c3b6f625a 100644
  
  	# Run the testbed project
  	$(PYTHON_FOR_BUILD) "$(XCFOLDER)" run --verbose -- test -uall --single-process --rerun -W
-@@ -2976,10 +2982,10 @@
+@@ -2791,6 +2797,9 @@
+ 	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)
+ 	sed 's/%VERSION%/'"`$(RUNSHARED) $(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Info.plist
+ 	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
++	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(LIBDIR)
++	$(LN) -fs "../$(LDLIBRARY)" "$(DESTDIR)$(prefix)/lib/libpython$(LDVERSION).dylib"
++	$(LN) -fs "../$(LDLIBRARY)" "$(DESTDIR)$(prefix)/lib/libpython$(VERSION).dylib"
+ 	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
+ 	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
+ 		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
+@@ -2976,10 +2985,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -6477,7 +6688,7 @@ index a7dc9709d62..a1c3b6f625a 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -3005,7 +3011,7 @@
+@@ -3005,7 +3014,7 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
