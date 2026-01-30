@@ -88,13 +88,13 @@ update-patch:
 	# comparing between the current state of the 3.X branch against the v3.X.Y
 	# tag associated with the release being built. This allows you to
 	# maintain a branch that contains custom patches against the default Python.
-	# The patch archived in this respository is based on github.com/freakboy3742/cpython
+	# The patch archived in this repository is based on github.com/freakboy3742/cpython
 	# Requires patchutils (installable via `brew install patchutils`); this
 	# also means we need to re-introduce homebrew to the path for the filterdiff
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
+		git diff --no-renames -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
@@ -136,10 +136,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -331,7 +331,7 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 
 
 $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
-	@echo ">>> Create cross-plaform config for $(target)"
+	@echo ">>> Create cross-platform config for $(target)"
 	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(target))
 	# Create the cross-platform site definition
 	echo "import _cross_$$(ARCH-$(target))_$$(SDK-$(target)); import _cross_venv;" \
@@ -405,15 +405,13 @@ define build-sdk
 sdk=$1
 os=$2
 
-OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
 # Expand the build-target macro for target on this OS
@@ -667,7 +665,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Create symlink for dylib
 	$$(foreach sdk,$$(SDKS-$(os)),ln -si ../Python.framework/Python $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk))/lib/libpython$(PYTHON_VER).dylib; )
 
-ifeq (filter($(os),iOS tvOS watchOS), $(os))
+ifeq ($(filter $(os),iOS tvOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
 	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
