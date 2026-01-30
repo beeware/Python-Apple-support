@@ -667,9 +667,9 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Create symlink for dylib
 	$$(foreach sdk,$$(SDKS-$(os)),ln -si ../Python.framework/Python $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk))/lib/libpython$(PYTHON_VER).dylib; )
 
-ifeq ($(os),iOS)
+ifeq (filter($(os),iOS tvOS watchOS), $(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
