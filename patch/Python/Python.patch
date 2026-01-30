@@ -436,9 +436,9 @@ index ad91fe68a33..25dffd4d899 100644
 +        )
 +        shutil.unpack_archive(archive_path, prefix_dir)
 +
-+    # Dynamic libraries will be preferentially linked over static; On non-macOS
-+    # platforms, ensure that no dylibs are available in the prefix folder.
-+    if platform != "macOS":
++    # Dynamic libraries will be preferentially linked over static;
++    # On iOS, ensure that no dylibs are available in the prefix folder.
++    if platform == "iOS":
 +        for dylib in prefix_dir.glob("**/*.dylib"):
 +            dylib.unlink()
 +
@@ -940,7 +940,7 @@ index ad91fe68a33..25dffd4d899 100644
 +            + [
 +                "--",
 +                "test",
-+                f"--{context.ci_mode or 'fast'}-ci",
++                # f"--{context.ci_mode}-ci",
 +                "-uall",
 +                "--rerun",
 +                "--single-process",
@@ -1643,7 +1643,7 @@ index ad91fe68a33..25dffd4d899 100644
 +#endif
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/Info.plist
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,106 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
@@ -1680,6 +1680,68 @@ index ad91fe68a33..25dffd4d899 100644
 +			<string>ios</string>
 +			<key>SupportedPlatformVariant</key>
 +			<string>simulator</string>
++		</dict>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>tvos-arm64</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>tvos</string>
++		</dict>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>tvos-arm64_x86_64-simulator</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64</string>
++				<string>x86_64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>tvos</string>
++			<key>SupportedPlatformVariant</key>
++			<string>simulator</string>
++		</dict>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>watchos-arm64_x86_64-simulator</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64</string>
++				<string>x86_64</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>watchos</string>
++			<key>SupportedPlatformVariant</key>
++			<string>simulator</string>
++		</dict>
++		<dict>
++			<key>BinaryPath</key>
++			<string>Python.framework/Python</string>
++			<key>LibraryIdentifier</key>
++			<string>watchos-arm64_32</string>
++			<key>LibraryPath</key>
++			<string>Python.framework</string>
++			<key>SupportedArchitectures</key>
++			<array>
++				<string>arm64_32</string>
++			</array>
++			<key>SupportedPlatform</key>
++			<string>watchos</string>
 +		</dict>
 +	</array>
 +	<key>CFBundlePackageType</key>
@@ -1748,7 +1810,7 @@ index ad91fe68a33..25dffd4d899 100644
 +</plist>
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/utils.sh
-@@ -0,0 +1,151 @@
+@@ -0,0 +1,174 @@
 +# Utility methods for use in an Xcode project.
 +#
 +# An iOS XCframework cannot include any content other than the library binary
@@ -1785,9 +1847,32 @@ index ad91fe68a33..25dffd4d899 100644
 +        else
 +            SLICE_FOLDER="ios-arm64_x86_64-simulator"
 +        fi
-+    else
++    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-iphoneos" ]; then
 +        echo "Installing Python modules for iOS Device"
 +        SLICE_FOLDER="ios-arm64"
++    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-appletvsimulator" ]; then
++        echo "Installing Python modules for tvOS Simulator"
++        if [ -d "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/tvos-arm64-simulator" ]; then
++            SLICE_FOLDER="tvos-arm64-simulator"
++        else
++            SLICE_FOLDER="tvos-arm64_x86_64-simulator"
++        fi
++    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-appletvos" ]; then
++        echo "Installing Python modules for tvOS Device"
++        SLICE_FOLDER="tvos-arm64"
++    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-watchsimulator" ]; then
++        echo "Installing Python modules for watchOS Simulator"
++        if [ -d "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/watchos-arm64-simulator" ]; then
++            SLICE_FOLDER="watchos-arm64-simulator"
++        else
++            SLICE_FOLDER="watchos-arm64_x86_64-simulator"
++        fi
++    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-watchos" ]; then
++        echo "Installing Python modules for watchOS Device"
++        SLICE_FOLDER="watchos-arm64"
++    else
++        echo "Unsupported platform name $EFFECTIVE_PLATFORM_NAME"
++        exit 1
 +    fi
 +
 +    # If the XCframework has a shared lib folder, then it's a full framework.
@@ -2181,11 +2266,12 @@ index ad91fe68a33..25dffd4d899 100644
 +@end
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
-@@ -0,0 +1,434 @@
+@@ -0,0 +1,456 @@
 +import argparse
 +import json
 +import os
 +import re
++import shlex
 +import shutil
 +import subprocess
 +import sys
@@ -2193,6 +2279,9 @@ index ad91fe68a33..25dffd4d899 100644
 +
 +TEST_SLICES = {
 +    "iOS": "ios-arm64_x86_64-simulator",
++    "tvOS": "tvos-arm64_x86_64-simulator",
++    "visionOS": "xros-arm64-simulator",
++    "watchOS": "watchos-arm64_x86_64-simulator",
 +}
 +
 +DECODE_ARGS = ("UTF-8", "backslashreplace")
@@ -2204,7 +2293,7 @@ index ad91fe68a33..25dffd4d899 100644
 +LOG_PREFIX_REGEX = re.compile(
 +    r"^\d{4}-\d{2}-\d{2}"  # YYYY-MM-DD
 +    r"\s+\d+:\d{2}:\d{2}\.\d+\+\d{4}"  # HH:MM:SS.ssssss+ZZZZ
-+    r"\s+iOSTestbed\[\d+:\w+\]"  # Process/thread ID
++    r"\s+.*Testbed\[\d+:\w+\]"  # Process/thread ID
 +)
 +
 +
@@ -2237,6 +2326,24 @@ index ad91fe68a33..25dffd4d899 100644
 +            )
 +        )
 +        simulator = se_simulators[-1][1]
++    elif platform == "tvOS":
++        # Find the most recent tvOS release.
++        simulators = sorted(
++            (devicetype["minRuntimeVersion"], devicetype["name"])
++            for devicetype in json_data["devicetypes"]
++            if devicetype["productFamily"] == "Apple TV"
++        )
++        simulator = simulators[-1][1]
++    elif platform == "visionOS":
++        # Find the most recent visionOS release.
++        simulators = sorted(
++            (devicetype["minRuntimeVersion"], devicetype["name"])
++            for devicetype in json_data["devicetypes"]
++            if devicetype["productFamily"] == "Apple Vision"
++        )
++        simulator = simulators[-1][1]
++    elif platform == "watchOS":
++        raise NotImplementedError("Don't know how to launch watchOS (yet)")
 +    else:
 +        raise ValueError(f"Unknown platform {platform}")
 +
@@ -2436,7 +2543,7 @@ index ad91fe68a33..25dffd4d899 100644
 +        test_plan = json.load(f)
 +
 +    test_plan["defaultOptions"]["commandLineArgumentEntries"] = [
-+        {"argument": arg} for arg in args
++        {"argument": shlex.quote(arg)} for arg in args
 +    ]
 +
 +    with test_plan_path.open("w", encoding="utf-8") as f:
@@ -2472,7 +2579,7 @@ index ad91fe68a33..25dffd4d899 100644
 +    # many platforms, but when cloned, only one platform is preserved.
 +    available_platforms = [
 +        platform
-+        for platform in ["iOS"]
++        for platform in ["iOS", "tvOS", "visionOS", "watchOS"]
 +        if (Path(__file__).parent / f"{platform}Testbed").is_dir()
 +    ]
 +
@@ -2526,7 +2633,7 @@ index ad91fe68a33..25dffd4d899 100644
 +        ),
 +        description=(
 +            "Run a testbed project. The arguments provided after `--` will be "
-+            "passed to the running iOS process as if they were arguments to "
++            "passed to the running test process as if they were arguments to "
 +            "`python -m`."
 +        ),
 +        help="Run a testbed project",
