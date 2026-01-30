@@ -66,7 +66,7 @@ index ad91fe68a33..25dffd4d899 100644
 +]
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1065 @@
+@@ -0,0 +1,1110 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -74,17 +74,20 @@ index ad91fe68a33..25dffd4d899 100644
 +# This script simplifies the process of configuring, compiling and packaging an
 +# XCframework for an Apple platform.
 +#
-+# At present, it only supports iOS, but it has been constructed so that it
-+# could be used on any Apple platform.
++# At present, it supports iOS, tvOS, visionOS and watchOS, but it has been
++# constructed so that it could be used on any Apple platform.
 +#
 +# The simplest entry point is:
 +#
 +#   $ python Apple ci iOS
 +#
++# (replace iOS with tvOS, visionOS or watchOS as required.)
++#
 +# which will:
 +# * Clean any pre-existing build artefacts
 +# * Configure and make a Python that can be used for the build
-+# * Configure and make a Python for each supported iOS architecture and ABI
++# * Configure and make a Python for each supported iOS/tvOS/watchOS/visionOS
++#   architecture and ABI
 +# * Combine the outputs of the builds from the previous step into a single
 +#   XCframework, merging binaries into a "fat" binary if necessary
 +# * Clone a copy of the testbed, configured to use the XCframework
@@ -142,6 +145,32 @@ index ad91fe68a33..25dffd4d899 100644
 +        "ios-arm64_x86_64-simulator": {
 +            "arm64-apple-ios-simulator": "arm64-iphonesimulator",
 +            "x86_64-apple-ios-simulator": "x86_64-iphonesimulator",
++        },
++    },
++    "tvOS": {
++        "tvos-arm64": {
++            "arm64-apple-tvos": "arm64-appletvos",
++        },
++        "tvos-arm64_x86_64-simulator": {
++            "arm64-apple-tvos-simulator": "arm64-appletvsimulator",
++            "x86_64-apple-tvos-simulator": "x86_64-appletvsimulator",
++        },
++    },
++    "visionOS": {
++        "xros-arm64": {
++            "arm64-apple-xros": "arm64-xros",
++        },
++        "xros-arm64-simulator": {
++            "arm64-apple-xros-simulator": "arm64-xrsimulator",
++        },
++    },
++    "watchOS": {
++        "watchos-arm64_32": {
++            "arm64_32-apple-watchos": "arm64_32-watchos",
++        },
++        "watchos-arm64_x86_64-simulator": {
++            "arm64-apple-watchos-simulator": "arm64-watchsimulator",
++            "x86_64-apple-watchos-simulator": "x86_64-watchsimulator",
 +        },
 +    },
 +}
@@ -205,11 +234,21 @@ index ad91fe68a33..25dffd4d899 100644
 +        print(f"export {key}={shlex.quote(value)}")
 +
 +
++def platform_for_host(host):
++    """Determine the platform for a given host triple."""
++    for plat, slices in HOSTS.items():
++        for _, candidates in slices.items():
++            for candidate in candidates:
++                if candidate == host:
++                    return plat
++    raise KeyError(host)
++
++
 +def apple_env(host: str) -> EnvironmentT:
 +    """Construct an Apple development environment for the given host."""
 +    env = {
 +        "PATH": ":".join([
-+            str(PYTHON_DIR / "Apple/iOS/Resources/bin"),
++            str(PYTHON_DIR / f"Apple/{platform_for_host(host)}/Resources/bin"),
 +            str(subdir(host) / "prefix"),
 +            "/usr/bin",
 +            "/bin",
@@ -371,8 +410,8 @@ index ad91fe68a33..25dffd4d899 100644
 +    Downloads binaries if they aren't already present. Downloads will be stored
 +    in provided cache directory.
 +
-+    On iOS, as a safety mechanism, any dynamic libraries will be purged from
-+    the unpacked dependencies.
++    On non-macOS platforms, as a safety mechanism, any dynamic libraries will
++    be purged from the unpacked dependencies.
 +    """
 +    # To create new builds of these dependencies, usually all that's necessary
 +    # is to push a tag to the cpython-apple-source-deps repository, and GitHub
@@ -397,9 +436,9 @@ index ad91fe68a33..25dffd4d899 100644
 +        )
 +        shutil.unpack_archive(archive_path, prefix_dir)
 +
-+    # Dynamic libraries will be preferentially linked over static;
-+    # On iOS, ensure that no dylibs are available in the prefix folder.
-+    if platform == "iOS":
++    # Dynamic libraries will be preferentially linked over static; On non-macOS
++    # platforms, ensure that no dylibs are available in the prefix folder.
++    if platform != "macOS":
 +        for dylib in prefix_dir.glob("**/*.dylib"):
 +            dylib.unlink()
 +
@@ -499,7 +538,11 @@ index ad91fe68a33..25dffd4d899 100644
 +    :param host_triple: The host triple (e.g., arm64-apple-ios-simulator)
 +    :param multiarch: The multiarch identifier (e.g., arm64-simulator)
 +    """
-+    return CROSS_BUILD_DIR / f"{host_triple}/Apple/iOS/Frameworks/{multiarch}"
++    return (
++        CROSS_BUILD_DIR
++        / f"{host_triple}/Apple/{platform_for_host(host_triple)}"
++        / f"Frameworks/{multiarch}"
++    )
 +
 +
 +def package_version(prefix_path: Path) -> str:
@@ -572,7 +615,7 @@ index ad91fe68a33..25dffd4d899 100644
 +def create_xcframework(platform: str) -> str:
 +    """Build an XCframework from the component parts for the platform.
 +
-+    :return: The version number of the Python verion that was packaged.
++    :return: The version number of the Python version that was packaged.
 +    """
 +    package_path = CROSS_BUILD_DIR / platform
 +    try:
@@ -720,7 +763,7 @@ index ad91fe68a33..25dffd4d899 100644
 +            host_path = (
 +                CROSS_BUILD_DIR
 +                / host_triple
-+                / "Apple/iOS/Frameworks"
++                / f"Apple/{platform}/Frameworks"
 +                / multiarch
 +            )
 +            host_framework = host_path / "Python.framework"
@@ -766,18 +809,20 @@ index ad91fe68a33..25dffd4d899 100644
 +        # Create an XCframework
 +        version = create_xcframework(context.platform)
 +
-+        # Clone testbed
-+        print()
-+        run([
-+            sys.executable,
-+            "Apple/testbed",
-+            "clone",
-+            "--platform",
-+            context.platform,
-+            "--framework",
-+            CROSS_BUILD_DIR / context.platform / "Python.xcframework",
-+            CROSS_BUILD_DIR / context.platform / "testbed",
-+        ])
++        # watchOS doesn't have a testbed (yet!)
++        if context.platform != "watchOS":
++            # Clone testbed
++            print()
++            run([
++                sys.executable,
++                "Apple/testbed",
++                "clone",
++                "--platform",
++                context.platform,
++                "--framework",
++                CROSS_BUILD_DIR / context.platform / "Python.xcframework",
++                CROSS_BUILD_DIR / context.platform / "testbed",
++            ])
 +
 +        # Build the final archive
 +        archive_name = (
@@ -895,7 +940,7 @@ index ad91fe68a33..25dffd4d899 100644
 +            + [
 +                "--",
 +                "test",
-+                # f"--{context.ci_mode}-ci",
++                f"--{context.ci_mode or 'fast'}-ci",
 +                "-uall",
 +                "--rerun",
 +                "--single-process",
@@ -1840,6 +1885,34 @@ index ad91fe68a33..25dffd4d899 100644
 +
 +It should be used as a target for `--enable-framework` when compiling an iOS simulator
 +build for testing purposes (either x86_64 or ARM64).
+--- /dev/null
++++ b/Apple/testbed/Python.xcframework/tvos-arm64/README
+@@ -0,0 +1,4 @@
++This directory is intentionally empty.
++
++It should be used as a target for `--enable-framework` when compiling a tvOS
++on-device build for testing purposes.
+--- /dev/null
++++ b/Apple/testbed/Python.xcframework/tvos-arm64_x86_64-simulator/README
+@@ -0,0 +1,4 @@
++This directory is intentionally empty.
++
++It should be used as a target for `--enable-framework` when compiling a tvOS
++simulator build for testing purposes (either x86_64 or ARM64).
+--- /dev/null
++++ b/Apple/testbed/Python.xcframework/watchos-arm64_32/README
+@@ -0,0 +1,4 @@
++This directory is intentionally empty.
++
++It should be used as a target for `--enable-framework` when compiling a watchOS on-device
++build for testing purposes.
+--- /dev/null
++++ b/Apple/testbed/Python.xcframework/watchos-arm64_x86_64-simulator/README
+@@ -0,0 +1,4 @@
++This directory is intentionally empty.
++
++It should be used as a target for `--enable-framework` when compiling a watchOS
++simulator build for testing purposes (either x86_64 or ARM64).
 --- /dev/null
 +++ b/Apple/testbed/Testbed.lldbinit
 @@ -0,0 +1,4 @@
@@ -3376,6 +3449,822 @@ index ad91fe68a33..25dffd4d899 100644
 +    }
 +}
 --- /dev/null
++++ b/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
+@@ -0,0 +1,506 @@
++// !$*UTF8*$!
++{
++	archiveVersion = 1;
++	classes = {
++	};
++	objectVersion = 77;
++	objects = {
++
++/* Begin PBXBuildFile section */
++		EE7C8A1E2DCD6FF3003206DB /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; };
++		EE7C8A1F2DCD70CD003206DB /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; };
++		EE7C8A202DCD70CD003206DB /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++/* End PBXBuildFile section */
++
++/* Begin PBXContainerItemProxy section */
++		EE989E662DCD6E7A0036B268 /* PBXContainerItemProxy */ = {
++			isa = PBXContainerItemProxy;
++			containerPortal = EE989E462DCD6E780036B268 /* Project object */;
++			proxyType = 1;
++			remoteGlobalIDString = EE989E4D2DCD6E780036B268;
++			remoteInfo = tvOSTestbed;
++		};
++/* End PBXContainerItemProxy section */
++
++/* Begin PBXCopyFilesBuildPhase section */
++		EE7C8A212DCD70CD003206DB /* Embed Frameworks */ = {
++			isa = PBXCopyFilesBuildPhase;
++			buildActionMask = 2147483647;
++			dstPath = "";
++			dstSubfolderSpec = 10;
++			files = (
++				EE7C8A202DCD70CD003206DB /* Python.xcframework in Embed Frameworks */,
++			);
++			name = "Embed Frameworks";
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXCopyFilesBuildPhase section */
++
++/* Begin PBXFileReference section */
++		6077B3802E82A4BE00E3D6A3 /* tvOSTestbed.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = tvOSTestbed.xctestplan; sourceTree = "<group>"; };
++		EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
++		EE989E4E2DCD6E780036B268 /* tvOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
++		EE989E652DCD6E7A0036B268 /* TestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
++/* End PBXFileReference section */
++
++/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
++		6077B37F2E81892A00E3D6A3 /* Exceptions for "tvOSTestbed" folder in "tvOSTestbed" target */ = {
++			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
++			membershipExceptions = (
++				"tvOSTestbed-Info.plist",
++			);
++			target = EE989E4D2DCD6E780036B268 /* tvOSTestbed */;
++		};
++/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
++
++/* Begin PBXFileSystemSynchronizedRootGroup section */
++		EE989E502DCD6E780036B268 /* tvOSTestbed */ = {
++			isa = PBXFileSystemSynchronizedRootGroup;
++			exceptions = (
++				6077B37F2E81892A00E3D6A3 /* Exceptions for "tvOSTestbed" folder in "tvOSTestbed" target */,
++			);
++			explicitFolders = (
++				app,
++				app_packages,
++			);
++			path = tvOSTestbed;
++			sourceTree = "<group>";
++		};
++		EE989E682DCD6E7A0036B268 /* TestbedTests */ = {
++			isa = PBXFileSystemSynchronizedRootGroup;
++			path = TestbedTests;
++			sourceTree = "<group>";
++		};
++/* End PBXFileSystemSynchronizedRootGroup section */
++
++/* Begin PBXFrameworksBuildPhase section */
++		EE989E4B2DCD6E780036B268 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				EE7C8A1F2DCD70CD003206DB /* Python.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		EE989E622DCD6E7A0036B268 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				EE7C8A1E2DCD6FF3003206DB /* Python.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXFrameworksBuildPhase section */
++
++/* Begin PBXGroup section */
++		EE989E452DCD6E780036B268 = {
++			isa = PBXGroup;
++			children = (
++				6077B3802E82A4BE00E3D6A3 /* tvOSTestbed.xctestplan */,
++				EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */,
++				EE989E502DCD6E780036B268 /* tvOSTestbed */,
++				EE989E682DCD6E7A0036B268 /* TestbedTests */,
++				EE989E4F2DCD6E780036B268 /* Products */,
++			);
++			sourceTree = "<group>";
++		};
++		EE989E4F2DCD6E780036B268 /* Products */ = {
++			isa = PBXGroup;
++			children = (
++				EE989E4E2DCD6E780036B268 /* tvOSTestbed.app */,
++				EE989E652DCD6E7A0036B268 /* TestbedTests.xctest */,
++			);
++			name = Products;
++			sourceTree = "<group>";
++		};
++/* End PBXGroup section */
++
++/* Begin PBXNativeTarget section */
++		EE989E4D2DCD6E780036B268 /* tvOSTestbed */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = EE989E792DCD6E7A0036B268 /* Build configuration list for PBXNativeTarget "tvOSTestbed" */;
++			buildPhases = (
++				EE989E4A2DCD6E780036B268 /* Sources */,
++				EE989E4B2DCD6E780036B268 /* Frameworks */,
++				EE989E4C2DCD6E780036B268 /* Resources */,
++				EE7C8A222DCD70F4003206DB /* Process Python libraries */,
++				EE7C8A212DCD70CD003206DB /* Embed Frameworks */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++			);
++			fileSystemSynchronizedGroups = (
++				EE989E502DCD6E780036B268 /* tvOSTestbed */,
++			);
++			name = tvOSTestbed;
++			packageProductDependencies = (
++			);
++			productName = tvOSTestbed;
++			productReference = EE989E4E2DCD6E780036B268 /* tvOSTestbed.app */;
++			productType = "com.apple.product-type.application";
++		};
++		EE989E642DCD6E7A0036B268 /* TestbedTests */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = EE989E7C2DCD6E7A0036B268 /* Build configuration list for PBXNativeTarget "TestbedTests" */;
++			buildPhases = (
++				EE989E612DCD6E7A0036B268 /* Sources */,
++				EE989E622DCD6E7A0036B268 /* Frameworks */,
++				EE989E632DCD6E7A0036B268 /* Resources */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++				EE989E672DCD6E7A0036B268 /* PBXTargetDependency */,
++			);
++			fileSystemSynchronizedGroups = (
++				EE989E682DCD6E7A0036B268 /* TestbedTests */,
++			);
++			name = TestbedTests;
++			packageProductDependencies = (
++			);
++			productName = TestbedTests;
++			productReference = EE989E652DCD6E7A0036B268 /* TestbedTests.xctest */;
++			productType = "com.apple.product-type.bundle.unit-test";
++		};
++/* End PBXNativeTarget section */
++
++/* Begin PBXProject section */
++		EE989E462DCD6E780036B268 /* Project object */ = {
++			isa = PBXProject;
++			attributes = {
++				BuildIndependentTargetsInParallel = 1;
++				LastUpgradeCheck = 1620;
++				TargetAttributes = {
++					EE989E4D2DCD6E780036B268 = {
++						CreatedOnToolsVersion = 16.2;
++					};
++					EE989E642DCD6E7A0036B268 = {
++						CreatedOnToolsVersion = 16.2;
++						TestTargetID = EE989E4D2DCD6E780036B268;
++					};
++				};
++			};
++			buildConfigurationList = EE989E492DCD6E780036B268 /* Build configuration list for PBXProject "tvOSTestbed" */;
++			developmentRegion = en;
++			hasScannedForEncodings = 0;
++			knownRegions = (
++				en,
++				Base,
++			);
++			mainGroup = EE989E452DCD6E780036B268;
++			minimizedProjectReferenceProxies = 1;
++			preferredProjectObjectVersion = 77;
++			productRefGroup = EE989E4F2DCD6E780036B268 /* Products */;
++			projectDirPath = "";
++			projectRoot = "";
++			targets = (
++				EE989E4D2DCD6E780036B268 /* tvOSTestbed */,
++				EE989E642DCD6E7A0036B268 /* TestbedTests */,
++			);
++		};
++/* End PBXProject section */
++
++/* Begin PBXResourcesBuildPhase section */
++		EE989E4C2DCD6E780036B268 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		EE989E632DCD6E7A0036B268 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXResourcesBuildPhase section */
++
++/* Begin PBXShellScriptBuildPhase section */
++		EE7C8A222DCD70F4003206DB /* Process Python libraries */ = {
++			isa = PBXShellScriptBuildPhase;
++			alwaysOutOfDate = 1;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++			);
++			name = "Process Python libraries";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "set -e\n\nsource $PROJECT_DIR/Python.xcframework/build/utils.sh\n\ninstall_python Python.xcframework app app_packages\n";
++			showEnvVarsInLog = 0;
++		};
++/* End PBXShellScriptBuildPhase section */
++
++/* Begin PBXSourcesBuildPhase section */
++		EE989E4A2DCD6E780036B268 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		EE989E612DCD6E7A0036B268 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXSourcesBuildPhase section */
++
++/* Begin PBXTargetDependency section */
++		EE989E672DCD6E7A0036B268 /* PBXTargetDependency */ = {
++			isa = PBXTargetDependency;
++			target = EE989E4D2DCD6E780036B268 /* tvOSTestbed */;
++			targetProxy = EE989E662DCD6E7A0036B268 /* PBXContainerItemProxy */;
++		};
++/* End PBXTargetDependency section */
++
++/* Begin XCBuildConfiguration section */
++		EE989E772DCD6E7A0036B268 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)";
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers";
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
++				MTL_FAST_MATH = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = appletvos;
++				TVOS_DEPLOYMENT_TARGET = 18.2;
++			};
++			name = Debug;
++		};
++		EE989E782DCD6E7A0036B268 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)";
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers";
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				MTL_FAST_MATH = YES;
++				SDKROOT = appletvos;
++				TVOS_DEPLOYMENT_TARGET = 18.2;
++				VALIDATE_PRODUCT = YES;
++			};
++			name = Release;
++		};
++		EE989E7A2DCD6E7A0036B268 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
++				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = NO;
++				INFOPLIST_FILE = "tvOSTestbed/tvOSTestbed-Info.plist";
++				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
++				INFOPLIST_KEY_UIMainStoryboardFile = Main;
++				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.tvOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_EMIT_LOC_STRINGS = YES;
++				TARGETED_DEVICE_FAMILY = 3;
++			};
++			name = Debug;
++		};
++		EE989E7B2DCD6E7A0036B268 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
++				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = NO;
++				INFOPLIST_FILE = "tvOSTestbed/tvOSTestbed-Info.plist";
++				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
++				INFOPLIST_KEY_UIMainStoryboardFile = Main;
++				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.tvOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_EMIT_LOC_STRINGS = YES;
++				TARGETED_DEVICE_FAMILY = 3;
++			};
++			name = Release;
++		};
++		EE989E7D2DCD6E7A0036B268 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_EMIT_LOC_STRINGS = NO;
++				TARGETED_DEVICE_FAMILY = 3;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/tvOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tvOSTestbed";
++				TVOS_DEPLOYMENT_TARGET = 18.2;
++			};
++			name = Debug;
++		};
++		EE989E7E2DCD6E7A0036B268 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_EMIT_LOC_STRINGS = NO;
++				TARGETED_DEVICE_FAMILY = 3;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/tvOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tvOSTestbed";
++				TVOS_DEPLOYMENT_TARGET = 18.2;
++			};
++			name = Release;
++		};
++/* End XCBuildConfiguration section */
++
++/* Begin XCConfigurationList section */
++		EE989E492DCD6E780036B268 /* Build configuration list for PBXProject "tvOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				EE989E772DCD6E7A0036B268 /* Debug */,
++				EE989E782DCD6E7A0036B268 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		EE989E792DCD6E7A0036B268 /* Build configuration list for PBXNativeTarget "tvOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				EE989E7A2DCD6E7A0036B268 /* Debug */,
++				EE989E7B2DCD6E7A0036B268 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		EE989E7C2DCD6E7A0036B268 /* Build configuration list for PBXNativeTarget "TestbedTests" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				EE989E7D2DCD6E7A0036B268 /* Debug */,
++				EE989E7E2DCD6E7A0036B268 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++/* End XCConfigurationList section */
++	};
++	rootObject = EE989E462DCD6E780036B268 /* Project object */;
++}
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed.xcodeproj/xcshareddata/xcschemes/tvOSTestbed.xcscheme
+@@ -0,0 +1,97 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Scheme
++   LastUpgradeVersion = "1640"
++   version = "1.7">
++   <BuildAction
++      parallelizeBuildables = "YES"
++      buildImplicitDependencies = "YES"
++      buildArchitectures = "Automatic">
++      <BuildActionEntries>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "YES"
++            buildForProfiling = "YES"
++            buildForArchiving = "YES"
++            buildForAnalyzing = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "EE989E4D2DCD6E780036B268"
++               BuildableName = "tvOSTestbed.app"
++               BlueprintName = "tvOSTestbed"
++               ReferencedContainer = "container:tvOSTestbed.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++      </BuildActionEntries>
++   </BuildAction>
++   <TestAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SOURCE_ROOT)/Testbed.lldbinit"
++      shouldUseLaunchSchemeArgsEnv = "YES">
++      <TestPlans>
++         <TestPlanReference
++            reference = "container:tvOSTestbed.xctestplan"
++            default = "YES">
++         </TestPlanReference>
++      </TestPlans>
++      <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "EE989E642DCD6E7A0036B268"
++               BuildableName = "TestbedTests.xctest"
++               BlueprintName = "TestbedTests"
++               ReferencedContainer = "container:tvOSTestbed.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++      </Testables>
++   </TestAction>
++   <LaunchAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      launchStyle = "0"
++      useCustomWorkingDirectory = "NO"
++      ignoresPersistentStateOnLaunch = "NO"
++      debugDocumentVersioning = "YES"
++      debugServiceExtension = "internal"
++      allowLocationSimulation = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "EE989E4D2DCD6E780036B268"
++            BuildableName = "tvOSTestbed.app"
++            BlueprintName = "tvOSTestbed"
++            ReferencedContainer = "container:tvOSTestbed.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </LaunchAction>
++   <ProfileAction
++      buildConfiguration = "Release"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      savedToolIdentifier = ""
++      useCustomWorkingDirectory = "NO"
++      debugDocumentVersioning = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "EE989E4D2DCD6E780036B268"
++            BuildableName = "tvOSTestbed.app"
++            BlueprintName = "tvOSTestbed"
++            ReferencedContainer = "container:tvOSTestbed.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </ProfileAction>
++   <AnalyzeAction
++      buildConfiguration = "Debug">
++   </AnalyzeAction>
++   <ArchiveAction
++      buildConfiguration = "Release"
++      revealArchiveInOrganizer = "YES">
++   </ArchiveAction>
++</Scheme>
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed.xctestplan
+@@ -0,0 +1,46 @@
++{
++  "configurations" : [
++    {
++      "id" : "F5A95CE4-1ADE-4A6E-A0E1-CDBAE26DF0C5",
++      "name" : "Test Scheme Action",
++      "options" : {
++
++      }
++    }
++  ],
++  "defaultOptions" : {
++    "commandLineArgumentEntries" : [
++      {
++        "argument" : "test"
++      },
++      {
++        "argument" : "-uall"
++      },
++      {
++        "argument" : "--single-process"
++      },
++      {
++        "argument" : "--rerun"
++      },
++      {
++        "argument" : "-W"
++      }
++    ],
++    "targetForVariableExpansion" : {
++      "containerPath" : "container:tvOSTestbed.xcodeproj",
++      "identifier" : "607A66112B0EFA380010BFC8",
++      "name" : "tvOSTestbed"
++    }
++  },
++  "testTargets" : [
++    {
++      "parallelizable" : false,
++      "target" : {
++        "containerPath" : "container:tvOSTestbed.xcodeproj",
++        "identifier" : "EE989E642DCD6E7A0036B268",
++        "name" : "TestbedTests"
++      }
++    }
++  ],
++  "version" : 1
++}
+\ No newline at end of file
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/AppDelegate.h
+@@ -0,0 +1,11 @@
++//
++//  AppDelegate.h
++//  tvOSTestbed
++//
++
++#import <UIKit/UIKit.h>
++
++@interface AppDelegate : UIResponder <UIApplicationDelegate>
++
++
++@end
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/AppDelegate.m
+@@ -0,0 +1,19 @@
++//
++//  AppDelegate.m
++//  tvOSTestbed
++//
++
++#import "AppDelegate.h"
++
++@interface AppDelegate ()
++
++@end
++
++@implementation AppDelegate
++
++
++- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
++    return YES;
++}
++
++@end
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/Base.lproj/LaunchScreen.storyboard
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<document type="com.apple.InterfaceBuilder.AppleTV.Storyboard" version="3.0" toolsVersion="13122.16" targetRuntime="AppleTV" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
++    <dependencies>
++        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13104.12"/>
++        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
++        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
++    </dependencies>
++    <scenes>
++        <!--View Controller-->
++        <scene sceneID="tne-QT-ifu">
++            <objects>
++                <viewController id="BYZ-38-t0r" sceneMemberID="viewController">
++                    <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
++                        <rect key="frame" x="0.0" y="0.0" width="1920" height="1080"/>
++                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
++                        <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
++                        <viewLayoutGuide key="safeArea" id="wu6-TO-1qx"/>
++                    </view>
++                </viewController>
++                <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
++            </objects>
++        </scene>
++    </scenes>
++</document>
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/app/README
+@@ -0,0 +1,7 @@
++This folder can contain any Python application code.
++
++During the build, any binary modules found in this folder will be processed into
++Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH, and will be the
++working directory for the test suite.
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/app_packages/README
+@@ -0,0 +1,7 @@
++This folder can be a target for installing any Python dependencies needed by the
++test suite.
++
++During the build, any binary modules found in this folder will be processed into
++Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH.
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/main.m
+@@ -0,0 +1,16 @@
++//
++//  main.m
++//  tvOSTestbed
++//
++
++#import <UIKit/UIKit.h>
++#import "AppDelegate.h"
++
++int main(int argc, char * argv[]) {
++    NSString * appDelegateClassName;
++    @autoreleasepool {
++        appDelegateClassName = NSStringFromClass([AppDelegate class]);
++
++        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
++    }
++}
+--- /dev/null
++++ b/Apple/testbed/tvOSTestbed/tvOSTestbed-Info.plist
+@@ -0,0 +1,52 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleDisplayName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundleExecutable</key>
++	<string>${EXECUTABLE_NAME}</string>
++	<key>CFBundleIdentifier</key>
++	<string>org.python.tvOSTestbed</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++	<key>LSRequiresIPhoneOS</key>
++	<true/>
++	<key>UIRequiresFullScreen</key>
++	<true/>
++	<key>UILaunchStoryboardName</key>
++	<string>Launch Screen</string>
++	<key>UISupportedInterfaceOrientations</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++	<key>UISupportedInterfaceOrientations~ipad</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationPortraitUpsideDown</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++	<key>UIApplicationSceneManifest</key>
++	<dict>
++		<key>UIApplicationSupportsMultipleScenes</key>
++		<false/>
++		<key>UISceneConfigurations</key>
++		<dict/>
++	</dict>
++</dict>
++</plist>
+--- /dev/null
 +++ b/Apple/tvOS/README.rst
 @@ -0,0 +1,108 @@
 +=====================
@@ -3532,17 +4421,17 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos "$@"
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos "$@"
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E "$@"
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} -E "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
@@ -3552,17 +4441,27 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} strip -arch arm64 "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk iphoneos${TVOS_SDK_VERSION} strip -arch arm64 "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
@@ -3572,46 +4471,22 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E "$@"
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 --- /dev/null
-+++ b/Apple/tvOS/Resources/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string></string>
-+	<key>CFBundleIdentifier</key>
-+	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>tvOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>9.0</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+</dict>
-+</plist>
++++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} strip -arch x86_64 "$@"
 --- /dev/null
 +++ b/Apple/tvOS/Resources/pyconfig.h
 @@ -0,0 +1,7 @@
@@ -3779,17 +4654,27 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator "$@"
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator "$@"
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E "$@"
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} strip -arch arm64 "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} strip -arch arm64 "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 @@ -0,0 +1,2 @@
@@ -3799,17 +4684,17 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos "$@"
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos "$@"
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E "$@"
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} -E "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
@@ -3819,46 +4704,22 @@ index ad91fe68a33..25dffd4d899 100644
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator "$@"
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator "$@"
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E "$@"
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 --- /dev/null
-+++ b/Apple/watchOS/Resources/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string></string>
-+	<key>CFBundleIdentifier</key>
-+	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>watchOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>4.0</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+</dict>
-+</plist>
++++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip
+@@ -0,0 +1,2 @@
++#!/bin/sh
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} strip -arch x86_64 "$@"
 --- /dev/null
 +++ b/Apple/watchOS/Resources/pyconfig.h
 @@ -0,0 +1,11 @@
