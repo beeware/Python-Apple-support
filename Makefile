@@ -691,7 +691,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/_sysconfig_vars__*.json \
 		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/build-details.json \
 		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/config-* \
-		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/lib-dynload/*
+		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/lib-dynload
 
 	@echo ">>> Install PYTHONHOME for $(os)"
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
