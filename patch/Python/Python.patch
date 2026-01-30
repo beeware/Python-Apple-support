@@ -3376,6 +3376,504 @@ index ad91fe68a33..25dffd4d899 100644
 +    }
 +}
 --- /dev/null
++++ b/Apple/tvOS/README.rst
+@@ -0,0 +1,108 @@
++=====================
++Python on tvOS README
++=====================
++
++:Authors:
++    Russell Keith-Magee (2023-11)
++
++This document provides a quick overview of some tvOS specific features in the
++Python distribution.
++
++Compilers for building on tvOS
++==============================
++
++Building for tvOS requires the use of Apple's Xcode tooling. It is strongly
++recommended that you use the most recent stable release of Xcode, on the
++most recently released macOS.
++
++tvOS specific arguments to configure
++===================================
++
++* ``--enable-framework[=DIR]``
++
++  This argument specifies the location where the Python.framework will
++  be installed.
++
++* ``--with-framework-name=NAME``
++
++  Specify the name for the python framework, defaults to ``Python``.
++
++
++Building and using Python on tvOS
++=================================
++
++ABIs and Architectures
++----------------------
++
++tvOS apps can be deployed on physical devices, and on the tvOS simulator.
++Although the API used on these devices is identical, the ABI is different - you
++need to link against different libraries for an tvOS device build
++(``appletvos``) or an tvOS simulator build (``appletvsimulator``). Apple uses
++the XCframework format to allow specifying a single dependency that supports
++multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
++frameworks.
++
++tvOS can also support different CPU architectures within each ABI. At present,
++there is only a single support ed architecture on physical devices - ARM64.
++However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
++Silicon machines), and x86_64 (for running on older Intel-based machines.)
++
++To support multiple CPU architectures on a single platform, Apple uses a "fat
++binary" format - a single physical file that contains support for multiple
++architectures.
++
++How do I build Python for tvOS?
++-------------------------------
++
++The Python build system will build a ``Python.framework`` that supports a
++*single* ABI with a *single* architecture. If you want to use Python in an tvOS
++project, you need to:
++
++1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
++2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
++3. Merge the "fat" frameworks for each ABI into a single XCframework.
++
++tvOS builds of Python *must* be constructed as framework builds. To support this,
++you must provide the ``--enable-framework`` flag when configuring the build.
++
++The build also requires the use of cross-compilation. The commands for building
++Python for tvOS will look somethign like::
++
++  $ ./configure \
++        --enable-framework=/path/to/install \
++        --host=aarch64-apple-tvos \
++        --build=aarch64-apple-darwin \
++        --with-build-python=/path/to/python.exe
++  $ make
++  $ make install
++
++In this invocation:
++
++* ``/path/to/install`` is the location where the final Python.framework will be
++  output.
++
++* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
++  triple format. This will be one of:
++
++  - ``aarch64-apple-tvos`` for ARM64 tvOS devices.
++  - ``aarch64-apple-tvos-simulator`` for the tvOS simulator running on Apple
++    Silicon devices.
++  - ``x86_64-apple-tvos-simulator`` for the tvOS simulator running on Intel
++    devices.
++
++* ``--build`` is the GNU compiler triple for the machine that will be running
++  the compiler. This is one of:
++
++  - ``aarch64-apple-darwin`` for Apple Silicon devices.
++  - ``x86_64-apple-darwin`` for Intel devices.
++
++* ``/path/to/python.exe`` is the path to a Python binary on the machine that
++  will be running the compiler. This is needed because the Python compilation
++  process involves running some Python code. On a normal desktop build of
++  Python, you can compile a python interpreter and then use that interpreter to
++  run Python code. However, the binaries produced for tvOS won't run on macOS, so
++  you need to provide an external Python interpreter. This interpreter must be
++  the version as the Python that is being compiled.
++
++Using a framework-based Python on tvOS
++======================================
+--- /dev/null
++++ b/Apple/tvOS/Resources/Info.plist.in
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2024 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>tvOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>@TVOS_DEPLOYMENT_TARGET@</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E "$@"
+--- /dev/null
++++ b/Apple/tvOS/Resources/dylib-Info-template.plist
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string></string>
++	<key>CFBundleIdentifier</key>
++	<string></string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>tvOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>9.0</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/Apple/tvOS/Resources/pyconfig.h
+@@ -0,0 +1,7 @@
++#ifdef __arm64__
++#include "pyconfig-arm64.h"
++#endif
++
++#ifdef __x86_64__
++#include "pyconfig-x86_64.h"
++#endif
+--- /dev/null
++++ b/Apple/watchOS/README.rst
+@@ -0,0 +1,108 @@
++========================
++Python on watchOS README
++========================
++
++:Authors:
++    Russell Keith-Magee (2023-11)
++
++This document provides a quick overview of some watchOS specific features in the
++Python distribution.
++
++Compilers for building on watchOS
++=================================
++
++Building for watchOS requires the use of Apple's Xcode tooling. It is strongly
++recommended that you use the most recent stable release of Xcode, on the
++most recently released macOS.
++
++watchOS specific arguments to configure
++=======================================
++
++* ``--enable-framework[=DIR]``
++
++  This argument specifies the location where the Python.framework will
++  be installed.
++
++* ``--with-framework-name=NAME``
++
++  Specify the name for the python framework, defaults to ``Python``.
++
++
++Building and using Python on watchOS
++====================================
++
++ABIs and Architectures
++----------------------
++
++watchOS apps can be deployed on physical devices, and on the watchOS simulator.
++Although the API used on these devices is identical, the ABI is different - you
++need to link against different libraries for an watchOS device build
++(``watchos``) or an watchOS simulator build (``watchsimulator``). Apple uses the
++XCframework format to allow specifying a single dependency that supports
++multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
++frameworks.
++
++watchOS can also support different CPU architectures within each ABI. At present,
++there is only a single support ed architecture on physical devices - ARM64.
++However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
++Silicon machines), and x86_64 (for running on older Intel-based machines.)
++
++To support multiple CPU architectures on a single platform, Apple uses a "fat
++binary" format - a single physical file that contains support for multiple
++architectures.
++
++How do I build Python for watchOS?
++-------------------------------
++
++The Python build system will build a ``Python.framework`` that supports a
++*single* ABI with a *single* architecture. If you want to use Python in an watchOS
++project, you need to:
++
++1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
++2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
++3. Merge the "fat" frameworks for each ABI into a single XCframework.
++
++watchOS builds of Python *must* be constructed as framework builds. To support this,
++you must provide the ``--enable-framework`` flag when configuring the build.
++
++The build also requires the use of cross-compilation. The commands for building
++Python for watchOS will look somethign like::
++
++  $ ./configure \
++        --enable-framework=/path/to/install \
++        --host=aarch64-apple-watchos \
++        --build=aarch64-apple-darwin \
++        --with-build-python=/path/to/python.exe
++  $ make
++  $ make install
++
++In this invocation:
++
++* ``/path/to/install`` is the location where the final Python.framework will be
++  output.
++
++* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
++  triple format. This will be one of:
++
++  - ``arm64_32-apple-watchos`` for ARM64-32 watchOS devices.
++  - ``aarch64-apple-watchos-simulator`` for the watchOS simulator running on Apple
++    Silicon devices.
++  - ``x86_64-apple-watchos-simulator`` for the watchOS simulator running on Intel
++    devices.
++
++* ``--build`` is the GNU compiler triple for the machine that will be running
++  the compiler. This is one of:
++
++  - ``aarch64-apple-darwin`` for Apple Silicon devices.
++  - ``x86_64-apple-darwin`` for Intel devices.
++
++* ``/path/to/python.exe`` is the path to a Python binary on the machine that
++  will be running the compiler. This is needed because the Python compilation
++  process involves running some Python code. On a normal desktop build of
++  Python, you can compile a python interpreter and then use that interpreter to
++  run Python code. However, the binaries produced for watchOS won't run on macOS, so
++  you need to provide an external Python interpreter. This interpreter must be
++  the version as the Python that is being compiled.
++
++Using a framework-based Python on watchOS
++======================================
+--- /dev/null
++++ b/Apple/watchOS/Resources/Info.plist.in
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
++<plist version="0.9">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string>Python</string>
++	<key>CFBundleGetInfoString</key>
++	<string>Python Runtime and Library</string>
++	<key>CFBundleIdentifier</key>
++	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>Python</string>
++	<key>CFBundlePackageType</key>
++	<string>FMWK</string>
++	<key>CFBundleShortVersionString</key>
++	<string>%VERSION%</string>
++	<key>CFBundleLongVersionString</key>
++	<string>%VERSION%, (c) 2001-2023 Python Software Foundation.</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>%VERSION%</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>watchOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>@WATCHOS_DEPLOYMENT_TARGET@</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
+@@ -0,0 +1,2 @@
++#!/bin/bash
++xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E "$@"
+--- /dev/null
++++ b/Apple/watchOS/Resources/dylib-Info-template.plist
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleExecutable</key>
++	<string></string>
++	<key>CFBundleIdentifier</key>
++	<string></string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSupportedPlatforms</key>
++	<array>
++		<string>watchOS</string>
++	</array>
++	<key>MinimumOSVersion</key>
++	<string>4.0</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++</dict>
++</plist>
+--- /dev/null
++++ b/Apple/watchOS/Resources/pyconfig.h
+@@ -0,0 +1,11 @@
++#ifdef __arm64__
++#  ifdef __LP64__
++#include "pyconfig-arm64.h"
++#  else
++#include "pyconfig-arm64_32.h"
++#  endif
++#endif
++
++#ifdef __x86_64__
++#include "pyconfig-x86_64.h"
++#endif
+--- /dev/null
 +++ b/Doc/includes/wasm-ios-notavail.rst
 @@ -0,0 +1,8 @@
 +.. include for modules that don't work on WASM or iOS
@@ -11377,501 +11875,3 @@ index 1a02d19f1b2..7881beb6d24 100644
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} strip -arch x86_64 "$@"
---- /dev/null
-+++ b/tvOS/README.rst
-@@ -0,0 +1,108 @@
-+=====================
-+Python on tvOS README
-+=====================
-+
-+:Authors:
-+    Russell Keith-Magee (2023-11)
-+
-+This document provides a quick overview of some tvOS specific features in the
-+Python distribution.
-+
-+Compilers for building on tvOS
-+==============================
-+
-+Building for tvOS requires the use of Apple's Xcode tooling. It is strongly
-+recommended that you use the most recent stable release of Xcode, on the
-+most recently released macOS.
-+
-+tvOS specific arguments to configure
-+===================================
-+
-+* ``--enable-framework[=DIR]``
-+
-+  This argument specifies the location where the Python.framework will
-+  be installed.
-+
-+* ``--with-framework-name=NAME``
-+
-+  Specify the name for the python framework, defaults to ``Python``.
-+
-+
-+Building and using Python on tvOS
-+=================================
-+
-+ABIs and Architectures
-+----------------------
-+
-+tvOS apps can be deployed on physical devices, and on the tvOS simulator.
-+Although the API used on these devices is identical, the ABI is different - you
-+need to link against different libraries for an tvOS device build
-+(``appletvos``) or an tvOS simulator build (``appletvsimulator``). Apple uses
-+the XCframework format to allow specifying a single dependency that supports
-+multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
-+frameworks.
-+
-+tvOS can also support different CPU architectures within each ABI. At present,
-+there is only a single support ed architecture on physical devices - ARM64.
-+However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
-+Silicon machines), and x86_64 (for running on older Intel-based machines.)
-+
-+To support multiple CPU architectures on a single platform, Apple uses a "fat
-+binary" format - a single physical file that contains support for multiple
-+architectures.
-+
-+How do I build Python for tvOS?
-+-------------------------------
-+
-+The Python build system will build a ``Python.framework`` that supports a
-+*single* ABI with a *single* architecture. If you want to use Python in an tvOS
-+project, you need to:
-+
-+1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
-+2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
-+3. Merge the "fat" frameworks for each ABI into a single XCframework.
-+
-+tvOS builds of Python *must* be constructed as framework builds. To support this,
-+you must provide the ``--enable-framework`` flag when configuring the build.
-+
-+The build also requires the use of cross-compilation. The commands for building
-+Python for tvOS will look somethign like::
-+
-+  $ ./configure \
-+        --enable-framework=/path/to/install \
-+        --host=aarch64-apple-tvos \
-+        --build=aarch64-apple-darwin \
-+        --with-build-python=/path/to/python.exe
-+  $ make
-+  $ make install
-+
-+In this invocation:
-+
-+* ``/path/to/install`` is the location where the final Python.framework will be
-+  output.
-+
-+* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
-+  triple format. This will be one of:
-+
-+  - ``aarch64-apple-tvos`` for ARM64 tvOS devices.
-+  - ``aarch64-apple-tvos-simulator`` for the tvOS simulator running on Apple
-+    Silicon devices.
-+  - ``x86_64-apple-tvos-simulator`` for the tvOS simulator running on Intel
-+    devices.
-+
-+* ``--build`` is the GNU compiler triple for the machine that will be running
-+  the compiler. This is one of:
-+
-+  - ``aarch64-apple-darwin`` for Apple Silicon devices.
-+  - ``x86_64-apple-darwin`` for Intel devices.
-+
-+* ``/path/to/python.exe`` is the path to a Python binary on the machine that
-+  will be running the compiler. This is needed because the Python compilation
-+  process involves running some Python code. On a normal desktop build of
-+  Python, you can compile a python interpreter and then use that interpreter to
-+  run Python code. However, the binaries produced for tvOS won't run on macOS, so
-+  you need to provide an external Python interpreter. This interpreter must be
-+  the version as the Python that is being compiled.
-+
-+Using a framework-based Python on tvOS
-+======================================
---- /dev/null
-+++ b/tvOS/Resources/Info.plist.in
-@@ -0,0 +1,34 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
-+<plist version="0.9">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string>Python</string>
-+	<key>CFBundleGetInfoString</key>
-+	<string>Python Runtime and Library</string>
-+	<key>CFBundleIdentifier</key>
-+	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundleName</key>
-+	<string>Python</string>
-+	<key>CFBundlePackageType</key>
-+	<string>FMWK</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>%VERSION%</string>
-+	<key>CFBundleLongVersionString</key>
-+	<string>%VERSION%, (c) 2001-2024 Python Software Foundation.</string>
-+	<key>CFBundleSignature</key>
-+	<string>????</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>tvOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>@TVOS_DEPLOYMENT_TARGET@</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos -E "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos-simulator "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos-simulator -E "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos-simulator "$@"
---- /dev/null
-+++ b/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos-simulator -E "$@"
---- /dev/null
-+++ b/tvOS/Resources/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string></string>
-+	<key>CFBundleIdentifier</key>
-+	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>tvOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>9.0</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/tvOS/Resources/pyconfig.h
-@@ -0,0 +1,7 @@
-+#ifdef __arm64__
-+#include "pyconfig-arm64.h"
-+#endif
-+
-+#ifdef __x86_64__
-+#include "pyconfig-x86_64.h"
-+#endif
---- /dev/null
-+++ b/watchOS/README.rst
-@@ -0,0 +1,108 @@
-+========================
-+Python on watchOS README
-+========================
-+
-+:Authors:
-+    Russell Keith-Magee (2023-11)
-+
-+This document provides a quick overview of some watchOS specific features in the
-+Python distribution.
-+
-+Compilers for building on watchOS
-+=================================
-+
-+Building for watchOS requires the use of Apple's Xcode tooling. It is strongly
-+recommended that you use the most recent stable release of Xcode, on the
-+most recently released macOS.
-+
-+watchOS specific arguments to configure
-+=======================================
-+
-+* ``--enable-framework[=DIR]``
-+
-+  This argument specifies the location where the Python.framework will
-+  be installed.
-+
-+* ``--with-framework-name=NAME``
-+
-+  Specify the name for the python framework, defaults to ``Python``.
-+
-+
-+Building and using Python on watchOS
-+====================================
-+
-+ABIs and Architectures
-+----------------------
-+
-+watchOS apps can be deployed on physical devices, and on the watchOS simulator.
-+Although the API used on these devices is identical, the ABI is different - you
-+need to link against different libraries for an watchOS device build
-+(``watchos``) or an watchOS simulator build (``watchsimulator``). Apple uses the
-+XCframework format to allow specifying a single dependency that supports
-+multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
-+frameworks.
-+
-+watchOS can also support different CPU architectures within each ABI. At present,
-+there is only a single support ed architecture on physical devices - ARM64.
-+However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
-+Silicon machines), and x86_64 (for running on older Intel-based machines.)
-+
-+To support multiple CPU architectures on a single platform, Apple uses a "fat
-+binary" format - a single physical file that contains support for multiple
-+architectures.
-+
-+How do I build Python for watchOS?
-+-------------------------------
-+
-+The Python build system will build a ``Python.framework`` that supports a
-+*single* ABI with a *single* architecture. If you want to use Python in an watchOS
-+project, you need to:
-+
-+1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
-+2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
-+3. Merge the "fat" frameworks for each ABI into a single XCframework.
-+
-+watchOS builds of Python *must* be constructed as framework builds. To support this,
-+you must provide the ``--enable-framework`` flag when configuring the build.
-+
-+The build also requires the use of cross-compilation. The commands for building
-+Python for watchOS will look somethign like::
-+
-+  $ ./configure \
-+        --enable-framework=/path/to/install \
-+        --host=aarch64-apple-watchos \
-+        --build=aarch64-apple-darwin \
-+        --with-build-python=/path/to/python.exe
-+  $ make
-+  $ make install
-+
-+In this invocation:
-+
-+* ``/path/to/install`` is the location where the final Python.framework will be
-+  output.
-+
-+* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
-+  triple format. This will be one of:
-+
-+  - ``arm64_32-apple-watchos`` for ARM64-32 watchOS devices.
-+  - ``aarch64-apple-watchos-simulator`` for the watchOS simulator running on Apple
-+    Silicon devices.
-+  - ``x86_64-apple-watchos-simulator`` for the watchOS simulator running on Intel
-+    devices.
-+
-+* ``--build`` is the GNU compiler triple for the machine that will be running
-+  the compiler. This is one of:
-+
-+  - ``aarch64-apple-darwin`` for Apple Silicon devices.
-+  - ``x86_64-apple-darwin`` for Intel devices.
-+
-+* ``/path/to/python.exe`` is the path to a Python binary on the machine that
-+  will be running the compiler. This is needed because the Python compilation
-+  process involves running some Python code. On a normal desktop build of
-+  Python, you can compile a python interpreter and then use that interpreter to
-+  run Python code. However, the binaries produced for watchOS won't run on macOS, so
-+  you need to provide an external Python interpreter. This interpreter must be
-+  the version as the Python that is being compiled.
-+
-+Using a framework-based Python on watchOS
-+======================================
---- /dev/null
-+++ b/watchOS/Resources/Info.plist.in
-@@ -0,0 +1,34 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
-+<plist version="0.9">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string>Python</string>
-+	<key>CFBundleGetInfoString</key>
-+	<string>Python Runtime and Library</string>
-+	<key>CFBundleIdentifier</key>
-+	<string>@PYTHONFRAMEWORKIDENTIFIER@</string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundleName</key>
-+	<string>Python</string>
-+	<key>CFBundlePackageType</key>
-+	<string>FMWK</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>%VERSION%</string>
-+	<key>CFBundleLongVersionString</key>
-+	<string>%VERSION%, (c) 2001-2023 Python Software Foundation.</string>
-+	<key>CFBundleSignature</key>
-+	<string>????</string>
-+	<key>CFBundleVersion</key>
-+	<string>%VERSION%</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>watchOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>@WATCHOS_DEPLOYMENT_TARGET@</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos-simulator "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos-simulator "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator clang -target arm64-apple-watchos-simulator -E "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64_32-apple-watchos-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos -E "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos-simulator "$@"
---- /dev/null
-+++ b/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
-@@ -0,0 +1,2 @@
-+#!/bin/bash
-+xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos-simulator -E "$@"
---- /dev/null
-+++ b/watchOS/Resources/dylib-Info-template.plist
-@@ -0,0 +1,26 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>CFBundleDevelopmentRegion</key>
-+	<string>en</string>
-+	<key>CFBundleExecutable</key>
-+	<string></string>
-+	<key>CFBundleIdentifier</key>
-+	<string></string>
-+	<key>CFBundleInfoDictionaryVersion</key>
-+	<string>6.0</string>
-+	<key>CFBundlePackageType</key>
-+	<string>APPL</string>
-+	<key>CFBundleShortVersionString</key>
-+	<string>1.0</string>
-+	<key>CFBundleSupportedPlatforms</key>
-+	<array>
-+		<string>watchOS</string>
-+	</array>
-+	<key>MinimumOSVersion</key>
-+	<string>4.0</string>
-+	<key>CFBundleVersion</key>
-+	<string>1</string>
-+</dict>
-+</plist>
---- /dev/null
-+++ b/watchOS/Resources/pyconfig.h
-@@ -0,0 +1,11 @@
-+#ifdef __arm64__
-+#  ifdef __LP64__
-+#include "pyconfig-arm64.h"
-+#  else
-+#include "pyconfig-arm64_32.h"
-+#  endif
-+#endif
-+
-+#ifdef __x86_64__
-+#include "pyconfig-x86_64.h"
-+#endif
