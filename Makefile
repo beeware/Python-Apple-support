@@ -26,11 +26,11 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
-BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.7-1
-MPDECIMAL_VERSION=4.0.0-1
-OPENSSL_VERSION=3.0.16-1
-XZ_VERSION=5.6.4-1
+BZIP2_VERSION=1.0.8-2
+LIBFFI_VERSION=3.4.7-2
+MPDECIMAL_VERSION=4.0.0-2
+OPENSSL_VERSION=3.0.18-1
+XZ_VERSION=5.6.4-2
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -286,7 +286,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Make sure the binary scripts are executable
-	chmod 755 $$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin/*
+	chmod 755 $$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin/*
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
@@ -294,7 +294,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 		./configure \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
@@ -315,14 +315,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 			make all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
