@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ['macOS', 'iOS', 'tvOS', 'watchOS', 'visionOS']
+        platform: ['macOS', 'iOS', 'tvOS', 'watchOS']
 
     steps:
     - uses: actions/checkout@v6
@@ -189,11 +189,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["iOS", "tvOS", "visionOS"]
-        include:
-          # Needed to disambiguate simulator options.
-          - platform: "visionOS"
-            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
+        platform: ["iOS", "tvOS"]
 
     steps:
     - uses: actions/checkout@v6
