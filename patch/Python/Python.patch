@@ -914,15 +914,15 @@
 +                "test",
 +                # f"--{context.ci_mode}-ci",
 +                "-uall",
-+                "--rerun",
-+                "--single-process",
++                # "--rerun",
++                # "--single-process",
 +                "-W",
 +                # Timeout handling requires subprocesses; explicitly setting
 +                # the timeout to -1 disables the faulthandler.
 +                "--timeout=-1",
 +                # Adding Python options requires the use of a subprocess to
 +                # start a new Python interpreter.
-+                "--dont-add-python-opts",
++                # "--dont-add-python-opts",
 +            ]
 +        )
 +
