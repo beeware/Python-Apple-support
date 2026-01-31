@@ -233,7 +233,7 @@ jobs:
         # - test_os as a test of system library calls
         # - test_bz2 as a simple test of third party libraries
         # - test_ctypes as a test of FFI
-        python -m testbed run --verbose ${{ matrix.testbed-args }} -- test -W test_builtin test_grammar test_os test_bz2 test_ctypes
+        python -m testbed run --verbose ${{ matrix.testbed-args }} -- test -W --timeout=-1 test_builtin test_grammar test_os test_bz2 test_ctypes
 
   crossenv-test:
     name: Cross-platform env test (${{ matrix.multiarch }})
