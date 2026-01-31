@@ -953,7 +953,7 @@ index 04a0d1fe65e..58695d56657 100644
 +                # f"--{context.ci_mode}-ci",
 +                "-uall",
 +                "--rerun",
-+                "--single-process",
++                # "--single-process",
 +                "-W",
 +                # Timeout handling requires subprocesses; explicitly setting
 +                # the timeout to -1 disables the faulthandler.
