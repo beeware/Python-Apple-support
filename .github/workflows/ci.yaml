@@ -190,6 +190,9 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["iOS", "tvOS"]
+        include:
+          - platform: "iOS"
+            testbed-args: '--simulator "iPhone 16e,arch=arm64,OS=18.5"'
 
     steps:
     - uses: actions/checkout@v6
