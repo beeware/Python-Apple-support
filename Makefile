@@ -26,10 +26,10 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 
 # The binary releases of dependencies, published at:
 # https://github.com/beeware/cpython-apple-source-deps/releases
-BZIP2_VERSION=1.0.8-1
-LIBFFI_VERSION=3.4.7-1
-OPENSSL_VERSION=3.0.16-1
-XZ_VERSION=5.6.4-1
+BZIP2_VERSION=1.0.8-2
+LIBFFI_VERSION=3.4.7-2
+OPENSSL_VERSION=3.0.18-1
+XZ_VERSION=5.6.4-2
 
 # Supported OS
 OS_LIST=macOS iOS tvOS watchOS
@@ -38,18 +38,26 @@ CURL_FLAGS=--disable --fail --location --create-dirs --progress-bar
 
 # macOS targets
 TARGETS-macOS=macosx.x86_64 macosx.arm64
+TRIPLE_OS-macOS=macos
+PLATFORM_NAME-macOS=macOS
 VERSION_MIN-macOS=11.0
 
 # iOS targets
 TARGETS-iOS=iphonesimulator.x86_64 iphonesimulator.arm64 iphoneos.arm64
+TRIPLE_OS-iOS=ios
+PLATFORM_NAME-iOS=iOS
 VERSION_MIN-iOS=13.0
 
 # tvOS targets
 TARGETS-tvOS=appletvsimulator.x86_64 appletvsimulator.arm64 appletvos.arm64
+TRIPLE_OS-tvOS=tvos
+PLATFORM_NAME-tvOS=tvOS
 VERSION_MIN-tvOS=12.0
 
 # watchOS targets
 TARGETS-watchOS=watchsimulator.x86_64 watchsimulator.arm64 watchos.arm64_32
+TRIPLE_OS-watchOS=watchos
+PLATFORM_NAME-watchOS=watchOS
 VERSION_MIN-watchOS=4.0
 
 # The architecture of the machine doing the build
@@ -79,13 +87,13 @@ update-patch:
 	# comparing between the current state of the 3.X branch against the v3.X.Y
 	# tag associated with the release being built. This allows you to
 	# maintain a branch that contains custom patches against the default Python.
-	# The patch archived in this respository is based on github.com/freakboy3742/cpython
+	# The patch archived in this repository is based on github.com/freakboy3742/cpython
 	# Requires patchutils (installable via `brew install patchutils`); this
 	# also means we need to re-introduce homebrew to the path for the filterdiff
 	# call
 	if [ -z "$(PYTHON_REPO_DIR)" ]; then echo "\n\nPYTHON_REPO_DIR must be set to the root of your Python github checkout\n\n"; fi
 	cd $(PYTHON_REPO_DIR) && \
-		git diff -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
+		git diff --no-renames -D v$(PYTHON_VERSION) $(PYTHON_VER)-patched \
 			| PATH="/usr/local/bin:/opt/homebrew/bin:$(PATH)" filterdiff \
 				-X $(PROJECT_DIR)/patch/Python/diff.exclude -p 1 --clean \
 					> $(PROJECT_DIR)/patch/Python/Python.patch
@@ -127,10 +135,10 @@ ARCH-$(target)=$$(subst .,,$$(suffix $(target)))
 
 ifneq ($(os),macOS)
 	ifeq ($$(findstring simulator,$$(SDK-$(target))),)
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))
 IS_SIMULATOR-$(target)=False
 	else
-TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(OS_LOWER-$(target))$$(VERSION_MIN-$(os))-simulator
+TARGET_TRIPLE-$(target)=$$(ARCH-$(target))-apple-$$(TRIPLE_OS-$(os))$$(VERSION_MIN-$(os))-simulator
 IS_SIMULATOR-$(target)=True
 	endif
 endif
@@ -256,7 +264,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Make sure the binary scripts are executable
-	chmod 755 $$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin/*
+	chmod 755 $$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin/*
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
@@ -264,7 +272,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 		./configure \
 			CFLAGS="-I$$(XZ_INSTALL-$(target))/include -I$$(BZIP2_INSTALL-$(target))/include" \
 			LDFLAGS="-L$$(XZ_INSTALL-$(target))/lib -L$$(BZIP2_INSTALL-$(target))/lib" \
@@ -281,14 +289,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 			make all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
 			make install \
 				2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -297,7 +305,7 @@ $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 
 
 $$(PYTHON_PLATFORM_SITECUSTOMIZE-$(target)):
-	@echo ">>> Create cross-plaform config for $(target)"
+	@echo ">>> Create cross-platform config for $(target)"
 	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(target))
 	# Create the cross-platform site definition
 	echo "import _cross_$$(ARCH-$(target))_$$(SDK-$(target)); import _cross_venv;" \
@@ -369,15 +377,13 @@ define build-sdk
 sdk=$1
 os=$2
 
-OS_LOWER-$(sdk)=$(shell echo $(os) | tr '[:upper:]' '[:lower:]')
-
 SDK_TARGETS-$(sdk)=$$(filter $(sdk).%,$$(TARGETS-$(os)))
 SDK_ARCHES-$(sdk)=$$(sort $$(subst .,,$$(suffix $$(SDK_TARGETS-$(sdk)))))
 
 ifeq ($$(findstring simulator,$(sdk)),)
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")
 else
-SDK_SLICE-$(sdk)=$$(OS_LOWER-$(sdk))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
+SDK_SLICE-$(sdk)=$$(TRIPLE_OS-$(os))-$$(shell echo $$(SDK_ARCHES-$(sdk)) | sed "s/ /_/g")-simulator
 endif
 
 # Expand the build-target macro for target on this OS
@@ -398,7 +404,6 @@ PYTHON_INSTALL_VERSION-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Versions/$(PYTHON_VER)
 PYTHON_LIB-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/Python
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/include/python$(PYTHON_VER)
 PYTHON_MODULEMAP-$(sdk)=$$(PYTHON_INCLUDE-$(sdk))/module.modulemap
-PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL_VERSION-$(sdk))/lib/python$(PYTHON_VER)
 
 else
 # Non-macOS builds need to be merged on a per-SDK basis. The merge covers:
@@ -413,7 +418,6 @@ PYTHON_FRAMEWORK-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/Python.framework
 PYTHON_LIB-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Python
 PYTHON_BIN-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/bin
 PYTHON_INCLUDE-$(sdk)=$$(PYTHON_FRAMEWORK-$(sdk))/Headers
-PYTHON_STDLIB-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/lib/python$(PYTHON_VER)
 PYTHON_PLATFORM_CONFIG-$(sdk)=$$(PYTHON_INSTALL-$(sdk))/platform-config
 
 $$(PYTHON_LIB-$(sdk)): $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_LIB-$$(target)))
@@ -456,34 +460,31 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Apple/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
 
-$$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
+$$(PYTHON_PLATFORM_CONFIG-$(sdk))/sitecustomize.py: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
 	@echo ">>> Build Python stdlib for the $(sdk) SDK"
-	mkdir -p $$(PYTHON_STDLIB-$(sdk))/lib-dynload
-	# Copy stdlib from the first target associated with the $(sdk) SDK
-	cp -r $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/ $$(PYTHON_STDLIB-$(sdk))
+	mkdir -p $$(PYTHON_INSTALL-$(sdk))/lib
 
-	# Delete the single-SDK parts of the standard library
-	rm -rf \
-		$$(PYTHON_STDLIB-$(sdk))/_sysconfigdata__*.py \
-		$$(PYTHON_STDLIB-$(sdk))/config-* \
-		$$(PYTHON_STDLIB-$(sdk))/lib-dynload/*
+	# Create arch-specific stdlib directories
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),mkdir -p $$(PYTHON_INSTALL-$(sdk))/lib-$$(ARCH-$$(target))/python$(PYTHON_VER); )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfigdata_* $$(PYTHON_INSTALL-$(sdk))/lib-$$(ARCH-$$(target))/python$(PYTHON_VER)/; )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_STDLIB-$$(target))/lib-dynload $$(PYTHON_INSTALL-$(sdk))/lib-$$(ARCH-$$(target))/python$(PYTHON_VER)/; )
 
-	# Copy the individual _sysconfigdata modules into names that include the architecture
-	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_STDLIB-$$(target))/_sysconfigdata_* $$(PYTHON_STDLIB-$(sdk))/; )
+	# Copy in known-required xcprivacy files.
+	# Libraries linking OpenSSL must provide a privacy manifest. The one in this repository
+	# has been sourced from https://github.com/openssl/openssl/blob/openssl-3.0/os-dep/Apple/PrivacyInfo.xcprivacy
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$$(target))/lib-dynload/_hashlib.xcprivacy; )
+	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $(PROJECT_DIR)/patch/Python/OpenSSL.xcprivacy $$(PYTHON_STDLIB-$$(target))/lib-dynload/_ssl.xcprivacy; )
 
 	# Copy the platform site folders for each architecture
 	mkdir -p $$(PYTHON_PLATFORM_CONFIG-$(sdk))
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp -r $$(PYTHON_PLATFORM_CONFIG-$$(target)) $$(PYTHON_PLATFORM_CONFIG-$(sdk)); )
 
-	# Merge the binary modules from each target in the $(sdk) SDK into a single binary
-	$$(foreach module,$$(wildcard $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$(sdk))))/lib-dynload/*),lipo -create -output $$(PYTHON_STDLIB-$(sdk))/lib-dynload/$$(notdir $$(module)) $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_STDLIB-$$(target))/lib-dynload/$$(notdir $$(module))); )
-
 endif
 
-$(sdk): $$(PYTHON_STDLIB-$(sdk))/LICENSE.TXT
+$(sdk): $$(PYTHON_PLATFORM_CONFIG-$(sdk))/sitecustomize.py
 
 ###########################################################################
 # SDK: Debug
@@ -500,8 +501,7 @@ vars-$(sdk):
 	@echo "PYTHON_LIB-$(sdk): $$(PYTHON_LIB-$(sdk))"
 	@echo "PYTHON_BIN-$(sdk): $$(PYTHON_BIN-$(sdk))"
 	@echo "PYTHON_INCLUDE-$(sdk): $$(PYTHON_INCLUDE-$(sdk))"
-	@echo "PYTHON_STDLIB-$(sdk): $$(PYTHON_STDLIB-$(sdk))"
-
+	@echo "PYTHON_PLATFORM_CONFIG-$(sdk): $$(PYTHON_PLATFORM_CONFIG-$(sdk))"
 	@echo
 
 endef # build-sdk
@@ -606,22 +606,40 @@ dist/Python-$(PYTHON_VER)-macOS-support.$(BUILD_NUMBER).tar.gz: \
 else
 
 $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
-		$$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_STDLIB-$$(sdk))/LICENSE.TXT)
+		$$(foreach sdk,$$(SDKS-$(os)),$$(PYTHON_PLATFORM_CONFIG-$$(sdk))/sitecustomize.py)
 	@echo ">>> Create Python.XCFramework on $(os)"
 	mkdir -p $$(dir $$(PYTHON_XCFRAMEWORK-$(os)))
 	xcodebuild -create-xcframework \
 		-output $$(PYTHON_XCFRAMEWORK-$(os)) $$(foreach sdk,$$(SDKS-$(os)),-framework $$(PYTHON_FRAMEWORK-$$(sdk))) \
 		2>&1 | tee -a support/$(PYTHON_VER)/python-$(os).xcframework.log
 
+	@echo ">>> Install build tools for $(os)"
+	mkdir $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/utils.sh $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/$$(PLATFORM_NAME-$(os))-dylib-Info-template.plist $$(PYTHON_XCFRAMEWORK-$(os))/build
+
+	@echo ">>> Install stdlib for $(os)"
+	mkdir -p $$(PYTHON_XCFRAMEWORK-$(os))/lib
+	cp -r $$(PYTHON_STDLIB-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/ $$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)
+
+	# Delete the single-SDK parts of the standard library
+	rm -rf \
+		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/_sysconfigdata__*.py \
+		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/config-* \
+		$$(PYTHON_XCFRAMEWORK-$(os))/lib/python$(PYTHON_VER)/lib-dynload
+
 	@echo ">>> Install PYTHONHOME for $(os)"
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/include $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/bin $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
-	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
+	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/lib* $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 	$$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/platform-config $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(os),iOS)
+	# Create symlink for dylib
+	$$(foreach sdk,$$(SDKS-$(os)),ln -si ../Python.framework/Python $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk))/lib/libpython$(PYTHON_VER).dylib; )
+
+ifeq ($(filter $(os),iOS tvOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/iOS/testbed clone --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
