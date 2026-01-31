@@ -6070,6 +6070,20 @@ index f474a756b33..21e792a8642 100644
      def test_system_transitions(self):
          if ('Riyadh8' in self.zonename or
              # From tzdata NEWS file:
+diff --git a/Lib/test/libregrtest/main.py b/Lib/test/libregrtest/main.py
+index 400a3db5de4..049afff1a75 100644
+--- a/Lib/test/libregrtest/main.py
++++ b/Lib/test/libregrtest/main.py
+@@ -676,7 +676,8 @@
+         except SystemExit as exc:
+             # bpo-38203: Python can hang at exit in Py_Finalize(), especially
+             # on threading._shutdown() call: put a timeout
+-            faulthandler.dump_traceback_later(EXIT_TIMEOUT, exit=True)
++            if self.ns.timeout is not None:
++                faulthandler.dump_traceback_later(EXIT_TIMEOUT, exit=True)
+ 
+             sys.exit(exc.code)
+ 
 diff --git a/Lib/test/pythoninfo.py b/Lib/test/pythoninfo.py
 index eef34f08121..22115948788 100644
 --- a/Lib/test/pythoninfo.py
