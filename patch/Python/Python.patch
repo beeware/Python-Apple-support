@@ -2276,7 +2276,7 @@ index 04a0d1fe65e..58695d56657 100644
 +@end
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,472 @@
 +import argparse
 +import json
 +import os
@@ -2285,6 +2285,7 @@ index 04a0d1fe65e..58695d56657 100644
 +import shutil
 +import subprocess
 +import sys
++from itertools import chain
 +from pathlib import Path
 +
 +TEST_SLICES = {
@@ -2358,6 +2359,19 @@ index 04a0d1fe65e..58695d56657 100644
 +        raise ValueError(f"Unknown platform {platform}")
 +
 +    return simulator
++
++
++# A backport of Path.relative_to(*, walk_up=True)
++def relative_to(target, other):
++    for step, path in enumerate(chain([other], other.parents)):
++        if path == target or path in target.parents:
++            break
++    else:
++        raise ValueError(
++            f"{str(target)!r} and {str(other)!r} have different anchors"
++        )
++    parts = [".."] * step + list(target.parts[len(path.parts) :])
++    return Path("/".join(parts))
 +
 +
 +def xcode_test(location: Path, platform: str, simulator: str, verbose: bool):
@@ -2478,7 +2492,7 @@ index 04a0d1fe65e..58695d56657 100644
 +        if framework.suffix == ".xcframework":
 +            print("  Installing XCFramework...", end="")
 +            xc_framework_path.symlink_to(
-+                framework.relative_to(xc_framework_path.parent, walk_up=True)
++                relative_to(framework, xc_framework_path.parent)
 +            )
 +            print(" done")
 +        else:
@@ -2492,7 +2506,7 @@ index 04a0d1fe65e..58695d56657 100644
 +            else:
 +                test_framework_path.unlink(missing_ok=True)
 +            test_framework_path.symlink_to(
-+                framework.relative_to(test_framework_path.parent, walk_up=True)
++                relative_to(framework, test_framework_path.parent)
 +            )
 +            print(" done")
 +    else:
@@ -2510,8 +2524,9 @@ index 04a0d1fe65e..58695d56657 100644
 +            ).resolve()
 +            xc_framework_path.unlink()
 +            xc_framework_path.symlink_to(
-+                resolved_xc_framework_path.relative_to(
-+                    xc_framework_path.parent, walk_up=True
++                relative_to(
++                    resolved_xc_framework_path,
++                    xc_framework_path.parent,
 +                )
 +            )
 +            print(" done")
@@ -2527,8 +2542,9 @@ index 04a0d1fe65e..58695d56657 100644
 +            ).resolve()
 +            test_framework_path.unlink()
 +            test_framework_path.symlink_to(
-+                orig_test_framework_path.relative_to(
-+                    test_framework_path.parent, walk_up=True
++                relative_to(
++                    orig_test_framework_path,
++                    test_framework_path.parent,
 +                )
 +            )
 +            print(" done")
