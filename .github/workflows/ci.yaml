@@ -197,7 +197,8 @@ jobs:
       matrix:
         platform: ["iOS", "tvOS", "visionOS"]
         include:
-          # Needed to disambiguate simulator options.
+          - platform: "iOS"
+            testbed-args: '--simulator "iPhone 16e,arch=arm64,OS=18.5"'
           - platform: "visionOS"
             testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
 
