@@ -15,8 +15,10 @@ PYTHON_CROSS_MULTIARCH = os.getenv("PYTHON_CROSS_MULTIARCH", "unknown")
 # Determine some file system anchor points for the tests
 # Assumes that the tests are run in a virtual environment named
 # `cross-venv`,
-VENV_PREFIX = Path(__file__).parent.parent / "cross-venv"
-default_support_base = f"support/{sys.version_info.major}.{sys.version_info.minor}/{PYTHON_CROSS_PLATFORM}"
+VENV_PREFIX = os.getenv("VIRTUAL_ENV", Path(__file__).parent.parent / "cross-venv")
+default_support_base = (
+    f"support/{sys.version_info.major}.{sys.version_info.minor}/{PYTHON_CROSS_PLATFORM}"
+)
 SUPPORT_PREFIX = (
     Path(__file__).parent.parent
     / os.getenv("PYTHON_SUPPORT_BASE", default_support_base)
@@ -28,6 +30,7 @@ SUPPORT_PREFIX = (
 ###########################################################################
 # sys
 ###########################################################################
+
 
 def test_sys_platform():
     assert sys.platform == PYTHON_CROSS_PLATFORM.lower()
@@ -53,6 +56,7 @@ def test_sys_base_exec_prefix():
 # platform
 ###########################################################################
 
+
 def test_platform_system():
     assert platform.system() == PYTHON_CROSS_PLATFORM
 
@@ -60,6 +64,7 @@ def test_platform_system():
 ###########################################################################
 # sysconfig
 ###########################################################################
+
 
 def test_sysconfig_get_platform():
     parts = sysconfig.get_platform().split("-", 2)
@@ -87,7 +92,7 @@ def test_sysconfig_get_sysconfigdata_name():
         ("platlib", VENV_PREFIX),
         ("scripts", VENV_PREFIX),
         ("data", VENV_PREFIX),
-    ]
+    ],
 )
 def test_sysconfig_get_paths(name, prefix):
     assert sysconfig.get_paths()[name].startswith(str(prefix))
