@@ -40,7 +40,7 @@
 +]
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1111 @@
+@@ -0,0 +1,1108 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -472,18 +472,15 @@
 +            relpath(PYTHON_DIR / "configure"),
 +            f"--host={host}",
 +            f"--build={sysconfig.get_config_var('BUILD_GNU_TYPE')}",
-+            f"--with-build-python={build_python_path()}",
-+            "--with-system-libmpdec",
 +            "--enable-framework",
++            "PYTHON_FOR_REGEN=../build/python.exe",
 +            # Dependent libraries.
 +            f"--with-openssl={prefix_dir}",
-+            f"LIBLZMA_CFLAGS=-I{prefix_dir}/include",
-+            f"LIBLZMA_LIBS=-L{prefix_dir}/lib -llzma",
++            f"CFLAGS=-I{prefix_dir}/include",
++            f"LDFLAGS=-L{prefix_dir}/lib",
 +            f"LIBFFI_INCLUDEDIR={prefix_dir}/include",
 +            f"LIBFFI_LIBDIR={prefix_dir}/lib",
 +            "LIBFFI_LIB=ffi",
-+            f"LIBMPDEC_CFLAGS=-I{prefix_dir}/include",
-+            f"LIBMPDEC_LDFLAGS=-L{prefix_dir}/lib -lmpdec",
 +        ]
 +
 +        if context.args:
@@ -504,7 +501,7 @@
 +        cwd(subdir(host)),
 +    ):
 +        run(["make"], host=host)
-+        run(["make", "install"], host=host)
++        run(["make", "install"], host=host, env={"DESTDIR": f"{Path.cwd()}/"})
 +
 +
 +def framework_path(host_triple: str, multiarch: str) -> Path:
@@ -2241,7 +2238,7 @@
 +@end
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,472 @@
 +import argparse
 +import json
 +import os
@@ -2250,6 +2247,7 @@
 +import shutil
 +import subprocess
 +import sys
++from itertools import chain
 +from pathlib import Path
 +
 +TEST_SLICES = {
@@ -2323,6 +2321,19 @@
 +        raise ValueError(f"Unknown platform {platform}")
 +
 +    return simulator
++
++
++# A backport of Path.relative_to(*, walk_up=True)
++def relative_to(target, other):
++    for step, path in enumerate(chain([other], other.parents)):
++        if path == target or path in target.parents:
++            break
++    else:
++        raise ValueError(
++            f"{str(target)!r} and {str(other)!r} have different anchors"
++        )
++    parts = [".."] * step + list(target.parts[len(path.parts) :])
++    return Path("/".join(parts))
 +
 +
 +def xcode_test(location: Path, platform: str, simulator: str, verbose: bool):
@@ -2443,7 +2454,7 @@
 +        if framework.suffix == ".xcframework":
 +            print("  Installing XCFramework...", end="")
 +            xc_framework_path.symlink_to(
-+                framework.relative_to(xc_framework_path.parent, walk_up=True)
++                relative_to(framework, xc_framework_path.parent)
 +            )
 +            print(" done")
 +        else:
@@ -2457,7 +2468,7 @@
 +            else:
 +                test_framework_path.unlink(missing_ok=True)
 +            test_framework_path.symlink_to(
-+                framework.relative_to(test_framework_path.parent, walk_up=True)
++                relative_to(framework, test_framework_path.parent)
 +            )
 +            print(" done")
 +    else:
@@ -2475,8 +2486,9 @@
 +            ).resolve()
 +            xc_framework_path.unlink()
 +            xc_framework_path.symlink_to(
-+                resolved_xc_framework_path.relative_to(
-+                    xc_framework_path.parent, walk_up=True
++                relative_to(
++                    resolved_xc_framework_path,
++                    xc_framework_path.parent,
 +                )
 +            )
 +            print(" done")
@@ -2492,8 +2504,9 @@
 +            ).resolve()
 +            test_framework_path.unlink()
 +            test_framework_path.symlink_to(
-+                orig_test_framework_path.relative_to(
-+                    test_framework_path.parent, walk_up=True
++                relative_to(
++                    orig_test_framework_path,
++                    test_framework_path.parent,
 +                )
 +            )
 +            print(" done")
