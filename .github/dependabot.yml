@@ -4,7 +4,6 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates on Sunday, 8PM UTC
-      interval: "weekly"
-      day: "sunday"
-      time: "20:00"
+      # Check for updates on the first Sunday of every month, 8PM UTC
+      interval: "cron"
+      cronjob: "0 20 * * sun#1"
