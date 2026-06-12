@@ -678,8 +678,8 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	@echo ">>> Install build tools for $(os)"
 	mkdir $$(PYTHON_XCFRAMEWORK-$(os))/build
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/utils.sh $$(PYTHON_XCFRAMEWORK-$(os))/build
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/$$(PLATFORM_NAME-$(os))-dylib-Info-template.plist $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed/Python.xcframework/build/utils.sh $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed/Python.xcframework/build/$$(PLATFORM_NAME-$(os))-dylib-Info-template.plist $$(PYTHON_XCFRAMEWORK-$(os))/build
 
 	@echo ">>> Install stdlib for $(os)"
 	mkdir -p $$(PYTHON_XCFRAMEWORK-$(os))/lib
@@ -707,7 +707,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 ifeq ($(filter $(os),iOS tvOS visionOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
