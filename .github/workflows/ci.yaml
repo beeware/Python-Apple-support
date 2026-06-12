@@ -47,7 +47,7 @@ concurrency:
 
 jobs:
   config:
-    runs-on: macOS-latest
+    runs-on: macOS-26
     outputs:
       PYTHON_VER: ${{ steps.extract.outputs.PYTHON_VER }}
       PYTHON_VERSION: ${{ steps.extract.outputs.PYTHON_VERSION }}
@@ -90,7 +90,7 @@ jobs:
           echo "ZSTD_VERSION=${ZSTD_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
   build:
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config]
     strategy:
       fail-fast: false
@@ -190,7 +190,7 @@ jobs:
 
   cpython-testbed:
     name: CPython testbed (${{ matrix.platform }})
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
@@ -251,7 +251,7 @@ jobs:
 
   crossenv-test:
     name: Cross-platform env test (${{ matrix.multiarch }})
-    runs-on: macOS-latest
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
