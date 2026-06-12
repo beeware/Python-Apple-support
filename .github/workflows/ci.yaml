@@ -123,7 +123,7 @@ jobs:
 
   briefcase-testbed:
     name: Briefcase testbed (${{ matrix.platform }})
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
