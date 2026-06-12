@@ -19,7 +19,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.14.2
+PYTHON_VERSION=3.14.6
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -30,7 +30,7 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 BZIP2_VERSION=1.0.8-2
 LIBFFI_VERSION=3.4.7-2
 MPDECIMAL_VERSION=4.0.0-2
-OPENSSL_VERSION=3.0.18-1
+OPENSSL_VERSION=3.5.7-1
 XZ_VERSION=5.6.4-2
 ZSTD_VERSION=1.5.7-1
 
@@ -314,7 +314,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Make sure the binary scripts are executable
-	chmod 755 $$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin/*
+	chmod 755 $$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin/*
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
@@ -322,7 +322,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 		./configure \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
@@ -346,14 +346,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 			make -j8 all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -521,7 +521,7 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Apple/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Platforms/Apple/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
 
 $$(PYTHON_PLATFORM_CONFIG-$(sdk))/sitecustomize.py: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
@@ -678,8 +678,8 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 	@echo ">>> Install build tools for $(os)"
 	mkdir $$(PYTHON_XCFRAMEWORK-$(os))/build
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/utils.sh $$(PYTHON_XCFRAMEWORK-$(os))/build
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed/Python.xcframework/build/$$(PLATFORM_NAME-$(os))-dylib-Info-template.plist $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed/Python.xcframework/build/utils.sh $$(PYTHON_XCFRAMEWORK-$(os))/build
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed/Python.xcframework/build/$$(PLATFORM_NAME-$(os))-dylib-Info-template.plist $$(PYTHON_XCFRAMEWORK-$(os))/build
 
 	@echo ">>> Install stdlib for $(os)"
 	mkdir -p $$(PYTHON_XCFRAMEWORK-$(os))/lib
@@ -707,7 +707,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 
 ifeq ($(filter $(os),iOS tvOS visionOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
-	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
+	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
 
 	@echo ">>> Create VERSIONS file for $(os)"
