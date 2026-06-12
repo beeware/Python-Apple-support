@@ -314,7 +314,7 @@ $$(PYTHON_SRCDIR-$(target))/configure: \
 	# Apply target Python patches
 	cd $$(PYTHON_SRCDIR-$(target)) && patch -p1 < $(PROJECT_DIR)/patch/Python/Python.patch
 	# Make sure the binary scripts are executable
-	chmod 755 $$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin/*
+	chmod 755 $$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin/*
 	# Touch the configure script to ensure that Make identifies it as up to date.
 	touch $$(PYTHON_SRCDIR-$(target))/configure
 
@@ -322,7 +322,7 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 		$$(PYTHON_SRCDIR-$(target))/configure
 	# Configure target Python
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 		./configure \
 			LIBLZMA_CFLAGS="-I$$(XZ_INSTALL-$(target))/include" \
 			LIBLZMA_LIBS="-L$$(XZ_INSTALL-$(target))/lib -llzma" \
@@ -346,14 +346,14 @@ $$(PYTHON_SRCDIR-$(target))/Makefile: \
 $$(PYTHON_SRCDIR-$(target))/python.exe: $$(PYTHON_SRCDIR-$(target))/Makefile
 	@echo ">>> Build Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 			make -j8 all \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).build.log
 
 $$(PYTHON_LIB-$(target)): $$(PYTHON_SRCDIR-$(target))/python.exe
 	@echo ">>> Install Python for $(target)"
 	cd $$(PYTHON_SRCDIR-$(target)) && \
-		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Apple/$(os)/Resources/bin:$(PATH)" \
+		PATH="$(PROJECT_DIR)/$$(PYTHON_SRCDIR-$(target))/Platforms/Apple/$(os)/Resources/bin:$(PATH)" \
 			make install \
 			2>&1 | tee -a ../python-$(PYTHON_VERSION).install.log
 
@@ -521,7 +521,7 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	$$(foreach target,$$(SDK_TARGETS-$(sdk)),cp $$(PYTHON_INCLUDE-$$(target))/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig-$$(ARCH-$$(target)).h; )
 
 	# Copy the cross-target header from the source folder of the first target in the $(sdk) SDK
-	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Apple/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
+	cp $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$(sdk))))/Platforms/Apple/$(os)/Resources/pyconfig.h $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h
 
 
 $$(PYTHON_PLATFORM_CONFIG-$(sdk))/sitecustomize.py: $$(PYTHON_LIB-$(sdk)) $$(PYTHON_FRAMEWORK-$(sdk))/Info.plist $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h $$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_PLATFORM_SITECUSTOMIZE-$$(target)))
