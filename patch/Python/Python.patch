@@ -1,10 +1,10 @@
 diff --git a/.pre-commit-config.yaml b/.pre-commit-config.yaml
-index 6347ffb3e11..19259c069d7 100644
+index ff08c7583fc..5f5ff9b4f2b 100644
 --- a/.pre-commit-config.yaml
 +++ b/.pre-commit-config.yaml
 @@ -2,6 +2,10 @@
    - repo: https://github.com/astral-sh/ruff-pre-commit
-     rev: v0.13.2
+     rev: a27a2e47c7751b639d2b5badf0ef6ff11fee893f  # frozen: v0.15.4
      hooks:
 +      - id: ruff-check
 +        name: Run Ruff (lint) on Apple/
@@ -23,7 +23,10 @@ index 6347ffb3e11..19259c069d7 100644
 +        files: ^Apple
        - id: ruff-format
          name: Run Ruff (format) on Doc/
-         args: [--check]
+         args: [--exit-non-zero-on-fix]
+diff --git a/Apple/.ruff.toml b/Apple/.ruff.toml
+new file mode 100644
+index 00000000000..4cdc39ebee4
 --- /dev/null
 +++ b/Apple/.ruff.toml
 @@ -0,0 +1,22 @@
@@ -49,9 +52,12 @@ index 6347ffb3e11..19259c069d7 100644
 +    "W",       # pycodestyle
 +    "YTT",     # flake8-2020
 +]
+diff --git a/Apple/__main__.py b/Apple/__main__.py
+new file mode 100644
+index 00000000000..57c3ccacd5e
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1111 @@
+@@ -0,0 +1,1150 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -266,8 +272,11 @@ index 6347ffb3e11..19259c069d7 100644
 +    return triples
 +
 +
-+def clean(context: argparse.Namespace, target: str = "all") -> None:
++def clean(context: argparse.Namespace, target: str | None = None) -> None:
 +    """The implementation of the "clean" command."""
++    if target is None:
++        target = context.host
++
 +    # If we're explicitly targeting the build, there's no platform or
 +    # distribution artefacts. If we're cleaning tests, we keep all built
 +    # artefacts. Otherwise, the built artefacts must be dirty, so we remove
@@ -409,7 +418,7 @@ index 6347ffb3e11..19259c069d7 100644
 +    for name_ver in [
 +        "BZip2-1.0.8-2",
 +        "libFFI-3.4.7-2",
-+        "OpenSSL-3.0.18-1",
++        "OpenSSL-3.0.19-1",
 +        "XZ-5.6.4-2",
 +        "mpdecimal-4.0.0-2",
 +        "zstd-1.5.7-1",
@@ -470,7 +479,12 @@ index 6347ffb3e11..19259c069d7 100644
 +    with group(f"Downloading dependencies ({host})"):
 +        if not prefix_dir.exists():
 +            prefix_dir.mkdir()
-+            unpack_deps(context.platform, host, prefix_dir, context.cache_dir)
++            cache_dir = (
++                Path(context.cache_dir).resolve()
++                if context.cache_dir
++                else CROSS_BUILD_DIR / "downloads"
++            )
++            unpack_deps(context.platform, host, prefix_dir, cache_dir)
 +        else:
 +            print("Dependencies already installed")
 +
@@ -860,7 +874,7 @@ index 6347ffb3e11..19259c069d7 100644
 +        ]:
 +            step(context, host=step_host)
 +
-+    if host in {"all", "hosts"}:
++    if host == "all":
 +        package(context)
 +
 +
@@ -928,7 +942,7 @@ index 6347ffb3e11..19259c069d7 100644
 +            + [
 +                "--",
 +                "test",
-+                f"--{context.ci_mode}-ci",
++                f"--{context.ci_mode or 'fast'}-ci",
 +                "--single-process",
 +                "--no-randomize",
 +                # Timeout handling requires subprocesses; explicitly setting
@@ -994,7 +1008,7 @@ index 6347ffb3e11..19259c069d7 100644
 +    configure_build = subcommands.add_parser(
 +        "configure-build", help="Run `configure` for the build Python"
 +    )
-+    subcommands.add_parser(
++    make_build = subcommands.add_parser(
 +        "make-build", help="Run `make` for the build Python"
 +    )
 +    configure_host = subcommands.add_parser(
@@ -1050,6 +1064,31 @@ index 6347ffb3e11..19259c069d7 100644
 +            ),
 +        )
 +
++    # --cross-build-dir argument
++    for cmd in [
++        clean,
++        configure_build,
++        make_build,
++        configure_host,
++        make_host,
++        build,
++        package,
++        test,
++        ci,
++    ]:
++        cmd.add_argument(
++            "--cross-build-dir",
++            action="store",
++            default=os.environ.get("CROSS_BUILD_DIR"),
++            dest="cross_build_dir",
++            type=Path,
++            help=(
++                "Path to the cross-build directory "
++                f"(default: {CROSS_BUILD_DIR}). Can also be set "
++                "with the CROSS_BUILD_DIR environment variable."
++            ),
++        )
++
 +    # --clean option
 +    for cmd in [configure_build, configure_host, build, package, test, ci]:
 +        cmd.add_argument(
@@ -1064,7 +1103,7 @@ index 6347ffb3e11..19259c069d7 100644
 +    for cmd in [configure_host, build, ci]:
 +        cmd.add_argument(
 +            "--cache-dir",
-+            default="./cross-build/downloads",
++            default=os.environ.get("CACHE_DIR"),
 +            help="The directory to store cached downloads.",
 +        )
 +
@@ -1131,6 +1170,12 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +    # Process command line arguments
 +    context = parse_args()
++
++    # Set the CROSS_BUILD_DIR if an argument was provided
++    if context.cross_build_dir:
++        global CROSS_BUILD_DIR
++        CROSS_BUILD_DIR = context.cross_build_dir.resolve()
++
 +    dispatch: dict[str, Callable] = {
 +        "clean": clean,
 +        "configure-build": configure_build_python,
@@ -1163,6 +1208,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        stream.reconfigure(line_buffering=True)
 +
 +    main()
+diff --git a/Apple/iOS/README.md b/Apple/iOS/README.md
+new file mode 100644
+index 00000000000..7ee257b5d64
 --- /dev/null
 +++ b/Apple/iOS/README.md
 @@ -0,0 +1,339 @@
@@ -1505,6 +1553,9 @@ index 6347ffb3e11..19259c069d7 100644
 +(this will likely be your own name), and plug in a physical device to your
 +macOS machine with a USB cable. You should then be able to select your physical
 +device from the list of targets in the pulldown in the Xcode titlebar.
+diff --git a/Apple/iOS/Resources/Info.plist.in b/Apple/iOS/Resources/Info.plist.in
+new file mode 100644
+index 00000000000..26ef7a95de4
 --- /dev/null
 +++ b/Apple/iOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -1542,81 +1593,129 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>@IPHONEOS_DEPLOYMENT_TARGET@</string>
 +</dict>
 +</plist>
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-ar b/Apple/iOS/Resources/bin/arm64-apple-ios-ar
+new file mode 100755
+index 00000000000..3cf3eb21874
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${IOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-clang b/Apple/iOS/Resources/bin/arm64-apple-ios-clang
+new file mode 100755
+index 00000000000..f50d5b5142f
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-clang++ b/Apple/iOS/Resources/bin/arm64-apple-ios-clang++
+new file mode 100755
+index 00000000000..0794731d7dc
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-cpp b/Apple/iOS/Resources/bin/arm64-apple-ios-cpp
+new file mode 100755
+index 00000000000..24fa1506bab
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET} -E "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-ar b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-ar
+new file mode 100755
+index 00000000000..b836b6db902
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang
+new file mode 100755
+index 00000000000..4891a00876e
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
+new file mode 100755
+index 00000000000..58b2a5f6f18
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-cpp b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
+new file mode 100755
+index 00000000000..c9df94e8b7c
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-strip b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-strip
+new file mode 100755
+index 00000000000..fd59d309b73
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/iOS/Resources/bin/arm64-apple-ios-strip b/Apple/iOS/Resources/bin/arm64-apple-ios-strip
+new file mode 100755
+index 00000000000..75e823a3d02
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/arm64-apple-ios-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${IOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-ar b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-ar
+new file mode 100755
+index 00000000000..b836b6db902
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
+new file mode 100755
+index 00000000000..f4739a7b945
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
+new file mode 100755
+index 00000000000..c348ae4c103
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang++ -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
+new file mode 100755
+index 00000000000..6d7f8084c9f
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} clang -target x86_64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-strip b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-strip
+new file mode 100755
+index 00000000000..c5cfb289291
 --- /dev/null
 +++ b/Apple/iOS/Resources/bin/x86_64-apple-ios-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphonesimulator${IOS_SDK_VERSION} strip -arch x86_64 "$@"
+diff --git a/Apple/iOS/Resources/pyconfig.h b/Apple/iOS/Resources/pyconfig.h
+new file mode 100644
+index 00000000000..4acff2c6051
 --- /dev/null
 +++ b/Apple/iOS/Resources/pyconfig.h
 @@ -0,0 +1,7 @@
@@ -1627,6 +1726,9 @@ index 6347ffb3e11..19259c069d7 100644
 +#ifdef __x86_64__
 +#include "pyconfig-x86_64.h"
 +#endif
+diff --git a/Apple/testbed/Python.xcframework/Info.plist b/Apple/testbed/Python.xcframework/Info.plist
+new file mode 100644
+index 00000000000..0587f4735f7
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/Info.plist
 @@ -0,0 +1,136 @@
@@ -1766,6 +1868,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>1.0</string>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/Python.xcframework/build/iOS-dylib-Info-template.plist b/Apple/testbed/Python.xcframework/build/iOS-dylib-Info-template.plist
+new file mode 100644
+index 00000000000..d6caa01c1e4
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/iOS-dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -1795,6 +1900,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>1</string>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/Python.xcframework/build/tvOS-dylib-Info-template.plist b/Apple/testbed/Python.xcframework/build/tvOS-dylib-Info-template.plist
+new file mode 100644
+index 00000000000..a20d476fa7b
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/tvOS-dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -1824,6 +1932,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>1</string>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/Python.xcframework/build/utils.sh b/Apple/testbed/Python.xcframework/build/utils.sh
+new file mode 100755
+index 00000000000..2d3b9320b3c
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/utils.sh
 @@ -0,0 +1,180 @@
@@ -1900,11 +2011,11 @@ index 6347ffb3e11..19259c069d7 100644
 +    # If the XCframework has a shared lib folder, then it's a full framework.
 +    # Copy both the common and slice-specific part of the lib directory.
 +    # Otherwise, it's a single-arch framework; use the "full" lib folder.
++    # Don't include any libpython symlink; that can't be included at runtime
 +    if [ -d "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/lib" ]; then
-+        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/"
-+        rsync -au "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib-$ARCHS/" "$CODESIGNING_FOLDER_PATH/python/lib/"
++        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/" --exclude 'libpython*.dylib'
++        rsync -au "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib-$ARCHS/" "$CODESIGNING_FOLDER_PATH/python/lib/" --exclude 'libpython*.dylib'
 +    else
-+        # A single-arch framework will have a libpython symlink; that can't be included at runtime
 +        rsync -au --delete "$PROJECT_DIR/$PYTHON_XCFRAMEWORK_PATH/$SLICE_FOLDER/lib/" "$CODESIGNING_FOLDER_PATH/python/lib/" --exclude 'libpython*.dylib'
 +    fi
 +}
@@ -1998,7 +2109,7 @@ index 6347ffb3e11..19259c069d7 100644
 +    shift
 +
 +    install_stdlib $PYTHON_XCFRAMEWORK_PATH
-+    PYTHON_VER=$(ls -1 "$CODESIGNING_FOLDER_PATH/python/lib")
++    PYTHON_VER=$(ls -1 "$CODESIGNING_FOLDER_PATH/python/lib" | grep -E "^python3\.\d+$")
 +    echo "Install Python $PYTHON_VER standard library extension modules..."
 +    process_dylibs $PYTHON_XCFRAMEWORK_PATH python/lib/$PYTHON_VER/lib-dynload
 +
@@ -2007,6 +2118,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        process_dylibs $PYTHON_XCFRAMEWORK_PATH $package_path
 +    done
 +}
+diff --git a/Apple/testbed/Python.xcframework/build/watchOS-dylib-Info-template.plist b/Apple/testbed/Python.xcframework/build/watchOS-dylib-Info-template.plist
+new file mode 100644
+index 00000000000..6f8c0bc2095
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/watchOS-dylib-Info-template.plist
 @@ -0,0 +1,26 @@
@@ -2036,6 +2150,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>1</string>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/Python.xcframework/build/xrOS-dylib-Info-template.plist b/Apple/testbed/Python.xcframework/build/xrOS-dylib-Info-template.plist
+new file mode 100644
+index 00000000000..e91673b4fbc
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/build/xrOS-dylib-Info-template.plist
 @@ -0,0 +1,30 @@
@@ -2069,6 +2186,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	</array>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/Python.xcframework/ios-arm64/README b/Apple/testbed/Python.xcframework/ios-arm64/README
+new file mode 100644
+index 00000000000..c1b076d12cd
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/ios-arm64/README
 @@ -0,0 +1,4 @@
@@ -2076,6 +2196,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling an iOS on-device
 +build for testing purposes.
+diff --git a/Apple/testbed/Python.xcframework/ios-arm64_x86_64-simulator/README b/Apple/testbed/Python.xcframework/ios-arm64_x86_64-simulator/README
+new file mode 100644
+index 00000000000..ae334e5d769
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/ios-arm64_x86_64-simulator/README
 @@ -0,0 +1,4 @@
@@ -2083,6 +2206,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling an iOS simulator
 +build for testing purposes (either x86_64 or ARM64).
+diff --git a/Apple/testbed/Python.xcframework/tvos-arm64/README b/Apple/testbed/Python.xcframework/tvos-arm64/README
+new file mode 100644
+index 00000000000..ebd648d04bd
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/tvos-arm64/README
 @@ -0,0 +1,4 @@
@@ -2090,6 +2216,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling a tvOS
 +on-device build for testing purposes.
+diff --git a/Apple/testbed/Python.xcframework/tvos-arm64_x86_64-simulator/README b/Apple/testbed/Python.xcframework/tvos-arm64_x86_64-simulator/README
+new file mode 100644
+index 00000000000..f8163468d8c
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/tvos-arm64_x86_64-simulator/README
 @@ -0,0 +1,4 @@
@@ -2097,6 +2226,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling a tvOS
 +simulator build for testing purposes (either x86_64 or ARM64).
+diff --git a/Apple/testbed/Python.xcframework/watchos-arm64_32/README b/Apple/testbed/Python.xcframework/watchos-arm64_32/README
+new file mode 100644
+index 00000000000..696af231df3
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/watchos-arm64_32/README
 @@ -0,0 +1,4 @@
@@ -2104,6 +2236,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling a watchOS on-device
 +build for testing purposes.
+diff --git a/Apple/testbed/Python.xcframework/watchos-arm64_x86_64-simulator/README b/Apple/testbed/Python.xcframework/watchos-arm64_x86_64-simulator/README
+new file mode 100644
+index 00000000000..d38e1e98276
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/watchos-arm64_x86_64-simulator/README
 @@ -0,0 +1,4 @@
@@ -2111,6 +2246,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling a watchOS
 +simulator build for testing purposes (either x86_64 or ARM64).
+diff --git a/Apple/testbed/Python.xcframework/xros-arm64-simulator/README b/Apple/testbed/Python.xcframework/xros-arm64-simulator/README
+new file mode 100644
+index 00000000000..7bb0ad4b6ba
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/xros-arm64-simulator/README
 @@ -0,0 +1,4 @@
@@ -2118,6 +2256,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling an visionOS simulator
 +build for testing purposes (either x86_64 or ARM64).
+diff --git a/Apple/testbed/Python.xcframework/xros-arm64/README b/Apple/testbed/Python.xcframework/xros-arm64/README
+new file mode 100644
+index 00000000000..2fc2112e477
 --- /dev/null
 +++ b/Apple/testbed/Python.xcframework/xros-arm64/README
 @@ -0,0 +1,4 @@
@@ -2125,6 +2266,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +It should be used as a target for `--enable-framework` when compiling an visionOS on-device
 +build for testing purposes.
+diff --git a/Apple/testbed/Testbed.lldbinit b/Apple/testbed/Testbed.lldbinit
+new file mode 100644
+index 00000000000..4cf00dd0f9d
 --- /dev/null
 +++ b/Apple/testbed/Testbed.lldbinit
 @@ -0,0 +1,4 @@
@@ -2132,6 +2276,9 @@ index 6347ffb3e11..19259c069d7 100644
 +process handle SIGUSR1 -n true -p true -s false
 +process handle SIGUSR2 -n true -p true -s false
 +process handle SIGXFSZ -n true -p true -s false
+diff --git a/Apple/testbed/TestbedTests/TestbedTests.m b/Apple/testbed/TestbedTests/TestbedTests.m
+new file mode 100644
+index 00000000000..cc0d9224042
 --- /dev/null
 +++ b/Apple/testbed/TestbedTests/TestbedTests.m
 @@ -0,0 +1,198 @@
@@ -2333,6 +2480,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +
 +@end
+diff --git a/Apple/testbed/__main__.py b/Apple/testbed/__main__.py
+new file mode 100644
+index 00000000000..3f5b570a195
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
 @@ -0,0 +1,456 @@
@@ -2362,7 +2512,7 @@ index 6347ffb3e11..19259c069d7 100644
 +LOG_PREFIX_REGEX = re.compile(
 +    r"^\d{4}-\d{2}-\d{2}"  # YYYY-MM-DD
 +    r"\s+\d+:\d{2}:\d{2}\.\d+\+\d{4}"  # HH:MM:SS.ssssss+ZZZZ
-+    r"\s+.*Testbed\[\d+:\w+\]"  # Process/thread ID
++    r"\s+.*Testbed\[\d+:\w+\] "  # Process/thread ID
 +)
 +
 +
@@ -2792,6 +2942,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    for stream in [sys.stdout, sys.stderr]:
 +        stream.reconfigure(line_buffering=True)
 +    main()
+diff --git a/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj b/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj
+new file mode 100644
+index 00000000000..f8835a3bc58
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj
 @@ -0,0 +1,557 @@
@@ -3352,6 +3505,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	};
 +	rootObject = 607A660A2B0EFA380010BFC8 /* Project object */;
 +}
+diff --git a/Apple/testbed/iOSTestbed.xcodeproj/xcshareddata/xcschemes/iOSTestbed.xcscheme b/Apple/testbed/iOSTestbed.xcodeproj/xcshareddata/xcschemes/iOSTestbed.xcscheme
+new file mode 100644
+index 00000000000..3c330a4152b
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed.xcodeproj/xcshareddata/xcschemes/iOSTestbed.xcscheme
 @@ -0,0 +1,97 @@
@@ -3452,6 +3608,9 @@ index 6347ffb3e11..19259c069d7 100644
 +      revealArchiveInOrganizer = "YES">
 +   </ArchiveAction>
 +</Scheme>
+diff --git a/Apple/testbed/iOSTestbed.xctestplan b/Apple/testbed/iOSTestbed.xctestplan
+new file mode 100644
+index 00000000000..0c4ab9eb2ba
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed.xctestplan
 @@ -0,0 +1,46 @@
@@ -3501,6 +3660,9 @@ index 6347ffb3e11..19259c069d7 100644
 +  ],
 +  "version" : 1
 +}
+diff --git a/Apple/testbed/iOSTestbed/AppDelegate.h b/Apple/testbed/iOSTestbed/AppDelegate.h
+new file mode 100644
+index 00000000000..f695b3b5efc
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/AppDelegate.h
 @@ -0,0 +1,11 @@
@@ -3515,6 +3677,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +
 +@end
+diff --git a/Apple/testbed/iOSTestbed/AppDelegate.m b/Apple/testbed/iOSTestbed/AppDelegate.m
+new file mode 100644
+index 00000000000..e5085399d0c
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/AppDelegate.m
 @@ -0,0 +1,19 @@
@@ -3537,6 +3702,9 @@ index 6347ffb3e11..19259c069d7 100644
 +}
 +
 +@end
+diff --git a/Apple/testbed/iOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json b/Apple/testbed/iOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
+new file mode 100644
+index 00000000000..eb878970081
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
 @@ -0,0 +1,11 @@
@@ -3551,6 +3719,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/iOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json b/Apple/testbed/iOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
+new file mode 100644
+index 00000000000..13613e3ee1a
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
 @@ -0,0 +1,13 @@
@@ -3567,6 +3738,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/iOSTestbed/Assets.xcassets/Contents.json b/Apple/testbed/iOSTestbed/Assets.xcassets/Contents.json
+new file mode 100644
+index 00000000000..73c00596a7f
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/Assets.xcassets/Contents.json
 @@ -0,0 +1,6 @@
@@ -3576,6 +3750,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/iOSTestbed/Base.lproj/LaunchScreen.storyboard b/Apple/testbed/iOSTestbed/Base.lproj/LaunchScreen.storyboard
+new file mode 100644
+index 00000000000..5daafe73a86
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/Base.lproj/LaunchScreen.storyboard
 @@ -0,0 +1,9 @@
@@ -3588,6 +3765,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    </dependencies>
 +    <scenes/>
 +</document>
+diff --git a/Apple/testbed/iOSTestbed/app/README b/Apple/testbed/iOSTestbed/app/README
+new file mode 100644
+index 00000000000..46c0e8e2a29
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/app/README
 @@ -0,0 +1,7 @@
@@ -3598,6 +3778,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +When the test suite runs, this folder will be on the PYTHONPATH, and will be the
 +working directory for the test suite.
+diff --git a/Apple/testbed/iOSTestbed/app_packages/README b/Apple/testbed/iOSTestbed/app_packages/README
+new file mode 100644
+index 00000000000..02c2beccfbd
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/app_packages/README
 @@ -0,0 +1,7 @@
@@ -3608,6 +3791,9 @@ index 6347ffb3e11..19259c069d7 100644
 +Framework form.
 +
 +When the test suite runs, this folder will be on the PYTHONPATH.
+diff --git a/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist b/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist
+new file mode 100644
+index 00000000000..fea45e1fad6
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist
 @@ -0,0 +1,52 @@
@@ -3663,6 +3849,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	</dict>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/iOSTestbed/main.m b/Apple/testbed/iOSTestbed/main.m
+new file mode 100644
+index 00000000000..e32bd78c9b4
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/main.m
 @@ -0,0 +1,16 @@
@@ -3682,6 +3871,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
 +    }
 +}
+diff --git a/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj b/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
+new file mode 100644
+index 00000000000..85e7047dfb7
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
 @@ -0,0 +1,506 @@
@@ -4191,6 +4383,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	};
 +	rootObject = EE989E462DCD6E780036B268 /* Project object */;
 +}
+diff --git a/Apple/testbed/tvOSTestbed.xcodeproj/xcshareddata/xcschemes/tvOSTestbed.xcscheme b/Apple/testbed/tvOSTestbed.xcodeproj/xcshareddata/xcschemes/tvOSTestbed.xcscheme
+new file mode 100644
+index 00000000000..c3f3f894a1f
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed.xcodeproj/xcshareddata/xcschemes/tvOSTestbed.xcscheme
 @@ -0,0 +1,97 @@
@@ -4291,6 +4486,9 @@ index 6347ffb3e11..19259c069d7 100644
 +      revealArchiveInOrganizer = "YES">
 +   </ArchiveAction>
 +</Scheme>
+diff --git a/Apple/testbed/tvOSTestbed.xctestplan b/Apple/testbed/tvOSTestbed.xctestplan
+new file mode 100644
+index 00000000000..f996facc178
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed.xctestplan
 @@ -0,0 +1,46 @@
@@ -4341,6 +4539,9 @@ index 6347ffb3e11..19259c069d7 100644
 +  "version" : 1
 +}
 \ No newline at end of file
+diff --git a/Apple/testbed/tvOSTestbed/AppDelegate.h b/Apple/testbed/tvOSTestbed/AppDelegate.h
+new file mode 100644
+index 00000000000..112c9ed64b8
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/AppDelegate.h
 @@ -0,0 +1,11 @@
@@ -4355,6 +4556,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +
 +@end
+diff --git a/Apple/testbed/tvOSTestbed/AppDelegate.m b/Apple/testbed/tvOSTestbed/AppDelegate.m
+new file mode 100644
+index 00000000000..bd91fb2d7d6
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/AppDelegate.m
 @@ -0,0 +1,19 @@
@@ -4377,6 +4581,9 @@ index 6347ffb3e11..19259c069d7 100644
 +}
 +
 +@end
+diff --git a/Apple/testbed/tvOSTestbed/Base.lproj/LaunchScreen.storyboard b/Apple/testbed/tvOSTestbed/Base.lproj/LaunchScreen.storyboard
+new file mode 100644
+index 00000000000..660ba53de4f
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/Base.lproj/LaunchScreen.storyboard
 @@ -0,0 +1,24 @@
@@ -4404,6 +4611,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        </scene>
 +    </scenes>
 +</document>
+diff --git a/Apple/testbed/tvOSTestbed/app/README b/Apple/testbed/tvOSTestbed/app/README
+new file mode 100644
+index 00000000000..46c0e8e2a29
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/app/README
 @@ -0,0 +1,7 @@
@@ -4414,6 +4624,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +When the test suite runs, this folder will be on the PYTHONPATH, and will be the
 +working directory for the test suite.
+diff --git a/Apple/testbed/tvOSTestbed/app_packages/README b/Apple/testbed/tvOSTestbed/app_packages/README
+new file mode 100644
+index 00000000000..02c2beccfbd
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/app_packages/README
 @@ -0,0 +1,7 @@
@@ -4424,6 +4637,9 @@ index 6347ffb3e11..19259c069d7 100644
 +Framework form.
 +
 +When the test suite runs, this folder will be on the PYTHONPATH.
+diff --git a/Apple/testbed/tvOSTestbed/main.m b/Apple/testbed/tvOSTestbed/main.m
+new file mode 100644
+index 00000000000..d5808fbb933
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/main.m
 @@ -0,0 +1,16 @@
@@ -4443,6 +4659,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
 +    }
 +}
+diff --git a/Apple/testbed/tvOSTestbed/tvOSTestbed-Info.plist b/Apple/testbed/tvOSTestbed/tvOSTestbed-Info.plist
+new file mode 100644
+index 00000000000..f08f6098999
 --- /dev/null
 +++ b/Apple/testbed/tvOSTestbed/tvOSTestbed-Info.plist
 @@ -0,0 +1,52 @@
@@ -4498,6 +4717,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	</dict>
 +</dict>
 +</plist>
+diff --git a/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj b/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj
+new file mode 100644
+index 00000000000..0fd5df716b1
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj
 @@ -0,0 +1,558 @@
@@ -5059,6 +5281,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	};
 +	rootObject = 607A660A2B0EFA380010BFC8 /* Project object */;
 +}
+diff --git a/Apple/testbed/visionOSTestbed.xcodeproj/xcshareddata/xcschemes/visionOSTestbed.xcscheme b/Apple/testbed/visionOSTestbed.xcodeproj/xcshareddata/xcschemes/visionOSTestbed.xcscheme
+new file mode 100644
+index 00000000000..b8397ea7cf1
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed.xcodeproj/xcshareddata/xcschemes/visionOSTestbed.xcscheme
 @@ -0,0 +1,97 @@
@@ -5159,6 +5384,9 @@ index 6347ffb3e11..19259c069d7 100644
 +      revealArchiveInOrganizer = "YES">
 +   </ArchiveAction>
 +</Scheme>
+diff --git a/Apple/testbed/visionOSTestbed.xctestplan b/Apple/testbed/visionOSTestbed.xctestplan
+new file mode 100644
+index 00000000000..73a2be8c22a
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed.xctestplan
 @@ -0,0 +1,46 @@
@@ -5209,6 +5437,9 @@ index 6347ffb3e11..19259c069d7 100644
 +  "version" : 1
 +}
 \ No newline at end of file
+diff --git a/Apple/testbed/visionOSTestbed/AppDelegate.h b/Apple/testbed/visionOSTestbed/AppDelegate.h
+new file mode 100644
+index 00000000000..8fe7ec8e64e
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/AppDelegate.h
 @@ -0,0 +1,11 @@
@@ -5223,6 +5454,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +
 +@end
+diff --git a/Apple/testbed/visionOSTestbed/AppDelegate.m b/Apple/testbed/visionOSTestbed/AppDelegate.m
+new file mode 100644
+index 00000000000..b3ff14f7255
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/AppDelegate.m
 @@ -0,0 +1,19 @@
@@ -5245,6 +5479,9 @@ index 6347ffb3e11..19259c069d7 100644
 +}
 +
 +@end
+diff --git a/Apple/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json b/Apple/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
+new file mode 100644
+index 00000000000..eb878970081
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/Assets.xcassets/AccentColor.colorset/Contents.json
 @@ -0,0 +1,11 @@
@@ -5259,6 +5496,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json b/Apple/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
+new file mode 100644
+index 00000000000..13613e3ee1a
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/Assets.xcassets/AppIcon.appiconset/Contents.json
 @@ -0,0 +1,13 @@
@@ -5275,6 +5515,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/visionOSTestbed/Assets.xcassets/Contents.json b/Apple/testbed/visionOSTestbed/Assets.xcassets/Contents.json
+new file mode 100644
+index 00000000000..73c00596a7f
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/Assets.xcassets/Contents.json
 @@ -0,0 +1,6 @@
@@ -5284,6 +5527,9 @@ index 6347ffb3e11..19259c069d7 100644
 +    "version" : 1
 +  }
 +}
+diff --git a/Apple/testbed/visionOSTestbed/app/README b/Apple/testbed/visionOSTestbed/app/README
+new file mode 100644
+index 00000000000..af22c685f87
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/app/README
 @@ -0,0 +1,7 @@
@@ -5294,6 +5540,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +When the test suite runs, this folder will be on the PYTHONPATH, and will be the
 +working directory for the test suite.
+diff --git a/Apple/testbed/visionOSTestbed/app_packages/README b/Apple/testbed/visionOSTestbed/app_packages/README
+new file mode 100644
+index 00000000000..42d7fdeb813
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/app_packages/README
 @@ -0,0 +1,7 @@
@@ -5304,6 +5553,9 @@ index 6347ffb3e11..19259c069d7 100644
 +iOS Framework form.
 +
 +When the test suite runs, this folder will be on the PYTHONPATH.
+diff --git a/Apple/testbed/visionOSTestbed/main.m b/Apple/testbed/visionOSTestbed/main.m
+new file mode 100644
+index 00000000000..2bb491f25c8
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/main.m
 @@ -0,0 +1,16 @@
@@ -5323,6 +5575,9 @@ index 6347ffb3e11..19259c069d7 100644
 +        return UIApplicationMain(argc, argv, nil, appDelegateClassName);
 +    }
 +}
+diff --git a/Apple/testbed/visionOSTestbed/visionOSTestbed-Info.plist b/Apple/testbed/visionOSTestbed/visionOSTestbed-Info.plist
+new file mode 100644
+index 00000000000..fce9298555d
 --- /dev/null
 +++ b/Apple/testbed/visionOSTestbed/visionOSTestbed-Info.plist
 @@ -0,0 +1,56 @@
@@ -5382,6 +5637,9 @@ index 6347ffb3e11..19259c069d7 100644
 +	</array>
 +</dict>
 +</plist>
+diff --git a/Apple/tvOS/README.rst b/Apple/tvOS/README.rst
+new file mode 100644
+index 00000000000..1f793252caf
 --- /dev/null
 +++ b/Apple/tvOS/README.rst
 @@ -0,0 +1,108 @@
@@ -5493,6 +5751,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +Using a framework-based Python on tvOS
 +======================================
+diff --git a/Apple/tvOS/Resources/Info.plist.in b/Apple/tvOS/Resources/Info.plist.in
+new file mode 100644
+index 00000000000..ab3050804b8
 --- /dev/null
 +++ b/Apple/tvOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -5530,81 +5791,129 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>@TVOS_DEPLOYMENT_TARGET@</string>
 +</dict>
 +</plist>
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar b/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar
+new file mode 100755
+index 00000000000..e302748a13c
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
+new file mode 100755
+index 00000000000..7fb6d3d901c
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
+new file mode 100755
+index 00000000000..33bfb1367c3
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp b/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
+new file mode 100755
+index 00000000000..641c1bc8d18
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} -E "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
+new file mode 100755
+index 00000000000..87ef5015aae
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
+new file mode 100755
+index 00000000000..c8719cb0318
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
+new file mode 100755
+index 00000000000..e3f0e720f7f
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
+new file mode 100755
+index 00000000000..f9a37b72a61
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip
+new file mode 100755
+index 00000000000..a8cce95233e
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/tvOS/Resources/bin/arm64-apple-tvos-strip b/Apple/tvOS/Resources/bin/arm64-apple-tvos-strip
+new file mode 100755
+index 00000000000..ee1d2b95ff1
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/arm64-apple-tvos-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk iphoneos${TVOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
+new file mode 100755
+index 00000000000..87ef5015aae
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
+new file mode 100755
+index 00000000000..ea0cc26cbd9
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
+new file mode 100755
+index 00000000000..f18f3603169
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
+new file mode 100755
+index 00000000000..b98054d1ce2
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip
+new file mode 100755
+index 00000000000..f6a884b4aef
 --- /dev/null
 +++ b/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} strip -arch x86_64 "$@"
+diff --git a/Apple/tvOS/Resources/pyconfig.h b/Apple/tvOS/Resources/pyconfig.h
+new file mode 100644
+index 00000000000..4acff2c6051
 --- /dev/null
 +++ b/Apple/tvOS/Resources/pyconfig.h
 @@ -0,0 +1,7 @@
@@ -5615,6 +5924,9 @@ index 6347ffb3e11..19259c069d7 100644
 +#ifdef __x86_64__
 +#include "pyconfig-x86_64.h"
 +#endif
+diff --git a/Apple/visionOS/Resources/Info.plist.in b/Apple/visionOS/Resources/Info.plist.in
+new file mode 100644
+index 00000000000..2679440da67
 --- /dev/null
 +++ b/Apple/visionOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -5652,62 +5964,98 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>@XROS_DEPLOYMENT_TARGET@</string>
 +</dict>
 +</plist>
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-ar b/Apple/visionOS/Resources/bin/arm64-apple-xros-ar
+new file mode 100755
+index 00000000000..9fd78a205f3
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xros${XROS_SDK_VERSION} ar "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-clang b/Apple/visionOS/Resources/bin/arm64-apple-xros-clang
+new file mode 100755
+index 00000000000..9a1a757cbd0
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++
+new file mode 100755
+index 00000000000..f64fcfc11cd
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xros${XROS_SDK_VERSION} clang++ -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp b/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp
+new file mode 100755
+index 00000000000..d6492eff052
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} -E "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar
+new file mode 100755
+index 00000000000..b202330fb5d
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} ar "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang
+new file mode 100755
+index 00000000000..87b0aba0751
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++
+new file mode 100755
+index 00000000000..c89d48f1cb8
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang++ -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp
+new file mode 100755
+index 00000000000..ee11e018ae0
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-strip b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-strip
+new file mode 100644
+index 00000000000..376aff61a23
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/visionOS/Resources/bin/arm64-apple-xros-strip b/Apple/visionOS/Resources/bin/arm64-apple-xros-strip
+new file mode 100644
+index 00000000000..2de3ba5d31c
 --- /dev/null
 +++ b/Apple/visionOS/Resources/bin/arm64-apple-xros-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk xros${XROS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/visionOS/Resources/pyconfig.h b/Apple/visionOS/Resources/pyconfig.h
+new file mode 100644
+index 00000000000..2a433078400
 --- /dev/null
 +++ b/Apple/visionOS/Resources/pyconfig.h
 @@ -0,0 +1,3 @@
 +#ifdef __arm64__
 +#include "pyconfig-arm64.h"
 +#endif
+diff --git a/Apple/watchOS/README.rst b/Apple/watchOS/README.rst
+new file mode 100644
+index 00000000000..35221478452
 --- /dev/null
 +++ b/Apple/watchOS/README.rst
 @@ -0,0 +1,108 @@
@@ -5819,6 +6167,9 @@ index 6347ffb3e11..19259c069d7 100644
 +
 +Using a framework-based Python on watchOS
 +======================================
+diff --git a/Apple/watchOS/Resources/Info.plist.in b/Apple/watchOS/Resources/Info.plist.in
+new file mode 100644
+index 00000000000..e83ddfd2a43
 --- /dev/null
 +++ b/Apple/watchOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -5856,81 +6207,129 @@ index 6347ffb3e11..19259c069d7 100644
 +	<string>@WATCHOS_DEPLOYMENT_TARGET@</string>
 +</dict>
 +</plist>
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
+new file mode 100755
+index 00000000000..dda2b211bd5
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
+new file mode 100755
+index 00000000000..fe834d3efe4
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
+new file mode 100755
+index 00000000000..757f3a26d8f
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
+new file mode 100755
+index 00000000000..fdb57d9e010
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip
+new file mode 100755
+index 00000000000..e28e3f7597a
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64-apple-watchos-strip b/Apple/watchOS/Resources/bin/arm64-apple-watchos-strip
+new file mode 100755
+index 00000000000..efe5a1260ad
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64-apple-watchos-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} strip -arch arm64 "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
+new file mode 100755
+index 00000000000..029f9a32073
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
+new file mode 100755
+index 00000000000..285036d4010
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
+new file mode 100755
+index 00000000000..c8f60ebec51
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
+diff --git a/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
+new file mode 100755
+index 00000000000..b411fc25aa4
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} -E "$@"
+diff --git a/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
+new file mode 100755
+index 00000000000..dda2b211bd5
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
+diff --git a/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
+new file mode 100755
+index 00000000000..4776b9b5348
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
+new file mode 100755
+index 00000000000..e9b0c5f4b87
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
+diff --git a/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
+new file mode 100755
+index 00000000000..d3b821c5f7f
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
 +#!/bin/bash
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
+diff --git a/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip
+new file mode 100755
+index 00000000000..105c78281f9
 --- /dev/null
 +++ b/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip
 @@ -0,0 +1,2 @@
 +#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} strip -arch x86_64 "$@"
+diff --git a/Apple/watchOS/Resources/pyconfig.h b/Apple/watchOS/Resources/pyconfig.h
+new file mode 100644
+index 00000000000..f842b987b2e
 --- /dev/null
 +++ b/Apple/watchOS/Resources/pyconfig.h
 @@ -0,0 +1,11 @@
@@ -6202,7 +6601,7 @@ index 9921fd6114b..4ed18f4938c 100644
 +file next to ``mymodule.so``, and the privacy manifest will be installed into
 +the required location when the binary module is converted into a framework.
 diff --git a/Lib/ctypes/__init__.py b/Lib/ctypes/__init__.py
-index 80651dc64ce..8a8f3e95505 100644
+index 7fc1181f25a..7cbcccef334 100644
 --- a/Lib/ctypes/__init__.py
 +++ b/Lib/ctypes/__init__.py
 @@ -380,9 +380,9 @@
@@ -6232,7 +6631,7 @@ index 117bf06cb01..87611a6d03f 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 41f538acb03..02fc9b9daf3 100644
+index 0741f62ee83..6799a1f744f 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -6425,7 +6824,7 @@ index 041dca113a5..3dedc828524 100644
  
      def joinuser(*args):
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 885f0092b53..0e04efb25ce 100644
+index 3a8c7434d37..8ca02d8e1a1 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -75,7 +75,7 @@
@@ -6438,7 +6837,7 @@ index 885f0092b53..0e04efb25ce 100644
  if _mswindows:
      import _winapi
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index f7bd675bb3b..98ee0cf234c 100644
+index 43edebce347..dd6acc0fd9f 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
 @@ -23,6 +23,9 @@
@@ -6460,7 +6859,7 @@ index f7bd675bb3b..98ee0cf234c 100644
          return None
  
      def joinuser(*args):
-@@ -680,6 +683,18 @@
+@@ -688,6 +691,18 @@
              release = get_config_vars().get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
              osname = sys.platform
              machine = sys.implementation._multiarch
@@ -6480,10 +6879,10 @@ index f7bd675bb3b..98ee0cf234c 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Lib/test/datetimetester.py b/Lib/test/datetimetester.py
-index 22ab655507a..368100eeb29 100644
+index 6749fad35a6..fe6530400b6 100644
 --- a/Lib/test/datetimetester.py
 +++ b/Lib/test/datetimetester.py
-@@ -6840,9 +6840,9 @@
+@@ -6844,9 +6844,9 @@
                      self.assertEqual(dt_orig, dt_rt)
  
      def test_type_check_in_subinterp(self):
@@ -6496,10 +6895,10 @@ index 22ab655507a..368100eeb29 100644
          else:
              extension_loader = "ExtensionFileLoader"
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 4605938b875..cc65b3d63dc 100644
+index 737ce94a120..bf7579bedc8 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -64,6 +64,7 @@
+@@ -65,6 +65,7 @@
      "force_not_colorized_test_class",
      "make_clean_env",
      "BrokenIter",
@@ -6507,7 +6906,7 @@ index 4605938b875..cc65b3d63dc 100644
      ]
  
  
-@@ -582,7 +583,7 @@
+@@ -593,7 +594,7 @@
  
  is_android = sys.platform == "android"
  
@@ -6516,7 +6915,7 @@ index 4605938b875..cc65b3d63dc 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -592,7 +593,7 @@
+@@ -603,7 +604,7 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
@@ -6525,7 +6924,7 @@ index 4605938b875..cc65b3d63dc 100644
  is_apple = is_apple_mobile or sys.platform == "darwin"
  
  has_fork_support = hasattr(os, "fork") and not (
-@@ -1330,6 +1331,8 @@
+@@ -1341,6 +1342,8 @@
          _opcode.ENABLE_SPECIALIZATION, "requires specialization")(test)
  
  
@@ -6597,10 +6996,10 @@ index 0f62f9eb200..2ca356606b2 100644
          self.run_server(socketserver.ThreadingUnixDatagramServer,
                          socketserver.DatagramRequestHandler,
 diff --git a/Lib/test/test_webbrowser.py b/Lib/test/test_webbrowser.py
-index 4fcbc5c2e59..851bd6e8f3c 100644
+index 135f116d46b..c756e8e0ba7 100644
 --- a/Lib/test/test_webbrowser.py
 +++ b/Lib/test/test_webbrowser.py
-@@ -234,7 +234,8 @@
+@@ -252,7 +252,8 @@
                     arguments=[f'openURL({URL},new-tab)'])
  
  
@@ -6611,10 +7010,10 @@ index 4fcbc5c2e59..851bd6e8f3c 100644
      def _obj_ref(self, *args):
          # Construct a string representation of the arguments that can be used
 diff --git a/Lib/webbrowser.py b/Lib/webbrowser.py
-index 2f9555ad60d..249756ba4de 100755
+index be033d707a9..8e47e6576fe 100755
 --- a/Lib/webbrowser.py
 +++ b/Lib/webbrowser.py
-@@ -489,7 +489,8 @@
+@@ -500,7 +500,8 @@
          # OS X can use below Unix support (but we prefer using the OS X
          # specific stuff)
  
@@ -6624,7 +7023,7 @@ index 2f9555ad60d..249756ba4de 100755
          register("iosbrowser", None, IOSBrowser(), preferred=True)
  
      if sys.platform == "serenityos":
-@@ -616,9 +617,10 @@
+@@ -629,9 +630,10 @@
              return not rc
  
  #
@@ -6638,7 +7037,7 @@ index 2f9555ad60d..249756ba4de 100755
      if objc:
          # If objc exists, we know ctypes is also importable.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index a7dc9709d62..304a9f6fc3a 100644
+index 8589a28b726..b807f6dcb05 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -202,6 +202,12 @@
@@ -6673,7 +7072,7 @@ index a7dc9709d62..304a9f6fc3a 100644
  	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
  	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
  		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
-@@ -2976,10 +2985,10 @@
+@@ -2975,10 +2984,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -6688,7 +7087,7 @@ index a7dc9709d62..304a9f6fc3a 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -3005,7 +3014,7 @@
+@@ -3012,7 +3021,7 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -6757,7 +7156,7 @@ index 1bb6a05dc11..49febd56a37 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index 901a26c9602..508d01f1b7e 100755
+index 0df47513085..cf32adf89e9 100755
 --- a/configure
 +++ b/configure
 @@ -979,6 +979,10 @@
@@ -7178,7 +7577,7 @@ index 901a26c9602..508d01f1b7e 100755
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -12975,7 +13201,7 @@
+@@ -13063,7 +13289,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -7187,7 +7586,7 @@ index 901a26c9602..508d01f1b7e 100755
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -13108,7 +13334,7 @@
+@@ -13196,7 +13422,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -7196,7 +7595,7 @@ index 901a26c9602..508d01f1b7e 100755
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -13132,7 +13358,7 @@
+@@ -13220,7 +13446,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -7205,7 +7604,7 @@ index 901a26c9602..508d01f1b7e 100755
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -14728,7 +14954,7 @@
+@@ -14816,7 +15042,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -7214,9 +7613,9 @@ index 901a26c9602..508d01f1b7e 100755
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -18197,12 +18423,6 @@
+@@ -18279,12 +18505,6 @@
  then :
-   printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
+   printf "%s\n" "#define HAVE_DUP 1" >>confdefs.h
  
 -fi
 -ac_fn_c_check_func "$LINENO" "execv" "ac_cv_func_execv"
@@ -7227,7 +7626,7 @@ index 901a26c9602..508d01f1b7e 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -18263,18 +18483,6 @@
+@@ -18345,18 +18565,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -7246,7 +7645,7 @@ index 901a26c9602..508d01f1b7e 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -18707,24 +18915,6 @@
+@@ -18783,24 +18991,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
@@ -7271,7 +7670,7 @@ index 901a26c9602..508d01f1b7e 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -19013,12 +19203,6 @@
+@@ -19089,12 +19279,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -7284,7 +7683,7 @@ index 901a26c9602..508d01f1b7e 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -19287,11 +19471,11 @@
+@@ -19363,11 +19547,11 @@
  
  fi
  
@@ -7295,10 +7694,10 @@ index 901a26c9602..508d01f1b7e 100755
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
 +if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
-   ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
- if test "x$ac_cv_func_getentropy" = xyes
+   ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
+ if test "x$ac_cv_func_dup3" = xyes
  then :
-@@ -19313,6 +19497,53 @@
+@@ -19401,6 +19585,53 @@
  
  fi
  
@@ -7352,7 +7751,7 @@ index 901a26c9602..508d01f1b7e 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -22135,7 +22366,8 @@
+@@ -22223,7 +22454,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -7362,7 +7761,7 @@ index 901a26c9602..508d01f1b7e 100755
  
    for ac_func in openpty
  do :
-@@ -22231,7 +22463,7 @@
+@@ -22319,7 +22551,7 @@
  fi
  
  done
@@ -7371,7 +7770,7 @@ index 901a26c9602..508d01f1b7e 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -22388,6 +22620,7 @@
+@@ -22476,6 +22708,7 @@
  fi
  
  done
@@ -7379,7 +7778,7 @@ index 901a26c9602..508d01f1b7e 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -22634,10 +22867,10 @@
+@@ -22722,10 +22955,10 @@
  
  done
  
@@ -7392,7 +7791,7 @@ index 901a26c9602..508d01f1b7e 100755
  then
  
    for ac_func in clock_settime
-@@ -22923,7 +23156,7 @@
+@@ -23011,7 +23244,7 @@
    if test "$cross_compiling" = yes
  then :
  
@@ -7401,7 +7800,7 @@ index 901a26c9602..508d01f1b7e 100755
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -24869,8 +25102,8 @@
+@@ -24957,8 +25190,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -7412,7 +7811,7 @@ index 901a26c9602..508d01f1b7e 100755
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -27518,7 +27751,7 @@
+@@ -27606,7 +27839,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -7421,7 +7820,7 @@ index 901a26c9602..508d01f1b7e 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -27951,7 +28184,7 @@
+@@ -28039,7 +28272,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -7430,7 +7829,7 @@ index 901a26c9602..508d01f1b7e 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -28970,7 +29203,7 @@
+@@ -29058,7 +29291,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -7439,7 +7838,7 @@ index 901a26c9602..508d01f1b7e 100755
  
  
  
-@@ -32734,7 +32967,10 @@
+@@ -32822,7 +33055,10 @@
      "Mac/PythonLauncher/Makefile") CONFIG_FILES="$CONFIG_FILES Mac/PythonLauncher/Makefile" ;;
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
@@ -7452,7 +7851,7 @@ index 901a26c9602..508d01f1b7e 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index 597a44b331a..5109db2f48f 100644
+index a016a439c6c..698553b31d6 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -330,6 +330,15 @@
@@ -7865,7 +8264,7 @@ index 597a44b331a..5109db2f48f 100644
        LDLIBRARY='libpython$(LDVERSION).dylib'
        ;;
      AIX*)
-@@ -3486,7 +3686,7 @@
+@@ -3511,7 +3711,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -7874,7 +8273,7 @@ index 597a44b331a..5109db2f48f 100644
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3610,7 +3810,7 @@
+@@ -3635,7 +3835,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -7883,7 +8282,7 @@ index 597a44b331a..5109db2f48f 100644
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3634,7 +3834,7 @@
+@@ -3659,7 +3859,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
@@ -7892,7 +8291,7 @@ index 597a44b331a..5109db2f48f 100644
  			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
  		fi
  		;;
-@@ -4106,7 +4306,7 @@
+@@ -4131,7 +4331,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -7901,25 +8300,25 @@ index 597a44b331a..5109db2f48f 100644
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5217,9 +5417,9 @@
+@@ -5242,9 +5442,9 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock closefrom close_range confstr \
--  copy_file_range ctermid dup dup3 execv explicit_bzero explicit_memset \
-+  copy_file_range ctermid dup dup3 explicit_bzero explicit_memset \
+-  copy_file_range ctermid dup execv explicit_bzero explicit_memset \
++  copy_file_range ctermid dup explicit_bzero explicit_memset \
    faccessat fchmod fchmodat fchown fchownat fdopendir fdwalk fexecve \
 -  fork fork1 fpathconf fstatat ftime ftruncate futimens futimes futimesat \
 +  fpathconf fstatat ftime ftruncate futimens futimes futimesat \
    gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
    getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin getlogin_r \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5227,15 +5427,14 @@
+@@ -5252,15 +5452,14 @@
    getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
    mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
--  pipe2 plock poll posix_fadvise posix_fallocate posix_openpt posix_spawn posix_spawnp \
+-  plock poll posix_fadvise posix_fallocate posix_openpt posix_spawn posix_spawnp \
 -  posix_spawn_file_actions_addclosefrom_np \
-+  pipe2 plock poll posix_fadvise posix_fallocate posix_openpt \
++  plock poll posix_fadvise posix_fallocate posix_openpt \
    pread preadv preadv2 process_vm_readv pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill ptsname ptsname_r pwrite pwritev pwritev2 readlink readlinkat readv realpath renameat \
    rtpSpawn sched_get_priority_max sched_rr_get_interval sched_setaffinity \
@@ -7931,7 +8330,7 @@ index 597a44b331a..5109db2f48f 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5250,12 +5449,20 @@
+@@ -5275,14 +5474,22 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -7941,21 +8340,22 @@ index 597a44b331a..5109db2f48f 100644
  # header definition prevents usage - autoconf doesn't use the headers), or
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
--  AC_CHECK_FUNCS([getentropy getgroups system])
 +if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
-+  AC_CHECK_FUNCS([ getentropy getgroups system ])
-+fi
-+
+   AC_CHECK_FUNCS([dup3 getentropy getgroups pipe2 system])
+ fi
+ 
 +# tvOS/watchOS have some additional methods that can be found, but not used.
 +if test "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "watchOS" ; then
 +  AC_CHECK_FUNCS([ \
 +    execv fork fork1 posix_spawn posix_spawnp posix_spawn_file_actions_addclosefrom_np \
 +    sigaltstack \
 +  ])
- fi
- 
++fi
++
  AC_CHECK_DECL([dirfd],
-@@ -5518,20 +5725,22 @@
+               [AC_DEFINE([HAVE_DIRFD], [1],
+                          [Define if you have the 'dirfd' function or macro.])],
+@@ -5543,20 +5750,22 @@
                [@%:@include <utmp.h>])
  
  # check for openpty, login_tty, and forkpty
@@ -7992,7 +8392,7 @@ index 597a44b331a..5109db2f48f 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5570,10 +5779,10 @@
+@@ -5595,10 +5804,10 @@
      ])
  ])
  
@@ -8005,7 +8405,7 @@ index 597a44b331a..5109db2f48f 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -5731,7 +5940,7 @@
+@@ -5756,7 +5965,7 @@
  [ac_cv_buggy_getaddrinfo=no],
  [ac_cv_buggy_getaddrinfo=yes],
  [
@@ -8014,7 +8414,7 @@ index 597a44b331a..5109db2f48f 100644
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -6322,8 +6531,8 @@
+@@ -6347,8 +6556,8 @@
    LIBPYTHON="\$(BLDLIBRARY)"
  fi
  
@@ -8025,7 +8425,7 @@ index 597a44b331a..5109db2f48f 100644
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -6931,7 +7140,7 @@
+@@ -6956,7 +7165,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -8034,7 +8434,7 @@ index 597a44b331a..5109db2f48f 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7188,7 +7397,7 @@
+@@ -7213,7 +7422,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -8043,7 +8443,7 @@ index 597a44b331a..5109db2f48f 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7596,7 +7805,7 @@
+@@ -7621,7 +7830,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
