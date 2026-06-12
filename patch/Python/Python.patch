@@ -54,10 +54,10 @@ index 00000000000..4cdc39ebee4
 +]
 diff --git a/Apple/__main__.py b/Apple/__main__.py
 new file mode 100644
-index 00000000000..a3d5c2de38a
+index 00000000000..57c3ccacd5e
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1144 @@
+@@ -0,0 +1,1150 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -588,6 +588,12 @@ index 00000000000..a3d5c2de38a
 +                or name.startswith("_sysconfig_vars_")
 +                or name == "build-details.json"
 +            )
++        }
++    elif path.parts[-1] == "lib":
++        ignored_names = {
++            name
++            for name in names
++            if name.startswith("libpython") and name.endswith(".dylib")
 +        }
 +    else:
 +        ignored_names = set()
