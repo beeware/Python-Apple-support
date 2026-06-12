@@ -100,15 +100,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Xcode
-        # GitHub recommends explicitly selecting the desired Xcode version:
-        # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
-        # This became a necessity as a result of
-        # https://github.com/actions/runner-images/issues/12541 and
-        # https://github.com/actions/runner-images/issues/12751.
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
-
       - name: Set up Python
         uses: actions/setup-python@v6.2.0
         with:
@@ -142,7 +133,7 @@ jobs:
           - briefcase-run-args:
 
           - platform: iOS
-            briefcase-run-args: ' -d "iPhone 16e::iOS 18.5"'
+            briefcase-run-args: ' -d "iPhone 17e::iOS 26.4"'
 
     steps:
       - uses: actions/checkout@v6
@@ -198,9 +189,9 @@ jobs:
         platform: ["iOS", "tvOS", "visionOS"]
         include:
           - platform: "iOS"
-            testbed-args: '--simulator "iPhone 16e,arch=arm64,OS=18.5"'
+            testbed-args: '--simulator "iPhone 17e,arch=arm64,OS=26.4"'
           - platform: "visionOS"
-            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
+            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=26.4"'
 
     steps:
       - uses: actions/checkout@v6
@@ -211,15 +202,6 @@ jobs:
           pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
           path: dist
           merge-multiple: true
-
-      - name: Set up Xcode
-        # GitHub recommends explicitly selecting the desired Xcode version:
-        # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
-        # This became a necessity as a result of
-        # https://github.com/actions/runner-images/issues/12541 and
-        # https://github.com/actions/runner-images/issues/12751.
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
 
       - name: Set up Python
         uses: actions/setup-python@v6.2.0
