@@ -47,7 +47,7 @@ concurrency:
 
 jobs:
   config:
-    runs-on: macOS-latest
+    runs-on: macOS-26
     outputs:
       PYTHON_VER: ${{ steps.extract.outputs.PYTHON_VER }}
       PYTHON_VERSION: ${{ steps.extract.outputs.PYTHON_VERSION }}
@@ -90,7 +90,7 @@ jobs:
           echo "ZSTD_VERSION=${ZSTD_VERSION}" | tee -a ${GITHUB_OUTPUT}
 
   build:
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config]
     strategy:
       fail-fast: false
@@ -99,15 +99,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Set up Xcode
-        # GitHub recommends explicitly selecting the desired Xcode version:
-        # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
-        # This became a necessity as a result of
-        # https://github.com/actions/runner-images/issues/12541 and
-        # https://github.com/actions/runner-images/issues/12751.
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
 
       - name: Set up Python
         uses: actions/setup-python@v6.3.0
@@ -132,7 +123,7 @@ jobs:
 
   briefcase-testbed:
     name: Briefcase testbed (${{ matrix.platform }})
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
@@ -142,19 +133,10 @@ jobs:
           - briefcase-run-args:
 
           - platform: iOS
-            briefcase-run-args: ' -d "iPhone 16e::iOS 18.5"'
+            briefcase-run-args: ' -d "iPhone 17e::iOS 26.4"'
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Set up Xcode
-        # GitHub recommends explicitly selecting the desired Xcode version:
-        # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
-        # This became a necessity as a result of
-        # https://github.com/actions/runner-images/issues/12541 and
-        # https://github.com/actions/runner-images/issues/12751.
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
 
       - name: Get build artifact
         uses: actions/download-artifact@v8.0.1
@@ -190,7 +172,7 @@ jobs:
 
   cpython-testbed:
     name: CPython testbed (${{ matrix.platform }})
-    runs-on: macOS-15
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
@@ -198,9 +180,9 @@ jobs:
         platform: ["iOS", "tvOS", "visionOS"]
         include:
           - platform: "iOS"
-            testbed-args: '--simulator "iPhone 16e,arch=arm64,OS=18.5"'
+            testbed-args: '--simulator "iPhone 17e,arch=arm64,OS=26.4.1"'
           - platform: "visionOS"
-            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=2.5"'
+            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=26.4.1"'
 
     steps:
       - uses: actions/checkout@v7
@@ -211,15 +193,6 @@ jobs:
           pattern: Python-${{ needs.config.outputs.PYTHON_VER }}-${{ matrix.platform }}-support.${{ needs.config.outputs.BUILD_NUMBER }}.tar.gz
           path: dist
           merge-multiple: true
-
-      - name: Set up Xcode
-        # GitHub recommends explicitly selecting the desired Xcode version:
-        # https://github.com/actions/runner-images/issues/12541#issuecomment-3083850140
-        # This became a necessity as a result of
-        # https://github.com/actions/runner-images/issues/12541 and
-        # https://github.com/actions/runner-images/issues/12751.
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
 
       - name: Set up Python
         uses: actions/setup-python@v6.3.0
@@ -251,7 +224,7 @@ jobs:
 
   crossenv-test:
     name: Cross-platform env test (${{ matrix.multiarch }})
-    runs-on: macOS-latest
+    runs-on: macOS-26
     needs: [config, build]
     strategy:
       fail-fast: false
