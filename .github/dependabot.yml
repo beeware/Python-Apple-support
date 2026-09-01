@@ -1,11 +1,23 @@
-
 version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
+
+multi-ecosystem-groups:
+  dependencies:
     schedule:
       # Check for updates on the first Sunday of every month, 8PM UTC
       interval: "cron"
       cronjob: "0 20 * * sun#1"
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: "dependencies"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: "dependencies"
     cooldown:
       default-days: 7
