@@ -19,7 +19,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.14.7
+PYTHON_VERSION=3.15.0rc2
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -617,7 +617,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	tar zxf build/macOS/macosx/python-$(PYTHON_VERSION)/Python_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/Payload -C $$(PYTHON_FRAMEWORK-macosx) -X patch/Python/release.macOS.exclude
 
 	# Apply the App Store compliance patch
-	patch --strip 2 --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
+	patch --strip 2 --force --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
 
 	# Remove any .orig files produced by the patching process
 	find $$(PYTHON_INSTALL_VERSION-macosx) -name "*.orig" -exec rm {} \;
