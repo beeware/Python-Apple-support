@@ -617,7 +617,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	tar zxf build/macOS/macosx/python-$(PYTHON_VERSION)/Python_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/PayloadPython_Framework.pkgPython_Framework.pkg/Payload -C $$(PYTHON_FRAMEWORK-macosx) -X patch/Python/release.macOS.exclude
 
 	# Apply the App Store compliance patch
-	patch --strip 2 --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
+	patch --strip 2 --force --directory $$(PYTHON_INSTALL_VERSION-macosx)/lib/python$(PYTHON_VER) --input $(PROJECT_DIR)/patch/Python/app-store-compliance.patch
 
 	# Remove any .orig files produced by the patching process
 	find $$(PYTHON_INSTALL_VERSION-macosx) -name "*.orig" -exec rm {} \;
