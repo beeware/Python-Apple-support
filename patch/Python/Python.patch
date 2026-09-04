@@ -72,10 +72,10 @@ index 00000000000..712c207749e
 +]
 diff --git a/Apple/__main__.py b/Apple/__main__.py
 new file mode 100644
-index 00000000000..147179020e0
+index 00000000000..ea00143256a
 --- /dev/null
 +++ b/Apple/__main__.py
-@@ -0,0 +1,1149 @@
+@@ -0,0 +1,1164 @@
 +#!/usr/bin/env python3
 +##########################################################################
 +# Apple XCframework build script
@@ -387,6 +387,15 @@ index 00000000000..147179020e0
 +        cwd(subdir("build")),
 +    ):
 +        run(["make", "-j", str(os.cpu_count())])
++
++
++def pythoninfo_build_python(context: argparse.Namespace) -> None:
++    """The implementation of the "pythoninfo-build" command."""
++    with (
++        group("Display build info of the build Python"),
++        cwd(subdir("build")),
++    ):
++        run(["make", "pythoninfo"])
 +
 +
 +def apple_target(host: str) -> str:
@@ -872,6 +881,7 @@ index 00000000000..147179020e0
 +        for step in [
 +            configure_build_python,
 +            make_build_python,
++            pythoninfo_build_python,
 +        ]:
 +            step(context)
 +
@@ -1028,6 +1038,9 @@ index 00000000000..147179020e0
 +    make_build = subcommands.add_parser(
 +        "make-build", help="Run `make` for the build Python"
 +    )
++    pythoninfo_build = subcommands.add_parser(
++        "pythoninfo-build", help="Display build info of the build Python"
++    )
 +    configure_host = subcommands.add_parser(
 +        "configure-host",
 +        help="Run `configure` for a specific platform and target",
@@ -1086,6 +1099,7 @@ index 00000000000..147179020e0
 +        clean,
 +        configure_build,
 +        make_build,
++        pythoninfo_build,
 +        configure_host,
 +        make_host,
 +        build,
@@ -1197,6 +1211,7 @@ index 00000000000..147179020e0
 +        "clean": clean,
 +        "configure-build": configure_build_python,
 +        "make-build": make_build_python,
++        "pythoninfo-build": pythoninfo_build_python,
 +        "configure-host": configure_host_python,
 +        "make-host": make_host_python,
 +        "package": package,
@@ -2407,10 +2422,10 @@ index 00000000000..cc0d9224042
 +@end
 diff --git a/Apple/testbed/__main__.py b/Apple/testbed/__main__.py
 new file mode 100644
-index 00000000000..3f5b570a195
+index 00000000000..643034e9bca
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,462 @@
 +import argparse
 +import json
 +import os
@@ -2705,8 +2720,14 @@ index 00000000000..3f5b570a195
 +    update_test_plan(location, platform, args)
 +    print(" done.")
 +
++    # xcodebuild doesn't guarantee that the CoreSimulatorService daemon is
++    # running prior to using a simulator, but calling `xcrun simctl list` does.
++    # Determining the default simulator that *would* be used is a cheap action;
++    # so use that as a way to ensure that the CoreSimulatorService daemon is
++    # running.
++    default_simulator = select_simulator_device(platform)
 +    if simulator is None:
-+        simulator = select_simulator_device(platform)
++        simulator = default_simulator
 +    print(f"Running test on {simulator}")
 +
 +    xcode_test(
@@ -5986,7 +6007,7 @@ index d29e3c20e10..4a627e3f3f9 100644
        Unix platforms supporting :meth:`~socket.sendmsg`
        and :const:`SCM_RIGHTS` mechanism.
 diff --git a/Doc/library/subprocess.rst b/Doc/library/subprocess.rst
-index 755ff4c6f0f..b03db8f3e0a 100644
+index 552af2ac9d3..8d8782e6a76 100644
 --- a/Doc/library/subprocess.rst
 +++ b/Doc/library/subprocess.rst
 @@ -25,7 +25,7 @@
@@ -6638,10 +6659,10 @@ index 00000000000..92febdcf587
 +        return len(b)
 diff --git a/Lib/_ios_support.py b/Lib/_ios_support.py
 new file mode 100644
-index 00000000000..db3fe23e45b
+index 00000000000..542f5a14910
 --- /dev/null
 +++ b/Lib/_ios_support.py
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,74 @@
 +import sys
 +try:
 +    from ctypes import cdll, c_void_p, c_char_p, util
@@ -6654,12 +6675,15 @@ index 00000000000..db3fe23e45b
 +else:
 +    # ctypes is available. Load the ObjC library, and wrap the objc_getClass,
 +    # sel_registerName methods
-+    lib = util.find_library("objc")
-+    if lib is None:
-+        # Failed to load the objc library
-+        raise RuntimeError("ObjC runtime library couldn't be loaded")
++    # find_library() resolves a system library through the dyld shared cache,
++    # which needs _dyld_shared_cache_contains_path(); that is unavailable before
++    # iOS 14, so fall back to the bare name, which dyld resolves by itself.
++    lib = util.find_library("objc") or "libobjc.dylib"
 +
-+    objc = cdll.LoadLibrary(lib)
++    try:
++        objc = cdll.LoadLibrary(lib)
++    except OSError:
++        raise ImportError("ObjC runtime library couldn't be loaded")
 +    objc.objc_getClass.restype = c_void_p
 +    objc.objc_getClass.argtypes = [c_char_p]
 +    objc.sel_registerName.restype = c_void_p
@@ -6749,7 +6773,7 @@ index c550883e7c7..12d7428fe9a 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index 9b8a8dfc5aa..7a4fad2f746 100644
+index 6e4a087a10c..f0cd49b6773 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
 @@ -52,7 +52,7 @@
@@ -7247,7 +7271,7 @@ index acc8d4d1826..7d4ebe3ccfa 100644
      return f"{osname}-{release}-{machine}"
  
 diff --git a/Lib/test/pythoninfo.py b/Lib/test/pythoninfo.py
-index 6efeaad8126..e9b0df085d0 100644
+index 5361475a14f..4a1f280566c 100644
 --- a/Lib/test/pythoninfo.py
 +++ b/Lib/test/pythoninfo.py
 @@ -287,6 +287,7 @@
@@ -7787,12 +7811,12 @@ index 203dd6fe57d..6d734d05245 100644
          self.f = open(TESTFN, 'wb+')
          cmd = fcntl.LOCK_SH | fcntl.LOCK_NB
 diff --git a/Lib/test/test_ftplib.py b/Lib/test/test_ftplib.py
-index 204a77d14f0..c864d401f9e 100644
+index 7542f015f78..f1eff9430f7 100644
 --- a/Lib/test/test_ftplib.py
 +++ b/Lib/test/test_ftplib.py
 @@ -18,6 +18,7 @@
  
- from unittest import TestCase, skipUnless
+ from unittest import mock, TestCase, skipUnless
  from test import support
 +from test.support import requires_subprocess
  from test.support import threading_helper
@@ -8808,10 +8832,10 @@ index 31757205ca3..6b88b121580 100644
                  self.skipTest("Invalid argument error calling poll()")
              raise
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index 669f6a28781..77490b3dd9c 100644
+index b7be547de41..e3a3bbcd422 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -2223,6 +2223,7 @@
+@@ -2286,6 +2286,7 @@
              check_chown(dirname, uid, gid)
  
  
@@ -8819,7 +8843,7 @@ index 669f6a28781..77490b3dd9c 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -3318,6 +3319,7 @@
+@@ -3381,6 +3382,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -8863,7 +8887,7 @@ index 9a01ad0dd5c..e21f7dd3999 100644
                           "test needs SIGUSR1")
      @threading_helper.requires_working_threading()
 diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
-index f200fc97927..613be5a5117 100644
+index cc6c2a903fa..cc1d323cd32 100644
 --- a/Lib/test/test_socket.py
 +++ b/Lib/test/test_socket.py
 @@ -3,6 +3,7 @@
@@ -8874,7 +8898,7 @@ index f200fc97927..613be5a5117 100644
  
  import _thread as thread
  import array
-@@ -1184,8 +1185,11 @@
+@@ -1212,8 +1213,11 @@
          # Find one service that exists, then check all the related interfaces.
          # I've ordered this by protocols that have both a tcp and udp
          # protocol, at least for modern Linuxes.
@@ -8888,7 +8912,7 @@ index f200fc97927..613be5a5117 100644
              # avoid the 'echo' service on this platform, as there is an
              # assumption breaking non-standard port/protocol entry
              services = ('daytime', 'qotd', 'domain')
-@@ -3696,7 +3700,7 @@
+@@ -3724,7 +3728,7 @@
      def _testFDPassCMSG_LEN(self):
          self.createAndSendFDs(1)
  
@@ -8897,7 +8921,7 @@ index f200fc97927..613be5a5117 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparate(self):
-@@ -3707,7 +3711,7 @@
+@@ -3735,7 +3739,7 @@
                               maxcmsgs=2)
  
      @testFDPassSeparate.client_skip
@@ -8906,7 +8930,7 @@ index f200fc97927..613be5a5117 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparate(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3720,7 +3724,7 @@
+@@ -3748,7 +3752,7 @@
                                            array.array("i", [fd1]))]),
              len(MSG))
  
@@ -8915,7 +8939,7 @@ index f200fc97927..613be5a5117 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      @requireAttrs(socket, "CMSG_SPACE")
      def testFDPassSeparateMinSpace(self):
-@@ -3734,7 +3738,7 @@
+@@ -3762,7 +3766,7 @@
                               maxcmsgs=2, ignoreflags=socket.MSG_CTRUNC)
  
      @testFDPassSeparateMinSpace.client_skip
@@ -8924,7 +8948,7 @@ index f200fc97927..613be5a5117 100644
      @unittest.skipIf(AIX, "skipping, see issue #22397")
      def _testFDPassSeparateMinSpace(self):
          fd0, fd1 = self.newFDs(2)
-@@ -3758,7 +3762,7 @@
+@@ -3786,7 +3790,7 @@
              nbytes = self.sendmsgToServer([msg])
          self.assertEqual(nbytes, len(msg))
  
@@ -9199,10 +9223,10 @@ index 43c67ac751d..ba6c9cf53ad 100644
  @requires_subprocess()
  def check_output(cmd, encoding=None):
 diff --git a/Lib/test/test_webbrowser.py b/Lib/test/test_webbrowser.py
-index 2d695bc8831..4a6586fb1dd 100644
+index ae161786002..381b54c7c24 100644
 --- a/Lib/test/test_webbrowser.py
 +++ b/Lib/test/test_webbrowser.py
-@@ -5,11 +5,14 @@
+@@ -6,11 +6,14 @@
  import subprocess
  from unittest import mock
  from test import support
@@ -9219,7 +9243,7 @@ index 2d695bc8831..4a6586fb1dd 100644
  
  URL = 'https://www.example.com'
  CMD_NAME = 'test'
-@@ -24,6 +27,7 @@
+@@ -25,6 +28,7 @@
          return 0
  
  
@@ -9227,8 +9251,8 @@ index 2d695bc8831..4a6586fb1dd 100644
  class CommandTestMixin:
  
      def _test(self, meth, *, args=[URL], kw={}, options, arguments):
-@@ -219,6 +223,73 @@
-                    arguments=['openURL({},new-tab)'.format(URL)])
+@@ -302,6 +306,73 @@
+             self.browser.open(f"--key=val {URL}")
  
  
 +@unittest.skipUnless(sys.platform == "ios", "Test only applicable to iOS")
@@ -9301,7 +9325,7 @@ index 2d695bc8831..4a6586fb1dd 100644
  class BrowserRegistrationTest(unittest.TestCase):
  
      def setUp(self):
-@@ -302,6 +373,10 @@
+@@ -385,6 +456,10 @@
          webbrowser.register(name, None, webbrowser.GenericBrowser(name))
          webbrowser.get(sys.executable)
  
@@ -9312,7 +9336,7 @@ index 2d695bc8831..4a6586fb1dd 100644
      def test_environment(self):
          webbrowser = import_helper.import_fresh_module('webbrowser')
          try:
-@@ -313,6 +388,10 @@
+@@ -396,6 +471,10 @@
              webbrowser = import_helper.import_fresh_module('webbrowser')
              webbrowser.get()
  
@@ -9324,10 +9348,10 @@ index 2d695bc8831..4a6586fb1dd 100644
          webbrowser = import_helper.import_fresh_module('webbrowser')
          try:
 diff --git a/Lib/webbrowser.py b/Lib/webbrowser.py
-index 13b9e85f9e1..a6792fa8d56 100755
+index 79e00f9f334..b37aedde348 100755
 --- a/Lib/webbrowser.py
 +++ b/Lib/webbrowser.py
-@@ -476,6 +476,9 @@
+@@ -487,6 +487,9 @@
          # OS X can use below Unix support (but we prefer using the OS X
          # specific stuff)
  
@@ -9337,7 +9361,7 @@ index 13b9e85f9e1..a6792fa8d56 100755
      if sys.platform == "serenityos":
          # SerenityOS webbrowser, simply called "Browser".
          register("Browser", None, BackgroundBrowser("Browser"))
-@@ -656,6 +659,70 @@
+@@ -669,6 +672,70 @@
              rc = osapipe.close()
              return not rc
  
@@ -9444,7 +9468,7 @@ index 00000000000..f4b7decc01c
 + uses_params = ['', 'ftp', 'hdl', 'prospero', 'http', 'imap',
 +                'https', 'shttp', 'rtsp', 'rtsps', 'rtspu', 'sip',
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 7ca3dc62c01..a1e28beff42 100644
+index 823633cbc72..1daffcf7a30 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -178,18 +178,29 @@
@@ -9478,7 +9502,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -614,7 +625,7 @@
+@@ -617,7 +628,7 @@
  .PHONY: all
  
  .PHONY: build_all
@@ -9487,7 +9511,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  		gdbhooks Programs/_testembed scripts checksharedmods rundsymutil
  
  .PHONY: build_wasm
-@@ -637,6 +648,16 @@
+@@ -640,6 +651,16 @@
  		exit 1; \
  	fi
  
@@ -9504,7 +9528,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # Profile generation build must start from a clean tree.
  profile-clean-stamp:
  	$(MAKE) clean
-@@ -826,7 +847,7 @@
+@@ -829,7 +850,7 @@
  	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
  
  libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
@@ -9513,7 +9537,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  
  
  libpython$(VERSION).sl: $(LIBRARY_OBJS)
-@@ -851,14 +872,13 @@
+@@ -854,14 +875,13 @@
  # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
  # minimal framework (not including the Lib directory and such) in the current
  # directory.
@@ -9530,7 +9554,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  		-compatibility_version $(VERSION) \
  		-current_version $(VERSION) \
  		-framework CoreFoundation $(LIBS);
-@@ -870,6 +890,21 @@
+@@ -873,6 +893,21 @@
  	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
  	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
  
@@ -9552,7 +9576,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1857,6 +1892,36 @@
+@@ -1862,6 +1897,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -9589,7 +9613,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  .PHONY: buildbottest
-@@ -1900,7 +1965,7 @@
+@@ -1905,7 +1970,7 @@
  # which can lead to two parallel `./python setup.py build` processes that
  # step on each others toes.
  .PHONY: install
@@ -9598,7 +9622,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -2336,6 +2401,14 @@
+@@ -2341,6 +2406,14 @@
  	$(INSTALL_DATA) `cat pybuilddir.txt`/_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH).py \
  		$(DESTDIR)$(LIBDEST); \
  	$(INSTALL_DATA) $(srcdir)/LICENSE $(DESTDIR)$(LIBDEST)/LICENSE.txt
@@ -9613,7 +9637,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  	@ # Build PYC files for the 3 optimization levels (0, 1, 2)
  	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
-@@ -2512,10 +2585,11 @@
+@@ -2517,10 +2590,11 @@
  # only have to cater for the structural bits of the framework.
  
  .PHONY: frameworkinstallframework
@@ -9628,7 +9652,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -2536,6 +2610,30 @@
+@@ -2541,6 +2615,30 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -9659,7 +9683,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -2576,6 +2674,19 @@
+@@ -2581,6 +2679,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -9679,7 +9703,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= ./config.status
-@@ -2686,6 +2797,10 @@
+@@ -2691,6 +2802,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -9690,7 +9714,7 @@ index 7ca3dc62c01..a1e28beff42 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -2711,6 +2826,8 @@
+@@ -2716,6 +2831,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -10439,7 +10463,7 @@ index d74fb6deac9..1bb6a05dc11 100755
  
  # Local variables:
 diff --git a/configure b/configure
-index 89edc42f45c..dcf69ecfced 100755
+index 89edc42f45c..9882e3b4927 100755
 --- a/configure
 +++ b/configure
 @@ -976,10 +976,14 @@
@@ -10946,9 +10970,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  
 -# Set name for machine-dependent library files
-+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for --with-app-store-compliance" >&5
-+printf %s "checking for --with-app-store-compliance... " >&6; }
- 
+-
 -{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking MACHDEP" >&5
 -printf %s "checking MACHDEP... " >&6; }
 -if test -z "$MACHDEP"
@@ -10997,7 +11019,9 @@ index 89edc42f45c..dcf69ecfced 100755
 -    ac_md_release=`echo $ac_sys_release |
 -			tr -d '/ ' | sed 's/^[A-Z]\.//' | sed 's/\..*//'`
 -    MACHDEP="$ac_md_system$ac_md_release"
--
++{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for --with-app-store-compliance" >&5
++printf %s "checking for --with-app-store-compliance... " >&6; }
+ 
 -    case $MACHDEP in
 -	aix*) MACHDEP="aix";;
 -	linux*) MACHDEP="linux";;
@@ -11185,22 +11209,37 @@ index 89edc42f45c..dcf69ecfced 100755
  # checks for alternative programs
  
  # compiler flags are generated in two sets, BASECFLAGS and OPT.  OPT is just
-@@ -4511,6 +4820,26 @@
+@@ -4511,6 +4820,41 @@
       ;;
  esac
  
-+case $ac_sys_system in #(
-+  iOS) :
++case $host in #(
++  *-apple-ios*-simulator) :
++
++    as_fn_append CFLAGS " -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
++   ;; #(
++  *-apple-ios*) :
 +
 +    as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
 +    as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
 +   ;; #(
-+  tvOS) :
++  *-apple-tvos*-simulator) :
++
++    as_fn_append CFLAGS " -mtvos-simulator-version-min=${TVOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mtvos-simulator-version-min=${TVOS_DEPLOYMENT_TARGET}"
++   ;; #(
++  *-apple-tvos*) :
 +
 +    as_fn_append CFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
 +    as_fn_append LDFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
 +   ;; #(
-+  watchOS) :
++  *-apple-watchos*-simulator) :
++
++    as_fn_append CFLAGS " -mwatchos-simulator-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
++    as_fn_append LDFLAGS " -mwatchos-simulator-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
++   ;; #(
++  *-apple-watchos*) :
 +
 +    as_fn_append CFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
 +    as_fn_append LDFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
@@ -11212,7 +11251,7 @@ index 89edc42f45c..dcf69ecfced 100755
  if test "$ac_sys_system" = "Darwin"
  then
      # Extract the first word of "xcrun", so it can be a program name with args.
-@@ -6908,7 +7237,42 @@
+@@ -6908,7 +7252,42 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -11255,7 +11294,7 @@ index 89edc42f45c..dcf69ecfced 100755
  #elif defined(__VXWORKS__)
          vxworks
  #elif defined(__wasm32__)
-@@ -6957,6 +7321,12 @@
+@@ -6957,6 +7336,12 @@
  case $ac_sys_system in #(
    Darwin*) :
      MULTIARCH="" ;; #(
@@ -11268,7 +11307,7 @@ index 89edc42f45c..dcf69ecfced 100755
    FreeBSD*) :
      MULTIARCH="" ;; #(
    *) :
-@@ -6964,8 +7334,6 @@
+@@ -6964,8 +7349,6 @@
   ;;
  esac
  
@@ -11277,7 +11316,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-@@ -6975,6 +7343,16 @@
+@@ -6975,6 +7358,16 @@
    MULTIARCH=$PLATFORM_TRIPLET
  fi
  
@@ -11294,7 +11333,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  if test x$MULTIARCH != x; then
    MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
-@@ -7018,6 +7396,18 @@
+@@ -7018,6 +7411,18 @@
      PY_SUPPORT_TIER=3 ;; #(
      x86_64-*-freebsd*/clang) :
      PY_SUPPORT_TIER=3 ;; #(
@@ -11313,7 +11352,7 @@ index 89edc42f45c..dcf69ecfced 100755
    *) :
        PY_SUPPORT_TIER=0
   ;;
-@@ -7471,17 +7861,25 @@
+@@ -7471,17 +7876,25 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking LDLIBRARY" >&5
  printf %s "checking LDLIBRARY... " >&6; }
  
@@ -11343,7 +11382,7 @@ index 89edc42f45c..dcf69ecfced 100755
  else
    BLDLIBRARY='$(LDLIBRARY)'
  fi
-@@ -7494,64 +7892,70 @@
+@@ -7494,64 +7907,70 @@
  
    case $ac_sys_system in
      CYGWIN*)
@@ -11457,7 +11496,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  
  
-@@ -7746,9 +8150,6 @@
+@@ -7746,9 +8165,6 @@
      PYTHON_FOR_BUILD="_PYTHON_HOSTRUNNER='$HOSTRUNNER' $PYTHON_FOR_BUILD"
  fi
  
@@ -11467,7 +11506,7 @@ index 89edc42f45c..dcf69ecfced 100755
  # LIBRARY_DEPS, LINK_PYTHON_OBJS and LINK_PYTHON_DEPS variable
  case $ac_sys_system/$ac_sys_emscripten_target in #(
    Emscripten/browser*) :
-@@ -12812,6 +13213,11 @@
+@@ -12812,6 +13228,11 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -11479,7 +11518,7 @@ index 89edc42f45c..dcf69ecfced 100755
  	Emscripten*|WASI*)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -12941,30 +13347,34 @@
+@@ -12941,30 +13362,34 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -11527,7 +11566,7 @@ index 89edc42f45c..dcf69ecfced 100755
  	OpenUNIX*|UnixWare*) LINKFORSHARED="-Wl,-Bexport";;
  	SCO_SV*) LINKFORSHARED="-Wl,-Bexport";;
  	ReliantUNIX*) LINKFORSHARED="-W1 -Blargedynsym";;
-@@ -14353,6 +14763,10 @@
+@@ -14353,6 +14778,10 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -11538,7 +11577,7 @@ index 89edc42f45c..dcf69ecfced 100755
    sunos5) :
      as_fn_append LIBFFI_LIBS " -mimpure-text"
     ;; #(
-@@ -17616,18 +18030,6 @@
+@@ -17616,18 +18045,6 @@
  then :
    printf "%s\n" "#define HAVE_DUP 1" >>confdefs.h
  
@@ -11557,7 +11596,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -17688,18 +18090,6 @@
+@@ -17688,18 +18105,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -11576,7 +11615,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -17754,12 +18144,6 @@
+@@ -17754,12 +18159,6 @@
  then :
    printf "%s\n" "#define HAVE_GETEGID 1" >>confdefs.h
  
@@ -11589,7 +11628,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "geteuid" "ac_cv_func_geteuid"
  if test "x$ac_cv_func_geteuid" = xyes
-@@ -17796,12 +18180,6 @@
+@@ -17796,12 +18195,6 @@
  then :
    printf "%s\n" "#define HAVE_GETGROUPLIST 1" >>confdefs.h
  
@@ -11602,7 +11641,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "gethostname" "ac_cv_func_gethostname"
  if test "x$ac_cv_func_gethostname" = xyes
-@@ -18090,12 +18468,6 @@
+@@ -18090,12 +18483,6 @@
  then :
    printf "%s\n" "#define HAVE_PIPE 1" >>confdefs.h
  
@@ -11615,7 +11654,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "plock" "ac_cv_func_plock"
  if test "x$ac_cv_func_plock" = xyes
-@@ -18120,18 +18492,6 @@
+@@ -18120,18 +18507,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_FALLOCATE 1" >>confdefs.h
  
@@ -11634,7 +11673,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -18396,12 +18756,6 @@
+@@ -18396,12 +18771,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -11647,7 +11686,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -18492,12 +18846,6 @@
+@@ -18492,12 +18861,6 @@
  then :
    printf "%s\n" "#define HAVE_SYSCONF 1" >>confdefs.h
  
@@ -11660,7 +11699,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  ac_fn_c_check_func "$LINENO" "tcgetpgrp" "ac_cv_func_tcgetpgrp"
  if test "x$ac_cv_func_tcgetpgrp" = xyes
-@@ -18553,10 +18901,10 @@
+@@ -18553,10 +18916,10 @@
    printf "%s\n" "#define HAVE_TRUNCATE 1" >>confdefs.h
  
  fi
@@ -11674,7 +11713,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  fi
  ac_fn_c_check_func "$LINENO" "umask" "ac_cv_func_umask"
-@@ -18670,6 +19018,85 @@
+@@ -18670,6 +19033,85 @@
  
  fi
  
@@ -11760,7 +11799,7 @@ index 89edc42f45c..dcf69ecfced 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CC options needed to detect all undeclared functions" >&5
  printf %s "checking for $CC options needed to detect all undeclared functions... " >&6; }
  if test ${ac_cv_c_undeclared_builtin_options+y}
-@@ -21422,7 +21849,8 @@
+@@ -21422,7 +21864,8 @@
  
  
  # check for openpty, login_tty, and forkpty
@@ -11770,7 +11809,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
    for ac_func in openpty
  do :
-@@ -21518,7 +21946,7 @@
+@@ -21518,7 +21961,7 @@
  fi
  
  done
@@ -11779,7 +11818,7 @@ index 89edc42f45c..dcf69ecfced 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -21675,6 +22103,7 @@
+@@ -21675,6 +22118,7 @@
  fi
  
  done
@@ -11787,7 +11826,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -22222,6 +22651,11 @@
+@@ -22222,6 +22666,11 @@
  
  done
  
@@ -11799,7 +11838,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
    for ac_func in clock_settime
  do :
-@@ -22232,7 +22666,7 @@
+@@ -22232,7 +22681,7 @@
  
  else $as_nop
  
@@ -11808,7 +11847,7 @@ index 89edc42f45c..dcf69ecfced 100755
  printf %s "checking for clock_settime in -lrt... " >&6; }
  if test ${ac_cv_lib_rt_clock_settime+y}
  then :
-@@ -22270,7 +22704,7 @@
+@@ -22270,7 +22719,7 @@
  if test "x$ac_cv_lib_rt_clock_settime" = xyes
  then :
  
@@ -11817,7 +11856,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  
  fi
-@@ -22279,6 +22713,7 @@
+@@ -22279,6 +22728,7 @@
  fi
  
  done
@@ -11825,7 +11864,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  
    for ac_func in clock_nanosleep
-@@ -22500,7 +22935,9 @@
+@@ -22500,7 +22950,9 @@
    if test "$cross_compiling" = yes
  then :
  
@@ -11836,7 +11875,7 @@ index 89edc42f45c..dcf69ecfced 100755
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
  else
    ac_cv_buggy_getaddrinfo=yes
-@@ -24404,7 +24841,7 @@
+@@ -24404,7 +24856,7 @@
  printf "%s\n" "$ABIFLAGS" >&6; }
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking SOABI" >&5
  printf %s "checking SOABI... " >&6; }
@@ -11845,7 +11884,7 @@ index 89edc42f45c..dcf69ecfced 100755
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $SOABI" >&5
  printf "%s\n" "$SOABI" >&6; }
  
-@@ -24412,7 +24849,7 @@
+@@ -24412,7 +24864,7 @@
  if test "$Py_DEBUG" = 'true' -a "$with_trace_refs" != "yes"; then
    # Similar to SOABI but remove "d" flag from ABIFLAGS
  
@@ -11854,7 +11893,7 @@ index 89edc42f45c..dcf69ecfced 100755
  
  printf "%s\n" "#define ALT_SOABI \"${ALT_SOABI}\"" >>confdefs.h
  
-@@ -27163,24 +27600,28 @@
+@@ -27163,24 +27615,28 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -11895,7 +11934,7 @@ index 89edc42f45c..dcf69ecfced 100755
  printf %s "checking for /dev/ptmx... " >&6; }
  if test ${ac_cv_file__dev_ptmx+y}
  then :
-@@ -27201,12 +27642,12 @@
+@@ -27201,12 +27657,12 @@
  
  fi
  
@@ -11911,7 +11950,7 @@ index 89edc42f45c..dcf69ecfced 100755
  printf %s "checking for /dev/ptc... " >&6; }
  if test ${ac_cv_file__dev_ptc+y}
  then :
-@@ -27227,10 +27668,11 @@
+@@ -27227,10 +27683,11 @@
  
  fi
  
@@ -11924,7 +11963,7 @@ index 89edc42f45c..dcf69ecfced 100755
  fi
  
  if test $ac_sys_system = Darwin
-@@ -27672,6 +28114,8 @@
+@@ -27672,6 +28129,8 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -11933,7 +11972,7 @@ index 89edc42f45c..dcf69ecfced 100755
    *) :
      with_ensurepip=upgrade
         ;;
-@@ -28613,6 +29057,27 @@
+@@ -28613,6 +29072,27 @@
      py_cv_module_ossaudiodev=n/a
      py_cv_module_spwd=n/a
   ;; #(
@@ -11961,7 +12000,7 @@ index 89edc42f45c..dcf69ecfced 100755
    CYGWIN*) :
  
  
-@@ -32359,6 +32824,9 @@
+@@ -32359,6 +32839,9 @@
      "Mac/PythonLauncher/Makefile") CONFIG_FILES="$CONFIG_FILES Mac/PythonLauncher/Makefile" ;;
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
@@ -11972,7 +12011,7 @@ index 89edc42f45c..dcf69ecfced 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index 1a02d19f1b2..7b9c4e93634 100644
+index 1a02d19f1b2..921a58aff7e 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -307,6 +307,161 @@
@@ -12650,19 +12689,28 @@ index 1a02d19f1b2..7b9c4e93634 100644
  # checks for alternative programs
  
  # compiler flags are generated in two sets, BASECFLAGS and OPT.  OPT is just
-@@ -780,6 +1062,20 @@
+@@ -780,6 +1062,29 @@
    ],
  )
  
 +dnl Add the compiler flag for the iOS/tvOS/watchOS minimum supported OS version.
-+AS_CASE([$ac_sys_system],
-+  [iOS], [
++AS_CASE([$host],
++  [*-apple-ios*-simulator], [
++    AS_VAR_APPEND([CFLAGS], [" -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
++  ],[*-apple-ios*], [
 +    AS_VAR_APPEND([CFLAGS], [" -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
 +    AS_VAR_APPEND([LDFLAGS], [" -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
-+  ],[tvOS], [
++  ],[*-apple-tvos*-simulator], [
++    AS_VAR_APPEND([CFLAGS], [" -mtvos-simulator-version-min=${TVOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mtvos-simulator-version-min=${TVOS_DEPLOYMENT_TARGET}"])
++  ],[*-apple-tvos*], [
 +    AS_VAR_APPEND([CFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
 +    AS_VAR_APPEND([LDFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
-+  ],[watchOS], [
++  ],[*-apple-watchos*-simulator], [
++    AS_VAR_APPEND([CFLAGS], [" -mwatchos-simulator-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
++    AS_VAR_APPEND([LDFLAGS], [" -mwatchos-simulator-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
++  ],[*-apple-watchos*], [
 +    AS_VAR_APPEND([CFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
 +    AS_VAR_APPEND([LDFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
 +  ],
@@ -12671,7 +12719,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  if test "$ac_sys_system" = "Darwin"
  then
    dnl look for SDKROOT
-@@ -1077,7 +1373,42 @@
+@@ -1077,7 +1382,42 @@
  #elif defined(__gnu_hurd__)
          i386-gnu
  #elif defined(__APPLE__)
@@ -12714,7 +12762,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  #elif defined(__VXWORKS__)
          vxworks
  #elif defined(__wasm32__)
-@@ -1119,14 +1450,24 @@
+@@ -1119,14 +1459,24 @@
  fi
  rm -f conftest.c conftest.out
  
@@ -12740,7 +12788,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
-@@ -1136,6 +1477,17 @@
+@@ -1136,6 +1486,17 @@
    MULTIARCH=$PLATFORM_TRIPLET
  fi
  AC_SUBST([PLATFORM_TRIPLET])
@@ -12758,7 +12806,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  
  if test x$MULTIARCH != x; then
    MULTIARCH_CPPFLAGS="-DMULTIARCH=\\\"$MULTIARCH\\\""
-@@ -1166,6 +1518,12 @@
+@@ -1166,6 +1527,12 @@
    [wasm32-unknown-emscripten/clang], [PY_SUPPORT_TIER=3], dnl WebAssembly Emscripten
    [wasm32-unknown-wasi/clang],       [PY_SUPPORT_TIER=3], dnl WebAssembly System Interface
    [x86_64-*-freebsd*/clang],         [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
@@ -12771,7 +12819,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
    [PY_SUPPORT_TIER=0]
  )
  
-@@ -1482,17 +1840,25 @@
+@@ -1482,17 +1849,25 @@
  
  AC_MSG_CHECKING([LDLIBRARY])
  
@@ -12801,7 +12849,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  else
    BLDLIBRARY='$(LDLIBRARY)'
  fi
-@@ -1504,64 +1870,69 @@
+@@ -1504,64 +1879,69 @@
              [Defined if Python is built as a shared library.])
    case $ac_sys_system in
      CYGWIN*)
@@ -12914,7 +12962,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  fi
  
  AC_ARG_VAR([HOSTRUNNER], [Program to run CPython for the host platform])
-@@ -1617,8 +1988,6 @@
+@@ -1617,8 +1997,6 @@
    PYTHON_FOR_BUILD="_PYTHON_HOSTRUNNER='$HOSTRUNNER' $PYTHON_FOR_BUILD"
  fi
  
@@ -12923,7 +12971,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  # LIBRARY_DEPS, LINK_PYTHON_OBJS and LINK_PYTHON_DEPS variable
  AS_CASE([$ac_sys_system/$ac_sys_emscripten_target],
    [Emscripten/browser*], [LIBRARY_DEPS='$(PY3LIBRARY) $(WASM_STDLIB) python.html python.worker.js'],
-@@ -3380,6 +3749,11 @@
+@@ -3380,6 +3758,11 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -12935,7 +12983,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  	Emscripten*|WASI*)
  		LDSHARED='$(CC) -shared'
  		LDCXXSHARED='$(CXX) -shared';;
-@@ -3500,30 +3874,34 @@
+@@ -3500,30 +3883,34 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -12985,7 +13033,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  	OpenUNIX*|UnixWare*) LINKFORSHARED="-Wl,-Bexport";;
  	SCO_SV*) LINKFORSHARED="-Wl,-Bexport";;
  	ReliantUNIX*) LINKFORSHARED="-W1 -Blargedynsym";;
-@@ -3897,6 +4275,9 @@
+@@ -3897,6 +4284,9 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -12995,7 +13043,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
    )
    AS_VAR_IF([ctypes_malloc_closure], [yes], [
-@@ -4920,28 +5301,28 @@
+@@ -4920,28 +5310,28 @@
  # checks for library functions
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clock close_range confstr \
@@ -13032,7 +13080,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
    wait wait3 wait4 waitid waitpid wcscoll wcsftime wcsxfrm wmemcmp writev \
  ])
  
-@@ -4952,6 +5333,22 @@
+@@ -4952,6 +5342,22 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -13055,7 +13103,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  AC_CHECK_DECL([dirfd],
                [AC_DEFINE([HAVE_DIRFD], [1],
                           [Define if you have the 'dirfd' function or macro.])],
-@@ -5193,20 +5590,22 @@
+@@ -5193,20 +5599,22 @@
  ])
  
  # check for openpty, login_tty, and forkpty
@@ -13092,7 +13140,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5289,11 +5688,17 @@
+@@ -5289,11 +5697,17 @@
      ])
  ])
  
@@ -13115,7 +13163,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  
  AC_CHECK_FUNCS([clock_nanosleep], [], [
      AC_CHECK_LIB([rt], [clock_nanosleep], [
-@@ -5439,7 +5844,9 @@
+@@ -5439,7 +5853,9 @@
  [ac_cv_buggy_getaddrinfo=no],
  [ac_cv_buggy_getaddrinfo=yes],
  [
@@ -13126,7 +13174,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
  else
    ac_cv_buggy_getaddrinfo=yes
-@@ -5992,14 +6399,14 @@
+@@ -5992,14 +6408,14 @@
  AC_MSG_CHECKING([ABIFLAGS])
  AC_MSG_RESULT([$ABIFLAGS])
  AC_MSG_CHECKING([SOABI])
@@ -13143,7 +13191,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
    AC_DEFINE_UNQUOTED([ALT_SOABI], ["${ALT_SOABI}"],
              [Alternative SOABI used in debug build to load C extensions built in release mode])
  fi
-@@ -6648,28 +7055,35 @@
+@@ -6648,28 +7064,35 @@
  AC_MSG_NOTICE([checking for device files])
  
  dnl NOTE: Inform user how to proceed with files when cross compiling.
@@ -13199,7 +13247,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
  fi
  
  if test $ac_sys_system = Darwin
-@@ -6941,6 +7355,7 @@
+@@ -6941,6 +7364,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -13207,7 +13255,7 @@ index 1a02d19f1b2..7b9c4e93634 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -7283,6 +7698,28 @@
+@@ -7283,6 +7707,28 @@
    [AIX], [PY_STDLIB_MOD_SET_NA([_scproxy], [spwd])],
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [_crypt], [termios], [grp])],
    [Darwin], [PY_STDLIB_MOD_SET_NA([ossaudiodev], [spwd])],
