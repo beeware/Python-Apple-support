@@ -2497,7 +2497,7 @@ index 00000000000..cc0d9224042
 +@end
 diff --git a/Apple/testbed/__main__.py b/Apple/testbed/__main__.py
 new file mode 100644
-index 00000000000..fe956e95201
+index 00000000000..643034e9bca
 --- /dev/null
 +++ b/Apple/testbed/__main__.py
 @@ -0,0 +1,462 @@
@@ -2800,7 +2800,7 @@ index 00000000000..fe956e95201
 +    # Determining the default simulator that *would* be used is a cheap action;
 +    # so use that as a way to ensure that the CoreSimulatorService daemon is
 +    # running.
-+    default_simulator = select_simulator_device()
++    default_simulator = select_simulator_device(platform)
 +    if simulator is None:
 +        simulator = default_simulator
 +    print(f"Running test on {simulator}")
