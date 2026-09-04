@@ -18,7 +18,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.11.15
+PYTHON_VERSION=3.11.16
 PYTHON_PKG_VERSION=3.11.9
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -29,7 +29,7 @@ PYTHON_VER=$(basename $(PYTHON_VERSION))
 BZIP2_VERSION=1.0.8-2
 LIBFFI_VERSION=3.4.7-2
 MPDECIMAL_VERSION=4.0.0-2
-OPENSSL_VERSION=3.0.18-1
+OPENSSL_VERSION=3.0.22-1
 XZ_VERSION=5.6.4-2
 
 # Supported OS
