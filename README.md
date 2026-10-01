@@ -71,7 +71,7 @@ Each support package contains:
 
 On iOS/tvOS/watchOS/visionOS, the `Python.xcframework` contains a slice for each supported ABI (device and simulator). The folder containing the slice can also be used as a `PYTHONHOME`, as it contains a `bin`, `include` and `lib` directory.
 
-The `bin` folder contains shell aliases for the compilers that are needed to build packages (in addition to Python executables). This is required because Xcode uses the `xcrun` alias to dynamically generate the name of binaries, but a lot of C tooling expects that `CC` will not contain spaces.
+The `bin` folder does not contain Python executables (as they can't be invoked). However, it *does* contain shell aliases for the compilers that are needed to build packages. This is required because Xcode uses the `xcrun` alias to dynamically generate the name of binaries, but a lot of C tooling expects that `CC` will not contain spaces.
 
 Each slice of an iOS/tvOS/watchOS/visionOS XCframework also contains a `platform-config` folder with a subfolder for each supported architecture in that slice. These subfolders can be used to make a macOS Python environment behave as if it were on an iOS/tvOS/watchOS/visionOS device. This works in one of two ways:
 
