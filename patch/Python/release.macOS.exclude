@@ -6,7 +6,6 @@
 ._Python
 ._Resources
 Resources/._Python.app
-Resources/Python.app
 Versions/._Current
 Versions/*/.__CodeSignature
 Versions/*/._bin
@@ -17,7 +16,6 @@ Versions/*/._include
 Versions/*/._lib
 Versions/*/._Resources
 Versions/*/._share
-Versions/*/bin
 Versions/*/etc
 Versions/*/Frameworks
 Versions/*/lib/python*/idlelib

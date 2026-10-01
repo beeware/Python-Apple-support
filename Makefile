@@ -497,9 +497,10 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Copy binary helpers from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_BIN-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_BIN-$(sdk))
 
-	# Create a non-executable stub binary python3
-	echo "#!/bin/bash\necho Can\\'t run $(sdk) binary\nexit 1" > $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
-	chmod 755 $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
+	# Merge the python3 binary from each target in the $(sdk) SDK into a fat binary
+	lipo -create -output $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER) \
+		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_BIN-$$(target))/python$(PYTHON_VER)) \
+		2>&1 | tee -a install/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
 
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
@@ -640,6 +641,10 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	find $$(PYTHON_FRAMEWORK-macosx) -name "*.dylib" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 	find $$(PYTHON_FRAMEWORK-macosx) -name "*.so" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
+		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
+	find $$(PYTHON_INSTALL_VERSION-macosx)/bin -type f -perm +111 -exec sh -c 'file "$$$$1" | grep -q Mach-O' _ {} \; -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
+		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
+	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_INSTALL_VERSION-macosx)/Resources/Python.app \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_FRAMEWORK-macosx) \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
