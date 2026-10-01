@@ -497,10 +497,9 @@ $$(PYTHON_INCLUDE-$(sdk))/pyconfig.h: $$(PYTHON_LIB-$(sdk))
 	# Copy binary helpers from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_BIN-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_BIN-$(sdk))
 
-	# Merge the python3 binary from each target in the $(sdk) SDK into a fat binary
-	lipo -create -output $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER) \
-		$$(foreach target,$$(SDK_TARGETS-$(sdk)),$$(PYTHON_BIN-$$(target))/python$(PYTHON_VER)) \
-		2>&1 | tee -a install/$(os)/$(sdk)/python-$(PYTHON_VERSION).lipo.log
+	# Create a non-executable stub binary python3
+	echo "#!/bin/bash\necho Can\\'t run $(sdk) binary\nexit 1" > $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
+	chmod 755 $$(PYTHON_BIN-$(sdk))/python$(PYTHON_VER)
 
 	# Copy headers as-is from the first target in the $(sdk) SDK
 	cp -r $$(PYTHON_INCLUDE-$$(firstword $$(SDK_TARGETS-$(sdk)))) $$(PYTHON_INCLUDE-$(sdk))
