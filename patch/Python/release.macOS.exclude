@@ -16,6 +16,9 @@ Versions/*/._include
 Versions/*/._lib
 Versions/*/._Resources
 Versions/*/._share
+Versions/*/bin/idle*
+Versions/*/bin/pydoc*
+Versions/*/bin/python*-config
 Versions/*/etc
 Versions/*/Frameworks
 Versions/*/lib/python*/idlelib
