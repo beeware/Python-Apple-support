@@ -7538,19 +7538,10 @@ index 9270f3f8d62..35b2b2c653c 100644
  # Check for the presence of docstrings.
  
 diff --git a/Lib/test/support/os_helper.py b/Lib/test/support/os_helper.py
-index c1b2995ef37..353a3f589ac 100644
+index b7fc0c30864..c8950158f34 100644
 --- a/Lib/test/support/os_helper.py
 +++ b/Lib/test/support/os_helper.py
-@@ -9,6 +9,8 @@
- import unittest
- import warnings
- 
-+from test import support
-+
- 
- # Filename used for testing
- if os.name == 'java':
-@@ -23,8 +25,8 @@
+@@ -25,8 +25,8 @@
  
  # TESTFN_UNICODE is a non-ascii filename
  TESTFN_UNICODE = TESTFN_ASCII + "-\xe0\xf2\u0258\u0141\u011f"
@@ -7561,7 +7552,7 @@ index c1b2995ef37..353a3f589ac 100644
      # decomposed Unicode, encoded using UTF-8. See QA1173:
      # http://developer.apple.com/mac/library/qa/qa2001/qa1173.html
      import unicodedata
-@@ -49,8 +51,8 @@
+@@ -51,8 +51,8 @@
                    'encoding (%s). Unicode filename tests may not be effective'
                    % (TESTFN_UNENCODABLE, sys.getfilesystemencoding()))
              TESTFN_UNENCODABLE = None
@@ -7572,7 +7563,7 @@ index c1b2995ef37..353a3f589ac 100644
      try:
          # ascii and utf-8 cannot encode the byte 0xff
          b'\xff'.decode(sys.getfilesystemencoding())
-@@ -611,7 +613,8 @@
+@@ -630,7 +630,8 @@
      if hasattr(os, 'sysconf'):
          try:
              MAXFD = os.sysconf("SC_OPEN_MAX")
@@ -9102,44 +9093,6 @@ index ff86291bc57..59370264ab3 100644
      @unittest.skipIf(is_emscripten or is_wasi, "not supported on Emscripten/WASI")
      @unittest.skipUnless(TESTFN_UNDECODABLE, "only works if there are undecodable paths")
      def test_open_undecodable_uri(self):
-diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index aa8ce81db66..0876d4d8a43 100644
---- a/Lib/test/test_ssl.py
-+++ b/Lib/test/test_ssl.py
-@@ -5041,15 +5041,27 @@
-             return  # Expect the full test setup to always work on Linux.
-         if (isinstance(err, ConnectionResetError) or
-             (isinstance(err, OSError) and err.errno == errno.EINVAL) or
--            re.search('wrong.version.number', getattr(err, "reason", ""), re.I)):
-+            re.search(
-+                # Matches the following error messages:
-+                # '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1123)'
-+                # '[SSL: RECORD_LAYER_FAILURE] record layer failure (_ssl.c:1109)'
-+                # '[SSL: HTTP_REQUEST] http request (_ssl.c:1143)'
-+                r'wrong.version.number|record.layer.failure|http.request',
-+                str(getattr(err, "reason", "")),
-+                re.IGNORECASE,
-+            )
-+        ):
-             # On Windows the TCP RST leads to a ConnectionResetError
-             # (ECONNRESET) which Linux doesn't appear to surface to userspace.
-             # If wrap_socket() winds up on the "if connected:" path and doing
--            # the actual wrapping... we get an SSLError from OpenSSL. Typically
--            # WRONG_VERSION_NUMBER. While appropriate, neither is the scenario
--            # we're specifically trying to test. The way this test is written
--            # is known to work on Linux. We'll skip it anywhere else that it
--            # does not present as doing so.
-+            # the actual wrapping... we get an SSLError from OpenSSL. This is
-+            # typically WRONG_VERSION_NUMBER. The same happens on iOS, but
-+            # RECORD_LAYER_FAILURE or HTTP_REQUEST is the error.
-+            #
-+            # While appropriate, these scenarios aren't what we're specifically
-+            # trying to test. The way this test is written is known to work on
-+            # Linux. We'll skip it anywhere else that it does not present as
-+            # doing so.
-             try:
-                 self.skipTest(f"Could not recreate conditions on {sys.platform}:"
-                               f" {err=}")
 diff --git a/Lib/test/test_stat.py b/Lib/test/test_stat.py
 index c77fec3d39d..ca55d429aec 100644
 --- a/Lib/test/test_stat.py
@@ -9276,7 +9229,7 @@ index 47619c8807b..25c16e3a0b7 100644
          sf0 = set(self.files)
          with warnings.catch_warnings():
 diff --git a/Lib/test/test_urllib2.py b/Lib/test/test_urllib2.py
-index 94cbc8a62f9..06a553f093f 100644
+index d8c574ebbd5..ce633709c32 100644
 --- a/Lib/test/test_urllib2.py
 +++ b/Lib/test/test_urllib2.py
 @@ -1,7 +1,7 @@
@@ -9288,7 +9241,7 @@ index 94cbc8a62f9..06a553f093f 100644
  from test.support import warnings_helper
  from test import test_urllib
  
-@@ -987,6 +987,7 @@
+@@ -1031,6 +1031,7 @@
  
          file_obj.close()
  
@@ -9542,7 +9495,7 @@ index 00000000000..2ccb22b9482
 @@ -0,0 +1 @@
 +# No compliance patching required.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index ad29e1a0ca2..5e838145a3a 100644
+index acecc68e7f6..6ae3fcd5ddb 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -175,18 +175,29 @@
@@ -9585,7 +9538,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  
  ##########################################################################
  # Parser
-@@ -588,7 +601,7 @@
+@@ -589,7 +602,7 @@
  
  # Default target
  all:		@DEF_MAKE_ALL_RULE@
@@ -9594,7 +9547,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  		gdbhooks Programs/_testembed python-config
  build_wasm: check-clean-src $(BUILDPYTHON) platform oldsharedmods python-config
  
-@@ -607,6 +620,16 @@
+@@ -608,6 +621,16 @@
  		exit 1; \
  	fi
  
@@ -9611,7 +9564,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  # Profile generation build must start from a clean tree.
  profile-clean-stamp:
  	$(MAKE) clean
-@@ -768,7 +791,7 @@
+@@ -769,7 +792,7 @@
  	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
  
  libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
@@ -9620,7 +9573,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  
  
  libpython$(VERSION).sl: $(LIBRARY_OBJS)
-@@ -792,14 +815,13 @@
+@@ -793,14 +816,13 @@
  # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
  # minimal framework (not including the Lib directory and such) in the current
  # directory.
@@ -9637,7 +9590,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  		-compatibility_version $(VERSION) \
  		-current_version $(VERSION) \
  		-framework CoreFoundation $(LIBS);
-@@ -811,6 +833,21 @@
+@@ -812,6 +834,21 @@
  	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
  	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
  
@@ -9659,7 +9612,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1716,6 +1753,36 @@
+@@ -1717,6 +1754,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -9696,7 +9649,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  buildbottest: all
-@@ -1752,7 +1819,7 @@
+@@ -1753,7 +1820,7 @@
  # prevent race conditions with PGO builds. PGO builds use recursive make,
  # which can lead to two parallel `./python setup.py build` processes that
  # step on each others toes.
@@ -9705,7 +9658,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -2149,7 +2216,16 @@
+@@ -2150,7 +2217,16 @@
  		$(INSTALL_DATA) $(srcdir)/Modules/xxmodule.c \
  			$(DESTDIR)$(LIBDEST)/distutils/tests ; \
  	fi
@@ -9723,7 +9676,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
  		-j0 -d $(LIBDEST) -f \
  		-x 'bad_coding|badsyntax|site-packages|lib2to3/tests/data' \
-@@ -2321,9 +2397,11 @@
+@@ -2322,9 +2398,11 @@
  # automatically set prefix to the location deep down in the framework, so we
  # only have to cater for the structural bits of the framework.
  
@@ -9737,7 +9690,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -2344,6 +2422,30 @@
+@@ -2345,6 +2423,30 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -9768,7 +9721,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -2378,6 +2480,19 @@
+@@ -2379,6 +2481,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -9788,7 +9741,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= $(SHELL) config.status
-@@ -2482,6 +2597,10 @@
+@@ -2483,6 +2598,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -9799,7 +9752,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  
  profile-removal:
  	find . -name '*.gc??' -exec rm -f {} ';'
-@@ -2503,6 +2622,8 @@
+@@ -2504,6 +2623,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -9808,7 +9761,7 @@ index ad29e1a0ca2..5e838145a3a 100644
  	-rm -f python-config.py python-config
  
  # Make things extra clean, before making a distribution:
-@@ -2583,7 +2704,7 @@
+@@ -2584,7 +2705,7 @@
  .PHONY: all build_all build_wasm sharedmods check-clean-src oldsharedmods test quicktest
  .PHONY: install altinstall oldsharedinstall bininstall altbininstall
  .PHONY: maninstall libinstall inclinstall libainstall sharedinstall
@@ -10557,7 +10510,7 @@ index d74fb6deac9..1bb6a05dc11 100755
  
  # Local variables:
 diff --git a/configure b/configure
-index a1ad0ae2510..72d5a233178 100755
+index 451bc70442b..eff558c208f 100755
 --- a/configure
 +++ b/configure
 @@ -838,6 +838,8 @@
@@ -12090,7 +12043,7 @@ index a1ad0ae2510..72d5a233178 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index 7b4000fa9c3..058d60d4f21 100644
+index e7b70a83e10..98eabcc77d3 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -303,6 +303,161 @@
