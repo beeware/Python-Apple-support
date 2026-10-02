@@ -607,6 +607,10 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 	find $$(PYTHON_FRAMEWORK-macosx) -name "*.so" -type f -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
+	find $$(PYTHON_INSTALL_VERSION-macosx)/bin -type f -perm +111 -exec sh -c 'file "$$$$1" | grep -q Mach-O' _ {} \; -exec codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f {} \; \
+		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
+	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_INSTALL_VERSION-macosx)/Resources/Python.app \
+		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 	codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f $$(PYTHON_FRAMEWORK-macosx) \
 		2>&1 | tee -a $$(PYTHON_INSTALL-macosx)/python-$(os).codesign.log
 
