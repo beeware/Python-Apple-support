@@ -24,4 +24,15 @@ for module in `find . -name "*.dylib" -type f -o -name "*.so" -type f`; do
        done
     fi
 done
+for exe in `find bin Resources/Python.app/Contents/MacOS -type f -perm +111`; do
+    if [ "$(otool -L ${exe} 2>/dev/null | grep -c /Library/Frameworks/Python.framework)" != "0" ]; then
+        echo Rewrite references to Python library in ${exe}
+        install_name_tool -change /Library/Frameworks/Python.framework/Versions/${PYTHON_VER}/Python @rpath/Python.framework/Versions/${PYTHON_VER}/Python ${exe}
+        # Add an rpath pointing at the directory that contains Python.framework
+        # (one level up per path component, plus 3 for Python.framework/Versions/X.Y)
+        depth=$(( $(echo ${exe} | tr -cd '/' | wc -c) + 3 ))
+        rpath=@executable_path$(printf '/..%.0s' $(seq ${depth}))
+        install_name_tool -add_rpath ${rpath} ${exe}
+    fi
+done
 popd
