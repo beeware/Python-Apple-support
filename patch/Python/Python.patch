@@ -2890,10 +2890,10 @@ index 00000000000..643034e9bca
 +    main()
 diff --git a/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj b/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..f8835a3bc58
+index 00000000000..1f9e3f23a02
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,557 @@
+@@ -0,0 +1,563 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -2904,6 +2904,7 @@ index 00000000000..f8835a3bc58
 +
 +/* Begin PBXBuildFile section */
 +		607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66162B0EFA380010BFC8 /* AppDelegate.m */; };
++		71CB095279CCE565BAFB69C3 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D995ADFDE8B3EF5DDEB37874 /* SceneDelegate.m */; };
 +		607A66222B0EFA390010BFC8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607A66212B0EFA390010BFC8 /* Assets.xcassets */; };
 +		607A66252B0EFA390010BFC8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */; };
 +		607A66282B0EFA390010BFC8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 607A66272B0EFA390010BFC8 /* main.m */; };
@@ -2955,6 +2956,8 @@ index 00000000000..f8835a3bc58
 +		607A66122B0EFA380010BFC8 /* iOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 +		607A66152B0EFA380010BFC8 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 +		607A66162B0EFA380010BFC8 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
++		83DC5E71F9D64737365A3BE4 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
++		D995ADFDE8B3EF5DDEB37874 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 +		607A66212B0EFA390010BFC8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 +		607A66242B0EFA390010BFC8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 +		607A66272B0EFA390010BFC8 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -3016,6 +3019,8 @@ index 00000000000..f8835a3bc58
 +				607A66592B0F08600010BFC8 /* iOSTestbed-Info.plist */,
 +				607A66152B0EFA380010BFC8 /* AppDelegate.h */,
 +				607A66162B0EFA380010BFC8 /* AppDelegate.m */,
++				83DC5E71F9D64737365A3BE4 /* SceneDelegate.h */,
++				D995ADFDE8B3EF5DDEB37874 /* SceneDelegate.m */,
 +				607A66212B0EFA390010BFC8 /* Assets.xcassets */,
 +				607A66232B0EFA390010BFC8 /* LaunchScreen.storyboard */,
 +				607A66272B0EFA390010BFC8 /* main.m */,
@@ -3166,6 +3171,7 @@ index 00000000000..f8835a3bc58
 +			buildActionMask = 2147483647;
 +			files = (
 +				607A66172B0EFA380010BFC8 /* AppDelegate.m in Sources */,
++				71CB095279CCE565BAFB69C3 /* SceneDelegate.m in Sources */,
 +				607A66282B0EFA390010BFC8 /* main.m in Sources */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
@@ -3252,7 +3258,7 @@ index 00000000000..f8835a3bc58
 +				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 +				GCC_WARN_UNUSED_FUNCTION = YES;
 +				GCC_WARN_UNUSED_VARIABLE = YES;
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 +				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 +				MTL_FAST_MATH = YES;
@@ -3307,7 +3313,7 @@ index 00000000000..f8835a3bc58
 +				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 +				GCC_WARN_UNUSED_FUNCTION = YES;
 +				GCC_WARN_UNUSED_VARIABLE = YES;
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 +				MTL_ENABLE_DEBUG_INFO = NO;
 +				MTL_FAST_MATH = YES;
@@ -3333,7 +3339,7 @@ index 00000000000..f8835a3bc58
 +				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 +				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 +				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				LD_RUNPATH_SEARCH_PATHS = (
 +					"$(inherited)",
 +					"@executable_path/Frameworks",
@@ -3364,7 +3370,7 @@ index 00000000000..f8835a3bc58
 +				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 +				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 +				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				LD_RUNPATH_SEARCH_PATHS = (
 +					"$(inherited)",
 +					"@executable_path/Frameworks",
@@ -3387,7 +3393,7 @@ index 00000000000..f8835a3bc58
 +				DEVELOPMENT_TEAM = 3HEZE76D99;
 +				GENERATE_INFOPLIST_FILE = YES;
 +				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				MARKETING_VERSION = 1.0;
 +				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbedTests;
 +				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3407,7 +3413,7 @@ index 00000000000..f8835a3bc58
 +				DEVELOPMENT_TEAM = 3HEZE76D99;
 +				GENERATE_INFOPLIST_FILE = YES;
 +				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
-+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 +				MARKETING_VERSION = 1.0;
 +				PRODUCT_BUNDLE_IDENTIFIER = org.python.iOSTestbedTests;
 +				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3625,16 +3631,17 @@ index 00000000000..f695b3b5efc
 +@end
 diff --git a/Apple/testbed/iOSTestbed/AppDelegate.m b/Apple/testbed/iOSTestbed/AppDelegate.m
 new file mode 100644
-index 00000000000..e5085399d0c
+index 00000000000..fbe71bae23b
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/AppDelegate.m
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,24 @@
 +//
 +//  AppDelegate.m
 +//  iOSTestbed
 +//
 +
 +#import "AppDelegate.h"
++#import "SceneDelegate.h"
 +
 +@interface AppDelegate ()
 +
@@ -3642,9 +3649,13 @@ index 00000000000..e5085399d0c
 +
 +@implementation AppDelegate
 +
++- (UISceneConfiguration *)application:(UIApplication *)application configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession options:(UISceneConnectionOptions *)options {
++    UISceneConfiguration *configuration = [[UISceneConfiguration alloc] initWithName:@"Default Configuration" sessionRole:connectingSceneSession.role];
++    configuration.delegateClass = [SceneDelegate class];
++    return configuration;
++}
 +
-+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-+    return YES;
++- (void)application:(UIApplication *)application didDiscardSceneSessions:(NSSet<UISceneSession *> *)sceneSessions {
 +}
 +
 +@end
@@ -3711,6 +3722,51 @@ index 00000000000..5daafe73a86
 +    </dependencies>
 +    <scenes/>
 +</document>
+diff --git a/Apple/testbed/iOSTestbed/SceneDelegate.h b/Apple/testbed/iOSTestbed/SceneDelegate.h
+new file mode 100644
+index 00000000000..264aacadca1
+--- /dev/null
++++ b/Apple/testbed/iOSTestbed/SceneDelegate.h
+@@ -0,0 +1,12 @@
++//
++//  SceneDelegate.h
++//  iOSTestbed
++//
++
++#import <UIKit/UIKit.h>
++
++@interface SceneDelegate : UIResponder <UIWindowSceneDelegate>
++
++@property (strong, nonatomic) UIWindow *window;
++
++@end
+diff --git a/Apple/testbed/iOSTestbed/SceneDelegate.m b/Apple/testbed/iOSTestbed/SceneDelegate.m
+new file mode 100644
+index 00000000000..e82e447985d
+--- /dev/null
++++ b/Apple/testbed/iOSTestbed/SceneDelegate.m
+@@ -0,0 +1,21 @@
++//
++//  SceneDelegate.m
++//  iOSTestbed
++//
++
++#import "SceneDelegate.h"
++
++@interface SceneDelegate ()
++
++@end
++
++@implementation SceneDelegate
++
++- (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
++    UIWindowScene *windowScene = (UIWindowScene *)scene;
++    self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
++    self.window.rootViewController = [[UIViewController alloc] init];
++    [self.window makeKeyAndVisible];
++}
++
++@end
 diff --git a/Apple/testbed/iOSTestbed/app/README b/Apple/testbed/iOSTestbed/app/README
 new file mode 100644
 index 00000000000..46c0e8e2a29
@@ -3739,10 +3795,10 @@ index 00000000000..02c2beccfbd
 +When the test suite runs, this folder will be on the PYTHONPATH.
 diff --git a/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist b/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist
 new file mode 100644
-index 00000000000..fea45e1fad6
+index 00000000000..3a560656972
 --- /dev/null
 +++ b/Apple/testbed/iOSTestbed/iOSTestbed-Info.plist
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,62 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
@@ -3791,7 +3847,17 @@ index 00000000000..fea45e1fad6
 +		<key>UIApplicationSupportsMultipleScenes</key>
 +		<false/>
 +		<key>UISceneConfigurations</key>
-+		<dict/>
++		<dict>
++			<key>UIWindowSceneSessionRoleApplication</key>
++			<array>
++				<dict>
++					<key>UISceneConfigurationName</key>
++					<string>Default Configuration</string>
++					<key>UISceneDelegateClassName</key>
++					<string>SceneDelegate</string>
++				</dict>
++			</array>
++		</dict>
 +	</dict>
 +</dict>
 +</plist>
@@ -7304,7 +7370,7 @@ index 1ee8ffc1b7a..9ab3b337ede 100644
  # Check for the presence of docstrings.
  
 diff --git a/Lib/test/support/os_helper.py b/Lib/test/support/os_helper.py
-index de7ca79dc81..e7058ba5233 100644
+index 9eb0af1d285..645fbbefbb9 100644
 --- a/Lib/test/support/os_helper.py
 +++ b/Lib/test/support/os_helper.py
 @@ -22,8 +22,8 @@
@@ -7329,7 +7395,7 @@ index de7ca79dc81..e7058ba5233 100644
      try:
          # ascii and utf-8 cannot encode the byte 0xff
          b'\xff'.decode(sys.getfilesystemencoding())
-@@ -615,7 +615,8 @@
+@@ -633,7 +633,8 @@
      if hasattr(os, 'sysconf'):
          try:
              MAXFD = os.sysconf("SC_OPEN_MAX")
@@ -9009,44 +9075,6 @@ index 9d3856a226d..76999792a11 100644
      @unittest.skipIf(is_emscripten or is_wasi, "not supported on Emscripten/WASI")
      @unittest.skipUnless(TESTFN_UNDECODABLE, "only works if there are undecodable paths")
      def test_open_undecodable_uri(self):
-diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index b13e37d0cd1..29f7d640f28 100644
---- a/Lib/test/test_ssl.py
-+++ b/Lib/test/test_ssl.py
-@@ -4864,15 +4864,27 @@
-             return  # Expect the full test setup to always work on Linux.
-         if (isinstance(err, ConnectionResetError) or
-             (isinstance(err, OSError) and err.errno == errno.EINVAL) or
--            re.search('wrong.version.number', str(getattr(err, "reason", "")), re.I)):
-+            re.search(
-+                # Matches the following error messages:
-+                # '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1123)'
-+                # '[SSL: RECORD_LAYER_FAILURE] record layer failure (_ssl.c:1109)'
-+                # '[SSL: HTTP_REQUEST] http request (_ssl.c:1143)'
-+                r'wrong.version.number|record.layer.failure|http.request',
-+                str(getattr(err, "reason", "")),
-+                re.IGNORECASE,
-+            )
-+        ):
-             # On Windows the TCP RST leads to a ConnectionResetError
-             # (ECONNRESET) which Linux doesn't appear to surface to userspace.
-             # If wrap_socket() winds up on the "if connected:" path and doing
--            # the actual wrapping... we get an SSLError from OpenSSL. Typically
--            # WRONG_VERSION_NUMBER. While appropriate, neither is the scenario
--            # we're specifically trying to test. The way this test is written
--            # is known to work on Linux. We'll skip it anywhere else that it
--            # does not present as doing so.
-+            # the actual wrapping... we get an SSLError from OpenSSL. This is
-+            # typically WRONG_VERSION_NUMBER. The same happens on iOS, but
-+            # RECORD_LAYER_FAILURE or HTTP_REQUEST is the error.
-+            #
-+            # While appropriate, these scenarios aren't what we're specifically
-+            # trying to test. The way this test is written is known to work on
-+            # Linux. We'll skip it anywhere else that it does not present as
-+            # doing so.
-             try:
-                 self.skipTest(f"Could not recreate conditions on {sys.platform}:"
-                               f" {err=}")
 diff --git a/Lib/test/test_stat.py b/Lib/test/test_stat.py
 index c77fec3d39d..ca55d429aec 100644
 --- a/Lib/test/test_stat.py
@@ -9175,7 +9203,7 @@ index 47619c8807b..25c16e3a0b7 100644
          sf0 = set(self.files)
          with warnings.catch_warnings():
 diff --git a/Lib/test/test_urllib2.py b/Lib/test/test_urllib2.py
-index 50d06edd93b..146bb67ce0a 100644
+index c62f1825d1f..5ace1c7cea5 100644
 --- a/Lib/test/test_urllib2.py
 +++ b/Lib/test/test_urllib2.py
 @@ -1,6 +1,7 @@
@@ -9186,7 +9214,7 @@ index 50d06edd93b..146bb67ce0a 100644
  from test.support import warnings_helper
  from test import test_urllib
  from unittest import mock
-@@ -996,6 +997,7 @@
+@@ -1040,6 +1041,7 @@
  
          file_obj.close()
  
@@ -9468,7 +9496,7 @@ index 00000000000..f4b7decc01c
 + uses_params = ['', 'ftp', 'hdl', 'prospero', 'http', 'imap',
 +                'https', 'shttp', 'rtsp', 'rtsps', 'rtspu', 'sip',
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 823633cbc72..1daffcf7a30 100644
+index 3342296baa0..d5485bdf93d 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -178,18 +178,29 @@
@@ -9502,7 +9530,7 @@ index 823633cbc72..1daffcf7a30 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -617,7 +628,7 @@
+@@ -618,7 +629,7 @@
  .PHONY: all
  
  .PHONY: build_all
@@ -9511,7 +9539,7 @@ index 823633cbc72..1daffcf7a30 100644
  		gdbhooks Programs/_testembed scripts checksharedmods rundsymutil
  
  .PHONY: build_wasm
-@@ -640,6 +651,16 @@
+@@ -641,6 +652,16 @@
  		exit 1; \
  	fi
  
@@ -9528,7 +9556,7 @@ index 823633cbc72..1daffcf7a30 100644
  # Profile generation build must start from a clean tree.
  profile-clean-stamp:
  	$(MAKE) clean
-@@ -829,7 +850,7 @@
+@@ -830,7 +851,7 @@
  	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
  
  libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
@@ -9537,7 +9565,7 @@ index 823633cbc72..1daffcf7a30 100644
  
  
  libpython$(VERSION).sl: $(LIBRARY_OBJS)
-@@ -854,14 +875,13 @@
+@@ -855,14 +876,13 @@
  # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
  # minimal framework (not including the Lib directory and such) in the current
  # directory.
@@ -9554,7 +9582,7 @@ index 823633cbc72..1daffcf7a30 100644
  		-compatibility_version $(VERSION) \
  		-current_version $(VERSION) \
  		-framework CoreFoundation $(LIBS);
-@@ -873,6 +893,21 @@
+@@ -874,6 +894,21 @@
  	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
  	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
  
@@ -9576,7 +9604,7 @@ index 823633cbc72..1daffcf7a30 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1862,6 +1897,36 @@
+@@ -1863,6 +1898,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -9613,7 +9641,7 @@ index 823633cbc72..1daffcf7a30 100644
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  .PHONY: buildbottest
-@@ -1905,7 +1970,7 @@
+@@ -1906,7 +1971,7 @@
  # which can lead to two parallel `./python setup.py build` processes that
  # step on each others toes.
  .PHONY: install
@@ -9622,7 +9650,7 @@ index 823633cbc72..1daffcf7a30 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -2341,6 +2406,14 @@
+@@ -2342,6 +2407,14 @@
  	$(INSTALL_DATA) `cat pybuilddir.txt`/_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH).py \
  		$(DESTDIR)$(LIBDEST); \
  	$(INSTALL_DATA) $(srcdir)/LICENSE $(DESTDIR)$(LIBDEST)/LICENSE.txt
@@ -9637,7 +9665,7 @@ index 823633cbc72..1daffcf7a30 100644
  	@ # Build PYC files for the 3 optimization levels (0, 1, 2)
  	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
-@@ -2517,10 +2590,11 @@
+@@ -2518,10 +2591,11 @@
  # only have to cater for the structural bits of the framework.
  
  .PHONY: frameworkinstallframework
@@ -9652,7 +9680,7 @@ index 823633cbc72..1daffcf7a30 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -2541,6 +2615,30 @@
+@@ -2542,6 +2616,30 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -9683,7 +9711,7 @@ index 823633cbc72..1daffcf7a30 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -2581,6 +2679,19 @@
+@@ -2582,6 +2680,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -9703,7 +9731,7 @@ index 823633cbc72..1daffcf7a30 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= ./config.status
-@@ -2691,6 +2802,10 @@
+@@ -2692,6 +2803,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -9714,7 +9742,7 @@ index 823633cbc72..1daffcf7a30 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -2716,6 +2831,8 @@
+@@ -2717,6 +2832,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -10463,7 +10491,7 @@ index d74fb6deac9..1bb6a05dc11 100755
  
  # Local variables:
 diff --git a/configure b/configure
-index 89edc42f45c..9882e3b4927 100755
+index 20a58907149..ab045f31d2a 100755
 --- a/configure
 +++ b/configure
 @@ -976,10 +976,14 @@
@@ -12011,7 +12039,7 @@ index 89edc42f45c..9882e3b4927 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index 1a02d19f1b2..921a58aff7e 100644
+index 4cbd0ae16a5..683cf2f1dea 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -307,6 +307,161 @@
