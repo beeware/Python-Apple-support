@@ -148,9 +148,7 @@ jobs:
         platform: ["macOS", "iOS"]
         include:
           - briefcase-run-args:
-
           - platform: iOS
-            briefcase-run-args: ' -d "iPhone 17e::iOS 26.5"'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -201,12 +199,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["iOS", "tvOS", "visionOS"]
-        include:
-          - platform: "iOS"
-            testbed-args: '--simulator "iPhone 17e,arch=arm64,OS=26.5"'
-          - platform: "visionOS"
-            testbed-args: '--simulator "Apple Vision Pro,arch=arm64,OS=26.5"'
+        platform: ["iOS", "tvOS", "watchOS", "visionOS"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
