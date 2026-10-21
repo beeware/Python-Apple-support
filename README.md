@@ -36,7 +36,7 @@ The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV devic
 - tvOS 12.0 or later, on:
   - Apple TV (4th gen or later)
 
-- watchOS 4.0 or later, on:
+- watchOS 9.0 or later, on:
   - Apple Watch (4th gen or later)
 
 - visionOS 2.0 or later, on:
