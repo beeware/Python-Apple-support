@@ -2,12 +2,13 @@
 
 This is a meta-package for building a version of Python that can be embedded into a macOS, iOS, tvOS, watchOS, or visionOS project.
 
-**This branch builds a packaged version of Python 3.15**. Other Python versions are available by cloning other branches of the main repository:
+**This branch builds a packaged version of Python 3.16**. Other Python versions are available by cloning other branches of the main repository:
 
 - [Python 3.11](https://github.com/beeware/Python-Apple-support/tree/3.11)
 - [Python 3.12](https://github.com/beeware/Python-Apple-support/tree/3.12)
 - [Python 3.13](https://github.com/beeware/Python-Apple-support/tree/3.13)
-- [Python 3.14](https://github.com/beeware/Python-Apple-support/tree/3.13)
+- [Python 3.14](https://github.com/beeware/Python-Apple-support/tree/3.14)
+- [Python 3.15](https://github.com/beeware/Python-Apple-support/tree/3.15)
 
 It works by downloading, patching, and building a fat binary of Python and selected pre-requisites, and packaging them as frameworks that can be incorporated into an Xcode project. The binary modules in the Python standard library are distributed as binaries that can be dynamically loaded at runtime.
 
@@ -35,7 +36,7 @@ The binaries support x86_64 and arm64 for macOS; arm64 for iOS and appleTV devic
 - tvOS 12.0 or later, on:
   - Apple TV (4th gen or later)
 
-- watchOS 4.0 or later, on:
+- watchOS 9.0 or later, on:
   - Apple Watch (4th gen or later)
 
 - visionOS 2.0 or later, on:
