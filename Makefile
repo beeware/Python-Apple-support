@@ -709,7 +709,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Disable dSYM production (for now)
 	# $$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/Python.dSYM $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(filter $(os),iOS tvOS visionOS),$(os))
+ifeq ($(filter $(os),iOS tvOS visionOS watchOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
 	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
