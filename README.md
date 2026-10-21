@@ -8,6 +8,7 @@ This is a meta-package for building a version of Python that can be embedded int
 - [Python 3.12](https://github.com/beeware/Python-Apple-support/tree/3.12)
 - [Python 3.14](https://github.com/beeware/Python-Apple-support/tree/3.14)
 - [Python 3.15](https://github.com/beeware/Python-Apple-support/tree/3.15)
+- [Python 3.16](https://github.com/beeware/Python-Apple-support/tree/3.16)
 
 It works by downloading, patching, and building a fat binary of Python and selected pre-requisites, and packaging them as frameworks that can be incorporated into an Xcode project. The binary modules in the Python standard library are distributed as binaries that can be dynamically loaded at runtime.
 
