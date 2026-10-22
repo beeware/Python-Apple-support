@@ -140,11 +140,6 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["macOS", "iOS"]
-        include:
-          - briefcase-run-args:
-
-          - platform: iOS
-            briefcase-run-args: ' -d "iPhone 17e::iOS 26.5"'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -186,7 +181,7 @@ jobs:
           PYTHON_VER: ${{ needs.config.outputs.PYTHON_VER }}
           BUILD_NUMBER: ${{ needs.config.outputs.BUILD_NUMBER }}
         run: |
-          briefcase run ${{ matrix.platform }} Xcode --test ${{ matrix.briefcase-run-args }} -C support_package=\'../dist/Python-${PYTHON_VER}-${{ matrix.platform }}-support.${BUILD_NUMBER}.tar.gz\'
+          briefcase run ${{ matrix.platform }} Xcode --test -C support_package=\'../dist/Python-${PYTHON_VER}-${{ matrix.platform }}-support.${BUILD_NUMBER}.tar.gz\'
 
   cpython-testbed:
     name: CPython testbed (${{ matrix.platform }})
@@ -195,10 +190,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["iOS", "tvOS"]
-        include:
-          - platform: "iOS"
-            testbed-args: '--simulator "iPhone 17e,arch=arm64,OS=26.5"'
+        platform: ["iOS", "tvOS", "watchOS"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
