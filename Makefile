@@ -19,7 +19,7 @@ BUILD_NUMBER=custom
 # of a release cycle, as official binaries won't be published.
 # PYTHON_MICRO_VERSION is the full version number, without any alpha/beta/rc suffix. (e.g., 3.10.0)
 # PYTHON_VER is the major/minor version (e.g., 3.10)
-PYTHON_VERSION=3.15.0
+PYTHON_VERSION=3.15.1
 PYTHON_PKG_VERSION=$(PYTHON_VERSION)
 PYTHON_MICRO_VERSION=$(shell echo $(PYTHON_VERSION) | grep -Eo "\d+\.\d+\.\d+")
 PYTHON_PKG_MICRO_VERSION=$(shell echo $(PYTHON_PKG_VERSION) | grep -Eo "\d+\.\d+\.\d+")
@@ -709,7 +709,7 @@ $$(PYTHON_XCFRAMEWORK-$(os))/Info.plist: \
 	# Disable dSYM production (for now)
 	# $$(foreach sdk,$$(SDKS-$(os)),cp -r $$(PYTHON_INSTALL-$$(sdk))/Python.dSYM $$(PYTHON_XCFRAMEWORK-$(os))/$$(SDK_SLICE-$$(sdk)); )
 
-ifeq ($(filter $(os),iOS tvOS visionOS),$(os))
+ifeq ($(filter $(os),iOS tvOS visionOS watchOS),$(os))
 	@echo ">>> Clone testbed project for $(os)"
 	$(HOST_PYTHON) $$(PYTHON_SRCDIR-$$(firstword $$(SDK_TARGETS-$$(firstword $$(SDKS-$(os))))))/Platforms/Apple/testbed clone --platform $(os) --framework $$(PYTHON_XCFRAMEWORK-$(os)) support/$(PYTHON_VER)/$(os)/testbed
 endif
