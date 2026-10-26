@@ -647,18 +647,18 @@ index e6b6271763d..5f378af91e1 100644
  COMMAND_TIMEOUT = 60.0
  
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index abc525b80e0..7c414caa27c 100644
+index 4a20b55448c..22e62785747 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -66,6 +66,7 @@
-     "force_not_colorized_test_class",
+@@ -67,6 +67,7 @@
      "make_clean_env",
      "BrokenIter",
+     "requires_root_user", "requires_non_root_user",
 +    "on_github_actions"
      ]
  
  
-@@ -594,7 +595,7 @@
+@@ -595,7 +596,7 @@
  
  is_android = sys.platform == "android"
  
@@ -667,7 +667,7 @@ index abc525b80e0..7c414caa27c 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -604,7 +605,7 @@
+@@ -605,7 +606,7 @@
  is_emscripten = sys.platform == "emscripten"
  is_wasi = sys.platform == "wasi"
  
@@ -676,7 +676,7 @@ index abc525b80e0..7c414caa27c 100644
  is_apple = is_apple_mobile or sys.platform == "darwin"
  
  has_fork_support = hasattr(os, "fork") and not (
-@@ -1348,6 +1349,8 @@
+@@ -1349,6 +1350,8 @@
          _opcode.ENABLE_SPECIALIZATION, "requires specialization")(test)
  
  
@@ -802,7 +802,7 @@ index 700eb462b68..aa44961da7f 100755
  /Library/Frameworks/Python.framework/Versions/@PYVER@/bin/python@PYVER@ << "EOF"
  
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 8fdbbd83b4b..7e98a9bd23e 100644
+index 414b466cf60..ccae3a9c81b 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -202,6 +202,12 @@
@@ -818,7 +818,7 @@ index 8fdbbd83b4b..7e98a9bd23e 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -2094,7 +2100,7 @@
+@@ -2098,7 +2104,7 @@
  	fi
  
  	# Clone the testbed project into the XCFOLDER
@@ -827,7 +827,7 @@ index 8fdbbd83b4b..7e98a9bd23e 100644
  
  	# Run the testbed project
  	$(PYTHON_FOR_BUILD) "$(XCFOLDER)" run --verbose -- test -uall --single-process --rerun -W
-@@ -2798,6 +2804,9 @@
+@@ -2802,6 +2808,9 @@
  	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)
  	sed 's/%VERSION%/'"`$(RUNSHARED) $(PYTHON_FOR_BUILD) -c 'import platform; print(platform.python_version())'`"'/g' < $(RESSRCDIR)/Info.plist > $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Info.plist
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
@@ -837,7 +837,7 @@ index 8fdbbd83b4b..7e98a9bd23e 100644
  	$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(BINDIR)
  	for file in $(srcdir)/$(RESSRCDIR)/bin/* ; do \
  		$(INSTALL) -m $(EXEMODE) $$file $(DESTDIR)$(BINDIR); \
-@@ -2982,10 +2991,10 @@
+@@ -2986,10 +2995,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -852,7 +852,7 @@ index 8fdbbd83b4b..7e98a9bd23e 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -3019,7 +3028,7 @@
+@@ -3023,7 +3032,7 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -2807,10 +2807,10 @@ index 00000000000..176ccabf04b
 +    main()
 diff --git a/Platforms/Apple/iOS/README.md b/Platforms/Apple/iOS/README.md
 new file mode 100644
-index 00000000000..faeeead1df0
+index 00000000000..71990a7aa0d
 --- /dev/null
 +++ b/Platforms/Apple/iOS/README.md
-@@ -0,0 +1,339 @@
+@@ -0,0 +1,350 @@
 +# Python on iOS README
 +
 +**iOS support is [tier 3](https://peps.python.org/pep-0011/#tier-3).**
@@ -3036,6 +3036,17 @@ index 00000000000..faeeead1df0
 +Once you have a built an XCframework, you can test that framework by running:
 +
 +  $ python Platforms/Apple test iOS
++
++This test will attempt to find an "SE-class" simulator (i.e., an iPhone SE, or
++iPhone 16e, or similar), and run the test suite on the most recent version of
++iOS that is available. You can specify a simulator using the `--simulator`
++command line argument, providing the name of the simulator (e.g., `--simulator
++'iPhone 16 Pro'`). You can also use this argument to control the OS version used
++for testing; `--simulator 'iPhone 16 Pro,OS=18.2'` would attempt to run the
++tests on an iPhone 16 Pro running iOS 18.2.
++
++If the test runner is executed on GitHub Actions, the `GITHUB_ACTIONS`
++environment variable will be exposed to the iOS process at runtime.
 +
 +This test will attempt to find an "SE-class" simulator (i.e., an iPhone SE, or
 +iPhone 16e, or similar), and run the test suite on the most recent version of
@@ -5531,10 +5542,10 @@ index 00000000000..e32bd78c9b4
 +}
 diff --git a/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..5ddfba882f4
+index 00000000000..85e7047dfb7
 --- /dev/null
 +++ b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,505 @@
+@@ -0,0 +1,506 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -5774,6 +5785,7 @@ index 00000000000..5ddfba882f4
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
 +			shellScript = "set -e\n\nsource $PROJECT_DIR/Python.xcframework/build/utils.sh\n\ninstall_python Python.xcframework app app_packages\n";
++			showEnvVarsInLog = 0;
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
