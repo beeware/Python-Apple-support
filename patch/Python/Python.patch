@@ -948,7 +948,7 @@ index 734b6321e5a..b709e511afa 100644
  
     url = 'https://docs.python.org/'
 diff --git a/Doc/tools/extensions/pyspecific.py b/Doc/tools/extensions/pyspecific.py
-index c71ad641d7c..638bee626ae 100644
+index 80982d56651..024a44f0e12 100644
 --- a/Doc/tools/extensions/pyspecific.py
 +++ b/Doc/tools/extensions/pyspecific.py
 @@ -139,7 +139,7 @@
@@ -4295,7 +4295,7 @@ index 00000000000..2ccb22b9482
 @@ -0,0 +1 @@
 +# No compliance patching required.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index acecc68e7f6..954e464ee7f 100644
+index 88a6ea80d6c..a9ad677008b 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -175,18 +175,29 @@
@@ -4338,7 +4338,7 @@ index acecc68e7f6..954e464ee7f 100644
  
  ##########################################################################
  # Parser
-@@ -589,7 +602,7 @@
+@@ -590,7 +603,7 @@
  
  # Default target
  all:		@DEF_MAKE_ALL_RULE@
@@ -4347,7 +4347,7 @@ index acecc68e7f6..954e464ee7f 100644
  		gdbhooks Programs/_testembed python-config
  build_wasm: check-clean-src $(BUILDPYTHON) platform oldsharedmods python-config
  
-@@ -608,6 +621,16 @@
+@@ -609,6 +622,16 @@
  		exit 1; \
  	fi
  
@@ -4364,7 +4364,7 @@ index acecc68e7f6..954e464ee7f 100644
  # Profile generation build must start from a clean tree.
  profile-clean-stamp:
  	$(MAKE) clean
-@@ -769,7 +792,7 @@
+@@ -770,7 +793,7 @@
  	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
  
  libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
@@ -4373,7 +4373,7 @@ index acecc68e7f6..954e464ee7f 100644
  
  
  libpython$(VERSION).sl: $(LIBRARY_OBJS)
-@@ -793,14 +816,13 @@
+@@ -794,14 +817,13 @@
  # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
  # minimal framework (not including the Lib directory and such) in the current
  # directory.
@@ -4390,7 +4390,7 @@ index acecc68e7f6..954e464ee7f 100644
  		-compatibility_version $(VERSION) \
  		-current_version $(VERSION) \
  		-framework CoreFoundation $(LIBS);
-@@ -812,6 +834,21 @@
+@@ -813,6 +835,21 @@
  	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
  	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
  
@@ -4412,7 +4412,7 @@ index acecc68e7f6..954e464ee7f 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1717,6 +1754,36 @@
+@@ -1721,6 +1758,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -4449,7 +4449,7 @@ index acecc68e7f6..954e464ee7f 100644
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  buildbottest: all
-@@ -1753,7 +1820,7 @@
+@@ -1757,7 +1824,7 @@
  # prevent race conditions with PGO builds. PGO builds use recursive make,
  # which can lead to two parallel `./python setup.py build` processes that
  # step on each others toes.
@@ -4458,7 +4458,7 @@ index acecc68e7f6..954e464ee7f 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -2150,7 +2217,16 @@
+@@ -2154,7 +2221,16 @@
  		$(INSTALL_DATA) $(srcdir)/Modules/xxmodule.c \
  			$(DESTDIR)$(LIBDEST)/distutils/tests ; \
  	fi
@@ -4476,7 +4476,7 @@ index acecc68e7f6..954e464ee7f 100644
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
  		-j0 -d $(LIBDEST) -f \
  		-x 'bad_coding|badsyntax|site-packages|lib2to3/tests/data' \
-@@ -2297,12 +2373,16 @@
+@@ -2301,12 +2377,16 @@
  
  # Install the dynamically loadable modules
  # This goes into $(exec_prefix)
@@ -4494,7 +4494,7 @@ index acecc68e7f6..954e464ee7f 100644
  	-rm $(DESTDIR)$(DESTSHARED)/_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH).py
  	-rm -r $(DESTDIR)$(DESTSHARED)/__pycache__
  
-@@ -2322,9 +2402,11 @@
+@@ -2326,9 +2406,11 @@
  # automatically set prefix to the location deep down in the framework, so we
  # only have to cater for the structural bits of the framework.
  
@@ -4508,7 +4508,7 @@ index acecc68e7f6..954e464ee7f 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -2345,6 +2427,30 @@
+@@ -2349,6 +2431,30 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -4539,7 +4539,7 @@ index acecc68e7f6..954e464ee7f 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -2379,6 +2485,19 @@
+@@ -2383,6 +2489,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -4559,7 +4559,7 @@ index acecc68e7f6..954e464ee7f 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= $(SHELL) config.status
-@@ -2483,6 +2602,10 @@
+@@ -2487,6 +2606,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -4570,7 +4570,7 @@ index acecc68e7f6..954e464ee7f 100644
  
  profile-removal:
  	find . -name '*.gc??' -exec rm -f {} ';'
-@@ -2504,6 +2627,8 @@
+@@ -2508,6 +2631,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -4579,7 +4579,7 @@ index acecc68e7f6..954e464ee7f 100644
  	-rm -f python-config.py python-config
  
  # Make things extra clean, before making a distribution:
-@@ -2584,7 +2709,7 @@
+@@ -2588,7 +2713,7 @@
  .PHONY: all build_all build_wasm sharedmods check-clean-src oldsharedmods test quicktest
  .PHONY: install altinstall oldsharedinstall bininstall altbininstall
  .PHONY: maninstall libinstall inclinstall libainstall sharedinstall
