@@ -2088,7 +2088,7 @@ index 5361475a14f..4a1f280566c 100644
          "LDFLAGS",
          "LDSHARED",
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 1ee8ffc1b7a..c6aab6f728b 100644
+index fb36d2adb4d..d83d147802e 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
 @@ -59,6 +59,7 @@
@@ -3637,10 +3637,10 @@ index 31757205ca3..6b88b121580 100644
                  self.skipTest("Invalid argument error calling poll()")
              raise
 diff --git a/Lib/test/test_shutil.py b/Lib/test/test_shutil.py
-index b7be547de41..e3a3bbcd422 100644
+index fcfffe490b1..da30f4324a8 100644
 --- a/Lib/test/test_shutil.py
 +++ b/Lib/test/test_shutil.py
-@@ -2286,6 +2286,7 @@
+@@ -2317,6 +2317,7 @@
              check_chown(dirname, uid, gid)
  
  
@@ -3648,7 +3648,7 @@ index b7be547de41..e3a3bbcd422 100644
  class TestWhich(BaseTest, unittest.TestCase):
  
      def setUp(self):
-@@ -3381,6 +3382,7 @@
+@@ -3412,6 +3413,7 @@
          self.assertGreaterEqual(size.lines, 0)
  
      @unittest.skipUnless(os.isatty(sys.__stdout__.fileno()), "not on tty")
@@ -4248,7 +4248,7 @@ index 00000000000..f4b7decc01c
 + uses_params = ['', 'ftp', 'hdl', 'prospero', 'http', 'imap',
 +                'https', 'shttp', 'rtsp', 'rtsps', 'rtspu', 'sip',
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 3342296baa0..0eb390da8c8 100644
+index 3e9b5cbb7a4..dc5c4400b99 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
 @@ -178,18 +178,29 @@
@@ -4282,7 +4282,7 @@ index 3342296baa0..0eb390da8c8 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
-@@ -618,7 +629,7 @@
+@@ -619,7 +630,7 @@
  .PHONY: all
  
  .PHONY: build_all
@@ -4291,7 +4291,7 @@ index 3342296baa0..0eb390da8c8 100644
  		gdbhooks Programs/_testembed scripts checksharedmods rundsymutil
  
  .PHONY: build_wasm
-@@ -641,6 +652,16 @@
+@@ -642,6 +653,16 @@
  		exit 1; \
  	fi
  
@@ -4308,7 +4308,7 @@ index 3342296baa0..0eb390da8c8 100644
  # Profile generation build must start from a clean tree.
  profile-clean-stamp:
  	$(MAKE) clean
-@@ -830,7 +851,7 @@
+@@ -831,7 +852,7 @@
  	$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^
  
  libpython$(LDVERSION).dylib: $(LIBRARY_OBJS)
@@ -4317,7 +4317,7 @@ index 3342296baa0..0eb390da8c8 100644
  
  
  libpython$(VERSION).sl: $(LIBRARY_OBJS)
-@@ -855,14 +876,13 @@
+@@ -856,14 +877,13 @@
  # This rule is here for OPENSTEP/Rhapsody/MacOSX. It builds a temporary
  # minimal framework (not including the Lib directory and such) in the current
  # directory.
@@ -4334,7 +4334,7 @@ index 3342296baa0..0eb390da8c8 100644
  		-compatibility_version $(VERSION) \
  		-current_version $(VERSION) \
  		-framework CoreFoundation $(LIBS);
-@@ -874,6 +894,21 @@
+@@ -875,6 +895,21 @@
  	$(LN) -fsn Versions/Current/$(PYTHONFRAMEWORK) $(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)
  	$(LN) -fsn Versions/Current/Resources $(PYTHONFRAMEWORKDIR)/Resources
  
@@ -4356,7 +4356,7 @@ index 3342296baa0..0eb390da8c8 100644
  # This rule builds the Cygwin Python DLL and import library if configured
  # for a shared core library; otherwise, this rule is a noop.
  $(DLLLIBRARY) libpython$(LDVERSION).dll.a: $(LIBRARY_OBJS)
-@@ -1863,6 +1898,36 @@
+@@ -1867,6 +1902,36 @@
  		$(RUNSHARED) /usr/libexec/oah/translate \
  			./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
  
@@ -4393,7 +4393,7 @@ index 3342296baa0..0eb390da8c8 100644
  # Like testall, but with only one pass and without multiple processes.
  # Run an optional script to include information about the build environment.
  .PHONY: buildbottest
-@@ -1906,7 +1971,7 @@
+@@ -1910,7 +1975,7 @@
  # which can lead to two parallel `./python setup.py build` processes that
  # step on each others toes.
  .PHONY: install
@@ -4402,7 +4402,7 @@ index 3342296baa0..0eb390da8c8 100644
  	if test "x$(ENSUREPIP)" != "xno"  ; then \
  		case $(ENSUREPIP) in \
  			upgrade) ensurepip="--upgrade" ;; \
-@@ -2342,6 +2407,14 @@
+@@ -2346,6 +2411,14 @@
  	$(INSTALL_DATA) `cat pybuilddir.txt`/_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH).py \
  		$(DESTDIR)$(LIBDEST); \
  	$(INSTALL_DATA) $(srcdir)/LICENSE $(DESTDIR)$(LIBDEST)/LICENSE.txt
@@ -4417,7 +4417,7 @@ index 3342296baa0..0eb390da8c8 100644
  	@ # Build PYC files for the 3 optimization levels (0, 1, 2)
  	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
  		$(PYTHON_FOR_BUILD) -Wi $(DESTDIR)$(LIBDEST)/compileall.py \
-@@ -2518,10 +2591,11 @@
+@@ -2522,10 +2595,11 @@
  # only have to cater for the structural bits of the framework.
  
  .PHONY: frameworkinstallframework
@@ -4432,7 +4432,7 @@ index 3342296baa0..0eb390da8c8 100644
  	@if test "$(PYTHONFRAMEWORKDIR)" = no-framework; then \
  		echo Not configured with --enable-framework; \
  		exit 1; \
-@@ -2542,6 +2616,30 @@
+@@ -2546,6 +2620,30 @@
  	$(LN) -fsn Versions/Current/Resources $(DESTDIR)$(PYTHONFRAMEWORKINSTALLDIR)/Resources
  	$(INSTALL_SHARED) $(LDLIBRARY) $(DESTDIR)$(PYTHONFRAMEWORKPREFIX)/$(LDLIBRARY)
  
@@ -4463,7 +4463,7 @@ index 3342296baa0..0eb390da8c8 100644
  # This installs Mac/Lib into the framework
  # Install a number of symlinks to keep software that expects a normal unix
  # install (which includes python-config) happy.
-@@ -2582,6 +2680,19 @@
+@@ -2586,6 +2684,19 @@
  frameworkinstallextras:
  	cd Mac && $(MAKE) installextras DESTDIR="$(DESTDIR)"
  
@@ -4483,7 +4483,7 @@ index 3342296baa0..0eb390da8c8 100644
  # Build the toplevel Makefile
  Makefile.pre: $(srcdir)/Makefile.pre.in config.status
  	CONFIG_FILES=Makefile.pre CONFIG_HEADERS= ./config.status
-@@ -2692,6 +2803,10 @@
+@@ -2696,6 +2807,10 @@
  	-find build -type f -a ! -name '*.gc??' -exec rm -f {} ';'
  	-rm -f Include/pydtrace_probes.h
  	-rm -f profile-gen-stamp
@@ -4494,7 +4494,7 @@ index 3342296baa0..0eb390da8c8 100644
  
  .PHONY: profile-removal
  profile-removal:
-@@ -2717,6 +2832,8 @@
+@@ -2721,6 +2836,8 @@
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)
@@ -8367,10 +8367,10 @@ index 00000000000..e32bd78c9b4
 +}
 diff --git a/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..5ddfba882f4
+index 00000000000..85e7047dfb7
 --- /dev/null
 +++ b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,505 @@
+@@ -0,0 +1,506 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -8610,6 +8610,7 @@ index 00000000000..5ddfba882f4
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
 +			shellScript = "set -e\n\nsource $PROJECT_DIR/Python.xcframework/build/utils.sh\n\ninstall_python Python.xcframework app app_packages\n";
++			showEnvVarsInLog = 0;
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
