@@ -1,8 +1,173 @@
+diff --git a/Doc/library/ctypes.rst b/Doc/library/ctypes.rst
+index 5f305475b5e..b353b5b6b6f 100644
+--- a/Doc/library/ctypes.rst
++++ b/Doc/library/ctypes.rst
+@@ -1322,6 +1322,31 @@
+    :class:`threading.local` will *not* survive across different callbacks, even when
+    those calls are made from the same C thread.
+ 
++Callback functions can return structures and unions by value, in addition to
++the simple types:
++
++.. code-block:: python
++
++   class Point(Structure):
++       _fields_ = [("x", c_int), ("y", c_int)]
++
++   @CFUNCTYPE(Point)
++   def get_origin():
++       return Point(0, 0)
++
++.. note::
++
++   A structure or union returned from a callback is copied *by value*, and
++   :mod:`!ctypes` does not keep the returned object alive after the callback
++   returns. If the structure contains a pointer field (such as
++   :class:`c_char_p` or a :func:`POINTER` type), you must ensure that the
++   memory it refers to stays valid for as long as the C code uses it -- the
++   same requirement C itself imposes. Returning a pointer to memory owned by
++   a temporary Python object will leave the C caller with a dangling pointer.
++
++.. versionchanged:: next
++   Callback functions can now return structures and unions.
++
+ .. _ctypes-accessing-values-exported-from-dlls:
+ 
+ Accessing values exported from dlls
+diff --git a/Doc/library/os.rst b/Doc/library/os.rst
+index 0ac18e9dd02..ed92a2736d8 100644
+--- a/Doc/library/os.rst
++++ b/Doc/library/os.rst
+@@ -1479,7 +1479,7 @@
+    Return a pair of file descriptors ``(r, w)`` usable for reading and writing,
+    respectively.
+ 
+-   .. availability:: Unix, macOS >= 27.0, not WASI, not iOS.
++   .. availability:: Unix, macOS >= 27.0, iOS >= 27.0, not WASI.
+ 
+    .. versionadded:: 3.3
+ 
+diff --git a/Doc/whatsnew/3.16.rst b/Doc/whatsnew/3.16.rst
+index d9e12df91ad..ad555578d5d 100644
+--- a/Doc/whatsnew/3.16.rst
++++ b/Doc/whatsnew/3.16.rst
+@@ -198,6 +198,14 @@
+   They are only available with libffi 3.5 or later.
+   (Contributed by Serhiy Storchaka in :gh:`157487`.)
+ 
++* Objects with an :attr:`!_as_parameter_` attribute are now
++  implicitly converted when passed for a :func:`~ctypes.POINTER` argument.
++  (Contributed by Peter Bierma in :gh:`71990`.)
++
++* :ref:`Callback functions <ctypes-callback-functions>` can now return
++  :class:`~ctypes.Structure` and :class:`~ctypes.Union` instances by value.
++  (Contributed by Russell Keith-Magee in :gh:`49960`.)
++
+ 
+ curses
+ ------
+diff --git a/Include/cpython/object.h b/Include/cpython/object.h
+index 12d2e614623..da94a640fc8 100644
+--- a/Include/cpython/object.h
++++ b/Include/cpython/object.h
+@@ -469,8 +469,12 @@
+ #elif defined(__arm__) && __ARM_ARCH >= 7
+     __asm__ ("mrc p15, 0, %0, c13, c0, 3\nbic %0, %0, #3" : "=r" (tid));
+ #elif defined(__aarch64__) && defined(__APPLE__)
+-    __asm__ ("mrs %0, tpidrro_el0" : "=r" (tid));
+-#elif defined(__aarch64__)
++    // Use a 64-bit temporary: on arm64_32 (ILP32), uintptr_t is 32 bits
++    // but system registers are 64 bits.
++    uint64_t tp;
++    __asm__ ("mrs %0, tpidrro_el0" : "=r" (tp));
++    tid = (uintptr_t)tp;
++#elif defined (__aarch64__)
+     __asm__ ("mrs %0, tpidr_el0" : "=r" (tid));
+ #elif defined(__powerpc64__)
+     #if defined(__clang__) && _Py__has_builtin(__builtin_thread_pointer)
+diff --git a/Include/internal/mimalloc/mimalloc/prim.h b/Include/internal/mimalloc/mimalloc/prim.h
+index 322ab29e6b4..e5049f5944b 100644
+--- a/Include/internal/mimalloc/mimalloc/prim.h
++++ b/Include/internal/mimalloc/mimalloc/prim.h
+@@ -174,12 +174,17 @@
+     __asm__ volatile ("mrc p15, 0, %0, c13, c0, 3\nbic %0, %0, #3" : "=r" (tcb));
+     res = tcb[slot];
+   #elif defined(__aarch64__)
+-    void** tcb; MI_UNUSED(ofs);
++    // CPython: patched for watchOS support.
++    // Submitted upstream as microsoft/mimalloc#1444
++    // Use a 64-bit temporary: on arm64_32 (ILP32), pointers are 32 bits
++    // but system registers are 64 bits.
++    uint64_t tp; MI_UNUSED(ofs);
+     #if defined(__APPLE__) // M1, issue #343
+-    __asm__ volatile ("mrs %0, tpidrro_el0\nbic %0, %0, #7" : "=r" (tcb));
++    __asm__ volatile ("mrs %0, tpidrro_el0\nbic %0, %0, #7" : "=r" (tp));
+     #else
+-    __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
++    __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tp));
+     #endif
++    void** tcb = (void**)(uintptr_t)tp;
+     res = tcb[slot];
+   #endif
+   return res;
+@@ -201,12 +206,15 @@
+     __asm__ volatile ("mrc p15, 0, %0, c13, c0, 3\nbic %0, %0, #3" : "=r" (tcb));
+     tcb[slot] = value;
+   #elif defined(__aarch64__)
+-    void** tcb; MI_UNUSED(ofs);
++    // Use a 64-bit temporary: on arm64_32 (ILP32), pointers are 32 bits
++    // but system registers are 64 bits.
++    uint64_t tp; MI_UNUSED(ofs);
+     #if defined(__APPLE__) // M1, issue #343
+-    __asm__ volatile ("mrs %0, tpidrro_el0\nbic %0, %0, #7" : "=r" (tcb));
++    __asm__ volatile ("mrs %0, tpidrro_el0\nbic %0, %0, #7" : "=r" (tp));
+     #else
+-    __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
++    __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tp));
+     #endif
++    void** tcb = (void**)(uintptr_t)tp;
+     tcb[slot] = value;
+   #endif
+ }
+diff --git a/Include/internal/pycore_pystate.h b/Include/internal/pycore_pystate.h
+index 16f87614002..0a764d886c6 100644
+--- a/Include/internal/pycore_pystate.h
++++ b/Include/internal/pycore_pystate.h
+@@ -342,7 +342,11 @@
+ #elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+     result = (uintptr_t)_AddressOfReturnAddress();
+ #elif defined(__aarch64__)
+-    __asm__ ("mov %0, sp" : "=r" (result));
++    // Use a 64-bit temporary: on arm64_32 (ILP32), uintptr_t is 32 bits
++    // but sp is a 64-bit register.
++    uint64_t sp;
++    __asm__ ("mov %0, sp" : "=r" (sp));
++    result = (uintptr_t)sp;
+ #elif defined(__x86_64__)
+     __asm__ ("{movq %%rsp, %0|mov %0, rsp}" : "=r" (result));
+ #else
+diff --git a/Lib/asyncio/unix_events.py b/Lib/asyncio/unix_events.py
+index 3a66cee93da..2e32773495a 100644
+--- a/Lib/asyncio/unix_events.py
++++ b/Lib/asyncio/unix_events.py
+@@ -681,10 +681,10 @@
+         # end polls as readable whenever unread data sits in the FIFO, and no
+         # event is delivered when the read end is closed, so it can only
+         # ever report a false disconnection (gh-145030). The same XNU
+-        # behaviour applies on iOS/tvOS/watchOS (sys.platform is not
++        # behaviour applies on iOS/tvOS/visionOS/watchOS (sys.platform is not
+         # "darwin" there).
+         is_named_fifo_without_close_event = (
+-            sys.platform in {"darwin", "ios", "tvos", "watchos", "sunos5"}
++            sys.platform in {"darwin", "ios", "tvos", "visionos", "watchos", "sunos5"}
+             and is_fifo and pipe_stat.st_nlink > 0)
+         if is_socket or (is_fifo
+                          and not sys.platform.startswith("aix")
 diff --git a/Lib/ctypes/__init__.py b/Lib/ctypes/__init__.py
-index 0b84a27f8c6..937a0b6ad1c 100644
+index 8b7089b6e57..695851b7ef1 100644
 --- a/Lib/ctypes/__init__.py
 +++ b/Lib/ctypes/__init__.py
-@@ -441,9 +441,9 @@
+@@ -447,9 +447,9 @@
  
      else:
          def _load_library(self, name, mode, handle, winmode):
@@ -16,10 +181,10 @@ index 0b84a27f8c6..937a0b6ad1c 100644
                  with open(name) as f:
                      name = _os.path.join(
 diff --git a/Lib/ctypes/util.py b/Lib/ctypes/util.py
-index 015c62b31a1..c893fc8375a 100644
+index f4fb05c29b4..3ca2458a2a6 100644
 --- a/Lib/ctypes/util.py
 +++ b/Lib/ctypes/util.py
-@@ -133,7 +133,7 @@
+@@ -104,7 +104,7 @@
                          if (name := _get_module_filename(h)) is not None]
          return libraries
  
@@ -29,10 +194,10 @@ index 015c62b31a1..c893fc8375a 100644
      def find_library(name):
          possible = ['lib%s.dylib' % name,
 diff --git a/Lib/importlib/_bootstrap_external.py b/Lib/importlib/_bootstrap_external.py
-index a1cb729efb7..cb51488ce9a 100644
+index 484e0457eb0..2c8d482e4f6 100644
 --- a/Lib/importlib/_bootstrap_external.py
 +++ b/Lib/importlib/_bootstrap_external.py
-@@ -52,7 +52,7 @@
+@@ -55,7 +55,7 @@
  
  # Bootstrap-related code ######################################################
  _CASE_INSENSITIVE_PLATFORMS_STR_KEY = 'win',
@@ -41,7 +206,7 @@ index a1cb729efb7..cb51488ce9a 100644
  _CASE_INSENSITIVE_PLATFORMS =  (_CASE_INSENSITIVE_PLATFORMS_BYTES_KEY
                                  + _CASE_INSENSITIVE_PLATFORMS_STR_KEY)
  
-@@ -1563,7 +1563,7 @@
+@@ -1570,7 +1570,7 @@
      """
      extension_loaders = []
      if hasattr(_imp, 'create_dynamic'):
@@ -51,89 +216,27 @@ index a1cb729efb7..cb51488ce9a 100644
                  suffix.replace(".so", ".fwork")
                  for suffix in _imp.extension_suffixes()
 diff --git a/Lib/platform.py b/Lib/platform.py
-index 36489d4fdd9..8e52bf202ff 100644
+index c4ef1c3eb20..cd71bafadd9 100644
 --- a/Lib/platform.py
 +++ b/Lib/platform.py
-@@ -536,6 +536,78 @@
-     return IOSVersionInfo(system, release, model, is_simulator)
+@@ -526,13 +526,13 @@
  
  
-+# A namedtuple for tvOS version information.
-+TVOSVersionInfo = collections.namedtuple(
-+    "TVOSVersionInfo",
-+    ["system", "release", "model", "is_simulator"]
-+)
-+
-+
-+def tvos_ver(system="", release="", model="", is_simulator=False):
-+    """Get tvOS version information, and return it as a namedtuple:
-+        (system, release, model, is_simulator).
-+
-+    If values can't be determined, they are set to values provided as
-+    parameters.
-+    """
-+    if sys.platform == "tvos":
-+        # TODO: Can the iOS implementation be used here?
-+        import _ios_support
-+        result = _ios_support.get_platform_ios()
-+        if result is not None:
-+            return TVOSVersionInfo(*result)
-+
-+    return TVOSVersionInfo(system, release, model, is_simulator)
-+
-+
-+# A namedtuple for watchOS version information.
-+WatchOSVersionInfo = collections.namedtuple(
-+    "WatchOSVersionInfo",
-+    ["system", "release", "model", "is_simulator"]
-+)
-+
-+
-+def watchos_ver(system="", release="", model="", is_simulator=False):
-+    """Get watchOS version information, and return it as a namedtuple:
-+        (system, release, model, is_simulator).
-+
-+    If values can't be determined, they are set to values provided as
-+    parameters.
-+    """
-+    if sys.platform == "watchos":
-+        # TODO: Can the iOS implementation be used here?
-+        import _ios_support
-+        result = _ios_support.get_platform_ios()
-+        if result is not None:
-+            return WatchOSVersionInfo(*result)
-+
-+    return WatchOSVersionInfo(system, release, model, is_simulator)
-+
-+
-+# A namedtuple for visionOS version information.
-+VisionOSVersionInfo = collections.namedtuple(
-+    "VisionOSVersionInfo",
-+    ["system", "release", "model", "is_simulator"]
-+)
-+
-+
-+def visionos_ver(system="", release="", model="", is_simulator=False):
-+    """Get visionOS version information, and return it as a namedtuple:
-+        (system, release, model, is_simulator).
-+
-+    If values can't be determined, they are set to values provided as
-+    parameters.
-+    """
-+    if sys.platform == "visionos":
-+        # TODO: Can the iOS implementation be used here?
-+        import _ios_support
-+        result = _ios_support.get_platform_ios()
-+        if result is not None:
-+            return VisionOSVersionInfo(*result)
-+
-+    return VisionOSVersionInfo(system, release, model, is_simulator)
-+
-+
- AndroidVer = collections.namedtuple(
-     "AndroidVer", "release api_level manufacturer model device is_emulator")
+ def ios_ver(system="", release="", model="", is_simulator=False):
+-    """Get iOS version information, and return it as a namedtuple:
+-        (system, release, model, is_simulator).
++    """Get iOS/tvOS/watchOS/visionOS version information, and return it as a
++    namedtuple: (system, release, model, is_simulator).
  
-@@ -676,7 +748,7 @@
+     If values can't be determined, they are set to values provided as
+     parameters.
+     """
+-    if sys.platform == "ios":
++    if sys.platform in {"ios", "tvos", "visionos", "watchos"}:
+         import _ios_support
+         result = _ios_support.get_platform_ios()
+         if result is not None:
+@@ -685,7 +685,7 @@
          default in case the command should fail.
  
      """
@@ -142,7 +245,7 @@ index 36489d4fdd9..8e52bf202ff 100644
          # XXX Others too ?
          return default
  
-@@ -840,14 +912,30 @@
+@@ -849,14 +849,30 @@
              csid, cpu_number = vms_lib.getsyi('SYI$_CPU', 0)
              return 'Alpha' if cpu_number >= 128 else 'VAX'
  
@@ -176,38 +279,28 @@ index 36489d4fdd9..8e52bf202ff 100644
      def from_subprocess():
          """
          Fall back to `uname -p`
-@@ -1000,9 +1088,15 @@
+@@ -1009,8 +1025,8 @@
          system = 'Android'
          release = android_ver().release
  
 -    # Normalize responses on iOS
+-    if sys.platform == 'ios':
 +    # Normalize responses on Apple mobile platforms
-     if sys.platform == 'ios':
++    if sys.platform in {"ios", "tvos", "visionos", "watchos"}:
          system, release, _, _ = ios_ver()
-+    if sys.platform == 'tvos':
-+        system, release, _, _ = tvos_ver()
-+    if sys.platform == 'visionos':
-+        system, release, _, _ = visionos_ver()
-+    if sys.platform == 'watchos':
-+        system, release, _, _ = watchos_ver()
  
      vals = system, node, release, version, machine
-     # Replace 'unknown' values with the more portable ''
-@@ -1292,6 +1386,12 @@
+@@ -1299,7 +1315,7 @@
+ 
+     if system == 'Darwin':
          # macOS and iOS both report as a "Darwin" kernel
-         if sys.platform == "ios":
+-        if sys.platform == "ios":
++        if sys.platform in {"ios", "tvos", "visionos", "watchos"}:
              system, release, _, _ = ios_ver()
-+        elif sys.platform == "tvos":
-+            system, release, _, _ = tvos_ver()
-+        elif sys.platform == "visionos":
-+            system, release, _, _ = visionos_ver()
-+        elif sys.platform == "watchos":
-+            system, release, _, _ = watchos_ver()
          else:
              macos_release = mac_ver()[0]
-             if macos_release:
 diff --git a/Lib/site.py b/Lib/site.py
-index 89e136d7b10..8d2063607a6 100644
+index 294a4d6f641..d763168afbd 100644
 --- a/Lib/site.py
 +++ b/Lib/site.py
 @@ -653,8 +653,8 @@
@@ -222,7 +315,7 @@ index 89e136d7b10..8d2063607a6 100644
  
      def joinuser(*args):
 diff --git a/Lib/subprocess.py b/Lib/subprocess.py
-index 5948cd841bc..d92c8b57fd7 100644
+index 466f2c10a2c..e2dac4938d5 100644
 --- a/Lib/subprocess.py
 +++ b/Lib/subprocess.py
 @@ -75,7 +75,7 @@
@@ -235,7 +328,7 @@ index 5948cd841bc..d92c8b57fd7 100644
  if _mswindows:
      import _winapi
 diff --git a/Lib/sysconfig/__init__.py b/Lib/sysconfig/__init__.py
-index 4f8ebf15d36..86598a8b4b2 100644
+index 0657e458806..dfed1cd1435 100644
 --- a/Lib/sysconfig/__init__.py
 +++ b/Lib/sysconfig/__init__.py
 @@ -23,6 +23,9 @@
@@ -257,7 +350,7 @@ index 4f8ebf15d36..86598a8b4b2 100644
          return None
  
      def joinuser(*args):
-@@ -741,6 +744,18 @@
+@@ -750,6 +753,18 @@
              release = get_config_vars().get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
              osname = sys.platform
              machine = sys.implementation._multiarch
@@ -266,7 +359,7 @@ index 4f8ebf15d36..86598a8b4b2 100644
 +            osname = sys.platform
 +            machine = sys.implementation._multiarch
 +        elif sys.platform == "watchos":
-+            release = get_config_vars().get("WATCHOS_DEPLOYMENT_TARGET", "4.0")
++            release = get_config_vars().get("WATCHOS_DEPLOYMENT_TARGET", "9.0")
 +            osname = sys.platform
 +            machine = sys.implementation._multiarch
 +        elif sys.platform == "visionos":
@@ -277,10 +370,10 @@ index 4f8ebf15d36..86598a8b4b2 100644
              import _osx_support
              osname, release, machine = _osx_support.get_platform_osx(
 diff --git a/Lib/test/datetimetester.py b/Lib/test/datetimetester.py
-index c11e9c068be..13cc95a81cd 100644
+index 716c662ad45..d8fa3fa526e 100644
 --- a/Lib/test/datetimetester.py
 +++ b/Lib/test/datetimetester.py
-@@ -7406,9 +7406,9 @@
+@@ -7450,9 +7450,9 @@
                      self.assertEqual(dt_orig, dt_rt)
  
      def test_type_check_in_subinterp(self):
@@ -292,11 +385,24 @@ index c11e9c068be..13cc95a81cd 100644
              extension_loader = "AppleFrameworkLoader"
          else:
              extension_loader = "ExtensionFileLoader"
+diff --git a/Lib/test/pythoninfo.py b/Lib/test/pythoninfo.py
+index bc6735d0749..4b31d2f775e 100644
+--- a/Lib/test/pythoninfo.py
++++ b/Lib/test/pythoninfo.py
+@@ -9,7 +9,7 @@
+ 
+ 
+ MS_WINDOWS = (sys.platform == "win32")
+-APPLE = (sys.platform in ("darwin", "ios", "tvos", "watchos"))
++APPLE = (sys.platform in ("darwin", "ios", "tvos", "watchos", "visionos"))
+ 
+ COMMAND_TIMEOUT = 60.0
+ 
 diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
-index 8e13ab4b9bc..f20f9528085 100644
+index 5331615b1b1..125ee1bb8ad 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -587,7 +587,7 @@
+@@ -616,7 +616,7 @@
          sys.platform == "android", f"Android blocks {name} with SELinux"
      )
  
@@ -305,7 +411,7 @@ index 8e13ab4b9bc..f20f9528085 100644
      unix_shell = '/system/bin/sh' if is_android else '/bin/sh'
  else:
      unix_shell = None
-@@ -606,7 +606,7 @@
+@@ -635,7 +635,7 @@
  def skip_wasi_stack_overflow():
      return unittest.skipIf(is_wasi, "Exhausts stack on WASI")
  
@@ -326,6 +432,252 @@ index ec5a26bc1c0..1b66f9c7646 100644
      def test_os_exec(self):
          expected = 'spam spam spam spam spam'
          subinterp = _interpreters.create()
+diff --git a/Lib/test/test_ctypes/test_callbacks.py b/Lib/test/test_ctypes/test_callbacks.py
+index c0171596a17..c7f287d9fb6 100644
+--- a/Lib/test/test_ctypes/test_callbacks.py
++++ b/Lib/test/test_ctypes/test_callbacks.py
+@@ -4,14 +4,15 @@
+ import math
+ import sys
+ import unittest
++import warnings
+ from _ctypes import CTYPES_MAX_ARGCOUNT
+-from ctypes import (CDLL, cdll, Structure, CFUNCTYPE,
++from ctypes import (CDLL, cdll, Structure, Union, CFUNCTYPE,
+                     ArgumentError, POINTER, sizeof,
+-                    c_byte, c_ubyte, c_char,
++                    c_byte, c_ubyte, c_char, c_char_p,
+                     c_short, c_ushort, c_int, c_uint,
+                     c_long, c_longlong, c_ulonglong, c_ulong,
+                     c_float, c_double, c_longdouble, py_object)
+-from ctypes.util import find_library, wrap_dll_function
++from ctypes.util import find_library, struct, wrap_dll_function
+ from test import support
+ from test.support import import_helper
+ _ctypes_test = import_helper.import_module("_ctypes_test")
+@@ -293,6 +294,222 @@
+         self.assertEqual(s.second, check.second)
+         self.assertEqual(s.third, check.third)
+ 
++    # gh-49960: callbacks may return structures and unions by value.
++
++    def test_callback_return_small_struct(self):
++        @struct
++        class SmallRet:
++            a: c_int
++            b: c_int
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct
++        func.argtypes = (CALLBACK,)
++        func.restype = SmallRet
++
++        result = func(CALLBACK(lambda: SmallRet(17, 42)))
++        self.assertEqual((result.a, result.b), (17, 42))
++
++    def test_callback_return_struct_reaches_c(self):
++        # The C helper sums the fields itself, proving the bytes actually
++        # reached the C caller rather than only round-tripping in Python.
++        @struct
++        class SmallRet:
++            a: c_int
++            b: c_int
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct_sum
++        func.argtypes = (CALLBACK,)
++        func.restype = c_long
++
++        self.assertEqual(func(CALLBACK(lambda: SmallRet(300, 45))), 345)
++
++    def test_callback_return_large_struct(self):
++        # Mirrors `Test` in Modules/_ctypes/_ctypes_test.c: >8 bytes, so it
++        # is returned via a hidden pointer rather than in registers.
++        @struct
++        class X:
++            first: c_ulong
++            second: c_ulong
++            third: c_ulong
++
++        CALLBACK = CFUNCTYPE(X)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_large_struct
++        func.argtypes = (CALLBACK,)
++        func.restype = X
++
++        result = func(CALLBACK(lambda: X(0xdeadbeef, 0xcafebabe, 0x0bad1dea)))
++        self.assertEqual(result.first, 0xdeadbeef)
++        self.assertEqual(result.second, 0xcafebabe)
++        self.assertEqual(result.third, 0x0bad1dea)
++
++    def test_callback_return_float_struct(self):
++        # All-float struct: SSE class on x86-64, HFA on AArch64.
++        @struct
++        class FloatRet:
++            x: c_double
++            y: c_double
++
++        CALLBACK = CFUNCTYPE(FloatRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_float_struct
++        func.argtypes = (CALLBACK,)
++        func.restype = FloatRet
++
++        result = func(CALLBACK(lambda: FloatRet(1.5, -2.25)))
++        self.assertEqual((result.x, result.y), (1.5, -2.25))
++
++    def test_callback_return_union(self):
++        class UnionRet(Union):
++            _fields_ = [("i", c_int), ("f", c_float)]
++
++        CALLBACK = CFUNCTYPE(UnionRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_union
++        func.argtypes = (CALLBACK,)
++        func.restype = UnionRet
++
++        result = func(CALLBACK(lambda: UnionRet(i=0x41424344)))
++        self.assertEqual(result.i, 0x41424344)
++
++    def test_callback_return_struct_repeatedly(self):
++        # Guards against per-call leaks and against regressing into the
++        # "memory leak in callback function" RuntimeWarning path.
++        @struct
++        class SmallRet:
++            a: c_int
++            b: c_int
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct_sum
++        func.argtypes = (CALLBACK,)
++        func.restype = c_long
++
++        cb = CALLBACK(lambda: SmallRet(1, 2))
++        # A RuntimeWarning raised inside the callback is reported as an
++        # unraisable exception rather than propagated, so check for those.
++        with warnings.catch_warnings():
++            warnings.simplefilter("error", RuntimeWarning)
++            with support.catch_unraisable_exception() as cm:
++                for _ in range(100):
++                    self.assertEqual(func(cb), 3)
++                    self.assertIsNone(cm.unraisable)
++
++    def test_callback_return_struct_subclass(self):
++        # isinstance semantics: a subclass instance is acceptable.
++        @struct
++        class SmallRet:
++            a: c_int
++            b: c_int
++
++        class SubRet(SmallRet):
++            pass
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct_sum
++        func.argtypes = (CALLBACK,)
++        func.restype = c_long
++
++        self.assertEqual(func(CALLBACK(lambda: SubRet(4, 5))), 9)
++
++    def test_callback_return_struct_wrong_type(self):
++        @struct
++        class SmallRet:
++            a: c_int
++            b: c_int
++
++        @struct
++        class Other:
++            q: c_int
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct_sum
++        func.argtypes = (CALLBACK,)
++        func.restype = c_long
++
++        for bad in (None, 42, Other(1)):
++            with self.subTest(bad=bad):
++                def cb(bad=bad):
++                    return bad
++                with support.catch_unraisable_exception() as cm:
++                    # As with other result types, the value returned to C
++                    # after a conversion failure is undefined; don't test it.
++                    func(CALLBACK(cb))
++                    self.assertIsInstance(cm.unraisable.exc_value, TypeError)
++                    self.assertEqual(
++                        cm.unraisable.err_msg,
++                        f"Exception ignored while converting result "
++                        f"of ctypes callback function {cb!r}")
++
++    def test_callback_return_struct_with_pointer(self):
++        # gh-49960 / bpo-5710 discussion: the struct is copied by value, so
++        # any pointer it contains must reference memory the caller keeps
++        # alive. Here `keepalive` does exactly that.
++        @struct
++        class WithPtr:
++            s: c_char_p
++
++        keepalive = b"hello"
++
++        CALLBACK = CFUNCTYPE(WithPtr)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_ptr_struct
++        func.argtypes = (CALLBACK,)
++        func.restype = WithPtr
++
++        result = func(CALLBACK(lambda: WithPtr(keepalive)))
++        self.assertEqual(result.s, b"hello")
++
++    def test_callback_return_struct_ignores_instancecheck(self):
++        # The result type is checked without running Python code, so a
++        # metaclass __instancecheck__ cannot cause a smaller structure to be
++        # accepted (which would read past the end of its buffer).
++        class Meta(type(Structure)):
++            def __instancecheck__(cls, inst):
++                return True
++
++        # Not @struct: it would rebuild the class and drop the metaclass.
++        class SmallRet(Structure, metaclass=Meta):
++            _fields_ = [("a", c_int), ("b", c_int)]
++
++        @struct
++        class Tiny:
++            x: c_byte
++
++        CALLBACK = CFUNCTYPE(SmallRet)
++        dll = CDLL(_ctypes_test.__file__)
++        func = dll._testfunc_cbk_ret_small_struct_sum
++        func.argtypes = (CALLBACK,)
++        func.restype = c_long
++
++        def cb():
++            return Tiny(5)
++        with support.catch_unraisable_exception() as cm:
++            func(CALLBACK(cb))
++            self.assertIsInstance(cm.unraisable.exc_value, TypeError)
++
++    def test_callback_return_struct_fields_final(self):
++        # Once a structure is used as a callback's result type, its layout
++        # is fixed: the callback's libffi signature depends on it.
++        @struct
++        class Base:
++            a: c_int
++            b: c_int
++
++        class Sub(Base):
++            pass
++
++        CFUNCTYPE(Sub)(lambda: Sub(1, 2))
++        with self.assertRaisesRegex(AttributeError, "_fields_ is final"):
++            Sub._fields_ = [("c", c_double)]
++
+     def test_callback_too_many_args(self):
+         def func(*args):
+             return len(args)
 diff --git a/Lib/test/test_ctypes/test_dllist.py b/Lib/test/test_ctypes/test_dllist.py
 index 15603dc3d77..bff6c0fb95f 100644
 --- a/Lib/test/test_ctypes/test_dllist.py
@@ -340,10 +692,10 @@ index 15603dc3d77..bff6c0fb95f 100644
  if WINDOWS:
      KNOWN_LIBRARIES = ["KERNEL32.DLL"]
 diff --git a/Lib/test/test_platform.py b/Lib/test/test_platform.py
-index 63c130813ec..5baa6145f4a 100644
+index 3503eaefaf8..792a47298ca 100644
 --- a/Lib/test/test_platform.py
 +++ b/Lib/test/test_platform.py
-@@ -287,13 +287,21 @@
+@@ -287,12 +287,18 @@
              if sys.platform == "android":
                  self.assertEqual(res.system, "Android")
                  self.assertEqual(res.release, platform.android_ver().release)
@@ -354,7 +706,6 @@ index 63c130813ec..5baa6145f4a 100644
                  # returned.
                  if _ctypes:
 -                    self.assertIn(res.system, {"iOS", "iPadOS"})
--                    self.assertEqual(res.release, platform.ios_ver().release)
 +                    if sys.platform == "ios":
 +                        # iPads also identify as iOS
 +                        self.assertIn(res.system, {"iOS", "iPadOS"})
@@ -362,12 +713,52 @@ index 63c130813ec..5baa6145f4a 100644
 +                        # All other platforms - sys.platform is the lower case
 +                        # form of system (e.g., visionOS->visionos)
 +                        self.assertEqual(res.system.lower(), sys.platform)
-+                    # Use the platform-specific version method
-+                    platform_ver = getattr(platform, f"{sys.platform}_ver")
-+                    self.assertEqual(res.release, platform_ver().release)
+                     self.assertEqual(res.release, platform.ios_ver().release)
                  else:
                      self.assertEqual(res.system, "")
-                     self.assertEqual(res.release, "")
+@@ -485,8 +491,8 @@
+     def test_ios_ver(self):
+         result = platform.ios_ver()
+ 
+-        # ios_ver is only fully available on iOS where ctypes is available.
+-        if sys.platform == "ios" and _ctypes:
++        # ios_ver is only fully available on Apple mobile platorms where ctypes is available.
++        if sys.platform in {"ios", "tvos", "visionos", "watchos"} and _ctypes:
+             system, release, model, is_simulator = result
+             # Result is a namedtuple
+             self.assertEqual(result.system, system)
+@@ -498,7 +504,10 @@
+             # ios_ver(), so we check that the values are broadly what we expect.
+ 
+             # System is either iOS or iPadOS, depending on the test device
+-            self.assertIn(system, {"iOS", "iPadOS"})
++            if sys.platform == "ios":
++                self.assertIn(system, {"iOS", "iPadOS"})
++            else:
++                self.assertEqual(system.lower(), sys.platform)
+ 
+             # Release is a numeric version specifier with at least 2 parts
+             parts = release.split(".")
+@@ -508,11 +517,17 @@
+             # If this is a simulator, we get a high level device descriptor
+             # with no identifying model number. If this is a physical device,
+             # we get a model descriptor like "iPhone13,1"
++            devices = {
++                "ios": {"iPhone", "iPad"},
++                "tvos": {"Apple TV"},
++                "visionos": {"Apple Vision Pro"},
++                "watchos": {"Apple Watch"},
++            }[sys.platform]
+             if is_simulator:
+-                self.assertIn(model, {"iPhone", "iPad"})
++                self.assertIn(model, devices)
+             else:
+                 self.assertTrue(
+-                    (model.startswith("iPhone") or model.startswith("iPad"))
++                    any(model.startswith(d) for d in devices)
+                     and "," in model
+                 )
+ 
 diff --git a/Lib/test/test_webbrowser.py b/Lib/test/test_webbrowser.py
 index 82f14ca968f..52e06832e6a 100644
 --- a/Lib/test/test_webbrowser.py
@@ -410,12 +801,12 @@ index ec8b544a6b0..26020844023 100644
      if objc:
          # If objc exists, we know ctypes is also importable.
 diff --git a/Makefile.pre.in b/Makefile.pre.in
-index 965244d8d2d..c623be1776b 100644
+index 36515dbd146..fdb1afa3557 100644
 --- a/Makefile.pre.in
 +++ b/Makefile.pre.in
-@@ -215,6 +215,12 @@
- # the build, and is only listed here so it will be included in sysconfigdata.
- IPHONEOS_DEPLOYMENT_TARGET=@IPHONEOS_DEPLOYMENT_TARGET@
+@@ -217,6 +217,12 @@
+ 
+ BUILD_DETAILS=@BUILD_DETAILS@
  
 +# visionOS Deployment target is *actually* used during the build, by the
 +# compiler shims; export.
@@ -426,6 +817,52 @@ index 965244d8d2d..c623be1776b 100644
  # Option to install to strip binaries
  STRIPFLAG=-s
  
+@@ -2283,19 +2289,22 @@
+ 	$(RUNSHARED) /usr/libexec/oah/translate \
+ 		./$(BUILDPYTHON) -E -m test -j 0 -u all $(TESTOPTS)
+ 
+-# Run the test suite on the iOS simulator. Must be run on a macOS machine with
+-# a full Xcode install that has an iPhone SE (3rd edition) simulator available.
++# Run the test suite on an Apple Mobile (i.e., iOS/tvOS/watchOS/visionOS)
++# device simulator. Must be run on a macOS machine with a full Xcode install
++# that has an SE-class simulator available for the chosen platform.
+ # This must be run *after* a `make install` has completed the build. The
+-# `--with-framework-name` argument *cannot* be used when configuring the build.
+-XCFOLDER:=iOSTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
++# testbed is configured for the framework name used to configure the build;
++# that name is expected to be `Python`, optionally followed by uppercased ABI
++# flags (e.g., `PythonT`).
++XCFOLDER:=AppleTestbed.$(MULTIARCH).$(shell date +%s).$$PPID
+ .PHONY: testios
+ testios:
+-	@if test "$(MACHDEP)" != "ios"; then \
+-		echo "Cannot run the iOS testbed for a non-iOS build."; \
++	@if test "$(MACHDEP)" != "ios" -a "$(MACHDEP)" != "tvos" -a "$(MACHDEP)" != "visionos" -a "$(MACHDEP)" != "watchos" ; then \
++		echo "Cannot run the Apple mobile testbed for a $(MACHDEP) build."; \
+ 		exit 1;\
+ 	fi
+-	@if test "$(findstring -iphonesimulator,$(MULTIARCH))" != "-iphonesimulator"; then \
+-		echo "Cannot run the iOS testbed for non-simulator builds."; \
++	@if test "$(findstring simulator,$(MULTIARCH))" != "simulator"; then \
++		echo "Cannot run the Apple mobile testbed for non-simulator builds."; \
+ 		exit 1;\
+ 	fi
+ 	@if test $(PYTHONFRAMEWORK) != "Python"; then \
+@@ -2303,12 +2312,12 @@
+ 		exit 1;\
+ 	fi
+ 	@if ! test -d $(PYTHONFRAMEWORKPREFIX); then \
+-		echo "Cannot find a finalized iOS Python.framework. Have you run 'make install' to finalize the framework build?"; \
++		echo "Cannot find a finalized Python.framework. Have you run 'make install' to finalize the framework build?"; \
+ 		exit 1;\
+ 	fi
+ 
+ 	# Clone the testbed project into the XCFOLDER
+-	$(PYTHON_FOR_BUILD) $(srcdir)/Platforms/Apple/testbed clone --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
++	$(PYTHON_FOR_BUILD) $(srcdir)/Platforms/Apple/testbed clone --platform $(MACHDEP) --framework $(PYTHONFRAMEWORKPREFIX) "$(XCFOLDER)"
+ 
+ 	# Run the testbed project
+ 	$(PYTHON_FOR_BUILD) "$(XCFOLDER)" run --verbose -- test -uall --single-process --rerun -W --pythoninfo
 diff --git a/Misc/platform_triplet.c b/Misc/platform_triplet.c
 index f5cd73bdea8..6c1863c943b 100644
 --- a/Misc/platform_triplet.c
@@ -463,8 +900,317 @@ index f5cd73bdea8..6c1863c943b 100644
  // Older macOS SDKs do not define TARGET_OS_OSX
  #  elif !defined(TARGET_OS_OSX) || TARGET_OS_OSX
  PLATFORM_TRIPLET=darwin
+diff --git a/Modules/_ctypes/_ctypes_test.c b/Modules/_ctypes/_ctypes_test.c
+index 6a5b20143f5..93c54af2432 100644
+--- a/Modules/_ctypes/_ctypes_test.c
++++ b/Modules/_ctypes/_ctypes_test.c
+@@ -72,6 +72,79 @@
+     func(in);
+ }
+ 
++/*
++ * gh-49960: callbacks returning structs and unions by value.
++ *
++ * Each of these exercises a different ABI return class, since struct
++ * return conventions are highly platform-specific:
++ *   - SmallRet:  small integer struct, returned in registers
++ *   - Test:      >8 bytes (reused from above), returned via hidden pointer
++ *   - FloatRet:  all-float struct, SSE class on x86-64 / HFA on AArch64
++ *   - UnionRet:  union
++ *   - PtrRet:    struct containing a pointer
++ */
++
++typedef struct {
++    int a;
++    int b;
++} SmallRet;
++
++EXPORT(SmallRet)
++_testfunc_cbk_ret_small_struct(SmallRet (*func)(void))
++{
++    return func();
++}
++
++/* Returns a scalar derived from the struct, so a test can prove the bytes
++   actually reached the C caller rather than only round-tripping in Python. */
++EXPORT(long)
++_testfunc_cbk_ret_small_struct_sum(SmallRet (*func)(void))
++{
++    SmallRet s = func();
++    return (long)s.a + (long)s.b;
++}
++
++EXPORT(Test)
++_testfunc_cbk_ret_large_struct(Test (*func)(void))
++{
++    return func();
++}
++
++typedef struct {
++    double x;
++    double y;
++} FloatRet;
++
++EXPORT(FloatRet)
++_testfunc_cbk_ret_float_struct(FloatRet (*func)(void))
++{
++    return func();
++}
++
++typedef union {
++    int i;
++    float f;
++} UnionRet;
++
++EXPORT(UnionRet)
++_testfunc_cbk_ret_union(UnionRet (*func)(void))
++{
++    return func();
++}
++
++/* Struct containing a pointer, for the documented pointer-lifetime contract:
++   the struct is copied by value, so the pointed-to memory must outlive the
++   callback. */
++typedef struct {
++    const char *s;
++} PtrRet;
++
++EXPORT(PtrRet)
++_testfunc_cbk_ret_ptr_struct(PtrRet (*func)(void))
++{
++    return func();
++}
++
+ /*
+  * See issue 29565. Update a structure passed by value;
+  * the caller should not see any change.
+diff --git a/Modules/_ctypes/callbacks.c b/Modules/_ctypes/callbacks.c
+index e67817e8f6f..8395e9eaf35 100644
+--- a/Modules/_ctypes/callbacks.c
++++ b/Modules/_ctypes/callbacks.c
+@@ -127,6 +127,7 @@
+ static void _CallPythonObject(ctypes_state *st,
+                               void *mem,
+                               ffi_type *restype,
++                              PyObject *restype_obj,
+                               SETFUNC setfunc,
+                               PyObject *callable,
+                               PyObject *converters,
+@@ -236,11 +237,11 @@
+     Py_XDECREF(error_object);
+ 
+     if (restype != &ffi_type_void && result) {
+-        assert(setfunc);
+ 
+         /* libffi's closure contract requires integral results narrower
+            than ffi_arg to fill a whole register, sign-extended if signed;
+-           setfunc() only writes restype->size bytes. */
++           setfunc() only writes restype->size bytes. Structs and unions
++           are never narrow integers, so they always write to mem directly. */
+         union {
+             ffi_arg arg;
+             int8_t s8;
+@@ -254,64 +255,95 @@
+                      is_narrow_int_ffi_type(restype->type);
+         void *resmem = narrow ? (void *)&narrow_res : mem;
+ 
+-        /* keep is an object we have to keep alive so that the result
+-           stays valid.  If there is no such object, the setfunc will
+-           have returned Py_None.
+-
+-           If there is such an object, we have no choice than to keep
+-           it alive forever - but a refcount and/or memory leak will
+-           be the result.  EXCEPT when restype is py_object - Python
+-           itself knows how to manage the refcount of these objects.
+-        */
+-        PyObject *keep = setfunc(resmem, result, restype->size);
+-
+-        if (narrow && keep != NULL) {
+-            ffi_arg widened;
+-            switch (restype->type) {
+-            case FFI_TYPE_SINT8:
+-                widened = (ffi_arg)(ffi_sarg)narrow_res.s8;
+-                break;
+-            case FFI_TYPE_SINT16:
+-                widened = (ffi_arg)(ffi_sarg)narrow_res.s16;
+-                break;
+-            case FFI_TYPE_SINT32:
+-                widened = (ffi_arg)(ffi_sarg)narrow_res.s32;
+-                break;
+-            case FFI_TYPE_UINT8:
+-                widened = narrow_res.u8;
+-                break;
+-            case FFI_TYPE_UINT16:
+-                widened = narrow_res.u16;
+-                break;
+-            case FFI_TYPE_UINT32:
+-                widened = narrow_res.u32;
+-                break;
+-            default:
+-                Py_UNREACHABLE();
++        if (setfunc == NULL) {
++            /* gh-49960: struct/union return. There is no setfunc for these
++               types, so copy the bytes out of the CData object directly.
++               The struct is copied by value and no object is kept alive, so
++               any pointer it contains must reference memory the caller keeps
++               alive - the same contract C imposes. */
++            assert(!narrow);
++            /* Use a real subtype check rather than PyObject_IsInstance():
++               a metaclass __instancecheck__ could otherwise accept an object
++               whose buffer is smaller than restype->size. */
++            if (PyObject_TypeCheck(result, (PyTypeObject *)restype_obj)) {
++                /* restype_obj is a struct or union type (enforced in
++                   _ctypes_alloc_callback), so its instances are CData. */
++                assert(CDataObject_Check(st, result));
++                CDataObject *cd = (CDataObject *)result;
++                Py_BEGIN_CRITICAL_SECTION(cd);
++                memcpy(mem, cd->b_ptr, restype->size);
++                Py_END_CRITICAL_SECTION();
++            }
++            else {
++                PyErr_Format(PyExc_TypeError,
++                             "ctypes callback function returned unexpected "
++                             "type %T", result);
++                PyErr_FormatUnraisable(
++                        "Exception ignored while converting result "
++                        "of ctypes callback function %R",
++                        callable);
+             }
+-            memcpy(mem, &widened, sizeof(ffi_arg));
+-        }
+-
+-        if (keep == NULL) {
+-            /* Could not convert callback result. */
+-            PyErr_FormatUnraisable(
+-                    "Exception ignored while converting result "
+-                    "of ctypes callback function %R",
+-                    callable);
+         }
+-        else if (setfunc != _ctypes_get_fielddesc("O")->setfunc) {
+-            if (keep == Py_None) {
+-                /* Nothing to keep */
+-                Py_DECREF(keep);
++        else {
++            /* keep is an object we have to keep alive so that the result
++               stays valid.  If there is no such object, the setfunc will
++               have returned Py_None.
++
++               If there is such an object, we have no choice than to keep
++               it alive forever - but a refcount and/or memory leak will
++               be the result.  EXCEPT when restype is py_object - Python
++               itself knows how to manage the refcount of these objects.
++            */
++            PyObject *keep = setfunc(resmem, result, restype->size);
++
++            if (narrow && keep != NULL) {
++                ffi_arg widened;
++                switch (restype->type) {
++                case FFI_TYPE_SINT8:
++                    widened = (ffi_arg)(ffi_sarg)narrow_res.s8;
++                    break;
++                case FFI_TYPE_SINT16:
++                    widened = (ffi_arg)(ffi_sarg)narrow_res.s16;
++                    break;
++                case FFI_TYPE_SINT32:
++                    widened = (ffi_arg)(ffi_sarg)narrow_res.s32;
++                    break;
++                case FFI_TYPE_UINT8:
++                    widened = narrow_res.u8;
++                    break;
++                case FFI_TYPE_UINT16:
++                    widened = narrow_res.u16;
++                    break;
++                case FFI_TYPE_UINT32:
++                    widened = narrow_res.u32;
++                    break;
++                default:
++                    Py_UNREACHABLE();
++                }
++                memcpy(mem, &widened, sizeof(ffi_arg));
+             }
+-            else if (PyErr_WarnEx(PyExc_RuntimeWarning,
+-                                  "memory leak in callback function.",
+-                                  1) == -1) {
++
++            if (keep == NULL) {
++                /* Could not convert callback result. */
+                 PyErr_FormatUnraisable(
+                         "Exception ignored while converting result "
+                         "of ctypes callback function %R",
+                         callable);
+             }
++            else if (setfunc != _ctypes_get_fielddesc("O")->setfunc) {
++                if (keep == Py_None) {
++                    /* Nothing to keep */
++                    Py_DECREF(keep);
++                }
++                else if (PyErr_WarnEx(PyExc_RuntimeWarning,
++                                      "memory leak in callback function.",
++                                      1) == -1) {
++                    PyErr_FormatUnraisable(
++                            "Exception ignored while converting result "
++                            "of ctypes callback function %R",
++                            callable);
++                }
++            }
+         }
+     }
+ 
+@@ -344,6 +376,7 @@
+     _CallPythonObject(st,
+                       resp,
+                       p->ffi_restype,
++                      p->restype,
+                       p->setfunc,
+                       p->callable,
+                       p->converters,
+@@ -422,10 +455,25 @@
+             goto error;
+         }
+ 
+-        if (info == NULL || info->setfunc == NULL) {
+-          PyErr_SetString(PyExc_TypeError,
+-                          "invalid result type for callback function");
+-          goto error;
++        /* gh-49960: structs and unions have no setfunc (that is reserved for
++           "simple" types), but can still be returned by value. Leaving
++           p->setfunc as NULL signals the struct-return path in
++           _CallPythonObject. */
++        if (info == NULL
++            || (
++                info->setfunc == NULL
++                && !PyCStructTypeObject_Check(st, restype)
++                && !PyObject_TypeCheck(restype, st->UnionType_Type)
++            )
++        ) {
++            PyErr_SetString(PyExc_TypeError,
++                            "invalid result type for callback function");
++            goto error;
++        }
++        if (info->setfunc == NULL) {
++            /* The cif built below depends on the struct/union layout, so
++               _fields_ must not be (re)assigned after this point. */
++            stginfo_set_dict_final(info);
+         }
+         p->setfunc = info->setfunc;
+         p->ffi_restype = &info->ffi_type_pointer;
+diff --git a/Modules/posixmodule.c b/Modules/posixmodule.c
+index 028270e7b84..46954de4418 100644
+--- a/Modules/posixmodule.c
++++ b/Modules/posixmodule.c
+@@ -512,8 +512,8 @@
+ #  define HAVE_MKFIFOAT_RUNTIME __builtin_available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+ #  define HAVE_MKNODAT_RUNTIME __builtin_available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+ #  define HAVE_PTSNAME_R_RUNTIME __builtin_available(macOS 10.13.4, iOS 11.3, tvOS 11.3, watchOS 4.3, *)
+-#  define HAVE_DUP3_RUNTIME __builtin_available(macOS 27.0, *)
+-#  define HAVE_PIPE2_RUNTIME __builtin_available(macOS 27.0, *)
++#  define HAVE_DUP3_RUNTIME __builtin_available(macOS 27.0, iOS 27.0, tvOS 27.0, watchOS 27.0, visionOS 27.0, *)
++#  define HAVE_PIPE2_RUNTIME __builtin_available(macOS 27.0, iOS 27.0, tvOS 27.0, watchOS 27.0, visionOS 27.0, *)
+ 
+ #  define HAVE_POSIX_SPAWN_SETSID_RUNTIME __builtin_available(macOS 10.15, *)
+ 
 diff --git a/Platforms/Apple/__main__.py b/Platforms/Apple/__main__.py
-index 4d29c240baa..704bd2fd5b9 100644
+index 86efbd20eac..6c31b542b3c 100644
 --- a/Platforms/Apple/__main__.py
 +++ b/Platforms/Apple/__main__.py
 @@ -5,17 +5,20 @@
@@ -491,7 +1237,7 @@ index 4d29c240baa..704bd2fd5b9 100644
  # * Combine the outputs of the builds from the previous step into a single
  #   XCframework, merging binaries into a "fat" binary if necessary
  # * Clone a copy of the testbed, configured to use the XCframework
-@@ -75,6 +78,32 @@
+@@ -75,8 +78,78 @@
              "x86_64-apple-ios-simulator": "x86_64-iphonesimulator",
          },
      },
@@ -523,8 +1269,54 @@ index 4d29c240baa..704bd2fd5b9 100644
 +    },
  }
  
++# The configure arguments needed to produce each ABI flag. Flags are listed in
++# the order that configure adds them to ABIFLAGS; any `--abiflags` value must
++# use the same order.
++ABIFLAG_CONFIGURE_ARGS: dict[str, list[str]] = {
++    "t": ["--disable-gil"],
++    "d": ["--with-pydebug"],
++}
++
++
++def platform_name(value):
++    """Return the canonical spelling for a platform name."""
++    return {p.lower(): p for p in HOSTS.keys()}.get(value.lower(), value)
++
++
++def validate_abiflags(value: str) -> str:
++    """Validate an `--abiflags` value (for use as an argparse type)."""
++    known = "".join(ABIFLAG_CONFIGURE_ARGS)
++    for flag in value:
++        if flag not in ABIFLAG_CONFIGURE_ARGS:
++            raise argparse.ArgumentTypeError(
++                f"unknown ABI flag {flag!r} (known flags: {known!r})"
++            )
++    positions = [known.index(flag) for flag in value]
++    if positions != sorted(set(positions)):
++        raise argparse.ArgumentTypeError(
++            f"ABI flags must be unique, and in the order {known!r}"
++        )
++    return value
++
++
++def framework_name(abiflags: str) -> str:
++    """The name of the Python framework for the given ABI flags."""
++    return f"Python{abiflags.upper()}"
++
++
++def abiflag_configure_args(abiflags: str) -> list[str]:
++    """The configure arguments needed to produce the given ABI flags."""
++    return [arg for flag in abiflags for arg in ABIFLAG_CONFIGURE_ARGS[flag]]
++
++
++def cross_build_dir(base: Path, abiflags: str) -> Path:
++    """The cross-build directory for the given base and ABI flags."""
++    return base.with_name(f"{base.name}-{abiflags}") if abiflags else base
++
  
-@@ -136,11 +165,24 @@
+ def subdir(name: str, create: bool = False) -> Path:
+     """Ensure that a cross-build directory for the given name exists."""
+@@ -136,11 +209,24 @@
          print(f"export {key}={shlex.quote(value)}")
  
  
@@ -550,7 +1342,7 @@ index 4d29c240baa..704bd2fd5b9 100644
              str(subdir(host) / "prefix"),
              "/usr/bin",
              "/bin",
-@@ -314,8 +356,8 @@
+@@ -314,8 +400,8 @@
      Downloads binaries if they aren't already present. Downloads will be stored
      in provided cache directory.
  
@@ -561,7 +1353,7 @@ index 4d29c240baa..704bd2fd5b9 100644
      """
      # To create new builds of these dependencies, usually all that's necessary
      # is to push a tag to the cpython-apple-source-deps repository, and GitHub
-@@ -340,9 +382,9 @@
+@@ -340,9 +426,9 @@
          )
          shutil.unpack_archive(archive_path, prefix_dir)
  
@@ -574,15 +1366,15 @@ index 4d29c240baa..704bd2fd5b9 100644
          for dylib in prefix_dir.glob("**/*.dylib"):
              dylib.unlink()
  
-@@ -409,6 +451,7 @@
+@@ -408,6 +494,7 @@
+             f"--host={host}",
              f"--build={sysconfig.get_config_var('BUILD_GNU_TYPE')}",
              f"--with-build-python={build_python_path()}",
-             "--with-system-libmpdec",
 +            "--enable-ipv6",
              "--enable-framework",
              # Dependent libraries.
              f"--with-openssl={prefix_dir}",
-@@ -451,7 +494,8 @@
+@@ -450,7 +537,8 @@
      """
      return (
          CROSS_BUILD_DIR
@@ -592,7 +1384,7 @@ index 4d29c240baa..704bd2fd5b9 100644
      )
  
  
-@@ -673,7 +717,7 @@
+@@ -672,7 +760,7 @@
              host_path = (
                  CROSS_BUILD_DIR
                  / host_triple
@@ -601,39 +1393,14 @@ index 4d29c240baa..704bd2fd5b9 100644
                  / multiarch
              )
              host_framework = host_path / "Python.framework"
-@@ -719,18 +763,20 @@
-         # Create an XCframework
-         version = create_xcframework(context.platform)
+@@ -951,6 +1039,7 @@
+         cmd.add_argument(
+             "platform",
+             choices=HOSTS.keys(),
++            type=platform_name,
+             help="The target platform to build",
+         )
  
--        # Clone testbed
--        print()
--        run([
--            sys.executable,
--            "Platforms/Apple/testbed",
--            "clone",
--            "--platform",
--            context.platform,
--            "--framework",
--            CROSS_BUILD_DIR / context.platform / "Python.xcframework",
--            CROSS_BUILD_DIR / context.platform / "testbed",
--        ])
-+        # watchOS doesn't have a testbed (yet!)
-+        if context.platform != "watchOS":
-+            # Clone testbed
-+            print()
-+            run([
-+                sys.executable,
-+                "Platforms/Apple/testbed",
-+                "clone",
-+                "--platform",
-+                context.platform,
-+                "--framework",
-+                CROSS_BUILD_DIR / context.platform / "Python.xcframework",
-+                CROSS_BUILD_DIR / context.platform / "testbed",
-+            ])
- 
-         # Build the final archive
-         archive_name = (
 diff --git a/Platforms/Apple/iOS/Resources/Info.plist.in b/Platforms/Apple/iOS/Resources/Info.plist.in
 index c3e261ecd9e..26ef7a95de4 100644
 --- a/Platforms/Apple/iOS/Resources/Info.plist.in
@@ -790,7 +1557,7 @@ index 00000000000..a20d476fa7b
 +</dict>
 +</plist>
 diff --git a/Platforms/Apple/testbed/Python.xcframework/build/utils.sh b/Platforms/Apple/testbed/Python.xcframework/build/utils.sh
-index e54471f68b7..2d3b9320b3c 100755
+index e54471f68b7..c91afd78fd3 100755
 --- a/Platforms/Apple/testbed/Python.xcframework/build/utils.sh
 +++ b/Platforms/Apple/testbed/Python.xcframework/build/utils.sh
 @@ -34,9 +34,38 @@
@@ -820,7 +1587,7 @@ index e54471f68b7..2d3b9320b3c 100755
 +        fi
 +    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-watchos" ]; then
 +        echo "Installing Python modules for watchOS Device"
-+        SLICE_FOLDER="watchos-arm64"
++        SLICE_FOLDER="watchos-arm64_32"
 +    elif [ "$EFFECTIVE_PLATFORM_NAME" = "-xrsimulator" ]; then
 +        echo "Installing Python modules for visionOS Simulator"
 +        SLICE_FOLDER="xros-arm64-simulator"
@@ -962,7 +1729,7 @@ index 00000000000..2fc2112e477
 +It should be used as a target for `--enable-framework` when compiling an visionOS on-device
 +build for testing purposes.
 diff --git a/Platforms/Apple/testbed/__main__.py b/Platforms/Apple/testbed/__main__.py
-index 797b522678f..643034e9bca 100644
+index c4c60e99ca9..7a7f7c97f35 100644
 --- a/Platforms/Apple/testbed/__main__.py
 +++ b/Platforms/Apple/testbed/__main__.py
 @@ -10,6 +10,9 @@
@@ -984,7 +1751,7 @@ index 797b522678f..643034e9bca 100644
  )
  
  
-@@ -54,6 +57,24 @@
+@@ -54,6 +57,34 @@
              )
          )
          simulator = se_simulators[-1][1]
@@ -1005,11 +1772,21 @@ index 797b522678f..643034e9bca 100644
 +        )
 +        simulator = simulators[-1][1]
 +    elif platform == "watchOS":
-+        raise NotImplementedError("Don't know how to launch watchOS (yet)")
++        # Any watchOS device will do; we'll look for "SE" devices. Select the
++        # one with the highest minimum runtime version - this is an indicator
++        # of the "newest" released device, which should always be supported
++        # on the "most recent" watchOS version.
++        se_simulators = sorted(
++            (devicetype["minRuntimeVersion"], devicetype["name"])
++            for devicetype in json_data["devicetypes"]
++            if devicetype["productFamily"] == "Apple Watch"
++            and "Apple Watch SE" in devicetype["name"]
++        )
++        simulator = se_simulators[-1][1]
      else:
          raise ValueError(f"Unknown platform {platform}")
  
-@@ -295,7 +316,7 @@
+@@ -303,10 +334,16 @@
      # many platforms, but when cloned, only one platform is preserved.
      available_platforms = [
          platform
@@ -1018,7 +1795,24 @@ index 797b522678f..643034e9bca 100644
          if (Path(__file__).parent / f"{platform}Testbed").is_dir()
      ]
  
-@@ -349,7 +370,7 @@
++    def platform_name(value):
++        """Return the canonical spelling for a platform name."""
++        return {p.lower(): p for p in available_platforms}.get(
++            value.lower(), value
++        )
++
+     parser = argparse.ArgumentParser(
+         description=(
+             "Manages the process of testing an Apple Python project "
+@@ -335,6 +372,7 @@
+         dest="platform",
+         choices=available_platforms,
+         default=available_platforms[0],
++        type=platform_name,
+         help=f"The platform to target (default: {available_platforms[0]})",
+     )
+     clone.add_argument(
+@@ -357,7 +395,7 @@
          ),
          description=(
              "Run a testbed project. The arguments provided after `--` will be "
@@ -1027,12 +1821,20 @@ index 797b522678f..643034e9bca 100644
              "`python -m`."
          ),
          help="Run a testbed project",
+@@ -367,6 +405,7 @@
+         dest="platform",
+         choices=available_platforms,
+         default=available_platforms[0],
++        type=platform_name,
+         help=f"The platform to target (default: {available_platforms[0]})",
+     )
+     run.add_argument(
 diff --git a/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..5ddfba882f4
+index 00000000000..e14489ad077
 --- /dev/null
 +++ b/Platforms/Apple/testbed/tvOSTestbed.xcodeproj/project.pbxproj
-@@ -0,0 +1,505 @@
+@@ -0,0 +1,506 @@
 +// !$*UTF8*$!
 +{
 +	archiveVersion = 1;
@@ -1042,9 +1844,9 @@ index 00000000000..5ddfba882f4
 +	objects = {
 +
 +/* Begin PBXBuildFile section */
-+		EE7C8A1E2DCD6FF3003206DB /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; };
-+		EE7C8A1F2DCD70CD003206DB /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; };
-+		EE7C8A202DCD70CD003206DB /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++		EE7C8A1E2DCD6FF3003206DB /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python{{abiflags}}.xcframework */; };
++		EE7C8A1F2DCD70CD003206DB /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python{{abiflags}}.xcframework */; };
++		EE7C8A202DCD70CD003206DB /* Python{{abiflags}}.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EE7C8A1C2DCD6FF3003206DB /* Python{{abiflags}}.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 +/* End PBXBuildFile section */
 +
 +/* Begin PBXContainerItemProxy section */
@@ -1064,7 +1866,7 @@ index 00000000000..5ddfba882f4
 +			dstPath = "";
 +			dstSubfolderSpec = 10;
 +			files = (
-+				EE7C8A202DCD70CD003206DB /* Python.xcframework in Embed Frameworks */,
++				EE7C8A202DCD70CD003206DB /* Python{{abiflags}}.xcframework in Embed Frameworks */,
 +			);
 +			name = "Embed Frameworks";
 +			runOnlyForDeploymentPostprocessing = 0;
@@ -1073,7 +1875,7 @@ index 00000000000..5ddfba882f4
 +
 +/* Begin PBXFileReference section */
 +		6077B3802E82A4BE00E3D6A3 /* tvOSTestbed.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = tvOSTestbed.xctestplan; sourceTree = "<group>"; };
-+		EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
++		EE7C8A1C2DCD6FF3003206DB /* Python{{abiflags}}.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python{{abiflags}}.xcframework; sourceTree = "<group>"; };
 +		EE989E4E2DCD6E780036B268 /* tvOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 +		EE989E652DCD6E7A0036B268 /* TestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 +/* End PBXFileReference section */
@@ -1113,7 +1915,7 @@ index 00000000000..5ddfba882f4
 +			isa = PBXFrameworksBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				EE7C8A1F2DCD70CD003206DB /* Python.xcframework in Frameworks */,
++				EE7C8A1F2DCD70CD003206DB /* Python{{abiflags}}.xcframework in Frameworks */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -1121,7 +1923,7 @@ index 00000000000..5ddfba882f4
 +			isa = PBXFrameworksBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				EE7C8A1E2DCD6FF3003206DB /* Python.xcframework in Frameworks */,
++				EE7C8A1E2DCD6FF3003206DB /* Python{{abiflags}}.xcframework in Frameworks */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -1132,7 +1934,7 @@ index 00000000000..5ddfba882f4
 +			isa = PBXGroup;
 +			children = (
 +				6077B3802E82A4BE00E3D6A3 /* tvOSTestbed.xctestplan */,
-+				EE7C8A1C2DCD6FF3003206DB /* Python.xcframework */,
++				EE7C8A1C2DCD6FF3003206DB /* Python{{abiflags}}.xcframework */,
 +				EE989E502DCD6E780036B268 /* tvOSTestbed */,
 +				EE989E682DCD6E7A0036B268 /* TestbedTests */,
 +				EE989E4F2DCD6E780036B268 /* Products */,
@@ -1271,7 +2073,8 @@ index 00000000000..5ddfba882f4
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
-+			shellScript = "set -e\n\nsource $PROJECT_DIR/Python.xcframework/build/utils.sh\n\ninstall_python Python.xcframework app app_packages\n";
++			shellScript = "set -e\n\nsource $PROJECT_DIR/Python{{abiflags}}.xcframework/build/utils.sh\n\ninstall_python Python{{abiflags}}.xcframework app app_packages\n";
++			showEnvVarsInLog = 0;
 +		};
 +/* End PBXShellScriptBuildPhase section */
 +
@@ -1354,7 +2157,7 @@ index 00000000000..5ddfba882f4
 +				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 +				GCC_WARN_UNUSED_FUNCTION = YES;
 +				GCC_WARN_UNUSED_VARIABLE = YES;
-+				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers";
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers";
 +				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 +				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 +				MTL_FAST_MATH = YES;
@@ -1412,7 +2215,7 @@ index 00000000000..5ddfba882f4
 +				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 +				GCC_WARN_UNUSED_FUNCTION = YES;
 +				GCC_WARN_UNUSED_VARIABLE = YES;
-+				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python.framework/Headers";
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers";
 +				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 +				MTL_ENABLE_DEBUG_INFO = NO;
 +				MTL_FAST_MATH = YES;
@@ -1934,7 +2737,7 @@ index 00000000000..6d84447c031
 +</plist>
 diff --git a/Platforms/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj b/Platforms/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..d3ca84bd32c
+index 00000000000..ee19e22d533
 --- /dev/null
 +++ b/Platforms/Apple/testbed/visionOSTestbed.xcodeproj/project.pbxproj
 @@ -0,0 +1,550 @@
@@ -1947,10 +2750,10 @@ index 00000000000..d3ca84bd32c
 +	objects = {
 +
 +/* Begin PBXBuildFile section */
-+		EEB367CE2DADF5C900B9A1D7 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-+		EEB367CF2DADF5D300B9A1D7 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-+		EEE9C80D2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; };
-+		EEE9C80E2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */; };
++		EEB367CE2DADF5C900B9A1D7 /* Python{{abiflags}}.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++		EEB367CF2DADF5D300B9A1D7 /* Python{{abiflags}}.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++		EEE9C80D2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */; };
++		EEE9C80E2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */; };
 +/* End PBXBuildFile section */
 +
 +/* Begin PBXContainerItemProxy section */
@@ -1970,7 +2773,7 @@ index 00000000000..d3ca84bd32c
 +			dstPath = "";
 +			dstSubfolderSpec = 10;
 +			files = (
-+				EEB367CF2DADF5D300B9A1D7 /* Python.xcframework in Embed Frameworks */,
++				EEB367CF2DADF5D300B9A1D7 /* Python{{abiflags}}.xcframework in Embed Frameworks */,
 +			);
 +			name = "Embed Frameworks";
 +			runOnlyForDeploymentPostprocessing = 0;
@@ -1981,7 +2784,7 @@ index 00000000000..d3ca84bd32c
 +			dstPath = "";
 +			dstSubfolderSpec = 10;
 +			files = (
-+				EEB367CE2DADF5C900B9A1D7 /* Python.xcframework in Embed Frameworks */,
++				EEB367CE2DADF5C900B9A1D7 /* Python{{abiflags}}.xcframework in Embed Frameworks */,
 +			);
 +			name = "Embed Frameworks";
 +			runOnlyForDeploymentPostprocessing = 0;
@@ -1992,7 +2795,7 @@ index 00000000000..d3ca84bd32c
 +		6077B3D62E82E60C00E3D6A3 /* visionOSTestbed.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = visionOSTestbed.xctestplan; sourceTree = "<group>"; };
 +		607A66122B0EFA380010BFC8 /* visionOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = visionOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 +		607A662D2B0EFA3A0010BFC8 /* TestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-+		EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
++		EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python{{abiflags}}.xcframework; sourceTree = "<group>"; };
 +/* End PBXFileReference section */
 +
 +/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -2030,7 +2833,7 @@ index 00000000000..d3ca84bd32c
 +			isa = PBXFrameworksBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				EEE9C80D2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */,
++				EEE9C80D2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework in Frameworks */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -2038,7 +2841,7 @@ index 00000000000..d3ca84bd32c
 +			isa = PBXFrameworksBuildPhase;
 +			buildActionMask = 2147483647;
 +			files = (
-+				EEE9C80E2DAB5ECA0056F8C6 /* Python.xcframework in Frameworks */,
++				EEE9C80E2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework in Frameworks */,
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +		};
@@ -2049,7 +2852,7 @@ index 00000000000..d3ca84bd32c
 +			isa = PBXGroup;
 +			children = (
 +				6077B3D62E82E60C00E3D6A3 /* visionOSTestbed.xctestplan */,
-+				EEE9C80C2DAB5ECA0056F8C6 /* Python.xcframework */,
++				EEE9C80C2DAB5ECA0056F8C6 /* Python{{abiflags}}.xcframework */,
 +				607A66142B0EFA380010BFC8 /* visionOSTestbed */,
 +				607A66302B0EFA3A0010BFC8 /* TestbedTests */,
 +				607A66132B0EFA380010BFC8 /* Products */,
@@ -2190,7 +2993,7 @@ index 00000000000..d3ca84bd32c
 +			);
 +			runOnlyForDeploymentPostprocessing = 0;
 +			shellPath = /bin/sh;
-+			shellScript = "set -e\n\nsource $PROJECT_DIR/Python.xcframework/build/utils.sh\n\ninstall_python Python.xcframework app app_packages\n";
++			shellScript = "set -e\n\nsource $PROJECT_DIR/Python{{abiflags}}.xcframework/build/utils.sh\n\ninstall_python Python{{abiflags}}.xcframework app app_packages\n";
 +			showEnvVarsInLog = 0;
 +		};
 +/* End PBXShellScriptBuildPhase section */
@@ -2347,7 +3150,7 @@ index 00000000000..d3ca84bd32c
 +				CURRENT_PROJECT_VERSION = 1;
 +				DEVELOPMENT_TEAM = "";
 +				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers\"";
 +				INFOPLIST_FILE = "visionOSTestbed/visionOSTestbed-Info.plist";
 +				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 +				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -2382,7 +3185,7 @@ index 00000000000..d3ca84bd32c
 +				DEVELOPMENT_TEAM = "";
 +				ENABLE_TESTABILITY = YES;
 +				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers\"";
 +				INFOPLIST_FILE = "visionOSTestbed/visionOSTestbed-Info.plist";
 +				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 +				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -2415,7 +3218,7 @@ index 00000000000..d3ca84bd32c
 +				CURRENT_PROJECT_VERSION = 1;
 +				DEVELOPMENT_TEAM = 3HEZE76D99;
 +				GENERATE_INFOPLIST_FILE = YES;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers\"";
 +				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 +				MARKETING_VERSION = 1.0;
 +				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
@@ -2439,7 +3242,7 @@ index 00000000000..d3ca84bd32c
 +				CURRENT_PROJECT_VERSION = 1;
 +				DEVELOPMENT_TEAM = 3HEZE76D99;
 +				GENERATE_INFOPLIST_FILE = YES;
-+				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python.framework/Headers\"";
++				HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers\"";
 +				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 +				MARKETING_VERSION = 1.0;
 +				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
@@ -2904,123 +3707,824 @@ index 00000000000..11a8230d1d2
 +	</array>
 +</dict>
 +</plist>
-diff --git a/Platforms/Apple/tvOS/README.rst b/Platforms/Apple/tvOS/README.rst
+diff --git a/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/project.pbxproj b/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/project.pbxproj
 new file mode 100644
-index 00000000000..1f793252caf
+index 00000000000..d5220c60e65
 --- /dev/null
-+++ b/Platforms/Apple/tvOS/README.rst
-@@ -0,0 +1,108 @@
-+=====================
-+Python on tvOS README
-+=====================
++++ b/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/project.pbxproj
+@@ -0,0 +1,490 @@
++// !$*UTF8*$!
++{
++	archiveVersion = 1;
++	classes = {
++	};
++	objectVersion = 77;
++	objects = {
 +
-+:Authors:
-+    Russell Keith-Magee (2023-11)
++/* Begin PBXBuildFile section */
++		60F7C0012EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60F7C0072EB0000000A1B2C3 /* Python{{abiflags}}.xcframework */; };
++		60F7C0022EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60F7C0072EB0000000A1B2C3 /* Python{{abiflags}}.xcframework */; };
++		60F7C0032EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 60F7C0072EB0000000A1B2C3 /* Python{{abiflags}}.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
++/* End PBXBuildFile section */
++
++/* Begin PBXContainerItemProxy section */
++		60F7C0042EB0000000A1B2C3 /* PBXContainerItemProxy */ = {
++			isa = PBXContainerItemProxy;
++			containerPortal = 60F7C0132EB0000000A1B2C3 /* Project object */;
++			proxyType = 1;
++			remoteGlobalIDString = 60F7C0112EB0000000A1B2C3;
++			remoteInfo = watchOSTestbed;
++		};
++/* End PBXContainerItemProxy section */
++
++/* Begin PBXCopyFilesBuildPhase section */
++		60F7C0052EB0000000A1B2C3 /* Embed Frameworks */ = {
++			isa = PBXCopyFilesBuildPhase;
++			buildActionMask = 2147483647;
++			dstPath = "";
++			dstSubfolderSpec = 10;
++			files = (
++				60F7C0032EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Embed Frameworks */,
++			);
++			name = "Embed Frameworks";
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXCopyFilesBuildPhase section */
++
++/* Begin PBXFileReference section */
++		60F7C0062EB0000000A1B2C3 /* watchOSTestbed.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = watchOSTestbed.xctestplan; sourceTree = "<group>"; };
++		60F7C0072EB0000000A1B2C3 /* Python{{abiflags}}.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python{{abiflags}}.xcframework; sourceTree = "<group>"; };
++		60F7C0082EB0000000A1B2C3 /* watchOSTestbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = watchOSTestbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
++		60F7C0092EB0000000A1B2C3 /* TestbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
++/* End PBXFileReference section */
++
++/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
++		60F7C00A2EB0000000A1B2C3 /* Exceptions for "watchOSTestbed" folder in "watchOSTestbed" target */ = {
++			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
++			membershipExceptions = (
++				"watchOSTestbed-Info.plist",
++			);
++			target = 60F7C0112EB0000000A1B2C3 /* watchOSTestbed */;
++		};
++/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
++
++/* Begin PBXFileSystemSynchronizedRootGroup section */
++		60F7C00B2EB0000000A1B2C3 /* watchOSTestbed */ = {
++			isa = PBXFileSystemSynchronizedRootGroup;
++			exceptions = (
++				60F7C00A2EB0000000A1B2C3 /* Exceptions for "watchOSTestbed" folder in "watchOSTestbed" target */,
++			);
++			explicitFolders = (
++				app,
++				app_packages,
++			);
++			path = watchOSTestbed;
++			sourceTree = "<group>";
++		};
++		60F7C00C2EB0000000A1B2C3 /* TestbedTests */ = {
++			isa = PBXFileSystemSynchronizedRootGroup;
++			path = TestbedTests;
++			sourceTree = "<group>";
++		};
++/* End PBXFileSystemSynchronizedRootGroup section */
++
++/* Begin PBXFrameworksBuildPhase section */
++		60F7C00D2EB0000000A1B2C3 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				60F7C0022EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		60F7C00E2EB0000000A1B2C3 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				60F7C0012EB0000000A1B2C3 /* Python{{abiflags}}.xcframework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXFrameworksBuildPhase section */
++
++/* Begin PBXGroup section */
++		60F7C00F2EB0000000A1B2C3 = {
++			isa = PBXGroup;
++			children = (
++				60F7C0062EB0000000A1B2C3 /* watchOSTestbed.xctestplan */,
++				60F7C0072EB0000000A1B2C3 /* Python{{abiflags}}.xcframework */,
++				60F7C00B2EB0000000A1B2C3 /* watchOSTestbed */,
++				60F7C00C2EB0000000A1B2C3 /* TestbedTests */,
++				60F7C0102EB0000000A1B2C3 /* Products */,
++			);
++			sourceTree = "<group>";
++		};
++		60F7C0102EB0000000A1B2C3 /* Products */ = {
++			isa = PBXGroup;
++			children = (
++				60F7C0082EB0000000A1B2C3 /* watchOSTestbed.app */,
++				60F7C0092EB0000000A1B2C3 /* TestbedTests.xctest */,
++			);
++			name = Products;
++			sourceTree = "<group>";
++		};
++/* End PBXGroup section */
++
++/* Begin PBXNativeTarget section */
++		60F7C0112EB0000000A1B2C3 /* watchOSTestbed */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = 60F7C0212EB0000000A1B2C3 /* Build configuration list for PBXNativeTarget "watchOSTestbed" */;
++			buildPhases = (
++				60F7C0172EB0000000A1B2C3 /* Sources */,
++				60F7C00D2EB0000000A1B2C3 /* Frameworks */,
++				60F7C0142EB0000000A1B2C3 /* Resources */,
++				60F7C0162EB0000000A1B2C3 /* Process Python libraries */,
++				60F7C0052EB0000000A1B2C3 /* Embed Frameworks */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++			);
++			fileSystemSynchronizedGroups = (
++				60F7C00B2EB0000000A1B2C3 /* watchOSTestbed */,
++			);
++			name = watchOSTestbed;
++			packageProductDependencies = (
++			);
++			productName = watchOSTestbed;
++			productReference = 60F7C0082EB0000000A1B2C3 /* watchOSTestbed.app */;
++			productType = "com.apple.product-type.application";
++		};
++		60F7C0122EB0000000A1B2C3 /* TestbedTests */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = 60F7C0222EB0000000A1B2C3 /* Build configuration list for PBXNativeTarget "TestbedTests" */;
++			buildPhases = (
++				60F7C0182EB0000000A1B2C3 /* Sources */,
++				60F7C00E2EB0000000A1B2C3 /* Frameworks */,
++				60F7C0152EB0000000A1B2C3 /* Resources */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++				60F7C0192EB0000000A1B2C3 /* PBXTargetDependency */,
++			);
++			fileSystemSynchronizedGroups = (
++				60F7C00C2EB0000000A1B2C3 /* TestbedTests */,
++			);
++			name = TestbedTests;
++			packageProductDependencies = (
++			);
++			productName = TestbedTests;
++			productReference = 60F7C0092EB0000000A1B2C3 /* TestbedTests.xctest */;
++			productType = "com.apple.product-type.bundle.unit-test";
++		};
++/* End PBXNativeTarget section */
++
++/* Begin PBXProject section */
++		60F7C0132EB0000000A1B2C3 /* Project object */ = {
++			isa = PBXProject;
++			attributes = {
++				BuildIndependentTargetsInParallel = 1;
++				LastUpgradeCheck = 1620;
++				TargetAttributes = {
++					60F7C0112EB0000000A1B2C3 = {
++						CreatedOnToolsVersion = 16.2;
++					};
++					60F7C0122EB0000000A1B2C3 = {
++						CreatedOnToolsVersion = 16.2;
++						TestTargetID = 60F7C0112EB0000000A1B2C3;
++					};
++				};
++			};
++			buildConfigurationList = 60F7C0202EB0000000A1B2C3 /* Build configuration list for PBXProject "watchOSTestbed" */;
++			developmentRegion = en;
++			hasScannedForEncodings = 0;
++			knownRegions = (
++				en,
++				Base,
++			);
++			mainGroup = 60F7C00F2EB0000000A1B2C3;
++			minimizedProjectReferenceProxies = 1;
++			preferredProjectObjectVersion = 77;
++			productRefGroup = 60F7C0102EB0000000A1B2C3 /* Products */;
++			projectDirPath = "";
++			projectRoot = "";
++			targets = (
++				60F7C0112EB0000000A1B2C3 /* watchOSTestbed */,
++				60F7C0122EB0000000A1B2C3 /* TestbedTests */,
++			);
++		};
++/* End PBXProject section */
++
++/* Begin PBXResourcesBuildPhase section */
++		60F7C0142EB0000000A1B2C3 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		60F7C0152EB0000000A1B2C3 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXResourcesBuildPhase section */
++
++/* Begin PBXShellScriptBuildPhase section */
++		60F7C0162EB0000000A1B2C3 /* Process Python libraries */ = {
++			isa = PBXShellScriptBuildPhase;
++			alwaysOutOfDate = 1;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++			);
++			name = "Process Python libraries";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "set -e\n\nsource $PROJECT_DIR/Python{{abiflags}}.xcframework/build/utils.sh\n\ninstall_python Python{{abiflags}}.xcframework app app_packages\n";
++			showEnvVarsInLog = 0;
++		};
++/* End PBXShellScriptBuildPhase section */
++
++/* Begin PBXSourcesBuildPhase section */
++		60F7C0172EB0000000A1B2C3 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		60F7C0182EB0000000A1B2C3 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++/* End PBXSourcesBuildPhase section */
++
++/* Begin PBXTargetDependency section */
++		60F7C0192EB0000000A1B2C3 /* PBXTargetDependency */ = {
++			isa = PBXTargetDependency;
++			target = 60F7C0112EB0000000A1B2C3 /* watchOSTestbed */;
++			targetProxy = 60F7C0042EB0000000A1B2C3 /* PBXContainerItemProxy */;
++		};
++/* End PBXTargetDependency section */
++
++/* Begin XCBuildConfiguration section */
++		60F7C01A2EB0000000A1B2C3 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)";
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers";
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
++				MTL_FAST_MATH = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = watchos;
++				WATCHOS_DEPLOYMENT_TARGET = 9.0;
++			};
++			name = Debug;
++		};
++		60F7C01B2EB0000000A1B2C3 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_ENABLE_OBJC_WEAK = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)";
++				GCC_C_LANGUAGE_STANDARD = gnu17;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				HEADER_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/Python{{abiflags}}.framework/Headers";
++				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				MTL_FAST_MATH = YES;
++				SDKROOT = watchos;
++				VALIDATE_PRODUCT = YES;
++				WATCHOS_DEPLOYMENT_TARGET = 9.0;
++			};
++			name = Release;
++		};
++		60F7C01C2EB0000000A1B2C3 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = NO;
++				INFOPLIST_FILE = "watchOSTestbed/watchOSTestbed-Info.plist";
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.watchOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				TARGETED_DEVICE_FAMILY = 4;
++			};
++			name = Debug;
++		};
++		60F7C01D2EB0000000A1B2C3 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = NO;
++				INFOPLIST_FILE = "watchOSTestbed/watchOSTestbed-Info.plist";
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.watchOSTestbed;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				TARGETED_DEVICE_FAMILY = 4;
++			};
++			name = Release;
++		};
++		60F7C01E2EB0000000A1B2C3 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				TARGETED_DEVICE_FAMILY = 4;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/watchOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/watchOSTestbed";
++				WATCHOS_DEPLOYMENT_TARGET = 9.0;
++			};
++			name = Debug;
++		};
++		60F7C01F2EB0000000A1B2C3 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = org.python.TestbedTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				TARGETED_DEVICE_FAMILY = 4;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/watchOSTestbed.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/watchOSTestbed";
++				WATCHOS_DEPLOYMENT_TARGET = 9.0;
++			};
++			name = Release;
++		};
++/* End XCBuildConfiguration section */
++
++/* Begin XCConfigurationList section */
++		60F7C0202EB0000000A1B2C3 /* Build configuration list for PBXProject "watchOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				60F7C01A2EB0000000A1B2C3 /* Debug */,
++				60F7C01B2EB0000000A1B2C3 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		60F7C0212EB0000000A1B2C3 /* Build configuration list for PBXNativeTarget "watchOSTestbed" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				60F7C01C2EB0000000A1B2C3 /* Debug */,
++				60F7C01D2EB0000000A1B2C3 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++		60F7C0222EB0000000A1B2C3 /* Build configuration list for PBXNativeTarget "TestbedTests" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				60F7C01E2EB0000000A1B2C3 /* Debug */,
++				60F7C01F2EB0000000A1B2C3 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
++/* End XCConfigurationList section */
++	};
++	rootObject = 60F7C0132EB0000000A1B2C3 /* Project object */;
++}
+diff --git a/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/xcshareddata/xcschemes/watchOSTestbed.xcscheme b/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/xcshareddata/xcschemes/watchOSTestbed.xcscheme
+new file mode 100644
+index 00000000000..96689416946
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed.xcodeproj/xcshareddata/xcschemes/watchOSTestbed.xcscheme
+@@ -0,0 +1,97 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Scheme
++   LastUpgradeVersion = "1640"
++   version = "1.7">
++   <BuildAction
++      parallelizeBuildables = "YES"
++      buildImplicitDependencies = "YES"
++      buildArchitectures = "Automatic">
++      <BuildActionEntries>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "YES"
++            buildForProfiling = "YES"
++            buildForArchiving = "YES"
++            buildForAnalyzing = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "60F7C0112EB0000000A1B2C3"
++               BuildableName = "watchOSTestbed.app"
++               BlueprintName = "watchOSTestbed"
++               ReferencedContainer = "container:watchOSTestbed.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++      </BuildActionEntries>
++   </BuildAction>
++   <TestAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SOURCE_ROOT)/Testbed.lldbinit"
++      shouldUseLaunchSchemeArgsEnv = "YES">
++      <TestPlans>
++         <TestPlanReference
++            reference = "container:watchOSTestbed.xctestplan"
++            default = "YES">
++         </TestPlanReference>
++      </TestPlans>
++      <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "60F7C0122EB0000000A1B2C3"
++               BuildableName = "TestbedTests.xctest"
++               BlueprintName = "TestbedTests"
++               ReferencedContainer = "container:watchOSTestbed.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++      </Testables>
++   </TestAction>
++   <LaunchAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      launchStyle = "0"
++      useCustomWorkingDirectory = "NO"
++      ignoresPersistentStateOnLaunch = "NO"
++      debugDocumentVersioning = "YES"
++      debugServiceExtension = "internal"
++      allowLocationSimulation = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "60F7C0112EB0000000A1B2C3"
++            BuildableName = "watchOSTestbed.app"
++            BlueprintName = "watchOSTestbed"
++            ReferencedContainer = "container:watchOSTestbed.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </LaunchAction>
++   <ProfileAction
++      buildConfiguration = "Release"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      savedToolIdentifier = ""
++      useCustomWorkingDirectory = "NO"
++      debugDocumentVersioning = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "60F7C0112EB0000000A1B2C3"
++            BuildableName = "watchOSTestbed.app"
++            BlueprintName = "watchOSTestbed"
++            ReferencedContainer = "container:watchOSTestbed.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </ProfileAction>
++   <AnalyzeAction
++      buildConfiguration = "Debug">
++   </AnalyzeAction>
++   <ArchiveAction
++      buildConfiguration = "Release"
++      revealArchiveInOrganizer = "YES">
++   </ArchiveAction>
++</Scheme>
+diff --git a/Platforms/Apple/testbed/watchOSTestbed.xctestplan b/Platforms/Apple/testbed/watchOSTestbed.xctestplan
+new file mode 100644
+index 00000000000..f83ff3a5595
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed.xctestplan
+@@ -0,0 +1,46 @@
++{
++  "configurations" : [
++    {
++      "id" : "8E3B1C52-4F0A-4D7E-9B61-2C5A7E0D9F14",
++      "name" : "Test Scheme Action",
++      "options" : {
++
++      }
++    }
++  ],
++  "defaultOptions" : {
++    "commandLineArgumentEntries" : [
++      {
++        "argument" : "test"
++      },
++      {
++        "argument" : "-uall"
++      },
++      {
++        "argument" : "--single-process"
++      },
++      {
++        "argument" : "--rerun"
++      },
++      {
++        "argument" : "-W"
++      }
++    ],
++    "targetForVariableExpansion" : {
++      "containerPath" : "container:watchOSTestbed.xcodeproj",
++      "identifier" : "60F7C0112EB0000000A1B2C3",
++      "name" : "watchOSTestbed"
++    }
++  },
++  "testTargets" : [
++    {
++      "parallelizable" : false,
++      "target" : {
++        "containerPath" : "container:watchOSTestbed.xcodeproj",
++        "identifier" : "60F7C0122EB0000000A1B2C3",
++        "name" : "TestbedTests"
++      }
++    }
++  ],
++  "version" : 1
++}
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.h b/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.h
+new file mode 100644
+index 00000000000..cc7359048ae
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.h
+@@ -0,0 +1,11 @@
++//
++//  AppDelegate.h
++//  watchOSTestbed
++//
++
++#import <WatchKit/WatchKit.h>
++
++@interface AppDelegate : NSObject <WKApplicationDelegate>
++
++
++@end
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.m b/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.m
+new file mode 100644
+index 00000000000..3390d2efc87
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/AppDelegate.m
+@@ -0,0 +1,21 @@
++//
++//  AppDelegate.m
++//  watchOSTestbed
++//
++
++#import "AppDelegate.h"
++
++@interface AppDelegate ()
++
++@end
++
++@implementation AppDelegate
++
++// The testbed has no storyboard (Interface.plist), so WatchKit requires the
++// delegate to provide a root interface controller class, or the app crashes
++// on launch.
++- (Class)applicationRootInterfaceControllerClass {
++    return [WKInterfaceController class];
++}
++
++@end
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/app/README b/Platforms/Apple/testbed/watchOSTestbed/app/README
+new file mode 100644
+index 00000000000..46c0e8e2a29
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/app/README
+@@ -0,0 +1,7 @@
++This folder can contain any Python application code.
++
++During the build, any binary modules found in this folder will be processed into
++Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH, and will be the
++working directory for the test suite.
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/app_packages/README b/Platforms/Apple/testbed/watchOSTestbed/app_packages/README
+new file mode 100644
+index 00000000000..02c2beccfbd
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/app_packages/README
+@@ -0,0 +1,7 @@
++This folder can be a target for installing any Python dependencies needed by the
++test suite.
++
++During the build, any binary modules found in this folder will be processed into
++Framework form.
++
++When the test suite runs, this folder will be on the PYTHONPATH.
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/main.m b/Platforms/Apple/testbed/watchOSTestbed/main.m
+new file mode 100644
+index 00000000000..b0e43f1a06f
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/main.m
+@@ -0,0 +1,16 @@
++//
++//  main.m
++//  watchOSTestbed
++//
++
++#import <WatchKit/WatchKit.h>
++#import "AppDelegate.h"
++
++int main(int argc, char * argv[]) {
++    NSString * appDelegateClassName;
++    @autoreleasepool {
++        appDelegateClassName = NSStringFromClass([AppDelegate class]);
++
++        return WKApplicationMain(argc, argv, appDelegateClassName);
++    }
++}
+diff --git a/Platforms/Apple/testbed/watchOSTestbed/watchOSTestbed-Info.plist b/Platforms/Apple/testbed/watchOSTestbed/watchOSTestbed-Info.plist
+new file mode 100644
+index 00000000000..4f25642a8e2
+--- /dev/null
++++ b/Platforms/Apple/testbed/watchOSTestbed/watchOSTestbed-Info.plist
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>en</string>
++	<key>CFBundleDisplayName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundleExecutable</key>
++	<string>${EXECUTABLE_NAME}</string>
++	<key>CFBundleIdentifier</key>
++	<string>org.python.watchOSTestbed</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>${PRODUCT_NAME}</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>1.0</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>1</string>
++	<key>WKApplication</key>
++	<true/>
++	<key>WKWatchOnly</key>
++	<true/>
++</dict>
++</plist>
+diff --git a/Platforms/Apple/tvOS/README.md b/Platforms/Apple/tvOS/README.md
+new file mode 100644
+index 00000000000..de4d5e209bf
+--- /dev/null
++++ b/Platforms/Apple/tvOS/README.md
+@@ -0,0 +1,30 @@
++# Python on tvOS README
 +
 +This document provides a quick overview of some tvOS specific features in the
 +Python distribution.
 +
-+Compilers for building on tvOS
-+==============================
++Python on tvOS is largely the same as Python on iOS; most of the instructions in
++the [iOS README](../iOS/README.md) can be used for tvOS builds, substituting:
 +
-+Building for tvOS requires the use of Apple's Xcode tooling. It is strongly
-+recommended that you use the most recent stable release of Xcode, on the
-+most recently released macOS.
++- `tvOS` as the identifier for `Platforms/Apple` invocations; e.g.,
++    - `python Platforms/Apple build tvOS`
++    - `python Platforms/Apple ci tvOS`
++    - `python Platforms/Apple test tvOS`
 +
-+tvOS specific arguments to configure
-+===================================
++- tvOS resources are stored in the `Platforms/Apple/tvOS/Resources` directory.
 +
-+* ``--enable-framework[=DIR]``
++- The tvOS SDK version is controlled with the `TVOS_SDK_VERSION` environment
++  variable.
 +
-+  This argument specifies the location where the Python.framework will
-+  be installed.
++- The minimum supported tvOS SDK version is controlled with the
++  `TVOS_DEPLOYMENT_TARGET` environment variable.
 +
-+* ``--with-framework-name=NAME``
++- When referencing platforms, the tvOS compiler triples are:
++  - `arm64-apple-tvos` for AppleTV devices
++  - `arm64-apple-tvos-simulator` for AppleTV simulators on ARM64 hardware
++  - `x86_64-apple-tvos-simulator` for AppleTV simulators on x86-64 hardware
 +
-+  Specify the name for the python framework, defaults to ``Python``.
++- The tvOS testbed Xcode template project is stored in
++  `Platforms/Apple/testbed/tvOSTestbed`.
 +
-+
-+Building and using Python on tvOS
-+=================================
-+
-+ABIs and Architectures
-+----------------------
-+
-+tvOS apps can be deployed on physical devices, and on the tvOS simulator.
-+Although the API used on these devices is identical, the ABI is different - you
-+need to link against different libraries for an tvOS device build
-+(``appletvos``) or an tvOS simulator build (``appletvsimulator``). Apple uses
-+the XCframework format to allow specifying a single dependency that supports
-+multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
-+frameworks.
-+
-+tvOS can also support different CPU architectures within each ABI. At present,
-+there is only a single support ed architecture on physical devices - ARM64.
-+However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
-+Silicon machines), and x86_64 (for running on older Intel-based machines.)
-+
-+To support multiple CPU architectures on a single platform, Apple uses a "fat
-+binary" format - a single physical file that contains support for multiple
-+architectures.
-+
-+How do I build Python for tvOS?
-+-------------------------------
-+
-+The Python build system will build a ``Python.framework`` that supports a
-+*single* ABI with a *single* architecture. If you want to use Python in an tvOS
-+project, you need to:
-+
-+1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
-+2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
-+3. Merge the "fat" frameworks for each ABI into a single XCframework.
-+
-+tvOS builds of Python *must* be constructed as framework builds. To support this,
-+you must provide the ``--enable-framework`` flag when configuring the build.
-+
-+The build also requires the use of cross-compilation. The commands for building
-+Python for tvOS will look somethign like::
-+
-+  $ ./configure \
-+        --enable-framework=/path/to/install \
-+        --host=aarch64-apple-tvos \
-+        --build=aarch64-apple-darwin \
-+        --with-build-python=/path/to/python.exe
-+  $ make
-+  $ make install
-+
-+In this invocation:
-+
-+* ``/path/to/install`` is the location where the final Python.framework will be
-+  output.
-+
-+* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
-+  triple format. This will be one of:
-+
-+  - ``aarch64-apple-tvos`` for ARM64 tvOS devices.
-+  - ``aarch64-apple-tvos-simulator`` for the tvOS simulator running on Apple
-+    Silicon devices.
-+  - ``x86_64-apple-tvos-simulator`` for the tvOS simulator running on Intel
-+    devices.
-+
-+* ``--build`` is the GNU compiler triple for the machine that will be running
-+  the compiler. This is one of:
-+
-+  - ``aarch64-apple-darwin`` for Apple Silicon devices.
-+  - ``x86_64-apple-darwin`` for Intel devices.
-+
-+* ``/path/to/python.exe`` is the path to a Python binary on the machine that
-+  will be running the compiler. This is needed because the Python compilation
-+  process involves running some Python code. On a normal desktop build of
-+  Python, you can compile a python interpreter and then use that interpreter to
-+  run Python code. However, the binaries produced for tvOS won't run on macOS, so
-+  you need to provide an external Python interpreter. This interpreter must be
-+  the version as the Python that is being compiled.
-+
-+Using a framework-based Python on tvOS
-+======================================
++- `platform.ios_ver()` will return tvOS-relevant version information.
 diff --git a/Platforms/Apple/tvOS/Resources/Info.plist.in b/Platforms/Apple/tvOS/Resources/Info.plist.in
 new file mode 100644
-index 00000000000..ab3050804b8
+index 00000000000..b913504d69e
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -3031,7 +4535,7 @@ index 00000000000..ab3050804b8
 +	<key>CFBundleDevelopmentRegion</key>
 +	<string>en</string>
 +	<key>CFBundleExecutable</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundleGetInfoString</key>
 +	<string>Python Runtime and Library</string>
 +	<key>CFBundleIdentifier</key>
@@ -3039,7 +4543,7 @@ index 00000000000..ab3050804b8
 +	<key>CFBundleInfoDictionaryVersion</key>
 +	<string>6.0</string>
 +	<key>CFBundleName</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundlePackageType</key>
 +	<string>FMWK</string>
 +	<key>CFBundleShortVersionString</key>
@@ -3060,67 +4564,67 @@ index 00000000000..ab3050804b8
 +</plist>
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar
 new file mode 100755
-index 00000000000..e302748a13c
+index 00000000000..482a8da6c64
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
 new file mode 100755
-index 00000000000..7fb6d3d901c
+index 00000000000..c08cefd6067
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
 new file mode 100755
-index 00000000000..33bfb1367c3
+index 00000000000..3425d57aafa
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
 new file mode 100755
-index 00000000000..641c1bc8d18
+index 00000000000..8466e9ada39
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvos${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET} -E "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 new file mode 100755
-index 00000000000..87ef5015aae
+index 00000000000..a0b20edc7a9
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 new file mode 100755
-index 00000000000..c8719cb0318
+index 00000000000..fa5e7cbd5bc
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 new file mode 100755
-index 00000000000..e3f0e720f7f
+index 00000000000..b3f82e8ca36
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 new file mode 100755
-index 00000000000..f9a37b72a61
+index 00000000000..aba485f1e23
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target arm64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip b/Platforms/Apple/tvOS/Resources/bin/arm64-apple-tvos-simulator-strip
 new file mode 100755
@@ -3140,35 +4644,35 @@ index 00000000000..ee1d2b95ff1
 +xcrun --sdk iphoneos${TVOS_SDK_VERSION} strip -arch arm64 "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 new file mode 100755
-index 00000000000..87ef5015aae
+index 00000000000..a0b20edc7a9
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 new file mode 100755
-index 00000000000..ea0cc26cbd9
+index 00000000000..6c1a538b64d
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++ b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 new file mode 100755
-index 00000000000..f18f3603169
+index 00000000000..efa76909c37
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang++ -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 new file mode 100755
-index 00000000000..b98054d1ce2
+index 00000000000..f6ad1a5c2e2
 --- /dev/null
 +++ b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk appletvsimulator${TVOS_SDK_VERSION} clang -target x86_64-apple-tvos${TVOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip b/Platforms/Apple/tvOS/Resources/bin/x86_64-apple-tvos-simulator-strip
 new file mode 100755
@@ -3191,9 +4695,45 @@ index 00000000000..4acff2c6051
 +#ifdef __x86_64__
 +#include "pyconfig-x86_64.h"
 +#endif
+diff --git a/Platforms/Apple/visionOS/README.md b/Platforms/Apple/visionOS/README.md
+new file mode 100644
+index 00000000000..45bf0157137
+--- /dev/null
++++ b/Platforms/Apple/visionOS/README.md
+@@ -0,0 +1,30 @@
++# Python on visionOS README
++
++This document provides a quick overview of some visionOS specific features in the
++Python distribution.
++
++Python on visionOS is largely the same as Python on iOS; most of the instructions in
++the [iOS README](../iOS/README.md) can be used for visionOS builds, substituting:
++
++- `visionOS` as the identifier for `Platforms/Apple` invocations; e.g.,
++    - `python Platforms/Apple build visionOS`
++    - `python Platforms/Apple ci visionOS`
++    - `python Platforms/Apple test visionOS`
++
++- visionOS resources are stored in the `Platforms/Apple/visionOS/Resources`
++  directory.
++
++- The visionOS SDK version is controlled with the `XROS_SDK_VERSION` environment
++  variable.
++
++- The minimum supported visionOS SDK version is controlled with the
++  `XROS_DEPLOYMENT_TARGET` environment variable.
++
++- When referencing platforms, the visionOS compiler triples are:
++  - `arm64-apple-xros` for Apple Vision devices
++  - `arm64-apple-xros-simulator` for Apple Vision simulators
++
++- The visionOS testbed Xcode template project is stored in
++  `Platforms/Apple/testbed/visionOSTestbed`.
++
++- `platform.ios_ver()` will return visionOS-relevant version information.
 diff --git a/Platforms/Apple/visionOS/Resources/Info.plist.in b/Platforms/Apple/visionOS/Resources/Info.plist.in
 new file mode 100644
-index 00000000000..2679440da67
+index 00000000000..c3dd63ced8d
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -3204,7 +4744,7 @@ index 00000000000..2679440da67
 +	<key>CFBundleDevelopmentRegion</key>
 +	<string>en</string>
 +	<key>CFBundleExecutable</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundleGetInfoString</key>
 +	<string>Python Runtime and Library</string>
 +	<key>CFBundleIdentifier</key>
@@ -3212,7 +4752,7 @@ index 00000000000..2679440da67
 +	<key>CFBundleInfoDictionaryVersion</key>
 +	<string>6.0</string>
 +	<key>CFBundleName</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundlePackageType</key>
 +	<string>FMWK</string>
 +	<key>CFBundleShortVersionString</key>
@@ -3233,67 +4773,67 @@ index 00000000000..2679440da67
 +</plist>
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-ar b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-ar
 new file mode 100755
-index 00000000000..9fd78a205f3
+index 00000000000..f31c0fc3b89
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xros${XROS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang
 new file mode 100755
-index 00000000000..9a1a757cbd0
+index 00000000000..d2405ac3405
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++
 new file mode 100755
-index 00000000000..f64fcfc11cd
+index 00000000000..9063f19ef9a
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xros${XROS_SDK_VERSION} clang++ -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp
 new file mode 100755
-index 00000000000..d6492eff052
+index 00000000000..17a40cbbee1
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xros${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET} -E "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar
 new file mode 100755
-index 00000000000..b202330fb5d
+index 00000000000..cf0468377b3
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang
 new file mode 100755
-index 00000000000..87b0aba0751
+index 00000000000..ef57a9b7610
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++
 new file mode 100755
-index 00000000000..c89d48f1cb8
+index 00000000000..0cc3ec32865
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang++ -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp
 new file mode 100755
-index 00000000000..ee11e018ae0
+index 00000000000..835a54a0f9e
 --- /dev/null
 +++ b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk xrsimulator${XROS_SDK_VERSION} clang -target arm64-apple-xros${XROS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-strip b/Platforms/Apple/visionOS/Resources/bin/arm64-apple-xros-simulator-strip
 new file mode 100644
@@ -3320,123 +4860,46 @@ index 00000000000..2a433078400
 +#ifdef __arm64__
 +#include "pyconfig-arm64.h"
 +#endif
-diff --git a/Platforms/Apple/watchOS/README.rst b/Platforms/Apple/watchOS/README.rst
+diff --git a/Platforms/Apple/watchOS/README.md b/Platforms/Apple/watchOS/README.md
 new file mode 100644
-index 00000000000..35221478452
+index 00000000000..6d96ac48556
 --- /dev/null
-+++ b/Platforms/Apple/watchOS/README.rst
-@@ -0,0 +1,108 @@
-+========================
-+Python on watchOS README
-+========================
-+
-+:Authors:
-+    Russell Keith-Magee (2023-11)
++++ b/Platforms/Apple/watchOS/README.md
+@@ -0,0 +1,31 @@
++# Python on watchOS README
 +
 +This document provides a quick overview of some watchOS specific features in the
 +Python distribution.
 +
-+Compilers for building on watchOS
-+=================================
++Python on watchOS is largely the same as Python on iOS; most of the instructions in
++the [iOS README](../iOS/README.md) can be used for watchOS builds, substituting:
 +
-+Building for watchOS requires the use of Apple's Xcode tooling. It is strongly
-+recommended that you use the most recent stable release of Xcode, on the
-+most recently released macOS.
++- `watchOS` as the identifier for `Platforms/Apple` invocations; e.g.,
++    - `python Platforms/Apple build watchOS`
++    - `python Platforms/Apple ci watchOS`
++    - `python Platforms/Apple test watchOS`
 +
-+watchOS specific arguments to configure
-+=======================================
++- watchOS resources are stored in the `Platforms/Apple/watchOS/Resources`
++  directory
 +
-+* ``--enable-framework[=DIR]``
++- The watchOS SDK version is controlled with the `WATCHOS_SDK_VERSION` environment
++  variable.
 +
-+  This argument specifies the location where the Python.framework will
-+  be installed.
++- The minimum supported watchOS SDK version is controlled with the
++  `WATCHOS_DEPLOYMENT_TARGET` environment variable.
 +
-+* ``--with-framework-name=NAME``
++- When referencing platforms, the watchOS compiler triples are:
++  - `arm64_32-apple-watchos` for Apple Watch devices
++  - `arm64-apple-watchos-simulator` for Apple Watch simulators on ARM64 hardware
++  - `x86_64-apple-watchos-simulator` for Apple Watch simulators on x86_64 hardware
 +
-+  Specify the name for the python framework, defaults to ``Python``.
++- The watchOS testbed Xcode template project is stored in
++  `Platforms/Apple/testbed/watchOSTestbed`.
 +
-+
-+Building and using Python on watchOS
-+====================================
-+
-+ABIs and Architectures
-+----------------------
-+
-+watchOS apps can be deployed on physical devices, and on the watchOS simulator.
-+Although the API used on these devices is identical, the ABI is different - you
-+need to link against different libraries for an watchOS device build
-+(``watchos``) or an watchOS simulator build (``watchsimulator``). Apple uses the
-+XCframework format to allow specifying a single dependency that supports
-+multiple ABIs. An XCframework is a wrapper around multiple ABI-specific
-+frameworks.
-+
-+watchOS can also support different CPU architectures within each ABI. At present,
-+there is only a single support ed architecture on physical devices - ARM64.
-+However, the *simulator* supports 2 architectures - ARM64 (for running on Apple
-+Silicon machines), and x86_64 (for running on older Intel-based machines.)
-+
-+To support multiple CPU architectures on a single platform, Apple uses a "fat
-+binary" format - a single physical file that contains support for multiple
-+architectures.
-+
-+How do I build Python for watchOS?
-+-------------------------------
-+
-+The Python build system will build a ``Python.framework`` that supports a
-+*single* ABI with a *single* architecture. If you want to use Python in an watchOS
-+project, you need to:
-+
-+1. Produce multiple ``Python.framework`` builds, one for each ABI and architecture;
-+2. Merge the binaries for each architecture on a given ABI into a single "fat" binary;
-+3. Merge the "fat" frameworks for each ABI into a single XCframework.
-+
-+watchOS builds of Python *must* be constructed as framework builds. To support this,
-+you must provide the ``--enable-framework`` flag when configuring the build.
-+
-+The build also requires the use of cross-compilation. The commands for building
-+Python for watchOS will look somethign like::
-+
-+  $ ./configure \
-+        --enable-framework=/path/to/install \
-+        --host=aarch64-apple-watchos \
-+        --build=aarch64-apple-darwin \
-+        --with-build-python=/path/to/python.exe
-+  $ make
-+  $ make install
-+
-+In this invocation:
-+
-+* ``/path/to/install`` is the location where the final Python.framework will be
-+  output.
-+
-+* ``--host`` is the architecture and ABI that you want to build, in GNU compiler
-+  triple format. This will be one of:
-+
-+  - ``arm64_32-apple-watchos`` for ARM64-32 watchOS devices.
-+  - ``aarch64-apple-watchos-simulator`` for the watchOS simulator running on Apple
-+    Silicon devices.
-+  - ``x86_64-apple-watchos-simulator`` for the watchOS simulator running on Intel
-+    devices.
-+
-+* ``--build`` is the GNU compiler triple for the machine that will be running
-+  the compiler. This is one of:
-+
-+  - ``aarch64-apple-darwin`` for Apple Silicon devices.
-+  - ``x86_64-apple-darwin`` for Intel devices.
-+
-+* ``/path/to/python.exe`` is the path to a Python binary on the machine that
-+  will be running the compiler. This is needed because the Python compilation
-+  process involves running some Python code. On a normal desktop build of
-+  Python, you can compile a python interpreter and then use that interpreter to
-+  run Python code. However, the binaries produced for watchOS won't run on macOS, so
-+  you need to provide an external Python interpreter. This interpreter must be
-+  the version as the Python that is being compiled.
-+
-+Using a framework-based Python on watchOS
-+======================================
++- `platform.ios_ver()` will return watchOS-relevant version information.
 diff --git a/Platforms/Apple/watchOS/Resources/Info.plist.in b/Platforms/Apple/watchOS/Resources/Info.plist.in
 new file mode 100644
-index 00000000000..e83ddfd2a43
+index 00000000000..b2f64710d70
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/Info.plist.in
 @@ -0,0 +1,34 @@
@@ -3447,7 +4910,7 @@ index 00000000000..e83ddfd2a43
 +	<key>CFBundleDevelopmentRegion</key>
 +	<string>en</string>
 +	<key>CFBundleExecutable</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundleGetInfoString</key>
 +	<string>Python Runtime and Library</string>
 +	<key>CFBundleIdentifier</key>
@@ -3455,7 +4918,7 @@ index 00000000000..e83ddfd2a43
 +	<key>CFBundleInfoDictionaryVersion</key>
 +	<string>6.0</string>
 +	<key>CFBundleName</key>
-+	<string>Python</string>
++	<string>@PYTHONFRAMEWORK@</string>
 +	<key>CFBundlePackageType</key>
 +	<string>FMWK</string>
 +	<key>CFBundleShortVersionString</key>
@@ -3476,35 +4939,35 @@ index 00000000000..e83ddfd2a43
 +</plist>
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
 new file mode 100755
-index 00000000000..dda2b211bd5
+index 00000000000..0e1b948633e
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 new file mode 100755
-index 00000000000..fe834d3efe4
+index 00000000000..6911a2e3bf3
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++ b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 new file mode 100755
-index 00000000000..757f3a26d8f
+index 00000000000..7dacb3d8585
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 new file mode 100755
-index 00000000000..fdb57d9e010
+index 00000000000..a31bc3fb7e4
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator clang -target arm64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip b/Platforms/Apple/watchOS/Resources/bin/arm64-apple-watchos-simulator-strip
 new file mode 100755
@@ -3524,67 +4987,67 @@ index 00000000000..efe5a1260ad
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} strip -arch arm64 "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 new file mode 100755
-index 00000000000..029f9a32073
+index 00000000000..78b647b78e5
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 new file mode 100755
-index 00000000000..285036d4010
+index 00000000000..cf7c175b1b0
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++ b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 new file mode 100755
-index 00000000000..c8f60ebec51
+index 00000000000..c3e6ddfa1fe
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang++ -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 new file mode 100755
-index 00000000000..b411fc25aa4
+index 00000000000..d038450a901
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/arm64_32-apple-watchos-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchos${WATCHOS_SDK_VERSION} clang -target arm64_32-apple-watchos${WATCHOS_DEPLOYMENT_TARGET} -E "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 new file mode 100755
-index 00000000000..dda2b211bd5
+index 00000000000..0e1b948633e
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-ar
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} ar "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 new file mode 100755
-index 00000000000..4776b9b5348
+index 00000000000..a839a93ab47
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++ b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 new file mode 100755
-index 00000000000..e9b0c5f4b87
+index 00000000000..f0ecc650dfd
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-clang++
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang++ -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 new file mode 100755
-index 00000000000..d3b821c5f7f
+index 00000000000..1fe12659baf
 --- /dev/null
 +++ b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-cpp
 @@ -0,0 +1,2 @@
-+#!/bin/bash
++#!/bin/sh
 +xcrun --sdk watchsimulator${WATCHOS_SDK_VERSION} clang -target x86_64-apple-watchos${WATCHOS_DEPLOYMENT_TARGET}-simulator -E "$@"
 diff --git a/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip b/Platforms/Apple/watchOS/Resources/bin/x86_64-apple-watchos-simulator-strip
 new file mode 100755
@@ -3634,7 +5097,7 @@ index 1bb6a05dc11..49febd56a37 100755
  	none--*)
  		# None (no kernel, i.e. freestanding / bare metal),
 diff --git a/configure b/configure
-index a68a98c5a4d..a34d4986bbe 100755
+index c777d8117c6..829ba4e280b 100755
 --- a/configure
 +++ b/configure
 @@ -994,6 +994,10 @@
@@ -3648,7 +5111,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  IPHONEOS_DEPLOYMENT_TARGET
  EXPORT_MACOSX_DEPLOYMENT_TARGET
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET
-@@ -4161,6 +4165,15 @@
+@@ -4188,6 +4192,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
  		;;
@@ -3664,7 +5127,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  	*-*-darwin*)
  		ac_sys_system=Darwin
  		;;
-@@ -4245,7 +4258,7 @@
+@@ -4272,7 +4285,7 @@
  # On cross-compile builds, configure will look for a host-specific compiler by
  # prepending the user-provided host triple to the required binary name.
  #
@@ -3673,7 +5136,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -4260,6 +4273,17 @@
+@@ -4287,14 +4300,36 @@
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
@@ -3689,9 +5152,11 @@ index a68a98c5a4d..a34d4986bbe 100755
 +		aarch64-apple-watchos*)           AR=arm64_32-apple-watchos-ar ;;
 +		x86_64-apple-watchos*-simulator)  AR=x86_64-apple-watchos-simulator-ar ;;
  		*)
- 	esac
+-	esac
++    esac
  fi
-@@ -4268,6 +4292,17 @@
+ if test -z "$CC"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
@@ -3709,7 +5174,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  		*)
  	esac
  fi
-@@ -4276,6 +4311,17 @@
+@@ -4303,6 +4338,17 @@
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
@@ -3727,7 +5192,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  		*)
  	esac
  fi
-@@ -4284,6 +4330,17 @@
+@@ -4311,6 +4357,17 @@
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
@@ -3745,7 +5210,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  		*)
  	esac
  fi
-@@ -4406,8 +4463,11 @@
+@@ -4433,8 +4490,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -3759,17 +5224,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  			*) as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
  		esac
  	esac
-@@ -4416,6 +4476,9 @@
- 	no)
- 		case $ac_sys_system in
- 			iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
-+			tvOS) as_fn_error $? "tvOS builds must use --enable-framework" "$LINENO" 5 ;;
-+			visionOS) as_fn_error $? "visionOS builds must use --enable-framework" "$LINENO" 5 ;;
-+			watchOS) as_fn_error $? "watchOS builds must use --enable-framework" "$LINENO" 5 ;;
- 			*)
- 				PYTHONFRAMEWORK=
- 				PYTHONFRAMEWORKDIR=no-framework
-@@ -4522,6 +4585,51 @@
+@@ -4545,6 +4605,51 @@
  
  				ac_config_files="$ac_config_files Platforms/Apple/iOS/Resources/Info.plist"
  
@@ -3821,17 +5276,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  				;;
  			*)
  				as_fn_error $? "Unknown platform for framework build" "$LINENO" 5
-@@ -4533,6 +4641,9 @@
-   e)
- 	case $ac_sys_system in
- 		iOS) as_fn_error $? "iOS builds must use --enable-framework" "$LINENO" 5 ;;
-+		tvOS) as_fn_error $? "tvOS builds must use --enable-framework" "$LINENO" 5 ;;
-+		visionOS) as_fn_error $? "visionOS builds must use --enable-framework" "$LINENO" 5 ;;
-+		watchOS) as_fn_error $? "watchOS builds must use --enable-framework" "$LINENO" 5 ;;
- 		*)
- 			PYTHONFRAMEWORK=
- 			PYTHONFRAMEWORKDIR=no-framework
-@@ -4587,8 +4698,8 @@
+@@ -4606,8 +4711,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -3842,7 +5287,7 @@ index a68a98c5a4d..a34d4986bbe 100755
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) as_fn_error $? "no default app store compliance patch available for $ac_sys_system" "$LINENO" 5 ;;
-@@ -4606,8 +4717,8 @@
+@@ -4625,8 +4730,8 @@
  else case e in #(
    e)
      case $ac_sys_system in
@@ -3853,7 +5298,7 @@ index a68a98c5a4d..a34d4986bbe 100755
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: applying default app store compliance patch" >&5
  printf "%s\n" "applying default app store compliance patch" >&6; }
-@@ -4625,6 +4736,8 @@
+@@ -4644,6 +4749,8 @@
  
  
  
@@ -3862,7 +5307,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
  if test "$cross_compiling" = yes; then
  	case "$host" in
-@@ -4665,6 +4778,78 @@
+@@ -4684,6 +4791,78 @@
  				;;
  		esac
  		;;
@@ -3925,7 +5370,7 @@ index a68a98c5a4d..a34d4986bbe 100755
 +		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking watchOS deployment target" >&5
 +printf %s "checking watchOS deployment target... " >&6; }
 +		WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
-+		WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=4.0}
++		WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=9.0}
 +		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $WATCHOS_DEPLOYMENT_TARGET" >&5
 +printf "%s\n" "$WATCHOS_DEPLOYMENT_TARGET" >&6; }
 +
@@ -3941,7 +5386,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -4755,9 +4940,15 @@
+@@ -4771,9 +4950,15 @@
      define_xopen_source=no;;
    Darwin/[12][0-9].*)
      define_xopen_source=no;;
@@ -3958,7 +5403,7 @@ index a68a98c5a4d..a34d4986bbe 100755
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -4820,7 +5011,14 @@
+@@ -4852,7 +5037,14 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -3974,7 +5419,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
  
  # checks for alternative programs
-@@ -4866,6 +5064,26 @@
+@@ -4898,6 +5090,26 @@
      as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
      as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
     ;; #(
@@ -4001,7 +5446,7 @@ index a68a98c5a4d..a34d4986bbe 100755
    *) :
       ;;
  esac
-@@ -7235,6 +7453,12 @@
+@@ -7379,6 +7591,12 @@
      MULTIARCH="" ;; #(
    iOS) :
      MULTIARCH="" ;; #(
@@ -4013,8 +5458,8 @@ index a68a98c5a4d..a34d4986bbe 100755
 +    MULTIARCH="" ;; #(
    FreeBSD*) :
      MULTIARCH="" ;; #(
-   *) :
-@@ -7255,7 +7479,7 @@
+   OpenBSD*) :
+@@ -7401,7 +7619,7 @@
  printf "%s\n" "$MULTIARCH" >&6; }
  
  case $ac_sys_system in #(
@@ -4023,26 +5468,7 @@ index a68a98c5a4d..a34d4986bbe 100755
      SOABI_PLATFORM=`echo "$PLATFORM_TRIPLET" | cut -d '-' -f2` ;; #(
    *) :
      SOABI_PLATFORM=$PLATFORM_TRIPLET
-@@ -7324,6 +7548,18 @@
-     PY_SUPPORT_TIER=3 ;; #(
-     aarch64-apple-ios*/clang) :
-     PY_SUPPORT_TIER=3 ;; #(
-+    aarch64-apple-tvos*-simulator/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-+    aarch64-apple-tvos*/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-+    aarch64-apple-xros*-simulator/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-+    aarch64-apple-xros*/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-+    aarch64-apple-watchos*-simulator/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-+    arm64_32-apple-watchos*/clang) :
-+    PY_SUPPORT_TIER=3 ;; #(
-     aarch64-*-linux-android/clang) :
-     PY_SUPPORT_TIER=3 ;; #(
-     x86_64-*-linux-android/clang) :
-@@ -7778,7 +8014,7 @@
+@@ -7952,7 +8170,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -4051,16 +5477,16 @@ index a68a98c5a4d..a34d4986bbe 100755
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        as_fn_error $? "Unknown platform for framework build" "$LINENO" 5;;
-@@ -7844,7 +8080,7 @@
+@@ -8018,7 +8236,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
 -    iOS)
 +    iOS|tvOS|visionOS|watchOS)
-       LDLIBRARY='libpython$(LDVERSION).dylib'
-       ;;
-     AIX*)
-@@ -14196,7 +14432,7 @@
+       if test -z "$PYTHONFRAMEWORK"; then
+         as_fn_error $? "iOS shared builds must use --enable-framework; an iOS app can only load a signed framework, never a bare dylib" "$LINENO" 5
+       fi
+@@ -14445,7 +14663,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -4069,7 +5495,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -14329,7 +14565,7 @@
+@@ -14578,7 +14796,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -4078,16 +5504,16 @@ index a68a98c5a4d..a34d4986bbe 100755
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -14353,7 +14589,7 @@
+@@ -14602,7 +14820,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
 -		elif test $ac_sys_system = "iOS"; then
 +		elif test "$ac_sys_system" = "iOS" -o "$ac_sys_system" = "tvOS" -o "$ac_sys_system" = "visionOS" -o "$ac_sys_system" = "watchOS"; then
- 			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
- 		fi
- 		;;
-@@ -16182,7 +16418,7 @@
+ 			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED"
+ 
+ 			if test "$enable_framework"; then
+@@ -16546,7 +16764,7 @@
  
              ctypes_malloc_closure=yes
       ;; #(
@@ -4096,7 +5522,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
        ctypes_malloc_closure=yes
       ;; #(
-@@ -20055,12 +20291,6 @@
+@@ -20575,12 +20793,6 @@
  then :
    printf "%s\n" "#define HAVE_DUP 1" >>confdefs.h
  
@@ -4109,7 +5535,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  fi
  ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
  if test "x$ac_cv_func_explicit_bzero" = xyes
-@@ -20121,18 +20351,6 @@
+@@ -20641,18 +20853,6 @@
  then :
    printf "%s\n" "#define HAVE_FEXECVE 1" >>confdefs.h
  
@@ -4128,7 +5554,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  fi
  ac_fn_c_check_func "$LINENO" "fpathconf" "ac_cv_func_fpathconf"
  if test "x$ac_cv_func_fpathconf" = xyes
-@@ -20565,24 +20783,6 @@
+@@ -21127,24 +21327,6 @@
  then :
    printf "%s\n" "#define HAVE_POSIX_OPENPT 1" >>confdefs.h
  
@@ -4153,7 +5579,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  fi
  ac_fn_c_check_func "$LINENO" "pread" "ac_cv_func_pread"
  if test "x$ac_cv_func_pread" = xyes
-@@ -20901,12 +21101,6 @@
+@@ -21463,12 +21645,6 @@
  then :
    printf "%s\n" "#define HAVE_SIGACTION 1" >>confdefs.h
  
@@ -4166,7 +5592,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -21197,18 +21391,12 @@
+@@ -21803,12 +21979,41 @@
  
  fi
  
@@ -4177,57 +5603,54 @@ index a68a98c5a4d..a34d4986bbe 100755
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
 -  ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
--if test "x$ac_cv_func_dup3" = xyes
--then :
--  printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
--
--fi
--ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
-+if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
-+  ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
- if test "x$ac_cv_func_getentropy" = xyes
- then :
-   printf "%s\n" "#define HAVE_GETENTROPY 1" >>confdefs.h
-@@ -21219,6 +21407,24 @@
- then :
-   printf "%s\n" "#define HAVE_GETGROUPS 1" >>confdefs.h
- 
-+fi
-+ac_fn_c_check_func "$LINENO" "system" "ac_cv_func_system"
-+if test "x$ac_cv_func_system" = xyes
-+then :
-+  printf "%s\n" "#define HAVE_SYSTEM 1" >>confdefs.h
-+
-+fi
-+
-+fi
-+# In addition, macOS introduced dup3 and pipe2 in macOS 27, late in the
-+# lifetime of this version of Python. Rather than adding weaklinking
-+# support for them, just continue to ignore them.
-+if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" -a "$ac_sys_system" != "Darwin"; then
-+  ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
++# In particular, dup3 and pipe2 are available as of iOS/tvOS/watchOS/visionOS 27 but were
++# incorrectly detected in older simulator versions.
++case "$ac_sys_system" in
++    iOS|tvOS|watchOS|visionOS)
++        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if iOS SDK is older than 27" >&5
++printf %s "checking if iOS SDK is older than 27... " >&6; }
++        ios_sdk_version=$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null | cut -d. -f1)
++        if test -n "$ios_sdk_version" && test "$ios_sdk_version" -ge 27; then
++            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
++printf "%s\n" "no" >&6; }
++            ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
 +if test "x$ac_cv_func_dup3" = xyes
 +then :
 +  printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
 +
- fi
- ac_fn_c_check_func "$LINENO" "pipe2" "ac_cv_func_pipe2"
- if test "x$ac_cv_func_pipe2" = xyes
-@@ -21226,10 +21432,51 @@
-   printf "%s\n" "#define HAVE_PIPE2 1" >>confdefs.h
- 
- fi
--ac_fn_c_check_func "$LINENO" "system" "ac_cv_func_system"
--if test "x$ac_cv_func_system" = xyes
++fi
++ac_fn_c_check_func "$LINENO" "pipe2" "ac_cv_func_pipe2"
++if test "x$ac_cv_func_pipe2" = xyes
++then :
++  printf "%s\n" "#define HAVE_PIPE2 1" >>confdefs.h
 +
 +fi
++
++        else
++            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++printf "%s\n" "yes" >&6; }
++        fi
++        ;;
++    *)
++        # not iOS/tvOS/watchOS/visionOS
++        ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
+ if test "x$ac_cv_func_dup3" = xyes
+ then :
+   printf "%s\n" "#define HAVE_DUP3 1" >>confdefs.h
+@@ -21837,6 +22042,54 @@
+ then :
+   printf "%s\n" "#define HAVE_SYSTEM 1" >>confdefs.h
+ 
++fi
++
++        ;;
++esac
 +
 +# tvOS/watchOS have some additional methods that can be found, but not used.
 +if test "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "watchOS" ; then
 +  ac_fn_c_check_func "$LINENO" "execv" "ac_cv_func_execv"
 +if test "x$ac_cv_func_execv" = xyes
- then :
--  printf "%s\n" "#define HAVE_SYSTEM 1" >>confdefs.h
++then :
 +  printf "%s\n" "#define HAVE_EXECV 1" >>confdefs.h
 +
 +fi
@@ -4265,10 +5688,11 @@ index a68a98c5a4d..a34d4986bbe 100755
 +if test "x$ac_cv_func_sigaltstack" = xyes
 +then :
 +  printf "%s\n" "#define HAVE_SIGALTSTACK 1" >>confdefs.h
- 
++
  fi
  
-@@ -24687,7 +24934,8 @@
+ fi
+@@ -25457,7 +25710,8 @@
  
  fi
  # check for openpty, login_tty, and forkpty
@@ -4278,7 +5702,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
    for ac_func in openpty
  do :
-@@ -24801,7 +25049,7 @@
+@@ -25571,7 +25825,7 @@
  fi
  
  done
@@ -4287,7 +5711,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  printf %s "checking for library containing login_tty... " >&6; }
  if test ${ac_cv_search_login_tty+y}
  then :
-@@ -24984,6 +25232,7 @@
+@@ -25754,6 +26008,7 @@
  fi
  
  done
@@ -4295,7 +5719,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
  # check for long file support functions
  ac_fn_c_check_func "$LINENO" "fseek64" "ac_cv_func_fseek64"
-@@ -25249,10 +25498,10 @@
+@@ -26019,10 +26274,10 @@
  
  done
  
@@ -4308,7 +5732,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  then
  
    for ac_func in clock_settime
-@@ -25569,7 +25818,7 @@
+@@ -26339,7 +26594,7 @@
    e) if test "$cross_compiling" = yes
  then :
  
@@ -4317,18 +5741,18 @@ index a68a98c5a4d..a34d4986bbe 100755
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -27647,8 +27896,8 @@
+@@ -28712,8 +28967,8 @@
    LIBPYTHON="-lpython${VERSION}${ABIFLAGS}"
  fi
  
--# On iOS the shared libraries must be linked with the Python framework
--if test "$ac_sys_system" = "iOS"; then
-+# On iOS/tvOS/watchOS the shared libraries must be linked with the Python framework
-+if test "$ac_sys_system" = "iOS" -o $ac_sys_system = "tvOS" -o $ac_sys_system = "visionOS" -o $ac_sys_system = "watchOS"; then
+-# On iOS the shared libraries must be linked with the framework, when built
+-if test "$ac_sys_system" = "iOS" && test "$enable_framework"; then
++# On iOS/tvOS/watchOS the shared libraries must be linked with the framework, when built
++if test "$ac_sys_system" = "iOS" -o "$ac_sys_system" = "tvOS" -o "$ac_sys_system" = "visionOS" -o "$ac_sys_system" = "watchOS" && test "$enable_framework"; then
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -30767,7 +31016,7 @@
+@@ -34161,7 +34416,7 @@
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for device files" >&5
  printf "%s\n" "$as_me: checking for device files" >&6;}
  
@@ -4337,7 +5761,7 @@ index a68a98c5a4d..a34d4986bbe 100755
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -31321,7 +31570,7 @@
+@@ -34714,7 +34969,7 @@
      with_ensurepip=no ;; #(
    WASI) :
      with_ensurepip=no ;; #(
@@ -4346,7 +5770,7 @@ index a68a98c5a4d..a34d4986bbe 100755
      with_ensurepip=no ;; #(
    *) :
      with_ensurepip=upgrade
-@@ -32271,6 +32520,9 @@
+@@ -35719,6 +35974,9 @@
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
    iOS) _PYTHREAD_NAME_MAXLEN=63;;
@@ -4355,8 +5779,8 @@ index a68a98c5a4d..a34d4986bbe 100755
 +  watchOS) _PYTHREAD_NAME_MAXLEN=63;;
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
-   *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -32302,7 +32554,7 @@
+   CYGWIN*) _PYTHREAD_NAME_MAXLEN=16;;
+@@ -35751,7 +36009,7 @@
   ;; #(
      Darwin) :
       ;; #(
@@ -4365,7 +5789,7 @@ index a68a98c5a4d..a34d4986bbe 100755
  
  
  
-@@ -36605,6 +36857,9 @@
+@@ -40066,6 +40324,9 @@
      "Mac/Resources/framework/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/framework/Info.plist" ;;
      "Mac/Resources/app/Info.plist") CONFIG_FILES="$CONFIG_FILES Mac/Resources/app/Info.plist" ;;
      "Platforms/Apple/iOS/Resources/Info.plist") CONFIG_FILES="$CONFIG_FILES Platforms/Apple/iOS/Resources/Info.plist" ;;
@@ -4376,10 +5800,10 @@ index a68a98c5a4d..a34d4986bbe 100755
      "Misc/python.pc") CONFIG_FILES="$CONFIG_FILES Misc/python.pc" ;;
      "Misc/python-embed.pc") CONFIG_FILES="$CONFIG_FILES Misc/python-embed.pc" ;;
 diff --git a/configure.ac b/configure.ac
-index ed8b53dd3a4..39fb6e82fb1 100644
+index a8760c94ac1..77926dc012a 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -339,6 +339,15 @@
+@@ -345,6 +345,15 @@
  	*-apple-ios*)
  		ac_sys_system=iOS
  		;;
@@ -4395,7 +5819,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  	*-*-darwin*)
  		ac_sys_system=Darwin
  		;;
-@@ -417,7 +426,7 @@
+@@ -423,7 +432,7 @@
  # On cross-compile builds, configure will look for a host-specific compiler by
  # prepending the user-provided host triple to the required binary name.
  #
@@ -4404,7 +5828,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  # which isn't a binary that exists, and isn't very convenient, as it contains the
  # iOS version. As the default cross-compiler name won't exist, configure falls
  # back to gcc, which *definitely* won't work. We're providing wrapper scripts for
-@@ -432,6 +441,17 @@
+@@ -438,14 +447,36 @@
  		aarch64-apple-ios*-simulator) AR=arm64-apple-ios-simulator-ar ;;
  		aarch64-apple-ios*)           AR=arm64-apple-ios-ar ;;
  		x86_64-apple-ios*-simulator)  AR=x86_64-apple-ios-simulator-ar ;;
@@ -4420,9 +5844,11 @@ index ed8b53dd3a4..39fb6e82fb1 100644
 +		aarch64-apple-watchos*)           AR=arm64_32-apple-watchos-ar ;;
 +		x86_64-apple-watchos*-simulator)  AR=x86_64-apple-watchos-simulator-ar ;;
  		*)
- 	esac
+-	esac
++    esac
  fi
-@@ -440,6 +460,17 @@
+ if test -z "$CC"; then
+ 	case "$host" in
  		aarch64-apple-ios*-simulator) CC=arm64-apple-ios-simulator-clang ;;
  		aarch64-apple-ios*)           CC=arm64-apple-ios-clang ;;
  		x86_64-apple-ios*-simulator)  CC=x86_64-apple-ios-simulator-clang ;;
@@ -4440,7 +5866,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  		*)
  	esac
  fi
-@@ -448,6 +479,17 @@
+@@ -454,6 +485,17 @@
  		aarch64-apple-ios*-simulator) CPP=arm64-apple-ios-simulator-cpp ;;
  		aarch64-apple-ios*)           CPP=arm64-apple-ios-cpp ;;
  		x86_64-apple-ios*-simulator)  CPP=x86_64-apple-ios-simulator-cpp ;;
@@ -4458,7 +5884,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  		*)
  	esac
  fi
-@@ -456,6 +498,17 @@
+@@ -462,6 +504,17 @@
  		aarch64-apple-ios*-simulator) CXX=arm64-apple-ios-simulator-clang++ ;;
  		aarch64-apple-ios*)           CXX=arm64-apple-ios-clang++ ;;
  		x86_64-apple-ios*-simulator)  CXX=x86_64-apple-ios-simulator-clang++ ;;
@@ -4476,7 +5902,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  		*)
  	esac
  fi
-@@ -570,8 +623,11 @@
+@@ -576,8 +629,11 @@
  	case $enableval in
  	yes)
  		case $ac_sys_system in
@@ -4490,17 +5916,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  			*) AC_MSG_ERROR([Unknown platform for framework build])
  		esac
  	esac
-@@ -580,6 +636,9 @@
- 	no)
- 		case $ac_sys_system in
- 			iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
-+			tvOS) AC_MSG_ERROR([tvOS builds must use --enable-framework]) ;;
-+			visionOS) AC_MSG_ERROR([visionOS builds must use --enable-framework]) ;;
-+			watchOS) AC_MSG_ERROR([watchOS builds must use --enable-framework]) ;;
- 			*)
- 				PYTHONFRAMEWORK=
- 				PYTHONFRAMEWORKDIR=no-framework
-@@ -682,6 +741,48 @@
+@@ -684,6 +740,48 @@
  
  				AC_CONFIG_FILES([Platforms/Apple/iOS/Resources/Info.plist])
  				;;
@@ -4549,17 +5965,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  			*)
  				AC_MSG_ERROR([Unknown platform for framework build])
  				;;
-@@ -690,6 +791,9 @@
- 	],[
- 	case $ac_sys_system in
- 		iOS) AC_MSG_ERROR([iOS builds must use --enable-framework]) ;;
-+		tvOS) AC_MSG_ERROR([tvOS builds must use --enable-framework]) ;;
-+		visionOS) AC_MSG_ERROR([visionOS builds must use --enable-framework]) ;;
-+		watchOS) AC_MSG_ERROR([watchOS builds must use --enable-framework]) ;;
- 		*)
- 			PYTHONFRAMEWORK=
- 			PYTHONFRAMEWORKDIR=no-framework
-@@ -742,8 +846,8 @@
+@@ -740,8 +838,8 @@
      case "$withval" in
      yes)
        case $ac_sys_system in
@@ -4570,7 +5976,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
            APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
            ;;
          *) AC_MSG_ERROR([no default app store compliance patch available for $ac_sys_system]) ;;
-@@ -757,8 +861,8 @@
+@@ -755,8 +853,8 @@
      esac
    ],[
      case $ac_sys_system in
@@ -4581,7 +5987,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
          APP_STORE_COMPLIANCE_PATCH="Mac/Resources/app-store-compliance.patch"
          AC_MSG_RESULT([applying default app store compliance patch])
          ;;
-@@ -771,6 +875,8 @@
+@@ -769,6 +867,8 @@
  ])
  AC_SUBST([APP_STORE_COMPLIANCE_PATCH])
  
@@ -4590,7 +5996,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  AC_SUBST([_PYTHON_HOST_PLATFORM])
  if test "$cross_compiling" = yes; then
  	case "$host" in
-@@ -809,6 +915,70 @@
+@@ -807,6 +907,70 @@
  				;;
  		esac
  		;;
@@ -4646,7 +6052,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
 +		# WATCHOS_DEPLOYMENT_TARGET is the minimum supported watchOS version
 +		AC_MSG_CHECKING([watchOS deployment target])
 +		WATCHOS_DEPLOYMENT_TARGET=${_host_os:7}
-+		WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=4.0}
++		WATCHOS_DEPLOYMENT_TARGET=${WATCHOS_DEPLOYMENT_TARGET:=9.0}
 +		AC_MSG_RESULT([$WATCHOS_DEPLOYMENT_TARGET])
 +
 +		case "$host_cpu" in
@@ -4661,7 +6067,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  	*-*-darwin*)
  		case "$host_cpu" in
  		arm*)
-@@ -898,9 +1068,15 @@
+@@ -893,9 +1057,15 @@
      define_xopen_source=no;;
    Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)
      define_xopen_source=no;;
@@ -4678,7 +6084,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    # On QNX 6.3.2, defining _XOPEN_SOURCE prevents netdb.h from
    # defining NI_NUMERICHOST.
    QNX/6.3.2)
-@@ -959,8 +1135,15 @@
+@@ -968,8 +1138,15 @@
  CONFIGURE_MACOSX_DEPLOYMENT_TARGET=
  EXPORT_MACOSX_DEPLOYMENT_TARGET='#'
  
@@ -4695,7 +6101,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  
  # checks for alternative programs
  
-@@ -994,15 +1177,28 @@
+@@ -1003,15 +1180,28 @@
    ],
  )
  
@@ -4727,7 +6133,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    ],
  )
  
-@@ -1191,6 +1387,9 @@
+@@ -1203,6 +1393,9 @@
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
    [iOS], [MULTIARCH=""],
@@ -4735,9 +6141,9 @@ index ed8b53dd3a4..39fb6e82fb1 100644
 +  [visionOS], [MULTIARCH=""],
 +  [watchOS], [MULTIARCH=""],
    [FreeBSD*], [MULTIARCH=""],
+   [OpenBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
- )
-@@ -1212,7 +1411,7 @@
+@@ -1225,7 +1418,7 @@
  dnl use a single "fat" binary at runtime. SOABI_PLATFORM is the component of
  dnl the PLATFORM_TRIPLET that will be used in binary module extensions.
  AS_CASE([$ac_sys_system],
@@ -4746,40 +6152,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    [SOABI_PLATFORM=$PLATFORM_TRIPLET]
  )
  
-@@ -1251,16 +1450,22 @@
-   [wasm32-unknown-wasip1/clang],         [PY_SUPPORT_TIER=2], dnl WebAssembly System Interface preview1, clang
-   [x86_64-*-linux-gnu/clang],            [PY_SUPPORT_TIER=2], dnl Linux on AMD64, any vendor, glibc, clang
- 
--  [aarch64-pc-windows-msvc/msvc],        [PY_SUPPORT_TIER=3], dnl Windows ARM64, MSVC
--  [armv7l-*-linux-gnueabihf/gcc],        [PY_SUPPORT_TIER=3], dnl ARMv7 LE with hardware floats, any vendor, glibc, gcc
--  [powerpc64le-*-linux-gnu/clang],       [PY_SUPPORT_TIER=3], dnl Linux on PPC64 little endian, glibc, clang
--  [s390x-*-linux-gnu/gcc],               [PY_SUPPORT_TIER=3], dnl Linux on 64bit s390x (big endian), glibc, gcc
--  [x86_64-*-freebsd*/clang],             [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
--  [aarch64-apple-ios*-simulator/clang],  [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
--  [aarch64-apple-ios*/clang],            [PY_SUPPORT_TIER=3], dnl iOS on ARM64
--  [aarch64-*-linux-android/clang],       [PY_SUPPORT_TIER=3], dnl Android on ARM64
--  [x86_64-*-linux-android/clang],        [PY_SUPPORT_TIER=3], dnl Android on AMD64
--  [wasm32-*-emscripten/emcc],            [PY_SUPPORT_TIER=3], dnl Emscripten
-+  [aarch64-pc-windows-msvc/msvc],           [PY_SUPPORT_TIER=3], dnl Windows ARM64, MSVC
-+  [armv7l-*-linux-gnueabihf/gcc],           [PY_SUPPORT_TIER=3], dnl ARMv7 LE with hardware floats, any vendor, glibc, gcc
-+  [powerpc64le-*-linux-gnu/clang],          [PY_SUPPORT_TIER=3], dnl Linux on PPC64 little endian, glibc, clang
-+  [s390x-*-linux-gnu/gcc],                  [PY_SUPPORT_TIER=3], dnl Linux on 64bit s390x (big endian), glibc, gcc
-+  [x86_64-*-freebsd*/clang],                [PY_SUPPORT_TIER=3], dnl FreeBSD on AMD64
-+  [aarch64-apple-ios*-simulator/clang],     [PY_SUPPORT_TIER=3], dnl iOS Simulator on arm64
-+  [aarch64-apple-ios*/clang],               [PY_SUPPORT_TIER=3], dnl iOS on ARM64
-+  [aarch64-apple-tvos*-simulator/clang],    [PY_SUPPORT_TIER=3], dnl tvOS Simulator on arm64
-+  [aarch64-apple-tvos*/clang],              [PY_SUPPORT_TIER=3], dnl tvOS on ARM64
-+  [aarch64-apple-xros*-simulator/clang],    [PY_SUPPORT_TIER=3], dnl visionOS Simulator on arm64
-+  [aarch64-apple-xros*/clang],              [PY_SUPPORT_TIER=3],    dnl visionOS on ARM64
-+  [aarch64-apple-watchos*-simulator/clang], [PY_SUPPORT_TIER=3], dnl watchOS Simulator on arm64
-+  [arm64_32-apple-watchos*/clang],          [PY_SUPPORT_TIER=3], dnl watchOS on ARM64
-+  [aarch64-*-linux-android/clang],          [PY_SUPPORT_TIER=3], dnl Android on ARM64
-+  [x86_64-*-linux-android/clang],           [PY_SUPPORT_TIER=3], dnl Android on AMD64
-+  [wasm32-*-emscripten/emcc],               [PY_SUPPORT_TIER=3], dnl Emscripten
- 
-   [PY_SUPPORT_TIER=0]
- )
-@@ -1579,7 +1784,7 @@
+@@ -1608,7 +1801,7 @@
    case $ac_sys_system in
      Darwin)
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)';;
@@ -4788,16 +6161,16 @@ index ed8b53dd3a4..39fb6e82fb1 100644
        LDLIBRARY='$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)';;
      *)
        AC_MSG_ERROR([Unknown platform for framework build]);;
-@@ -1644,7 +1849,7 @@
+@@ -1673,7 +1866,7 @@
        BLDLIBRARY='-L. -lpython$(LDVERSION)'
        RUNSHARED=DYLD_LIBRARY_PATH=`pwd`${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
        ;;
 -    iOS)
 +    iOS|tvOS|visionOS|watchOS)
-       LDLIBRARY='libpython$(LDVERSION).dylib'
-       ;;
-     AIX*)
-@@ -3652,7 +3857,7 @@
+       if test -z "$PYTHONFRAMEWORK"; then
+         AC_MSG_ERROR([iOS shared builds must use --enable-framework; an iOS app can only load a signed framework, never a bare dylib])
+       fi
+@@ -3704,7 +3897,7 @@
  			BLDSHARED="$LDSHARED"
  		fi
  		;;
@@ -4806,7 +6179,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  		LDSHARED='$(CC) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		LDCXXSHARED='$(CXX) -dynamiclib -F . -framework $(PYTHONFRAMEWORK)'
  		BLDSHARED="$LDSHARED"
-@@ -3776,7 +3981,7 @@
+@@ -3828,7 +4021,7 @@
  	Linux-android*) LINKFORSHARED="-pie -Xlinker -export-dynamic";;
  	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
  	# -u libsys_s pulls in all symbols in libsys
@@ -4815,16 +6188,16 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
  
  		# Issue #18075: the default maximum stack size (8MBytes) is too
-@@ -3800,7 +4005,7 @@
+@@ -3852,7 +4045,7 @@
  				LINKFORSHARED="$LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)'
  			fi
  			LINKFORSHARED="$LINKFORSHARED"
 -		elif test $ac_sys_system = "iOS"; then
 +		elif test "$ac_sys_system" = "iOS" -o "$ac_sys_system" = "tvOS" -o "$ac_sys_system" = "visionOS" -o "$ac_sys_system" = "watchOS"; then
- 			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED "'$(PYTHONFRAMEWORKDIR)/$(PYTHONFRAMEWORK)'
- 		fi
- 		;;
-@@ -4308,7 +4513,7 @@
+ 			LINKFORSHARED="-Wl,-stack_size,$stack_size $LINKFORSHARED"
+ 
+ 			if test "$enable_framework"; then
+@@ -4425,7 +4618,7 @@
        dnl when do we need USING_APPLE_OS_LIBFFI?
        ctypes_malloc_closure=yes
      ],
@@ -4833,7 +6206,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
        ctypes_malloc_closure=yes
      ],
      [sunos5], [AS_VAR_APPEND([LIBFFI_LIBS], [" -mimpure-text"])]
-@@ -5487,9 +5692,9 @@
+@@ -5553,9 +5746,9 @@
  AC_CHECK_FUNCS([ \
    accept4 alarm bind_textdomain_codeset chmod chown clearenv \
    clock closefrom close_range confstr \
@@ -4842,20 +6215,20 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    faccessat fchmod fchmodat fchown fchownat fdopendir fdwalk fexecve \
 -  fork fork1 fpathconf fstatat ftime ftruncate futimens futimes futimesat \
 +  fpathconf fstatat ftime ftruncate futimens futimes futimesat \
-   gai_strerror getegid geteuid getgid getgrent getgrgid getgrgid_r \
+   gai_strerror getdents64 getegid geteuid getgid getgrent getgrgid getgrgid_r \
    getgrnam_r getgrouplist gethostname getitimer getloadavg getlogin getlogin_r \
    getpeername getpgid getpid getppid getpriority _getpty \
-@@ -5497,8 +5702,7 @@
-   getspnam getuid getwd grantpt if_nameindex initgroups kill killpg lchown linkat \
+@@ -5565,8 +5758,7 @@
    lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
-   mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
+   mknod mknodat mktime mmap mremap nice openat opendir pathconf pause \
+   pidfd_open pidfd_getfd pidfd_send_signal pipe \
 -  plock poll ppoll posix_fadvise posix_fallocate posix_openpt posix_spawn posix_spawnp \
 -  posix_spawn_file_actions_addclosefrom_np \
 +  plock poll ppoll posix_fadvise posix_fallocate posix_openpt \
    pread preadv preadv2 process_vm_readv \
    pthread_cond_timedwait_relative_np pthread_condattr_setclock pthread_init \
    pthread_kill pthread_get_name_np pthread_getname_np pthread_set_name_np \
-@@ -5508,7 +5712,7 @@
+@@ -5576,7 +5768,7 @@
    sched_setparam sched_setscheduler sem_clockwait sem_getvalue sem_open \
    sem_timedwait sem_unlink sendfile setegid seteuid setgid sethostname \
    setitimer setlocale setpgid setpgrp setpriority setregid setresgid \
@@ -4864,7 +6237,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf sysctlbyname tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5529,12 +5733,26 @@
+@@ -5600,12 +5792,35 @@
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -4875,15 +6248,24 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
 -  AC_CHECK_FUNCS([dup3 getentropy getgroups pipe2 system])
-+if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
-+  AC_CHECK_FUNCS([getentropy getgroups system])
-+fi
-+# In addition, macOS introduced dup3 and pipe2 in macOS 27, late in the
-+# lifetime of this version of Python. Rather than adding weaklinking
-+# support for them, just continue to ignore them.
-+if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" -a "$ac_sys_system" != "Darwin"; then
-+  AC_CHECK_FUNCS([dup3 pipe2])
-+fi
++# In particular, dup3 and pipe2 are available as of iOS/tvOS/watchOS/visionOS 27 but were
++# incorrectly detected in older simulator versions.
++case "$ac_sys_system" in
++    iOS|tvOS|watchOS|visionOS)
++        AC_MSG_CHECKING([if iOS SDK is older than 27])
++        ios_sdk_version=$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null | cut -d. -f1)
++        if test -n "$ios_sdk_version" && test "$ios_sdk_version" -ge 27; then
++            AC_MSG_RESULT([no])
++            AC_CHECK_FUNCS([dup3 pipe2])
++        else
++            AC_MSG_RESULT([yes])
++        fi
++        ;;
++    *)
++        # not iOS/tvOS/watchOS/visionOS
++        AC_CHECK_FUNCS([dup3 getentropy getgroups pipe2 system])
++        ;;
++esac
 +
 +# tvOS/watchOS have some additional methods that can be found, but not used.
 +if test "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "watchOS" ; then
@@ -4894,7 +6276,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  fi
  
  AC_CHECK_DECL([dirfd],
-@@ -5861,20 +6079,22 @@
+@@ -5999,20 +6214,22 @@
                 @%:@include <sys/prctl.h>])
  ])
  # check for openpty, login_tty, and forkpty
@@ -4931,7 +6313,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  
  # check for long file support functions
  AC_CHECK_FUNCS([fseek64 fseeko fstatvfs ftell64 ftello statvfs])
-@@ -5913,10 +6133,10 @@
+@@ -6051,10 +6268,10 @@
      ])
  ])
  
@@ -4944,7 +6326,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
  then
    AC_CHECK_FUNCS([clock_settime], [], [
        AC_CHECK_LIB([rt], [clock_settime], [
-@@ -6074,7 +6294,7 @@
+@@ -6212,7 +6429,7 @@
  [ac_cv_buggy_getaddrinfo=no],
  [ac_cv_buggy_getaddrinfo=yes],
  [
@@ -4953,18 +6335,18 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    ac_cv_buggy_getaddrinfo="no"
  elif test "${enable_ipv6+set}" = set; then
    ac_cv_buggy_getaddrinfo="no -- configured with --(en|dis)able-ipv6"
-@@ -6678,8 +6898,8 @@
+@@ -6824,8 +7041,8 @@
    LIBPYTHON="-lpython${VERSION}${ABIFLAGS}"
  fi
  
--# On iOS the shared libraries must be linked with the Python framework
--if test "$ac_sys_system" = "iOS"; then
-+# On iOS/tvOS/watchOS the shared libraries must be linked with the Python framework
-+if test "$ac_sys_system" = "iOS" -o $ac_sys_system = "tvOS" -o $ac_sys_system = "visionOS" -o $ac_sys_system = "watchOS"; then
+-# On iOS the shared libraries must be linked with the framework, when built
+-if test "$ac_sys_system" = "iOS" && test "$enable_framework"; then
++# On iOS/tvOS/watchOS the shared libraries must be linked with the framework, when built
++if test "$ac_sys_system" = "iOS" -o "$ac_sys_system" = "tvOS" -o "$ac_sys_system" = "visionOS" -o "$ac_sys_system" = "watchOS" && test "$enable_framework"; then
    MODULE_DEPS_SHARED="$MODULE_DEPS_SHARED \$(PYTHONFRAMEWORKDIR)/\$(PYTHONFRAMEWORK)"
  fi
  
-@@ -7352,7 +7572,7 @@
+@@ -7576,7 +7793,7 @@
  dnl NOTE: Inform user how to proceed with files when cross compiling.
  dnl Some cross-compile builds are predictable; they won't ever
  dnl have /dev/ptmx or /dev/ptc, so we can set them explicitly.
@@ -4973,7 +6355,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
    ac_cv_file__dev_ptmx=no
    ac_cv_file__dev_ptc=no
  else
-@@ -7681,7 +7901,7 @@
+@@ -7904,7 +8121,7 @@
        AS_CASE([$ac_sys_system],
          [Emscripten], [with_ensurepip=no],
          [WASI], [with_ensurepip=no],
@@ -4982,7 +6364,7 @@ index ed8b53dd3a4..39fb6e82fb1 100644
          [with_ensurepip=upgrade]
        )
      ])
-@@ -8069,6 +8289,9 @@
+@@ -8335,6 +8552,9 @@
    NetBSD*) _PYTHREAD_NAME_MAXLEN=15;; # gh-131268
    Darwin) _PYTHREAD_NAME_MAXLEN=63;;
    iOS) _PYTHREAD_NAME_MAXLEN=63;;
@@ -4991,8 +6373,8 @@ index ed8b53dd3a4..39fb6e82fb1 100644
 +  watchOS) _PYTHREAD_NAME_MAXLEN=63;;
    FreeBSD*) _PYTHREAD_NAME_MAXLEN=19;; # gh-131268
    OpenBSD*) _PYTHREAD_NAME_MAXLEN=23;; # gh-131268
-   *) _PYTHREAD_NAME_MAXLEN=;;
-@@ -8093,7 +8316,7 @@
+   CYGWIN*) _PYTHREAD_NAME_MAXLEN=16;;
+@@ -8360,7 +8580,7 @@
    [VxWorks*], [PY_STDLIB_MOD_SET_NA([_scproxy], [termios], [grp])],
    dnl The _scproxy module is available on macOS
    [Darwin], [],
